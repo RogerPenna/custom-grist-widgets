@@ -6,13 +6,19 @@
     <title>Custom Grist Cards</title>
     <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
     <link rel="stylesheet" href="style.css">
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
 </head>
 <body>
 
-    <!-- Controles -->
-    <div class="controls">
+    <!-- Ícone de Configurações -->
+    <div class="settings-icon">
+        <button id="settingsButton"><i class="fas fa-cog"></i></button>
+    </div>
+
+    <!-- Menu de Configurações -->
+    <div class="settings-panel" id="settingsPanel">
         <label>
-            Layout:
+            Cartões por linha:
             <select id="layoutSelect">
                 <option value="auto">Automático</option>
                 <option value="1">1 por linha</option>
@@ -20,6 +26,18 @@
                 <option value="3">3 por linha</option>
             </select>
         </label>
+
+        <label>
+            Altura máxima do cartão:
+            <select id="heightSelect">
+                <option value="auto">Automático</option>
+                <option value="2">2 Linhas</option>
+                <option value="3">3 Linhas</option>
+                <option value="4">4 Linhas</option>
+            </select>
+        </label>
+
+        <button id="closeSettings">Fechar</button>
     </div>
 
     <!-- Container de Cards -->
