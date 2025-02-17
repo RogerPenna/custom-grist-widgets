@@ -1,4 +1,3 @@
-// Definir os campos esperados para o mapeamento dinâmico
 grist.ready({
     columns: [
         { name: "title", title: "Título", type: "Text", optional: false },
@@ -6,10 +5,31 @@ grist.ready({
         { name: "thumbnail", title: "Imagem (URL)", type: "Text", optional: true },
         { name: "extras", title: "Colunas Extras", type: "Any", allowMultiple: true, optional: true }
     ],
-    requiredAccess: "read table"
+    requiredAccess: "full"
 });
 
-function renderCards(records, mappings) {
+async function fetchData() {
+    try {
+        // Get list of tables in the document
+        const tables = await grist.docApi.listTables();
+        if (tables.length === 0) return;
+
+        // Assume the first table is the selected one
+        const tableId = tables[0];  
+        const tableData = await grist.docApi.fetchTable(tableId);
+
+        // Convert the table data to a record array format
+        const records = Object.keys(tableData)
+            .filter(key => key !== 'id')
+            .map(key => ({ id: key, ...tableData[key] }));
+
+        renderCards(records);
+    } catch (error) {
+        console.error("Error fetching table data:", error);
+    }
+}
+
+function renderCards(records) {
     const container = document.getElementById("card-container");
     container.innerHTML = "";
 
@@ -19,43 +39,34 @@ function renderCards(records, mappings) {
     }
 
     records.forEach(record => {
-        const mapped = grist.mapColumnNames(record);
-        if (!mapped) return;
-
         const card = document.createElement("div");
         card.classList.add("card");
 
-        // Adiciona imagem se houver
-        if (mapped.thumbnail) {
+        if (record.thumbnail) {
             const img = document.createElement("img");
-            img.src = mapped.thumbnail;
+            img.src = record.thumbnail;
             img.alt = "Imagem do card";
             card.appendChild(img);
         }
 
-        // Adiciona título
         const title = document.createElement("h2");
-        title.innerText = mapped.title || "Sem título";
+        title.innerText = record.title || "Sem título";
         card.appendChild(title);
 
-        // Adiciona subtítulo, se existir
-        if (mapped.subtitle) {
+        if (record.subtitle) {
             const subtitle = document.createElement("p");
-            subtitle.innerText = mapped.subtitle;
+            subtitle.innerText = record.subtitle;
             card.appendChild(subtitle);
         }
 
-        // Adiciona colunas extras, se existirem
-        if (mapped.extras) {
+        if (record.extras) {
             const extraContainer = document.createElement("div");
             extraContainer.classList.add("extra-fields");
-
-            mapped.extras.forEach(extraField => {
+            record.extras.forEach(extraField => {
                 const extraItem = document.createElement("p");
                 extraItem.innerText = extraField;
                 extraContainer.appendChild(extraItem);
             });
-
             card.appendChild(extraContainer);
         }
 
@@ -63,7 +74,12 @@ function renderCards(records, mappings) {
     });
 }
 
-// Atualiza os cards quando os dados mudam
-grist.onRecords((records, mappings) => {
-    renderCards(records, mappings);
-});
+// If using full access, fetch data manually
+if (grist.accessLevel === "full") {
+    fetchData();
+} else {
+    // Listen for automatic updates (works only in partial access)
+    grist.onRecords((records) => {
+        renderCards(records);
+    });
+}
