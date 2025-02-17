@@ -1,60 +1,123 @@
-grist.ready({
-    columns: [
-        { name: "Title", title: "Title Field", type: "Text" },
-        { name: "Subtitle", title: "Subtitle Field", type: "Text", optional: true },
-        { name: "Image", title: "Image URL", type: "Text", optional: true },
-        { name: "ExtraFields", title: "Additional Fields", type: "Any", allowMultiple: true }
-    ],
-    requiredAccess: "read table"
+grist.ready({ requiredAccess: 'read table' });
+
+let currentRecords = [];
+let layout = "auto";
+
+// Recebe os dados do Grist
+grist.onRecords((records, mappings) => {
+    console.log("📢 Dados recebidos do Grist:", records);
+    currentRecords = records;
+    renderCards();
 });
 
-grist.onRecords((records, mappings) => {
+// Evento de mudança de layout
+document.getElementById("layoutSelect").addEventListener("change", function () {
+    layout = this.value;
+    renderCards();
+});
+
+// Renderiza os cartões
+function renderCards() {
     const container = document.getElementById("cards");
-    container.innerHTML = ""; // Clear existing cards
+    container.innerHTML = "";
+    container.style.gridTemplateColumns = layout === "auto" ? "repeat(auto-fit, minmax(250px, 1fr))" : `repeat(${layout}, 1fr)`;
 
-    records.forEach(record => {
-        const mapped = grist.mapColumnNames(record);
-        if (!mapped) return; // Skip if not all required fields are mapped
-
+    currentRecords.forEach(record => {
         const card = document.createElement("div");
         card.className = "card";
 
-        // Title
+        // Botões do Card
+        const buttonContainer = document.createElement("div");
+        buttonContainer.className = "card-buttons";
+
+        const editButton = document.createElement("button");
+        editButton.textContent = "✏ Editar";
+        editButton.onclick = () => enableEditMode(card, record);
+        buttonContainer.appendChild(editButton);
+
+        const expandButton = document.createElement("button");
+        expandButton.textContent = "🔍 Expandir";
+        expandButton.onclick = () => openModal(record);
+        buttonContainer.appendChild(expandButton);
+
+        card.appendChild(buttonContainer);
+
+        // Título
         const title = document.createElement("div");
         title.className = "card-title";
-        title.textContent = mapped.Title || "Untitled";
+        title.textContent = record.Name || "Sem título";
         card.appendChild(title);
 
-        // Subtitle (if exists)
-        if (mapped.Subtitle) {
-            const subtitle = document.createElement("div");
-            subtitle.className = "card-subtitle";
-            subtitle.textContent = mapped.Subtitle;
-            card.appendChild(subtitle);
-        }
+        // Imagem
+        const img = document.createElement("img");
+        img.src = record.Image || "https://via.placeholder.com/150";
+        card.appendChild(img);
 
-        // Image (if exists)
-        if (mapped.Image) {
-            const img = document.createElement("img");
-            img.src = mapped.Image;
-            img.alt = "Image";
-            card.appendChild(img);
-        }
-
-        // Extra Fields
-        if (mappings.ExtraFields && mappings.ExtraFields.length > 0) {
-            const extraFieldsDiv = document.createElement("div");
-            extraFieldsDiv.className = "extra-fields";
-
-            mappings.ExtraFields.forEach(field => {
-                const fieldDiv = document.createElement("div");
-                fieldDiv.innerHTML = `<strong>${field}:</strong> ${record[field] || "N/A"}`;
-                extraFieldsDiv.appendChild(fieldDiv);
-            });
-
-            card.appendChild(extraFieldsDiv);
-        }
+        // Descrição
+        const desc = document.createElement("p");
+        desc.textContent = record.Description || "Sem descrição.";
+        card.appendChild(desc);
 
         container.appendChild(card);
     });
-});
+}
+
+// Habilita o modo de edição
+function enableEditMode(card, record) {
+    card.innerHTML = "";
+
+    const inputTitle = document.createElement("input");
+    inputTitle.value = record.Name || "";
+    inputTitle.style.width = "100%";
+
+    const inputDesc = document.createElement("textarea");
+    inputDesc.value = record.Description || "";
+    inputDesc.style.width = "100%";
+
+    const saveButton = document.createElement("button");
+    saveButton.textContent = "💾 Salvar";
+    saveButton.onclick = async () => {
+        saveButton.textContent = "🔄 Salvando...";
+        saveButton.disabled = true;
+
+        const updatedData = {
+            Name: inputTitle.value,
+            Description: inputDesc.value
+        };
+
+        await grist.docApi.applyUserActions([
+            ["UpdateRecord", grist.widget.options.tableId, record.id, updatedData]
+        ]);
+
+        saveButton.textContent = "💾 Salvar";
+        saveButton.disabled = false;
+
+        renderCards();
+    };
+
+    card.appendChild(inputTitle);
+    card.appendChild(inputDesc);
+    card.appendChild(saveButton);
+}
+
+// Abre o modal
+function openModal(record) {
+    const modal = document.getElementById("modal");
+    const overlay = document.getElementById("modalOverlay");
+    const modalContent = document.getElementById("modalContent");
+
+    modalContent.innerHTML = `
+        <h3>${record.Name}</h3>
+        ${record.Image ? `<img src="${record.Image}" style="max-width:100%">` : ""}
+        <p>${record.Description || "Sem descrição."}</p>
+    `;
+
+    modal.style.display = "block";
+    overlay.style.display = "block";
+}
+
+// Fecha o modal
+function closeModal() {
+    document.getElementById("modal").style.display = "none";
+    document.getElementById("modalOverlay").style.display = "none";
+}
