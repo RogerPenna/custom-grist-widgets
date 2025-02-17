@@ -1,4 +1,4 @@
-// ✅ Configuração do Widget no Grist
+// ✅ Setup Grist Widget Configuration
 grist.ready({
     requiredAccess: 'read table',
     columns: [
@@ -10,47 +10,60 @@ grist.ready({
 });
 
 let currentRecords = [];
-let fieldMappings = {};  // Aqui armazenamos o mapeamento feito pelo usuário
+let fieldMappings = {};
 
-// ✅ Captura as configurações feitas pelo usuário no menu lateral do Grist
+// ✅ Debugging: Confirm Grist is passing correct field mappings
 grist.onOptions((options) => {
-    console.log("📢 Configurações recebidas do Grist:", options);
-    
+    console.log("📢 Field Mappings Received from Grist:", options);
+
     if (options.mappings) {
         fieldMappings = options.mappings;
+    } else {
+        console.error("⚠ Field mappings are missing!");
     }
     renderCards();
 });
 
-// ✅ Captura os registros da tabela quando há atualização de dados
+// ✅ Debugging: Check if Grist is sending records
 grist.onRecords((records) => {
-    console.log("📢 Dados recebidos do Grist:", records.records);
+    console.log("📢 Records Received from Grist:", records.records);
 
-    currentRecords = records.records;  // Pegando corretamente os registros
+    if (records.records && records.records.length > 0) {
+        currentRecords = records.records;
+    } else {
+        console.error("⚠ No records received from Grist.");
+        currentRecords = [];
+    }
     renderCards();
 });
 
-// ✅ Renderiza os cartões corretamente com os dados reais
+// ✅ Render Cards with Correct Data
 function renderCards() {
     const container = document.getElementById("cards");
     container.innerHTML = "";
+
+    if (currentRecords.length === 0) {
+        console.warn("⚠ No records available to display.");
+        container.innerHTML = "<p style='color:red;'>⚠ Nenhum dado disponível.</p>";
+        return;
+    }
 
     currentRecords.forEach(record => {
         const card = document.createElement("div");
         card.className = "card";
 
-        // ✅ Pegando os valores corretamente a partir do mapeamento feito pelo usuário
+        // ✅ Ensure mapped fields exist before using them
         const titleText = fieldMappings.title ? record[fieldMappings.title] || "Sem título" : "Sem título";
         const subtitleText = fieldMappings.subtitle ? record[fieldMappings.subtitle] || "" : "";
         const imageUrl = fieldMappings.image ? record[fieldMappings.image] || "https://via.placeholder.com/150" : "";
 
-        // ✅ Criando o título do card
+        // ✅ Title
         const title = document.createElement("div");
         title.className = "card-title";
         title.textContent = titleText;
         card.appendChild(title);
 
-        // ✅ Criando o subtítulo do card (se existir)
+        // ✅ Subtitle (if exists)
         if (subtitleText) {
             const subtitle = document.createElement("div");
             subtitle.className = "card-subtitle";
@@ -58,14 +71,14 @@ function renderCards() {
             card.appendChild(subtitle);
         }
 
-        // ✅ Criando a imagem do card (se existir)
+        // ✅ Image (if exists)
         if (fieldMappings.image) {
             const img = document.createElement("img");
             img.src = imageUrl;
             card.appendChild(img);
         }
 
-        // ✅ Adicionando os campos extras, se existirem
+        // ✅ Extra Fields (if mapped)
         if (fieldMappings.extras && fieldMappings.extras.length > 0) {
             fieldMappings.extras.forEach(extraField => {
                 if (record[extraField] !== undefined) {
