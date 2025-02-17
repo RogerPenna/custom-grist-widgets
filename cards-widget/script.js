@@ -2,17 +2,31 @@ grist.ready({ requiredAccess: 'read table' });
 
 let currentRecords = [];
 let layout = "auto";
+let maxCardHeight = "auto";
 
 // Recebe os dados do Grist
 grist.onRecords((records, mappings) => {
-    console.log("📢 Dados recebidos do Grist:", records);
     currentRecords = records;
     renderCards();
 });
 
-// Evento de mudança de layout
+// Evento para abrir/fechar configurações
+document.getElementById("settingsButton").addEventListener("click", () => {
+    document.getElementById("settingsPanel").style.display = "block";
+});
+
+document.getElementById("closeSettings").addEventListener("click", () => {
+    document.getElementById("settingsPanel").style.display = "none";
+});
+
+// Evento de mudança de layout e altura
 document.getElementById("layoutSelect").addEventListener("change", function () {
     layout = this.value;
+    renderCards();
+});
+
+document.getElementById("heightSelect").addEventListener("change", function () {
+    maxCardHeight = this.value;
     renderCards();
 });
 
@@ -25,99 +39,37 @@ function renderCards() {
     currentRecords.forEach(record => {
         const card = document.createElement("div");
         card.className = "card";
+        if (maxCardHeight !== "auto") {
+            card.style.maxHeight = `${maxCardHeight * 30}px`; // Ajuste de altura
+            card.style.overflowY = "auto";
+        }
 
         // Botões do Card
         const buttonContainer = document.createElement("div");
         buttonContainer.className = "card-buttons";
 
         const editButton = document.createElement("button");
-        editButton.textContent = "✏ Editar";
+        editButton.innerHTML = '<i class="fas fa-edit"></i>';
         editButton.onclick = () => enableEditMode(card, record);
         buttonContainer.appendChild(editButton);
 
         const expandButton = document.createElement("button");
-        expandButton.textContent = "🔍 Expandir";
+        expandButton.innerHTML = '<i class="fas fa-search-plus"></i>';
         expandButton.onclick = () => openModal(record);
         buttonContainer.appendChild(expandButton);
 
         card.appendChild(buttonContainer);
 
-        // Título
+        // Conteúdo
         const title = document.createElement("div");
         title.className = "card-title";
         title.textContent = record.Name || "Sem título";
         card.appendChild(title);
 
-        // Imagem
         const img = document.createElement("img");
         img.src = record.Image || "https://via.placeholder.com/150";
         card.appendChild(img);
 
-        // Descrição
-        const desc = document.createElement("p");
-        desc.textContent = record.Description || "Sem descrição.";
-        card.appendChild(desc);
-
         container.appendChild(card);
     });
-}
-
-// Habilita o modo de edição
-function enableEditMode(card, record) {
-    card.innerHTML = "";
-
-    const inputTitle = document.createElement("input");
-    inputTitle.value = record.Name || "";
-    inputTitle.style.width = "100%";
-
-    const inputDesc = document.createElement("textarea");
-    inputDesc.value = record.Description || "";
-    inputDesc.style.width = "100%";
-
-    const saveButton = document.createElement("button");
-    saveButton.textContent = "💾 Salvar";
-    saveButton.onclick = async () => {
-        saveButton.textContent = "🔄 Salvando...";
-        saveButton.disabled = true;
-
-        const updatedData = {
-            Name: inputTitle.value,
-            Description: inputDesc.value
-        };
-
-        await grist.docApi.applyUserActions([
-            ["UpdateRecord", grist.widget.options.tableId, record.id, updatedData]
-        ]);
-
-        saveButton.textContent = "💾 Salvar";
-        saveButton.disabled = false;
-
-        renderCards();
-    };
-
-    card.appendChild(inputTitle);
-    card.appendChild(inputDesc);
-    card.appendChild(saveButton);
-}
-
-// Abre o modal
-function openModal(record) {
-    const modal = document.getElementById("modal");
-    const overlay = document.getElementById("modalOverlay");
-    const modalContent = document.getElementById("modalContent");
-
-    modalContent.innerHTML = `
-        <h3>${record.Name}</h3>
-        ${record.Image ? `<img src="${record.Image}" style="max-width:100%">` : ""}
-        <p>${record.Description || "Sem descrição."}</p>
-    `;
-
-    modal.style.display = "block";
-    overlay.style.display = "block";
-}
-
-// Fecha o modal
-function closeModal() {
-    document.getElementById("modal").style.display = "none";
-    document.getElementById("modalOverlay").style.display = "none";
 }
