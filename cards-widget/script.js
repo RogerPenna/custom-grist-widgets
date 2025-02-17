@@ -1,4 +1,4 @@
-// ✅ Configuração inicial do Grist para permitir o mapeamento correto
+// ✅ Configuração do Widget no Grist
 grist.ready({
     requiredAccess: 'read table',
     columns: [
@@ -10,19 +10,23 @@ grist.ready({
 });
 
 let currentRecords = [];
-let fieldMappings = {};
+let fieldMappings = {};  // Aqui armazenamos o mapeamento feito pelo usuário
 
-// ✅ Atualiza os mapeamentos de colunas escolhidos pelo usuário
+// ✅ Captura as configurações feitas pelo usuário no menu lateral do Grist
 grist.onOptions((options) => {
+    console.log("📢 Configurações recebidas do Grist:", options);
+    
     if (options.mappings) {
         fieldMappings = options.mappings;
     }
     renderCards();
 });
 
-// ✅ Atualiza os registros quando há mudança na tabela do Grist
+// ✅ Captura os registros da tabela quando há atualização de dados
 grist.onRecords((records) => {
-    currentRecords = records.records; // <-- Pegando corretamente os registros
+    console.log("📢 Dados recebidos do Grist:", records.records);
+
+    currentRecords = records.records;  // Pegando corretamente os registros
     renderCards();
 });
 
@@ -35,8 +39,8 @@ function renderCards() {
         const card = document.createElement("div");
         card.className = "card";
 
-        // ✅ Pegando os valores corretamente a partir do mapeamento
-        const titleText = record[fieldMappings.title] || "Sem título";
+        // ✅ Pegando os valores corretamente a partir do mapeamento feito pelo usuário
+        const titleText = fieldMappings.title ? record[fieldMappings.title] || "Sem título" : "Sem título";
         const subtitleText = fieldMappings.subtitle ? record[fieldMappings.subtitle] || "" : "";
         const imageUrl = fieldMappings.image ? record[fieldMappings.image] || "https://via.placeholder.com/150" : "";
 
