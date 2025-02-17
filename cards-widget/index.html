@@ -5,97 +5,156 @@
     <title>Custom Grist Cards</title>
     <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            padding: 10px;
-        }
-        .cards-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 15px;
-        }
-        .card {
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            padding: 10px;
-            box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.1);
-            background-color: white;
-        }
-        .card img {
-            max-width: 100%;
-            border-radius: 8px;
-            height: 150px;
-            object-fit: cover;
-        }
-        .card-title {
-            font-size: 18px;
-            font-weight: bold;
-            margin: 10px 0;
-        }
-        .card-subtitle {
-            font-size: 14px;
-            color: gray;
-            margin-bottom: 10px;
-        }
-        .extra-fields {
-            font-size: 12px;
-        }
+        body { font-family: Arial, sans-serif; padding: 10px; }
+        .controls { display: flex; justify-content: space-between; margin-bottom: 10px; }
+        .cards-container { display: grid; gap: 15px; }
+        .card { border: 1px solid #ddd; border-radius: 8px; padding: 10px; box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.1); background-color: white; position: relative; }
+        .card img { max-width: 100%; border-radius: 8px; height: 150px; object-fit: cover; }
+        .card-title { font-size: 18px; font-weight: bold; margin-bottom: 10px; }
+        .card-buttons { position: absolute; top: 5px; right: 5px; display: flex; gap: 5px; }
+        .card-buttons button { font-size: 12px; padding: 5px; border: none; cursor: pointer; }
+        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 8px; box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.2); z-index: 1000; }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 999; }
+        .modal .close-btn { cursor: pointer; background: red; color: white; padding: 5px; border-radius: 4px; }
     </style>
 </head>
 <body>
-    <h2>Custom Cards Widget</h2>
+
+    <!-- Controles -->
+    <div class="controls">
+        <label>
+            Layout:
+            <select id="layoutSelect">
+                <option value="auto">Automático</option>
+                <option value="1">1 por linha</option>
+                <option value="2">2 por linha</option>
+                <option value="3">3 por linha</option>
+            </select>
+        </label>
+    </div>
+
+    <!-- Cards -->
     <div class="cards-container" id="cards"></div>
+
+    <!-- Modal de Expansão -->
+    <div class="modal-overlay" id="modalOverlay"></div>
+    <div class="modal" id="modal">
+        <button class="close-btn" onclick="closeModal()">Fechar</button>
+        <div id="modalContent"></div>
+    </div>
+
     <script>
-        grist.ready({
-            columns: [
-                { name: "Title", title: "Title Field", type: "Text" },
-                { name: "Subtitle", title: "Subtitle Field", type: "Text", optional: true },
-                { name: "Image", title: "Image URL", type: "Text", optional: true },
-                { name: "ExtraFields", title: "Additional Fields", type: "Any", allowMultiple: true }
-            ],
-            requiredAccess: "read table"
-        });
+        grist.ready({ requiredAccess: 'read table' });
+
+        let currentRecords = [];
+        let layout = "auto";
+
         grist.onRecords((records, mappings) => {
+            console.log("📢 Dados recebidos do Grist:", records);
+            currentRecords = records;
+            renderCards();
+        });
+
+        document.getElementById("layoutSelect").addEventListener("change", function () {
+            layout = this.value;
+            renderCards();
+        });
+
+        function renderCards() {
             const container = document.getElementById("cards");
-            container.innerHTML = ""; // Clear existing cards
-            records.forEach(record => {
-                const mapped = grist.mapColumnNames(record);
-                if (!mapped) return; // Skip if not all required fields are mapped
+            container.innerHTML = "";
+            container.style.gridTemplateColumns = layout === "auto" ? "repeat(auto-fit, minmax(250px, 1fr))" : repeat(${layout}, 1fr);
+
+            currentRecords.forEach(record => {
                 const card = document.createElement("div");
                 card.className = "card";
-                // Title
+
+                // Botões do Card
+                const buttonContainer = document.createElement("div");
+                buttonContainer.className = "card-buttons";
+
+                const editButton = document.createElement("button");
+                editButton.textContent = "✏ Editar";
+                editButton.onclick = () => enableEditMode(card, record);
+                buttonContainer.appendChild(editButton);
+
+                const expandButton = document.createElement("button");
+                expandButton.textContent = "🔍 Expandir";
+                expandButton.onclick = () => openModal(record);
+                buttonContainer.appendChild(expandButton);
+
+                card.appendChild(buttonContainer);
+
+                // Título
                 const title = document.createElement("div");
                 title.className = "card-title";
-                title.textContent = mapped.Title || "Untitled";
+                title.textContent = record.Name || "Sem título";
                 card.appendChild(title);
-                // Subtitle (if exists)
-                if (mapped.Subtitle) {
-                    const subtitle = document.createElement("div");
-                    subtitle.className = "card-subtitle";
-                    subtitle.textContent = mapped.Subtitle;
-                    card.appendChild(subtitle);
-                }
-                // Image (if exists)
-                if (mapped.Image) {
+
+                // Imagem
+                if (record.Image) {
                     const img = document.createElement("img");
-                    img.src = mapped.Image;
-                    img.alt = "Image";
+                    img.src = record.Image;
                     card.appendChild(img);
                 }
-                // Extra Fields
-                if (mappings.ExtraFields && mappings.ExtraFields.length > 0) {
-                    const extraFieldsDiv = document.createElement("div");
-                    extraFieldsDiv.className = "extra-fields";
-                    mappings.ExtraFields.forEach(field => {
-                        const fieldDiv = document.createElement("div");
-                        fieldDiv.innerHTML = `<strong>${field}:</strong> ${record[field] || "N/A"}`;
-                        extraFieldsDiv.appendChild(fieldDiv);
-                    });
-                    card.appendChild(extraFieldsDiv);
-                }
+
+                // Descrição
+                const desc = document.createElement("p");
+                desc.textContent = record.Description || "Sem descrição.";
+                card.appendChild(desc);
+
                 container.appendChild(card);
             });
-        });
+        }
+
+        function enableEditMode(card, record) {
+            card.innerHTML = "";
+
+            const inputTitle = document.createElement("input");
+            inputTitle.value = record.Name || "";
+            card.appendChild(inputTitle);
+
+            const inputDesc = document.createElement("textarea");
+            inputDesc.value = record.Description || "";
+            card.appendChild(inputDesc);
+
+            const saveButton = document.createElement("button");
+            saveButton.textContent = "💾 Salvar";
+            saveButton.onclick = async () => {
+                const updatedData = {
+                    Name: inputTitle.value,
+                    Description: inputDesc.value
+                };
+
+                await grist.docApi.applyUserActions([
+                    ["UpdateRecord", grist.widget.options.tableId, record.id, updatedData]
+                ]);
+
+                renderCards();
+            };
+            card.appendChild(saveButton);
+        }
+
+        function openModal(record) {
+            const modal = document.getElementById("modal");
+            const overlay = document.getElementById("modalOverlay");
+            const modalContent = document.getElementById("modalContent");
+
+            modalContent.innerHTML = 
+                <h3>${record.Name}</h3>
+                ${record.Image ? <img src="${record.Image}" style="max-width:100%"> : ""}
+                <p>${record.Description || "Sem descrição."}</p>
+            ;
+
+            modal.style.display = "block";
+            overlay.style.display = "block";
+        }
+
+        function closeModal() {
+            document.getElementById("modal").style.display = "none";
+            document.getElementById("modalOverlay").style.display = "none";
+        }
     </script>
+
 </body>
 </html>
