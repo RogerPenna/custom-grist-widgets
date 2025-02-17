@@ -3,30 +3,44 @@ grist.ready({ requiredAccess: 'read table' });
 let currentRecords = [];
 let layout = "auto";
 let maxCardHeight = "auto";
+let fieldMappings = {};
 
-// Recebe os dados do Grist
-grist.onRecords((records, mappings) => {
+// Abre o painel de configuração ao iniciar
+document.getElementById("fieldsPanel").style.display = "block";
+
+// Recebe os dados do Grist e preenche os campos
+grist.onRecords((records) => {
     currentRecords = records;
     renderCards();
 });
 
-// Evento para abrir/fechar configurações
-document.getElementById("settingsButton").addEventListener("click", () => {
-    document.getElementById("settingsPanel").style.display = "block";
+// Preenche os campos disponíveis no Grist
+grist.onOptions(async (options) => {
+    let columns = await grist.docApi.fetchTable(grist.widget.options.tableId);
+    let columnNames = Object.keys(columns);
+
+    ["titleField", "subtitleField", "imageField"].forEach(id => {
+        let select = document.getElementById(id);
+        select.innerHTML = "";
+        columnNames.forEach(name => {
+            let option = document.createElement("option");
+            option.value = name;
+            option.textContent = name;
+            select.appendChild(option);
+        });
+    });
 });
 
-document.getElementById("closeSettings").addEventListener("click", () => {
-    document.getElementById("settingsPanel").style.display = "none";
-});
+// Salva as configurações dos campos
+document.getElementById("saveFields").addEventListener("click", () => {
+    fieldMappings = {
+        title: document.getElementById("titleField").value,
+        subtitle: document.getElementById("subtitleField").value,
+        image: document.getElementById("imageField").value,
+        extras: document.getElementById("extraFields").value.split(",").map(f => f.trim())
+    };
 
-// Evento de mudança de layout e altura
-document.getElementById("layoutSelect").addEventListener("change", function () {
-    layout = this.value;
-    renderCards();
-});
-
-document.getElementById("heightSelect").addEventListener("change", function () {
-    maxCardHeight = this.value;
+    document.getElementById("fieldsPanel").style.display = "none";
     renderCards();
 });
 
@@ -39,35 +53,32 @@ function renderCards() {
     currentRecords.forEach(record => {
         const card = document.createElement("div");
         card.className = "card";
+
         if (maxCardHeight !== "auto") {
-            card.style.maxHeight = `${maxCardHeight * 30}px`; // Ajuste de altura
+            card.style.maxHeight = `${maxCardHeight * 30}px`;
             card.style.overflowY = "auto";
         }
 
-        // Botões do Card
         const buttonContainer = document.createElement("div");
         buttonContainer.className = "card-buttons";
 
         const editButton = document.createElement("button");
         editButton.innerHTML = '<i class="fas fa-edit"></i>';
-        editButton.onclick = () => enableEditMode(card, record);
         buttonContainer.appendChild(editButton);
 
         const expandButton = document.createElement("button");
         expandButton.innerHTML = '<i class="fas fa-search-plus"></i>';
-        expandButton.onclick = () => openModal(record);
         buttonContainer.appendChild(expandButton);
 
         card.appendChild(buttonContainer);
 
-        // Conteúdo
         const title = document.createElement("div");
         title.className = "card-title";
-        title.textContent = record.Name || "Sem título";
+        title.textContent = record[fieldMappings.title] || "Sem título";
         card.appendChild(title);
 
         const img = document.createElement("img");
-        img.src = record.Image || "https://via.placeholder.com/150";
+        img.src = record[fieldMappings.image] || "https://via.placeholder.com/150";
         card.appendChild(img);
 
         container.appendChild(card);
