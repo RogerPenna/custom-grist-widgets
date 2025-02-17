@@ -1,49 +1,101 @@
 <!DOCTYPE html>
-<html lang="pt">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Custom Grist Cards</title>
     <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
-    <link rel="stylesheet" href="style.css">
-    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 10px;
+        }
+        .cards-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+        }
+        .card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 10px;
+            box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.1);
+            background-color: white;
+        }
+        .card img {
+            max-width: 100%;
+            border-radius: 8px;
+            height: 150px;
+            object-fit: cover;
+        }
+        .card-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .card-subtitle {
+            font-size: 14px;
+            color: gray;
+            margin-bottom: 10px;
+        }
+        .extra-fields {
+            font-size: 12px;
+        }
+    </style>
 </head>
 <body>
-
-    <!-- Ícone de Configurações -->
-    <div class="settings-container">
-        <button id="settingsButton"><i class="fas fa-cog"></i></button>
-    </div>
-
-    <!-- Painel de Configurações (inicialmente oculto) -->
-    <div class="settings-panel" id="settingsPanel">
-        <h3>Configuração do Layout</h3>
-        <label>
-            Cartões por linha:
-            <select id="layoutSelect">
-                <option value="auto">Automático</option>
-                <option value="1">1 por linha</option>
-                <option value="2">2 por linha</option>
-                <option value="3">3 por linha</option>
-            </select>
-        </label>
-
-        <label>
-            Altura máxima do cartão:
-            <select id="heightSelect">
-                <option value="auto">Automático</option>
-                <option value="2">2 Linhas</option>
-                <option value="3">3 Linhas</option>
-                <option value="4">4 Linhas</option>
-            </select>
-        </label>
-
-        <button id="closeSettings">Fechar</button>
-    </div>
-
-    <!-- Container de Cards -->
+    <h2>Custom Cards Widget</h2>
     <div class="cards-container" id="cards"></div>
-
-    <script src="script.js"></script>
+    <script>
+        grist.ready({
+            columns: [
+                { name: "Title", title: "Title Field", type: "Text" },
+                { name: "Subtitle", title: "Subtitle Field", type: "Text", optional: true },
+                { name: "Image", title: "Image URL", type: "Text", optional: true },
+                { name: "ExtraFields", title: "Additional Fields", type: "Any", allowMultiple: true }
+            ],
+            requiredAccess: "read table"
+        });
+        grist.onRecords((records, mappings) => {
+            const container = document.getElementById("cards");
+            container.innerHTML = ""; // Clear existing cards
+            records.forEach(record => {
+                const mapped = grist.mapColumnNames(record);
+                if (!mapped) return; // Skip if not all required fields are mapped
+                const card = document.createElement("div");
+                card.className = "card";
+                // Title
+                const title = document.createElement("div");
+                title.className = "card-title";
+                title.textContent = mapped.Title || "Untitled";
+                card.appendChild(title);
+                // Subtitle (if exists)
+                if (mapped.Subtitle) {
+                    const subtitle = document.createElement("div");
+                    subtitle.className = "card-subtitle";
+                    subtitle.textContent = mapped.Subtitle;
+                    card.appendChild(subtitle);
+                }
+                // Image (if exists)
+                if (mapped.Image) {
+                    const img = document.createElement("img");
+                    img.src = mapped.Image;
+                    img.alt = "Image";
+                    card.appendChild(img);
+                }
+                // Extra Fields
+                if (mappings.ExtraFields && mappings.ExtraFields.length > 0) {
+                    const extraFieldsDiv = document.createElement("div");
+                    extraFieldsDiv.className = "extra-fields";
+                    mappings.ExtraFields.forEach(field => {
+                        const fieldDiv = document.createElement("div");
+                        fieldDiv.innerHTML = `<strong>${field}:</strong> ${record[field] || "N/A"}`;
+                        extraFieldsDiv.appendChild(fieldDiv);
+                    });
+                    card.appendChild(extraFieldsDiv);
+                }
+                container.appendChild(card);
+            });
+        });
+    </script>
 </body>
 </html>
