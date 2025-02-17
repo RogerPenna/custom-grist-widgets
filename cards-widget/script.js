@@ -1,50 +1,53 @@
-grist.ready({ requiredAccess: 'read table' });
+// Configuração inicial do Grist
+grist.ready({
+    requiredAccess: 'read table',
+    columns: [
+        { name: "title", title: "Título", type: "Text" },
+        { name: "subtitle", title: "Subtítulo", type: "Text", optional: true },
+        { name: "image", title: "Imagem", type: "Text", optional: true },
+        { name: "extras", title: "Campos Extras", type: "Any", optional: true }
+    ]
+});
 
 let currentRecords = [];
 let layout = "auto";
 let maxCardHeight = "auto";
 let fieldMappings = {};
 
-// Abre o painel de configuração ao iniciar
-document.getElementById("fieldsPanel").style.display = "block";
+// Recebendo as configurações do usuário via Grist
+grist.onOptions(async (options) => {
+    fieldMappings = options.mappings;
+    renderCards();
+});
 
-// Recebe os dados do Grist e preenche os campos
+// Atualização dos registros
 grist.onRecords((records) => {
     currentRecords = records;
     renderCards();
 });
 
-// Preenche os campos disponíveis no Grist
-grist.onOptions(async (options) => {
-    let columns = await grist.docApi.fetchTable(grist.widget.options.tableId);
-    let columnNames = Object.keys(columns);
-
-    ["titleField", "subtitleField", "imageField"].forEach(id => {
-        let select = document.getElementById(id);
-        select.innerHTML = "";
-        columnNames.forEach(name => {
-            let option = document.createElement("option");
-            option.value = name;
-            option.textContent = name;
-            select.appendChild(option);
-        });
-    });
+// Evento para abrir o painel de configurações
+document.getElementById("settingsButton").addEventListener("click", () => {
+    document.getElementById("settingsPanel").style.display = "block";
 });
 
-// Salva as configurações dos campos
-document.getElementById("saveFields").addEventListener("click", () => {
-    fieldMappings = {
-        title: document.getElementById("titleField").value,
-        subtitle: document.getElementById("subtitleField").value,
-        image: document.getElementById("imageField").value,
-        extras: document.getElementById("extraFields").value.split(",").map(f => f.trim())
-    };
+// Fechar o painel de configurações
+document.getElementById("closeSettings").addEventListener("click", () => {
+    document.getElementById("settingsPanel").style.display = "none";
+});
 
-    document.getElementById("fieldsPanel").style.display = "none";
+// Atualizar layout
+document.getElementById("layoutSelect").addEventListener("change", function () {
+    layout = this.value;
     renderCards();
 });
 
-// Renderiza os cartões
+document.getElementById("heightSelect").addEventListener("change", function () {
+    maxCardHeight = this.value;
+    renderCards();
+});
+
+// Renderizar cartões
 function renderCards() {
     const container = document.getElementById("cards");
     container.innerHTML = "";
