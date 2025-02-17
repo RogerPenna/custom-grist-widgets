@@ -11,12 +11,13 @@
 <body>
 
     <!-- Ícone de Configurações -->
-    <div class="settings-icon">
+    <div class="settings-container">
         <button id="settingsButton"><i class="fas fa-cog"></i></button>
     </div>
 
-    <!-- Menu de Configurações -->
+    <!-- Painel de Configurações -->
     <div class="settings-panel" id="settingsPanel">
+        <h3>Configuração do Layout</h3>
         <label>
             Cartões por linha:
             <select id="layoutSelect">
@@ -40,15 +41,31 @@
         <button id="closeSettings">Fechar</button>
     </div>
 
+    <!-- Painel de Configuração de Campos -->
+    <div class="fields-panel" id="fieldsPanel">
+        <h3>Mapeamento de Campos</h3>
+        <label>
+            Título:
+            <select id="titleField"></select>
+        </label>
+        <label>
+            Subtítulo:
+            <select id="subtitleField"></select>
+        </label>
+        <label>
+            Imagem (Opcional):
+            <select id="imageField"></select>
+        </label>
+        <label>
+            Campos Extras:
+            <input type="text" id="extraFields" placeholder="Digite os nomes separados por vírgula">
+        </label>
+
+        <button id="saveFields">Salvar</button>
+    </div>
+
     <!-- Container de Cards -->
     <div class="cards-container" id="cards"></div>
-
-    <!-- Modal de Expansão -->
-    <div class="modal-overlay" id="modalOverlay"></div>
-    <div class="modal" id="modal">
-        <button class="close-btn" onclick="closeModal()">Fechar</button>
-        <div id="modalContent"></div>
-    </div>
 
     <script src="script.js"></script>
 </body>
