@@ -25,7 +25,7 @@
 </head>
 <body>
 
-    <div id="version">Versão: 18/02/2025 - 09:07</div>
+    <div id="version">Versão: 18/02/2025 - 11:45</div>
     <div id="card-container"><p>Carregando dados...</p></div>
 
     <div id="modal" class="modal">
@@ -45,7 +45,7 @@
                 { name: "extras", title: "Colunas Extras", type: "Any", allowMultiple: true, optional: true }
             ],
             requiredAccess: "read table",
-            onEditOptions: () => grist.editOptions()
+            onEditOptions: () => grist.openConfiguration() // ✅ Correção: Agora a configuração do widget funciona
         });
 
         grist.onRecords((records, mappings) => {
@@ -53,6 +53,7 @@
             console.log("✅ Mapeamento de colunas:", mappings);
 
             if (!records || records.length === 0) {
+                console.warn("⚠️ Nenhum dado encontrado na tabela.");
                 document.getElementById("card-container").innerHTML = "<p>Nenhum dado encontrado.</p>";
                 return;
             }
