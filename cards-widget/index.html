@@ -50,10 +50,10 @@
 
         async function fetchData() {
             try {
-                console.log("🔎 Obtendo ID da tabela conectada...");
-                const tableId = await grist.activeDoc.getTableId();
+                console.log("🔎 Obtendo tabela conectada...");
+                const tableId = await grist.widget.getTable(); // ✅ API correta
                 if (!tableId) { 
-                    console.error("❌ Nenhuma tabela conectada ao widget."); 
+                    console.warn("⚠️ Nenhuma tabela conectada ao widget."); 
                     document.getElementById("card-container").innerHTML = "<p>Erro: Nenhuma tabela conectada.</p>";
                     return; 
                 }
