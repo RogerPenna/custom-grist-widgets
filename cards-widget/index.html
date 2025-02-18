@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Grist Cards Widget</title>
     <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -60,19 +61,19 @@
             gap: 8px;
         }
 
-        .icons span {
+        .icons i {
             cursor: pointer;
             font-size: 18px;
+            color: #555;
+        }
+
+        .icons i:hover {
+            color: black;
         }
 
         .editing {
             border: 2px dashed #007BFF;
             padding: 10px;
-        }
-
-        .save-icon {
-            color: green;
-            cursor: pointer;
         }
 
         /* Modal Styles */
@@ -133,7 +134,8 @@
                 { name: "thumbnail", title: "Imagem (URL)", type: "Text", optional: true },
                 { name: "extras", title: "Colunas Extras", type: "Any", allowMultiple: true, optional: true }
             ],
-            requiredAccess: "full"
+            requiredAccess: "full",
+            onEditOptions: () => grist.editOptions() // Restores the configuration button
         });
 
         let currentRecords = [];
@@ -152,7 +154,8 @@
                         title: tableData.title ? tableData.title[index] : "",
                         subtitle: tableData.subtitle ? tableData.subtitle[index] : "",
                         thumbnail: tableData.thumbnail ? tableData.thumbnail[index] : "",
-                        extras: tableData.extras ? tableData.extras[index] : []
+                        extras: tableData.extras ? tableData.extras[index] : [],
+                        fullData: Object.fromEntries(Object.entries(tableData).map(([key, val]) => [key, val[index]]))
                     };
                 });
 
@@ -192,33 +195,31 @@
                 subtitle.contentEditable = "true";
                 card.appendChild(subtitle);
 
-                const extraContainer = document.createElement("div");
-                extraContainer.classList.add("extra-fields");
-                if (record.extras) {
-                    record.extras.forEach(extraField => {
-                        const extraItem = document.createElement("p");
-                        extraItem.innerText = extraField;
-                        extraContainer.appendChild(extraItem);
-                    });
-                }
-                card.appendChild(extraContainer);
-
                 // Icons
                 const iconsDiv = document.createElement("div");
                 iconsDiv.classList.add("icons");
 
-                const editIcon = document.createElement("span");
-                editIcon.innerHTML = "📝";
-                editIcon.onclick = () => card.classList.toggle("editing");
+                const editIcon = document.createElement("i");
+                editIcon.classList.add("fa", "fa-edit");
+                editIcon.onclick = () => {
+                    card.classList.add("editing");
+                    editIcon.style.display = "none";
+                    saveIcon.style.display = "inline";
+                };
 
-                const popupIcon = document.createElement("span");
-                popupIcon.innerHTML = "🔍";
-                popupIcon.onclick = () => showPopup(record);
+                const popupIcon = document.createElement("i");
+                popupIcon.classList.add("fa", "fa-eye");
+                popupIcon.onclick = () => showPopup(record.fullData);
 
-                const saveIcon = document.createElement("span");
-                saveIcon.innerHTML = "💾";
-                saveIcon.classList.add("save-icon");
-                saveIcon.onclick = () => saveData(record.id, title.innerText, subtitle.innerText);
+                const saveIcon = document.createElement("i");
+                saveIcon.classList.add("fa", "fa-save");
+                saveIcon.style.display = "none";
+                saveIcon.onclick = () => {
+                    saveData(record.id, title.innerText, subtitle.innerText);
+                    card.classList.remove("editing");
+                    editIcon.style.display = "inline";
+                    saveIcon.style.display = "none";
+                };
 
                 iconsDiv.appendChild(editIcon);
                 iconsDiv.appendChild(popupIcon);
@@ -229,10 +230,10 @@
             });
         }
 
-        function showPopup(record) {
+        function showPopup(data) {
             const modal = document.getElementById("modal");
-            document.getElementById("modal-title").innerText = record.title;
-            document.getElementById("modal-body").innerText = JSON.stringify(record, null, 2);
+            document.getElementById("modal-title").innerText = data.title || "Sem título";
+            document.getElementById("modal-body").innerText = JSON.stringify(data, null, 2);
             modal.style.display = "block";
         }
 
@@ -241,11 +242,9 @@
             alert("Salvo!");
         }
 
-        // Close Modal
         document.querySelector(".close").onclick = () => document.getElementById("modal").style.display = "none";
 
-        if (grist.accessLevel === "full") fetchData();
-        else grist.onRecords((records) => { currentRecords = records; renderCards(); });
+        fetchData();
     </script>
 
 </body>
