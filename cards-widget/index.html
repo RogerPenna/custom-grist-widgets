@@ -30,7 +30,7 @@
             background: white;
             padding: 15px;
             border-radius: 5px;
-            width: 200px;
+            width: 250px;
             box-shadow: 0px 0px 5px rgba(0,0,0,0.1);
             display: flex;
             flex-direction: column;
@@ -95,7 +95,7 @@
 <body>
 
     <div class="header">
-        <h2>📌 Widget de Cards (v1.0)</h2>
+        <h2>📌 Widget de Cards (v1.1)</h2>
         <button class="icon-button" onclick="openConfig()">⚙️</button>
     </div>
 
@@ -152,6 +152,15 @@
                     const subtitle = document.createElement('p');
                     subtitle.innerText = record.Subtitle;
                     card.appendChild(subtitle);
+                }
+
+                // Adicionar colunas extras
+                if (mappedColumns.ExtraColumns && record.ExtraColumns) {
+                    record.ExtraColumns.forEach(extraColumn => {
+                        const extraInfo = document.createElement('p');
+                        extraInfo.innerText = `${extraColumn}: ${record[extraColumn] || "N/A"}`;
+                        card.appendChild(extraInfo);
+                    });
                 }
 
                 const editBtn = document.createElement('button');
