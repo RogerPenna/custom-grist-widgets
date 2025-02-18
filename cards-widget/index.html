@@ -4,8 +4,111 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Grist Cards Widget</title>
-    <link rel="stylesheet" href="style.css">
     <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+
+        #card-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            width: 250px;
+            padding: 15px;
+            text-align: center;
+            position: relative;
+        }
+
+        .card img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 5px;
+        }
+
+        .card h2 {
+            font-size: 18px;
+            margin: 10px 0;
+        }
+
+        .card p {
+            font-size: 14px;
+            color: #555;
+        }
+
+        .extra-fields {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #777;
+        }
+
+        .icons {
+            position: absolute;
+            top: 5px;
+            right: 10px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .icons span {
+            cursor: pointer;
+            font-size: 18px;
+        }
+
+        .editing {
+            border: 2px dashed #007BFF;
+            padding: 10px;
+        }
+
+        .save-icon {
+            color: green;
+            cursor: pointer;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 10% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 50%;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .close:hover {
+            color: black;
+            cursor: pointer;
+        }
+    </style>
 </head>
 <body>
 
@@ -22,6 +125,128 @@
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <script>
+        grist.ready({
+            columns: [
+                { name: "title", title: "Título", type: "Text", optional: false },
+                { name: "subtitle", title: "Subtítulo", type: "Text", optional: true },
+                { name: "thumbnail", title: "Imagem (URL)", type: "Text", optional: true },
+                { name: "extras", title: "Colunas Extras", type: "Any", allowMultiple: true, optional: true }
+            ],
+            requiredAccess: "full"
+        });
+
+        let currentRecords = [];
+
+        async function fetchData() {
+            try {
+                const tables = await grist.docApi.listTables();
+                if (tables.length === 0) return;
+
+                const tableId = tables[0];
+                const tableData = await grist.docApi.fetchTable(tableId);
+
+                currentRecords = Object.keys(tableData.id).map(index => {
+                    return {
+                        id: tableData.id[index],
+                        title: tableData.title ? tableData.title[index] : "",
+                        subtitle: tableData.subtitle ? tableData.subtitle[index] : "",
+                        thumbnail: tableData.thumbnail ? tableData.thumbnail[index] : "",
+                        extras: tableData.extras ? tableData.extras[index] : []
+                    };
+                });
+
+                renderCards();
+            } catch (error) {
+                console.error("Erro ao buscar dados:", error);
+            }
+        }
+
+        function renderCards() {
+            const container = document.getElementById("card-container");
+            container.innerHTML = "";
+
+            if (currentRecords.length === 0) {
+                container.innerHTML = "<p>Nenhum dado encontrado.</p>";
+                return;
+            }
+
+            currentRecords.forEach(record => {
+                const card = document.createElement("div");
+                card.classList.add("card");
+
+                if (record.thumbnail) {
+                    const img = document.createElement("img");
+                    img.src = record.thumbnail;
+                    img.alt = "Imagem do card";
+                    card.appendChild(img);
+                }
+
+                const title = document.createElement("h2");
+                title.innerText = record.title || "Sem título";
+                title.contentEditable = "true";
+                card.appendChild(title);
+
+                const subtitle = document.createElement("p");
+                subtitle.innerText = record.subtitle || "";
+                subtitle.contentEditable = "true";
+                card.appendChild(subtitle);
+
+                const extraContainer = document.createElement("div");
+                extraContainer.classList.add("extra-fields");
+                if (record.extras) {
+                    record.extras.forEach(extraField => {
+                        const extraItem = document.createElement("p");
+                        extraItem.innerText = extraField;
+                        extraContainer.appendChild(extraItem);
+                    });
+                }
+                card.appendChild(extraContainer);
+
+                // Icons
+                const iconsDiv = document.createElement("div");
+                iconsDiv.classList.add("icons");
+
+                const editIcon = document.createElement("span");
+                editIcon.innerHTML = "📝";
+                editIcon.onclick = () => card.classList.toggle("editing");
+
+                const popupIcon = document.createElement("span");
+                popupIcon.innerHTML = "🔍";
+                popupIcon.onclick = () => showPopup(record);
+
+                const saveIcon = document.createElement("span");
+                saveIcon.innerHTML = "💾";
+                saveIcon.classList.add("save-icon");
+                saveIcon.onclick = () => saveData(record.id, title.innerText, subtitle.innerText);
+
+                iconsDiv.appendChild(editIcon);
+                iconsDiv.appendChild(popupIcon);
+                iconsDiv.appendChild(saveIcon);
+
+                card.appendChild(iconsDiv);
+                container.appendChild(card);
+            });
+        }
+
+        function showPopup(record) {
+            const modal = document.getElementById("modal");
+            document.getElementById("modal-title").innerText = record.title;
+            document.getElementById("modal-body").innerText = JSON.stringify(record, null, 2);
+            modal.style.display = "block";
+        }
+
+        function saveData(id, title, subtitle) {
+            grist.docApi.applyUserActions([["UpdateRecord", "Table", id, { title, subtitle }]]);
+            alert("Salvo!");
+        }
+
+        // Close Modal
+        document.querySelector(".close").onclick = () => document.getElementById("modal").style.display = "none";
+
+        if (grist.accessLevel === "full") fetchData();
+        else grist.onRecords((records) => { currentRecords = records; renderCards(); });
+    </script>
+
 </body>
 </html>
