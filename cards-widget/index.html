@@ -8,9 +8,20 @@
     <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
 </head>
 <body>
+
     <div id="card-container">
         <p>Carregando dados...</p>
     </div>
+
+    <!-- Modal (Popup) -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 id="modal-title">Detalhes do Card</h2>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+
     <script src="script.js"></script>
 </body>
 </html>
