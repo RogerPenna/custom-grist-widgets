@@ -48,55 +48,31 @@
             onEditOptions: () => grist.editOptions()
         });
 
-        async function fetchData() {
-            try {
-                console.log("🔎 Obtendo tabela conectada...");
-                const tableId = await grist.widget.getTable(); // ✅ API correta
-                if (!tableId) { 
-                    console.warn("⚠️ Nenhuma tabela conectada ao widget."); 
-                    document.getElementById("card-container").innerHTML = "<p>Erro: Nenhuma tabela conectada.</p>";
-                    return; 
-                }
-                console.log(`✅ Tabela conectada: ${tableId}`);
-
-                console.log("🔎 Buscando dados da tabela...");
-                const tableData = await grist.docApi.fetchTable(tableId);
-                console.log("✅ Dados recebidos da API:", tableData);
-
-                console.log("🔎 Convertendo dados...");
-                const records = Object.keys(tableData.id).map(index => {
-                    let record = { id: tableData.id[index] };
-                    for (const column in tableData) {
-                        record[column] = tableData[column][index];
-                    }
-                    return record;
-                });
-
-                console.log("✅ Dados convertidos:", records);
-                renderCards(records);
-            } catch (error) {
-                console.error("❌ Erro ao buscar dados:", error);
-                document.getElementById("card-container").innerHTML = "<p>Erro ao carregar os dados.</p>";
-            }
-        }
-
-        function renderCards(records) {
-            const container = document.getElementById("card-container");
-            container.innerHTML = "";
+        grist.onRecords((records, mappings) => {
+            console.log("✅ Dados recebidos do Grist:", records);
+            console.log("✅ Mapeamento de colunas:", mappings);
 
             if (!records || records.length === 0) {
-                console.warn("⚠️ Nenhum dado encontrado na tabela.");
-                container.innerHTML = "<p>Nenhum dado encontrado.</p>";
+                document.getElementById("card-container").innerHTML = "<p>Nenhum dado encontrado.</p>";
                 return;
             }
 
-            console.log("🔎 Renderizando cards...");
+            renderCards(records, mappings);
+        });
+
+        function renderCards(records, mappings) {
+            const container = document.getElementById("card-container");
+            container.innerHTML = "";
+
+            console.log("🔎 Mapeando colunas...");
             records.forEach(record => {
-                const mapped = grist.mapColumnNames(record);
+                const mapped = grist.mapColumnNames(record, mappings);
                 if (!mapped) { 
                     console.error("❌ Erro no mapeamento de colunas."); 
                     return; 
                 }
+
+                console.log("✅ Registro mapeado:", mapped);
 
                 const card = document.createElement("div");
                 card.classList.add("card");
@@ -136,8 +112,6 @@
         }
 
         document.querySelector(".close").onclick = () => document.getElementById("modal").style.display = "none";
-
-        fetchData();
     </script>
 
 </body>
