@@ -15,11 +15,14 @@
         }
 
         #version {
-            font-size: 12px;
-            color: #555;
+            font-size: 14px;
+            color: #d9534f;
             text-align: center;
             margin-bottom: 10px;
             font-weight: bold;
+            background: #f9f9f9;
+            padding: 5px;
+            border-radius: 5px;
         }
 
         #card-container {
@@ -73,12 +76,6 @@
             color: black;
         }
 
-        .editing {
-            border: 2px dashed #007BFF;
-            padding: 10px;
-        }
-
-        /* Modal Styles */
         .modal {
             display: none;
             position: fixed;
@@ -115,8 +112,8 @@
 </head>
 <body>
 
-    <!-- 🔹 Versão Fixa Manualmente 🔹 -->
-    <div id="version">Versão: <span>2024-02-18 14:30:00</span></div>
+    <!-- ✅ Versão FIXA e VISÍVEL -->
+    <div id="version">Versão: 18/02/2025 - 09:07</div>
 
     <div id="card-container">
         <p>Carregando dados...</p>
@@ -133,53 +130,46 @@
 
     <script>
         grist.ready({
-            columns: [
-                { name: "title", title: "Título", type: "Text", optional: false },
-                { name: "subtitle", title: "Subtítulo", type: "Text", optional: true },
-                { name: "thumbnail", title: "Imagem (URL)", type: "Text", optional: true },
-                { name: "extras", title: "Colunas Extras", type: "Any", allowMultiple: true, optional: true }
-            ],
-            requiredAccess: "full",
-            onEditOptions: () => grist.editOptions() // Restores the configuration button
+            requiredAccess: "read table",
+            onEditOptions: () => grist.editOptions()
         });
-
-        let currentRecords = [];
 
         async function fetchData() {
             try {
-                const tables = await grist.docApi.listTables();
-                if (tables.length === 0) return;
+                const tableId = await grist.activeDoc.getTableId(); // 🔹 Pega a tabela correta conectada ao widget
+                if (!tableId) {
+                    console.error("Nenhuma tabela conectada ao widget.");
+                    return;
+                }
 
-                const tableId = tables[0];
                 const tableData = await grist.docApi.fetchTable(tableId);
 
-                currentRecords = Object.keys(tableData.id).map(index => {
+                const records = Object.keys(tableData.id).map(index => {
                     return {
                         id: tableData.id[index],
                         title: tableData.title ? tableData.title[index] : "",
                         subtitle: tableData.subtitle ? tableData.subtitle[index] : "",
                         thumbnail: tableData.thumbnail ? tableData.thumbnail[index] : "",
-                        extras: tableData.extras ? tableData.extras[index] : [],
                         fullData: Object.fromEntries(Object.entries(tableData).map(([key, val]) => [key, val[index]]))
                     };
                 });
 
-                renderCards();
+                renderCards(records);
             } catch (error) {
                 console.error("Erro ao buscar dados:", error);
             }
         }
 
-        function renderCards() {
+        function renderCards(records) {
             const container = document.getElementById("card-container");
             container.innerHTML = "";
 
-            if (currentRecords.length === 0) {
+            if (records.length === 0) {
                 container.innerHTML = "<p>Nenhum dado encontrado.</p>";
                 return;
             }
 
-            currentRecords.forEach(record => {
+            records.forEach(record => {
                 const card = document.createElement("div");
                 card.classList.add("card");
 
@@ -192,44 +182,20 @@
 
                 const title = document.createElement("h2");
                 title.innerText = record.title || "Sem título";
-                title.contentEditable = "true";
                 card.appendChild(title);
 
                 const subtitle = document.createElement("p");
                 subtitle.innerText = record.subtitle || "";
-                subtitle.contentEditable = "true";
                 card.appendChild(subtitle);
 
-                // Icons
                 const iconsDiv = document.createElement("div");
                 iconsDiv.classList.add("icons");
-
-                const editIcon = document.createElement("i");
-                editIcon.classList.add("fa", "fa-edit");
-                editIcon.onclick = () => {
-                    card.classList.add("editing");
-                    editIcon.style.display = "none";
-                    saveIcon.style.display = "inline";
-                };
 
                 const popupIcon = document.createElement("i");
                 popupIcon.classList.add("fa", "fa-eye");
                 popupIcon.onclick = () => showPopup(record.fullData);
 
-                const saveIcon = document.createElement("i");
-                saveIcon.classList.add("fa", "fa-save");
-                saveIcon.style.display = "none";
-                saveIcon.onclick = () => {
-                    saveData(record.id, title.innerText, subtitle.innerText);
-                    card.classList.remove("editing");
-                    editIcon.style.display = "inline";
-                    saveIcon.style.display = "none";
-                };
-
-                iconsDiv.appendChild(editIcon);
                 iconsDiv.appendChild(popupIcon);
-                iconsDiv.appendChild(saveIcon);
-
                 card.appendChild(iconsDiv);
                 container.appendChild(card);
             });
@@ -240,11 +206,6 @@
             document.getElementById("modal-title").innerText = data.title || "Sem título";
             document.getElementById("modal-body").innerText = JSON.stringify(data, null, 2);
             modal.style.display = "block";
-        }
-
-        function saveData(id, title, subtitle) {
-            grist.docApi.applyUserActions([["UpdateRecord", "Table", id, { title, subtitle }]]);
-            alert("Salvo!");
         }
 
         document.querySelector(".close").onclick = () => document.getElementById("modal").style.display = "none";
