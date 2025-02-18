@@ -50,13 +50,33 @@
 
         async function fetchData() {
             try {
+                console.log("🔎 Obtendo ID da tabela conectada...");
                 const tableId = await grist.activeDoc.getTableId();
-                if (!tableId) { console.error("Nenhuma tabela conectada ao widget."); return; }
+                if (!tableId) { 
+                    console.error("❌ Nenhuma tabela conectada ao widget."); 
+                    document.getElementById("card-container").innerHTML = "<p>Erro: Nenhuma tabela conectada.</p>";
+                    return; 
+                }
+                console.log(`✅ Tabela conectada: ${tableId}`);
 
-                const tableData = await grist.docApi.fetchSelectedTable({ format: "rows" });
-                renderCards(tableData);
+                console.log("🔎 Buscando dados da tabela...");
+                const tableData = await grist.docApi.fetchTable(tableId);
+                console.log("✅ Dados recebidos da API:", tableData);
+
+                console.log("🔎 Convertendo dados...");
+                const records = Object.keys(tableData.id).map(index => {
+                    let record = { id: tableData.id[index] };
+                    for (const column in tableData) {
+                        record[column] = tableData[column][index];
+                    }
+                    return record;
+                });
+
+                console.log("✅ Dados convertidos:", records);
+                renderCards(records);
             } catch (error) {
-                console.error("Erro ao buscar dados:", error);
+                console.error("❌ Erro ao buscar dados:", error);
+                document.getElementById("card-container").innerHTML = "<p>Erro ao carregar os dados.</p>";
             }
         }
 
@@ -65,13 +85,18 @@
             container.innerHTML = "";
 
             if (!records || records.length === 0) {
+                console.warn("⚠️ Nenhum dado encontrado na tabela.");
                 container.innerHTML = "<p>Nenhum dado encontrado.</p>";
                 return;
             }
 
+            console.log("🔎 Renderizando cards...");
             records.forEach(record => {
                 const mapped = grist.mapColumnNames(record);
-                if (!mapped) { console.error("Erro no mapeamento de colunas."); return; }
+                if (!mapped) { 
+                    console.error("❌ Erro no mapeamento de colunas."); 
+                    return; 
+                }
 
                 const card = document.createElement("div");
                 card.classList.add("card");
@@ -100,6 +125,8 @@
                 card.appendChild(iconsDiv);
                 container.appendChild(card);
             });
+
+            console.log("✅ Renderização concluída!");
         }
 
         function showPopup(data) {
