@@ -7,119 +7,27 @@
     <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f5f5f5;
-            margin: 0;
-            padding: 20px;
-        }
-
-        #version {
-            font-size: 14px;
-            color: #d9534f;
-            text-align: center;
-            margin-bottom: 10px;
-            font-weight: bold;
-            background: #f9f9f9;
-            padding: 5px;
-            border-radius: 5px;
-        }
-
-        #card-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            justify-content: center;
-        }
-
-        .card {
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-            width: 250px;
-            padding: 15px;
-            text-align: center;
-            position: relative;
-        }
-
-        .card img {
-            max-width: 100%;
-            height: auto;
-            border-radius: 5px;
-        }
-
-        .card h2 {
-            font-size: 18px;
-            margin: 10px 0;
-        }
-
-        .card p {
-            font-size: 14px;
-            color: #555;
-        }
-
-        .icons {
-            position: absolute;
-            top: 5px;
-            right: 10px;
-            display: flex;
-            gap: 8px;
-        }
-
-        .icons i {
-            cursor: pointer;
-            font-size: 18px;
-            color: #555;
-        }
-
-        .icons i:hover {
-            color: black;
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            overflow: auto;
-            background-color: rgba(0,0,0,0.4);
-        }
-
-        .modal-content {
-            background-color: white;
-            margin: 10% auto;
-            padding: 20px;
-            border: 1px solid #888;
-            width: 50%;
-            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3);
-        }
-
-        .close {
-            color: #aaa;
-            float: right;
-            font-size: 28px;
-            font-weight: bold;
-        }
-
-        .close:hover {
-            color: black;
-            cursor: pointer;
-        }
+        body { font-family: Arial, sans-serif; background-color: #f5f5f5; margin: 0; padding: 20px; }
+        #version { font-size: 14px; color: #d9534f; text-align: center; margin-bottom: 10px; font-weight: bold; background: #f9f9f9; padding: 5px; border-radius: 5px; }
+        #card-container { display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; }
+        .card { background: white; border-radius: 8px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); width: 250px; padding: 15px; text-align: center; position: relative; }
+        .card img { max-width: 100%; height: auto; border-radius: 5px; }
+        .card h2 { font-size: 18px; margin: 10px 0; }
+        .card p { font-size: 14px; color: #555; }
+        .icons { position: absolute; top: 5px; right: 10px; display: flex; gap: 8px; }
+        .icons i { cursor: pointer; font-size: 18px; color: #555; }
+        .icons i:hover { color: black; }
+        .modal { display: none; position: fixed; z-index: 1; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); }
+        .modal-content { background-color: white; margin: 10% auto; padding: 20px; border: 1px solid #888; width: 50%; box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3); }
+        .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; }
+        .close:hover { color: black; cursor: pointer; }
     </style>
 </head>
 <body>
 
-    <!-- ✅ Versão FIXA e VISÍVEL -->
     <div id="version">Versão: 18/02/2025 - 09:07</div>
+    <div id="card-container"><p>Carregando dados...</p></div>
 
-    <div id="card-container">
-        <p>Carregando dados...</p>
-    </div>
-
-    <!-- Modal (Popup) -->
     <div id="modal" class="modal">
         <div class="modal-content">
             <span class="close">&times;</span>
@@ -130,31 +38,23 @@
 
     <script>
         grist.ready({
+            columns: [
+                { name: "title", title: "Título", type: "Text", optional: false },
+                { name: "subtitle", title: "Subtítulo", type: "Text", optional: true },
+                { name: "thumbnail", title: "Imagem (URL)", type: "Text", optional: true },
+                { name: "extras", title: "Colunas Extras", type: "Any", allowMultiple: true, optional: true }
+            ],
             requiredAccess: "read table",
             onEditOptions: () => grist.editOptions()
         });
 
         async function fetchData() {
             try {
-                const tableId = await grist.activeDoc.getTableId(); // 🔹 Pega a tabela correta conectada ao widget
-                if (!tableId) {
-                    console.error("Nenhuma tabela conectada ao widget.");
-                    return;
-                }
+                const tableId = await grist.activeDoc.getTableId();
+                if (!tableId) { console.error("Nenhuma tabela conectada ao widget."); return; }
 
-                const tableData = await grist.docApi.fetchTable(tableId);
-
-                const records = Object.keys(tableData.id).map(index => {
-                    return {
-                        id: tableData.id[index],
-                        title: tableData.title ? tableData.title[index] : "",
-                        subtitle: tableData.subtitle ? tableData.subtitle[index] : "",
-                        thumbnail: tableData.thumbnail ? tableData.thumbnail[index] : "",
-                        fullData: Object.fromEntries(Object.entries(tableData).map(([key, val]) => [key, val[index]]))
-                    };
-                });
-
-                renderCards(records);
+                const tableData = await grist.docApi.fetchSelectedTable({ format: "rows" });
+                renderCards(tableData);
             } catch (error) {
                 console.error("Erro ao buscar dados:", error);
             }
@@ -164,37 +64,38 @@
             const container = document.getElementById("card-container");
             container.innerHTML = "";
 
-            if (records.length === 0) {
+            if (!records || records.length === 0) {
                 container.innerHTML = "<p>Nenhum dado encontrado.</p>";
                 return;
             }
 
             records.forEach(record => {
+                const mapped = grist.mapColumnNames(record);
+                if (!mapped) { console.error("Erro no mapeamento de colunas."); return; }
+
                 const card = document.createElement("div");
                 card.classList.add("card");
 
-                if (record.thumbnail) {
+                if (mapped.thumbnail) {
                     const img = document.createElement("img");
-                    img.src = record.thumbnail;
-                    img.alt = "Imagem do card";
+                    img.src = mapped.thumbnail;
                     card.appendChild(img);
                 }
 
                 const title = document.createElement("h2");
-                title.innerText = record.title || "Sem título";
+                title.innerText = mapped.title || "Sem título";
                 card.appendChild(title);
 
                 const subtitle = document.createElement("p");
-                subtitle.innerText = record.subtitle || "";
+                subtitle.innerText = mapped.subtitle || "";
                 card.appendChild(subtitle);
-
-                const iconsDiv = document.createElement("div");
-                iconsDiv.classList.add("icons");
 
                 const popupIcon = document.createElement("i");
                 popupIcon.classList.add("fa", "fa-eye");
-                popupIcon.onclick = () => showPopup(record.fullData);
+                popupIcon.onclick = () => showPopup(mapped);
 
+                const iconsDiv = document.createElement("div");
+                iconsDiv.classList.add("icons");
                 iconsDiv.appendChild(popupIcon);
                 card.appendChild(iconsDiv);
                 container.appendChild(card);
@@ -202,10 +103,9 @@
         }
 
         function showPopup(data) {
-            const modal = document.getElementById("modal");
             document.getElementById("modal-title").innerText = data.title || "Sem título";
             document.getElementById("modal-body").innerText = JSON.stringify(data, null, 2);
-            modal.style.display = "block";
+            document.getElementById("modal").style.display = "block";
         }
 
         document.querySelector(".close").onclick = () => document.getElementById("modal").style.display = "none";
