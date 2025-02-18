@@ -8,37 +8,42 @@ grist.ready({
     requiredAccess: "full"
 });
 
+let currentRecords = [];
+
 async function fetchData() {
     try {
-        // Get list of tables in the document
         const tables = await grist.docApi.listTables();
         if (tables.length === 0) return;
 
-        // Assume the first table is the selected one
-        const tableId = tables[0];  
+        const tableId = tables[0];
         const tableData = await grist.docApi.fetchTable(tableId);
 
-        // Convert the table data to a record array format
-        const records = Object.keys(tableData)
-            .filter(key => key !== 'id')
-            .map(key => ({ id: key, ...tableData[key] }));
+        currentRecords = Object.keys(tableData.id).map(index => {
+            return {
+                id: tableData.id[index],
+                title: tableData.title ? tableData.title[index] : "",
+                subtitle: tableData.subtitle ? tableData.subtitle[index] : "",
+                thumbnail: tableData.thumbnail ? tableData.thumbnail[index] : "",
+                extras: tableData.extras ? tableData.extras[index] : []
+            };
+        });
 
-        renderCards(records);
+        renderCards();
     } catch (error) {
-        console.error("Error fetching table data:", error);
+        console.error("Erro ao buscar dados:", error);
     }
 }
 
-function renderCards(records) {
+function renderCards() {
     const container = document.getElementById("card-container");
     container.innerHTML = "";
 
-    if (!records || records.length === 0) {
+    if (currentRecords.length === 0) {
         container.innerHTML = "<p>Nenhum dado encontrado.</p>";
         return;
     }
 
-    records.forEach(record => {
+    currentRecords.forEach(record => {
         const card = document.createElement("div");
         card.classList.add("card");
 
@@ -51,35 +56,65 @@ function renderCards(records) {
 
         const title = document.createElement("h2");
         title.innerText = record.title || "Sem título";
+        title.contentEditable = "true";
         card.appendChild(title);
 
-        if (record.subtitle) {
-            const subtitle = document.createElement("p");
-            subtitle.innerText = record.subtitle;
-            card.appendChild(subtitle);
-        }
+        const subtitle = document.createElement("p");
+        subtitle.innerText = record.subtitle || "";
+        subtitle.contentEditable = "true";
+        card.appendChild(subtitle);
 
+        const extraContainer = document.createElement("div");
+        extraContainer.classList.add("extra-fields");
         if (record.extras) {
-            const extraContainer = document.createElement("div");
-            extraContainer.classList.add("extra-fields");
             record.extras.forEach(extraField => {
                 const extraItem = document.createElement("p");
                 extraItem.innerText = extraField;
                 extraContainer.appendChild(extraItem);
             });
-            card.appendChild(extraContainer);
         }
+        card.appendChild(extraContainer);
 
+        // Icons
+        const iconsDiv = document.createElement("div");
+        iconsDiv.classList.add("icons");
+
+        const editIcon = document.createElement("span");
+        editIcon.innerHTML = "📝";
+        editIcon.onclick = () => card.classList.toggle("editing");
+
+        const popupIcon = document.createElement("span");
+        popupIcon.innerHTML = "🔍";
+        popupIcon.onclick = () => showPopup(record);
+
+        const saveIcon = document.createElement("span");
+        saveIcon.innerHTML = "💾";
+        saveIcon.classList.add("save-icon");
+        saveIcon.onclick = () => saveData(record.id, title.innerText, subtitle.innerText);
+
+        iconsDiv.appendChild(editIcon);
+        iconsDiv.appendChild(popupIcon);
+        iconsDiv.appendChild(saveIcon);
+
+        card.appendChild(iconsDiv);
         container.appendChild(card);
     });
 }
 
-// If using full access, fetch data manually
-if (grist.accessLevel === "full") {
-    fetchData();
-} else {
-    // Listen for automatic updates (works only in partial access)
-    grist.onRecords((records) => {
-        renderCards(records);
-    });
+function showPopup(record) {
+    const modal = document.getElementById("modal");
+    document.getElementById("modal-title").innerText = record.title;
+    document.getElementById("modal-body").innerText = JSON.stringify(record, null, 2);
+    modal.style.display = "block";
 }
+
+function saveData(id, title, subtitle) {
+    grist.docApi.applyUserActions([["UpdateRecord", "Table", id, { title, subtitle }]]);
+    alert("Salvo!");
+}
+
+// Close Modal
+document.querySelector(".close").onclick = () => document.getElementById("modal").style.display = "none";
+
+if (grist.accessLevel === "full") fetchData();
+else grist.onRecords((records) => { currentRecords = records; renderCards(); });
