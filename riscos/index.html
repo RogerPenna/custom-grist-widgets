@@ -6,8 +6,12 @@
     <title>Widget Unificado - Matriz e Lista de Riscos</title>
     <!-- API Grist -->
     <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
-    <!-- Estilos CSS (todos combinados) -->
-    <link rel="stylesheet" href="style.css">
+
+    <!-- === PATH CORRIGIDO === -->
+    <!-- style.css está AGORA no mesmo diretório que index.html -->
+    <link rel="stylesheet" href="./style.css">
+    <!-- Ou apenas "style.css" também deve funcionar -->
+
 </head>
 <body>
     <!-- Container Principal -->
@@ -66,7 +70,9 @@
     </div>
 
     <!-- Script Principal (tipo module para usar import/export) -->
-    <!-- Certifique-se que o caminho para main.js está correto -->
+    <!-- === PATH CORRIGIDO === -->
+    <!-- A pasta 'js' está AGORA dentro do mesmo diretório 'riscos' -->
     <script type="module" src="./js/main.js"></script>
+
 </body>
 </html>
