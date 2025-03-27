@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Widget Unificado - Matriz e Lista de Riscos</title>
+    <!-- API Grist -->
+    <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+    <!-- Estilos CSS (todos combinados) -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Container Principal -->
+    <div id="main-container">
+        <!-- FILTRO DE DEPARTAMENTOS -->
+        <div id="filter-container">
+            <div id="department-dropdown">
+                <div id="department-dropdown-btn" class="dropdown-btn"></div>
+                <div id="department-dropdown-options" class="dropdown-options"></div>
+            </div>
+            <div class="filter-buttons">
+                <button id="btn-select-all-depts">Selecionar Todos</button>
+                <button id="btn-remove-all-depts">Remover Todos</button>
+            </div>
+        </div>
+
+        <!-- ÁREA PRINCIPAL COM MATRIZ E CARTÕES -->
+        <div id="content-area">
+            <div id="matrix-section">
+                <!-- Matriz de Riscos será renderizada aqui -->
+                <p class="loading-message">Carregando matriz...</p>
+            </div>
+            <div id="cards-section">
+                <!-- Lista de Riscos (Cards) será renderizada aqui -->
+                 <p class="loading-message">Carregando riscos...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Painel lateral (inicialmente escondido via CSS) -->
+    <div id="side-panel">
+        <div class="panel-header">
+            <strong id="side-panel-title">Detalhes do Risco</strong>
+            <button id="btn-close-side-panel" class="close-button">×</button>
+        </div>
+
+        <div class="tabs-nav">
+            <button class="tab-button active" data-tab="detalhes">Detalhes</button>
+            <button class="tab-button" data-tab="analises">Análises</button>
+            <button class="tab-button" data-tab="acoes">Ações</button>
+            <button class="tab-button" data-tab="contingencia">Contingência</button>
+        </div>
+
+        <div id="tab-detalhes" class="tab-content active">
+            <p class="loading-message">Selecione um risco.</p>
+        </div>
+        <div id="tab-analises" class="tab-content">
+             <p class="loading-message">Clique para carregar.</p>
+        </div>
+        <div id="tab-acoes" class="tab-content">
+            <p>Conteúdo Ações (Placeholder)</p>
+        </div>
+        <div id="tab-contingencia" class="tab-content">
+            <p>Conteúdo Contingência (Placeholder)</p>
+        </div>
+    </div>
+
+    <!-- Script Principal (tipo module para usar import/export) -->
+    <!-- Certifique-se que o caminho para main.js está correto -->
+    <script type="module" src="./js/main.js"></script>
+</body>
+</html>
