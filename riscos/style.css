@@ -1,0 +1,68 @@
+/* Coloque AQUI todo o conteúdo de TODAS as tags <style> do seu HTML original */
+
+/* Exemplo inicial (adicione o resto): */
+body {
+    margin: 0;
+    padding: 8px;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+    height: 100%;
+    background-color: #f7f7f7;
+    display: flex; /* Para layout principal se necessário */
+}
+
+#main-container {
+    display: flex;
+    flex-direction: column;
+    flex: 1; /* Ocupa espaço disponível */
+    overflow: hidden;
+    height: 100%; /* Ou ajuste conforme necessário */
+    box-sizing: border-box;
+    position: relative; /* Para posicionamento do painel */
+}
+
+/* Estilos Filtro */
+#filter-container { margin-bottom: 8px; }
+#department-dropdown { position: relative; display: inline-block; width: 100%; }
+.dropdown-btn { width: 100%; padding: 5px; border: 1px solid #ccc; cursor: pointer; background: white; display: flex; flex-wrap: wrap; gap: 5px; font-size: 12px; box-sizing: border-box; min-height: 30px; align-items: center; }
+.department-card { background-color: #e0e0e0; padding: 2px 5px; border-radius: 3px; display: flex; align-items: center; gap: 5px; font-size: 12px; }
+.department-card .remove-btn { cursor: pointer; color: #888; margin-left: 3px; }
+.department-card .remove-btn:hover { color: #333; }
+.dropdown-options { position: absolute; top: 100%; left: 0; right: 0; border: 1px solid #ccc; background: white; z-index: 100; display: none; max-height: 120px; overflow-y: auto; font-size: 12px; }
+.dropdown-options label { display: block; padding: 5px; cursor: pointer; }
+.filter-buttons { margin-top: 5px; display: flex; gap: 5px; }
+.filter-buttons button { padding: 5px 10px; font-size: 12px; cursor: pointer; }
+
+/* Estilos Conteúdo Principal */
+#content-area { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+#matrix-section { flex: 1; overflow: auto; margin-bottom: 8px; background: #fff; border: 1px solid #ccc; border-radius: 6px; padding: 5px; }
+#cards-section { flex: 1; overflow: auto; background: #fff; border: 1px solid #ccc; border-radius: 6px; padding: 5px; }
+
+/* Estilos Matriz (copie tudo de lá) */
+.matrix-table { /* ... e assim por diante ... */ }
+.matrix-header { /* ... */ }
+/* ... (todos os outros estilos da matriz) ... */
+
+/* Estilos Cards (copie tudo de lá) */
+.table-header, .table-row { /* ... */ }
+.col-codigo { /* ... */ }
+/* ... (todos os outros estilos dos cards) ... */
+
+/* Estilos Painel Lateral (copie tudo de lá) */
+#side-panel { position: fixed; /* Ou absolute se main-container for relative */ top: 0; right: 0; width: 50%; /* Ou use variável CSS */ height: 100%; background: #fff; border-left: 1px solid #ccc; box-shadow: -2px 0 5px rgba(0,0,0,0.1); z-index: 9999; display: none; /* Inicia escondido */ flex-direction: column; box-sizing: border-box; }
+.panel-header { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: #4f4f4f; color: white; }
+.close-button { background: none; border: none; color: white; font-size: 20px; cursor: pointer; padding: 0 5px; }
+.tabs-nav { display: flex; background: #eee; padding: 5px; border-bottom: 1px solid #ccc; }
+.tab-button { padding: 8px 12px; background-color: #eee; border: 1px solid #ccc; border-bottom: none; margin-right: 5px; cursor: pointer; border-radius: 5px 5px 0 0; font-size: 13px; }
+.tab-button.active { background-color: #fff; color: #333; border-color: #ccc; border-bottom: 1px solid #fff; position: relative; top: 1px; }
+.tab-content { display: none; background: #fff; padding: 15px; flex: 1; overflow-y: auto; border-top: 1px solid #ccc; /* Linha separadora */ }
+.tab-content.active { display: block; }
+#tab-analises ul { list-style: none; padding: 0; }
+#tab-analises li { border-bottom: 1px solid #eee; padding: 8px 0; }
+#tab-analises li:last-child { border-bottom: none; }
+#tab-analises strong { display: inline-block; min-width: 80px; }
+
+/* Mensagens de Carregamento */
+.loading-message { color: #888; font-style: italic; padding: 10px; }
+
+/* Adicione aqui TODOS os outros estilos do seu HTML original */
