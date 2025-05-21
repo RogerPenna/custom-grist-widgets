@@ -1,7 +1,27 @@
 document.addEventListener('DOMContentLoaded', function () {
-  console.log("KANBAN WIDGET SCRIPT: DOMContentLoaded event fired.");
+  console.log("KANBAN WIDGET SCRIPT: DOMContentLoaded event fired."); // Este é o seu original, mantenha-o.
 
-  const CURRENT_CONFIG_KEY_FOR_GRIST = 'kanbanWidgetConfig_v17_dropdown_fix_configbtn'; // Incrementada versão
+  // Adicione mais logs AQUI DENTRO, após o primeiro log:
+  console.log("KANBAN WIDGET SCRIPT: Attempting to initialize GristDataManager...");
+  window.GristDataManager = (function () {
+    // ... (conteúdo do GristDataManager como estava)
+  })();
+  console.log("KANBAN WIDGET SCRIPT: GristDataManager initialized (or attempted).");
+
+  console.log("KANBAN WIDGET SCRIPT: Attempting to initialize WidgetConfigManager...");
+  window.WidgetConfigManager = (function() {
+    // ... (conteúdo do WidgetConfigManager como estava)
+  })();
+  console.log("KANBAN WIDGET SCRIPT: WidgetConfigManager initialized (or attempted).");
+
+  console.log("KANBAN WIDGET SCRIPT: Attempting to initialize ConfigUIBuilder...");
+  window.ConfigUIBuilder = (function () {
+    // ... (conteúdo do ConfigUIBuilder como estava)
+  })();
+  console.log("KANBAN WIDGET SCRIPT: ConfigUIBuilder initialized (or attempted).");
+
+  // Suas constantes
+  const CURRENT_CONFIG_KEY_FOR_GRIST = 'kanbanWidgetConfig_v17_dropdown_fix_configbtn';
   const CARDS_PER_PAGE = 25;
 
   /*****************************************************************
@@ -652,6 +672,7 @@ document.addEventListener('DOMContentLoaded', function () {
   /*****************************************************************
    * 2.  Lógica Kanban (Principal)
    *****************************************************************/
+   console.log("KANBAN WIDGET SCRIPT: Starting main Kanban logic IIFE...");
   (async function () {
     // ... (constantes, formatEpoch, etc. - sem alterações)
     console.log("KANBAN IIFE Principal: Iniciando lógica Kanban."); function formatEpoch(val, type) { const num = Number(val); if (isNaN(num) || num === 0) { return val; } const dateObj = new Date(num * 1000); if (isNaN(dateObj.valueOf())) return val; return type === 'Date' ? dateObj.toLocaleDateString(undefined, { timeZone: 'UTC' }) : dateObj.toLocaleString(undefined, { timeZone: 'UTC' }); } const pal = ["#1E88E5", "#43A047", "#FB8C00", "#E53935", "#8E24AA", "#00838F", "#6D4C41", "#546E7A"]; const palette = i => pal[i % pal.length]; const dbg = document.getElementById('dbg'); const boardEl = document.getElementById('board'); const errEl = document.getElementById('errorMsg'); const editDrawerEl = document.getElementById('drawer'); const editDrawerTitleEl = document.getElementById('drawerTitle'); const editDrawerContentEl = document.getElementById('drawerContent'); const editDrawerSaveBtn = document.getElementById('saveBtn'); const editDrawerCloseBtn = document.getElementById('closeBtn'); const editDrawerCancelBtn = document.getElementById('cancelBtnDrawer'); const cfgBtn = document.getElementById('cfg-btn'); if (dbg) dbg.onclick = () => dbg.classList.toggle('collapsed'); const safe = (o, k, f = null) => (o && k in o && o[k] !== undefined && o[k] !== null) ? o[k] : f; let gristTableMeta = null; let gristRows = []; let allGristTables = []; let gristTableOps = null; let kanbanLanesStructure = []; let currentEditingCardId = null; let currentEditingCardData = null; let currentVisibleCardsByLane = {};
@@ -926,4 +947,5 @@ document.addEventListener('DOMContentLoaded', function () {
     grist.onRecord(async (updatedRec, oldRec, summaryOrTableId) => { let tableId = null; if (summaryOrTableId && typeof summaryOrTableId === 'object' && summaryOrTableId.tableId) { tableId = summaryOrTableId.tableId; } else if (typeof summaryOrTableId === 'string') { tableId = summaryOrTableId; } else if (updatedRec && gristTableMeta && gristTableMeta.nameId) { tableId = gristTableMeta.nameId; } if (gristTableMeta && tableId === gristTableMeta.nameId && updatedRec) { if (currentEditingCardId === updatedRec.id && editDrawerEl.classList.contains('visible')) { const definingColId = WidgetConfigManager.getKanbanDefiningColumn(); const currentLaneValueForDrawer = String(safe(updatedRec, definingColId, "")); try { const fullCardData = await gristTableOps.getRecord(updatedRec.id); if (fullCardData) { openCardEditDrawer(fullCardData.id, currentLaneValueForDrawer, fullCardData); } } catch (fetchErr) { console.error(`GRIST.ONRECORD: Erro ao buscar dados completos para o cartão ${updatedRec.id}:`, fetchErr); } } } });
     loadGristDataAndSetupKanban();
   })();
+    console.log("KANBAN WIDGET SCRIPT: End of DOMContentLoaded callback.");
 });
