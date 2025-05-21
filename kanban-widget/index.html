@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Kanban – Grist Custom Widget</title>
+  <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.14.0/Sortable.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
+  <style>
+    :root {
+      --collapsed: 60px;
+      --dbg: 2em;
+    }
+
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      font-family: sans-serif;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      background: #E9ECEF; /* Cor de fundo padrão, será sobrescrita pela config */
+    }
+
+    .config-button-bar {
+      text-align: right;
+      padding: 4px 8px;
+    }
+
+    .config-button-bar button {
+      padding: 4px 10px;
+      border: 1px solid #6c757d;
+      border-radius: 4px;
+      cursor: pointer;
+      background: #f8f9fa;
+    }
+
+    #boardWrap {
+      flex: 1;
+      overflow-x: auto;
+      padding: 8px;
+    }
+
+    #board,
+    .board {
+      display: flex;
+      flex-direction: row;
+      gap: 12px;
+      align-items: flex-start;
+      min-height: 100%;
+    }
+
+    #errorMsg {
+      color: red;
+      padding: 10px;
+      text-align: center;
+      font-weight: bold;
+    }
+
+    .column {
+      background: #F8F9FA;
+      border-radius: 6px;
+      min-width: 240px;
+      max-width: 320px;
+      display: flex;
+      flex-direction: column;
+      max-height: calc(100% - 16px);
+    }
+
+    .column-header {
+      padding: 8px 12px;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .column-header.wip-limit-exceeded {
+      border: 2px solid red !important;
+      box-shadow: 0 0 5px red;
+    }
+
+    .add-btn {
+      background: none;
+      border: 2px dashed #bbb;
+      border-radius: 4px;
+      padding: 6px;
+      margin: 8px;
+      font-size: .85em;
+      cursor: pointer;
+      color: #666;
+    }
+
+    .column-body {
+      padding: 0 8px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      overflow-y: auto;
+      flex-grow: 1;
+    }
+
+    .column-pagination-controls {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 0;
+      font-size: 0.8em;
+      margin-top: auto;
+      border-top: 1px solid #eee;
+    }
+
+    .column-pagination-controls button {
+      background: none;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 3px 6px;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    .column-pagination-controls button:hover {
+      background-color: #e9ecef;
+    }
+
+    .column-pagination-controls span {
+      color: #555;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 4px;
+      /* box-shadow: 0 1px 3px rgba(0, 0, 0, .15); */ /* Default shadow removed */
+      padding: 8px 8px 8px 12px;
+      cursor: grab;
+      position: relative;
+      color: #333;
+      transition: box-shadow 0.2s ease; /* Added transition for shadow */
+    }
+
+    .card.with-shadow { /* Class to toggle shadow */
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 4px;
+      height: 100%;
+      background: var(--card-status-color, #546E7A);
+      border-top-left-radius: 3px;
+      border-bottom-left-radius: 3px;
+    }
+
+    .card-title {
+      font-weight: 700;
+      margin-bottom: 4px;
+      word-break: break-word;
+    }
+
+    .card-field {
+      font-size: 0.8em;
+      margin-top: 2px;
+      word-break: break-word;
+      overflow-wrap: break-word;
+      padding: 2px;
+      border-radius: 3px;
+    }
+
+    .card-field .label {
+      font-weight: bold;
+    }
+
+    #drawer {
+      position: fixed;
+      top: 0;
+      right: -820px;
+      width: 800px;
+      height: 100%;
+      background: #fff;
+      box-shadow: -2px 0 8px rgba(0, 0, 0, .2);
+      display: flex;
+      flex-direction: column;
+      transition: right .25s;
+      border-left: 6px solid #888;
+      z-index: 10;
+    }
+
+    #drawer.visible {
+      right: 0;
+    }
+
+    #drawer header {
+      padding: 12px 16px;
+      font-weight: 700;
+      color: #fff;
+      background-color: #546E7A;
+    }
+
+    #drawer header #closeBtn {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 1.5em;
+      cursor: pointer;
+      padding: 0 5px;
+      line-height: 1;
+    }
+
+    #drawerContent {
+      flex: 1;
+      padding: 12px;
+      overflow-y: auto;
+    }
+
+    #drawer label { /* Estilo base para todos os labels no drawer */
+      display: block; /* Para que ocupem a linha */
+      margin-bottom: 2px; /* Um pouco de espaço antes do input */
+      font-weight: bold; /* Labels geralmente são bold */
+    }
+
+    #drawer label.formatted { /* Para formatação Grist específica */
+      padding: 2px 4px;
+      border-radius: 3px;
+      display: inline-block; /* Para que a formatação de cor de fundo não ocupe a linha toda */
+      margin-bottom: 1px; /* Ajuste fino */
+      /* width: auto !important; Removido !important, display:inline-block deve cuidar disso */
+    }
+
+    #drawer input,
+    #drawer textarea,
+    #drawer select {
+      width: 100%;
+      padding: 6px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: .9em;
+      box-sizing: border-box;
+      margin-top: 2px;
+      margin-bottom: 8px; /* Espaço após cada input */
+      background: #fff;
+      color: #333;
+    }
+
+    #drawer textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    .readonly-field {
+      background: #E9ECEF;
+      color: #333;
+      padding: 6px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: .9em;
+      word-break: break-word;
+      margin-top: 2px;
+      margin-bottom: 8px; /* Espaço após cada readonly field */
+      min-height: 20px; /* Para melhor visualização de campos vazios */
+    }
+
+
+    #cfg-drawer {
+      position: fixed;
+      top: 0;
+      right: -50%;
+      width: 50%;
+      min-width: 600px;
+      max-width: 800px;
+      height: 100%;
+      background: #fff;
+      box-shadow: -2px 0 8px rgba(0, 0, 0, .2);
+      display: flex;
+      flex-direction: column;
+      transition: right .25s;
+      border-left: 1px solid #ccc;
+      z-index: 100;
+    }
+
+    #cfg-drawer.visible {
+      right: 0;
+    }
+
+    #cfg-drawer header {
+      background: #6c757d;
+      color: #fff;
+      padding: 12px 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    #cfg-drawer header #cfg-close {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 1.5em;
+      cursor: pointer;
+      padding: 0 5px;
+      line-height: 1;
+    }
+
+    .cfg-tabs {
+      display: flex;
+      border-bottom: 1px solid #ccc;
+      margin-bottom: 0;
+      background-color: #f8f9fa;
+    }
+
+    .cfg-tabs button {
+      background: none;
+      border: none;
+      padding: 10px 15px;
+      cursor: pointer;
+      font-size: 0.9em;
+      border-bottom: 3px solid transparent;
+      margin-right: 1px;
+      color: #495057;
+    }
+
+    .cfg-tabs button:hover {
+      background-color: #e9ecef;
+    }
+
+    .cfg-tabs button.active {
+      border-bottom-color: #0d6efd;
+      font-weight: bold;
+      color: #0d6efd;
+      background-color: #fff;
+      border-right: 1px solid #ccc;
+      border-left: 1px solid #ccc;
+      border-top: 1px solid #ccc;
+      border-top-left-radius: 4px;
+      border-top-right-radius: 4px;
+      margin-bottom: -1px; /* Para sobrepor a borda inferior do container .cfg-tabs */
+    }
+
+    .cfg-tab-content {
+      display: none;
+      padding: 15px;
+      border: 1px solid #ccc;
+      border-top: none; /* A borda superior é gerenciada pelos botões ativos */
+    }
+
+    .cfg-tab-content.active {
+      display: block;
+    }
+
+    #cfg-drawer .content {
+      padding: 0; /* Removido padding para que .cfg-tab-content o controle */
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    #cfg-drawer .config-section {
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 1px dashed #eee;
+    }
+
+    #cfg-drawer .config-section:last-child {
+      border-bottom: none;
+    }
+
+    #cfg-drawer .config-section label,
+    #cfg-drawer .wip-limit-table label,
+    #cfg-drawer .config-section h4 /* Para o título da seção de background */
+     {
+      font-size: 0.9em;
+      font-weight: bold;
+      display: block;
+      margin-bottom: 5px;
+      color: #333;
+    }
+    #cfg-drawer .config-section h4 {
+        margin-top: 0; /* Para o h4 do background */
+        margin-bottom: 10px;
+        font-size: 1em;
+    }
+
+
+    #cfg-drawer .config-section select,
+    #cfg-drawer .config-section input[type="checkbox"],
+    #cfg-drawer .config-section input[type="color"],
+    #cfg-drawer .config-section input[type="number"]
+     {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    #cfg-drawer .config-section input[type="color"] {
+        padding: 2px; /* Inputs de cor geralmente são menores */
+        height: 30px;
+    }
+    #cfg-drawer .config-section input[type="number"] {
+        width: 60px; /* Para inputs de número menores */
+    }
+
+
+    #cfg-drawer .config-section input[type="checkbox"] {
+      width: auto;
+      margin-top: 5px;
+    }
+
+    #cfg-fields-table-container table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8em;
+    }
+
+    #cfg-fields-table-container th,
+    #cfg-fields-table-container td {
+      border: 1px solid #ddd;
+      padding: 4px;
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    #cfg-fields-table-container th {
+      background-color: #f2f2f2;
+      font-weight: bold;
+      white-space: nowrap;
+    }
+
+    #cfg-fields-table-container td input[type="checkbox"] {
+      display: block;
+      margin: 0 auto;
+    }
+
+    #cfg-fields-table-container td input[type="number"] {
+      width: 35px;
+      padding: 3px;
+      text-align: center;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      box-sizing: border-box;
+    }
+
+    #cfg-fields-table-container td:not(:nth-child(1)):not(:nth-child(2)) {
+      text-align: center;
+    }
+
+    #cfg-fields-table-container th {
+      text-align: left;
+    }
+
+    #cfg-fields-table-container th > input[type="checkbox"] {
+      margin-left: auto;
+      margin-right: auto;
+      display: block;
+    }
+
+    #cfg-fields-table-container th > span {
+      padding-right: 5px;
+    }
+
+    .wip-limit-table {
+      width: 100%;
+      margin-top: 10px;
+      border-collapse: collapse;
+    }
+
+    .wip-limit-table th,
+    .wip-limit-table td {
+      padding: 6px;
+      border: 1px solid #eee;
+      font-size: 0.85em;
+      text-align: left;
+    }
+
+    .wip-limit-table th {
+      background-color: #f8f9fa;
+    }
+
+    .wip-limit-table input[type="number"] {
+      width: 60px;
+      padding: 4px;
+      box-sizing: border-box;
+    }
+
+    .sort-criterion {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .sort-criterion select {
+      flex-grow: 1;
+    }
+
+    .sort-criterion select.direction {
+      flex-grow: 0;
+      width: 120px;
+    }
+
+    .actions {
+      padding: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      border-top: 1px solid #eee;
+    }
+
+    .actions button {
+      padding: 6px 12px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: .9em;
+    }
+
+    .actions button.primary {
+      background: #1E88E5;
+      color: #fff;
+    }
+
+    .actions button:not(.primary) {
+      background: #ccc;
+      color: #333;
+    }
+
+    .actions .left-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    #dbg {
+      height: var(--dbg);
+      overflow-y: auto;
+      border-top: 1px solid #ccc;
+      background: #f0f0f0;
+      padding: 4px;
+      font-family: monospace;
+      font-size: 11px;
+      white-space: pre-wrap;
+      cursor: pointer;
+      line-height: 1.3;
+    }
+
+    #dbg.collapsed {
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    .card-priority {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      font-size: 0.8em;
+      font-weight: bold;
+    }
+
+    .card-dueDate {
+      position: absolute;
+      bottom: 8px;
+      right: 8px;
+      font-size: 0.75em;
+      color: #555;
+    }
+
+    .replicate-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+    }
+
+    .replicate-content {
+      background: white;
+      padding: 16px;
+      border-radius: 4px;
+      min-width: 300px;
+    }
+
+    .choice-chip {
+      display: inline-block;
+      padding: 2px 6px;
+      margin: 0 2px 2px 0;
+      background: #e0e0e0;
+      border-radius: 4px;
+      font-size: 0.8em;
+    }
+
+    /* --- ESTILOS PARA A NOVA ABA DE REGRAS --- */
+    .rules-lane-section { /* Antigo .rules-container para não conflitar com .container do Bootstrap */
+        margin-bottom: 20px;
+        padding: 10px;
+        border: 1px solid #e0e0e0;
+        border-radius: 4px;
+        background-color: #f9f9f9;
+    }
+    .rules-lane-section h4 {
+        margin-top: 0;
+        margin-bottom: 10px;
+        font-size: 1.1em;
+        color: #333;
+        border-bottom: 1px solid #ddd;
+        padding-bottom: 5px;
+    }
+    .rule-item {
+        background: #fff;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        padding: 10px;
+        margin-bottom: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    .rule-item-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .rule-item-header .rule-type {
+        flex-grow: 1;
+        margin-right: 10px;
+    }
+    .rule-item .rule-remove-btn {
+        background-color: #ffdddd;
+        color: #c00;
+        border: 1px solid #c00;
+        border-radius: 3px;
+        padding: 2px 6px;
+        cursor: pointer;
+        font-size: 0.9em;
+    }
+    .rule-params {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding-left: 10px;
+        border-left: 3px solid #eee;
+    }
+    .rule-params > div { /* Para cada linha de parâmetro */
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .rule-params label {
+      font-size: 0.85em;
+      margin-bottom: 0;
+      min-width: 100px; /* Para alinhar os inputs */
+    }
+    .rule-params input[type="text"],
+    .rule-params select {
+        flex-grow: 1;
+        padding: 4px;
+        font-size: 0.85em;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+    }
+    .rule-params input.rule-operator {
+        max-width: 80px; /* Operadores são curtos */
+    }
+    .rule-mappings-container {
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top: 1px dashed #ddd;
+    }
+    .rule-mapping-item {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 5px;
+    }
+    .rule-mapping-item select {
+        flex: 1;
+    }
+    .add-rule-btn, .add-mapping-btn {
+        background-color: #e7f3ff;
+        color: #0366d6;
+        border: 1px solid #0366d6;
+        padding: 4px 8px;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 0.85em;
+        margin-top: 5px;
+    }
+    .attachment-preview-container a,
+.readonly-field a { /* Para links de anexo no drawer */
+    display: inline-block;
+    margin-right: 8px;
+    text-decoration: none;
+    padding: 2px 5px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    background-color: #f0f0f0;
+    font-size: 0.9em;
+}
+.attachment-icon {
+    /* Adicione um ícone de clipe de papel ou algo similar */
+}
+.markdown-content p:first-child, .markdown-content-drawer p:first-child {
+    margin-top: 0;
+}
+.markdown-content p:last-child, .markdown-content-drawer p:last-child {
+    margin-bottom: 0;
+}
+/* Estilo para texto markdown no drawer para se assemelhar a outros campos */
+.markdown-content-drawer {
+  background: #E9ECEF;
+  color: #333;
+  padding: 6px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: .9em;
+  word-break: break-word;
+  margin-top: 2px;
+  min-height: 50px; /* Para dar algum espaço */
+}
+    /* --- FIM DOS ESTILOS PARA REGRAS --- */
+
+  </style>
+</head>
+
+<body>
+
+  <div class="config-button-bar">
+    <button id="cfg-btn">⚙️ Config</button>
+  </div>
+
+  <div id="boardWrap">
+    <div id="errorMsg"></div>
+    <div id="board" class="board"></div>
+  </div>
+
+  <div id="drawer">
+    <header>
+      <span id="drawerTitle"></span>
+      <button id="closeBtn">×</button>
+    </header>
+    <div id="drawerContent"></div>
+    <div class="actions">
+      <button id="cancelBtnDrawer">Cancelar</button>
+      <button id="saveBtn" class="primary">Salvar</button>
+    </div>
+  </div>
+
+  <aside id="cfg-drawer">
+    <header>
+      <h3>Configurações do Kanban</h3>
+      <button id="cfg-close">×</button>
+    </header>
+
+    <div class="cfg-tabs">
+      <button id="cfg-tab-btn-fields" class="active" data-tab="fields">Campos por Lane</button>
+      <button id="cfg-tab-btn-general" data-tab="general">Geral, WIP e Ordenação</button>
+      <button id="cfg-tab-btn-visual" data-tab="visual">Visuais</button>
+      <button id="cfg-tab-btn-rules" data-tab="rules">Regras</button> <!-- NOVO BOTÃO DA ABA -->
+    </div>
+
+    <div class="content">
+      <div id="cfg-tab-content-fields" class="cfg-tab-content active">
+        <div class="config-section" id="kanban-lane-selector-div">
+          <label for="kanban-lane-select">Configurar para a Coluna Kanban (Lane):</label>
+          <select id="kanban-lane-select">
+            <option value="">-- Selecione uma lane --</option>
+          </select>
+        </div>
+        <div id="cfg-fields-table-container" style="margin-top: 15px; display: none;">
+        </div>
+      </div>
+
+      <div id="cfg-tab-content-general" class="cfg-tab-content">
+        <div class="config-section">
+          <h4>Mapeamento da Coluna Principal do Kanban</h4>
+          <label for="kanban-defining-column-map-select">Usar coluna da tabela para as Lanes do Kanban:</label>
+          <select id="kanban-defining-column-map-select">
+            <option value="">-- Selecione uma coluna --</option>
+          </select>
+          <p style="font-size:0.8em; color:#555; margin-top:5px;">
+            Define qual coluna da sua tabela Grist será usada para criar as colunas (lanes) do Kanban.
+          </p>
+        </div>
+
+        <div class="config-section">
+          <h4>Ordenação dos Cartões Dentro das Lanes</h4>
+          <p style="font-size:0.8em; color:#555; margin-bottom:10px;">
+            Defina até três critérios para ordenar os cartões dentro de cada lane.
+          </p>
+          <div id="card-sort-criteria-container">
+            <!-- Critérios de ordenação (populados pelo JS) -->
+          </div>
+        </div>
+
+        <div class="config-section">
+          <h4>Limites por Lane (WIP - Work In Progress)</h4>
+          <p style="font-size:0.8em; color:#555; margin-bottom:10px;">
+            Defina o número máximo de cartões visíveis inicialmente e o limite máximo de cartões permitidos para cada lane. Deixe em branco ou 0 para sem limite.
+          </p>
+          <div id="wip-limits-table-container">
+            <!-- Tabela de WIP limits (populada pelo JS) -->
+          </div>
+        </div>
+
+        <div class="config-section">
+          <label for="cfg-card-title-font-color">Cor Fonte Título Card (Geral):</label>
+          <input type="color" id="cfg-card-title-font-color">
+        </div>
+        <div class="config-section">
+          <label for="cfg-card-fields-font-color">Cor Fonte Campos Card (Geral):</label>
+          <input type="color" id="cfg-card-fields-font-color">
+        </div>
+        <div class="config-section">
+          <label for="cfg-drawer-font-color">Cor Fonte Drawer (Geral):</label>
+          <input type="color" id="cfg-drawer-font-color">
+        </div>
+
+        <!-- Seção de Background do Widget (já existente) -->
+        <div class="config-section">
+          <h4>Background do Widget</h4>
+          <!-- ... (resto da configuração de background) ... -->
+        </div>
+
+        <div class="config-section">
+          <h4>Restrições de Movimento</h4>
+          <label>
+            <input type="checkbox" id="cfg-restrict-adjacent-move">
+            Permitir mover cartões apenas para lanes adjacentes
+          </label>
+        </div>
+      </div>
+
+      <div id="cfg-tab-content-visual" class="cfg-tab-content">
+        <div class="config-section">
+          <label><input type="checkbox" id="cfg-center-columns"> Centralizar colunas</label>
+        </div>
+        <div class="config-section">
+          <label for="cfg-col-width-percent">Largura % das colunas:</label>
+          <input type="number" id="cfg-col-width-percent" min="0" max="100">%
+          <div style="display:flex; gap:8px; margin-top:4px;">
+            <div>
+              <label for="cfg-col-min-width">mín (px):</label>
+              <input type="number" id="cfg-col-min-width" min="0">
+            </div>
+            <div>
+              <label for="cfg-col-max-width">máx (px):</label>
+              <input type="number" id="cfg-col-max-width" min="0">
+            </div>
+          </div>
+        </div>
+        <div class="config-section">
+          <label for="cfg-col-color">Cor das Colunas:</label>
+          <input type="color" id="cfg-col-color">
+        </div>
+        <div class="config-section">
+          <label for="cfg-card-color">Cor dos Cartões:</label>
+          <input type="color" id="cfg-card-color">
+        </div>
+        <div class="config-section">
+          <label>
+            <input type="checkbox" id="cfg-card-shadow">
+            Mostrar sombra nos cartões
+          </label>
+        </div>
+
+        <!-- NOVA SEÇÃO DE BACKGROUND DO WIDGET -->
+        <div class="config-section">
+          <h4>Background do Widget</h4>
+          <label for="cfg-background-type">Tipo de Background:</label>
+          <select id="cfg-background-type">
+            <option value="solid">Cor Sólida</option>
+            <option value="linear">Degradê Linear</option>
+            <option value="radial">Degradê Radial</option>
+          </select>
+
+          <div id="cfg-solid-color-settings" style="margin-top:10px;">
+            <label for="cfg-solid-background-color">Cor de Fundo (Sólida):</label>
+            <input type="color" id="cfg-solid-background-color">
+          </div>
+
+          <div id="cfg-gradient-settings" style="display:none; margin-top:10px;">
+            <label for="cfg-gradient-color1">Cor 1 do Degradê:</label>
+            <input type="color" id="cfg-gradient-color1" style="margin-bottom:5px;">
+            <label for="cfg-gradient-color2">Cor 2 do Degradê:</label>
+            <input type="color" id="cfg-gradient-color2" style="margin-bottom:5px;">
+
+            <div id="cfg-gradient-direction-container" style="display:none; margin-top:5px;">
+              <label for="cfg-gradient-direction">Direção (Linear):</label>
+              <select id="cfg-gradient-direction">
+                <option value="to right">Para Direita</option>
+                <option value="to left">Para Esquerda</option>
+                <option value="to bottom">Para Baixo</option>
+                <option value="to top">Para Cima</option>
+                <option value="to bottom right">Para Canto Inferior Direito</option>
+                <option value="to bottom left">Para Canto Inferior Esquerdo</option>
+                <option value="to top right">Para Canto Superior Direito</option>
+                <option value="to top left">Para Canto Superior Esquerdo</option>
+                <option value="45deg">45 Graus</option>
+                <option value="135deg">135 Graus</option>
+                <option value="225deg">225 Graus (-135deg)</option>
+                <option value="315deg">315 Graus (-45deg)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <!-- FIM DA NOVA SEÇÃO DE BACKGROUND DO WIDGET -->
+
+      </div>
+
+      <!-- NOVO CONTEÚDO DA ABA DE REGRAS -->
+      <div id="cfg-tab-content-rules" class="cfg-tab-content">
+        <p style="font-size:0.85em; color:#555; margin-bottom:15px;">
+          Configure regras para cada lane do Kanban. As regras são verificadas/executadas quando um cartão entra em uma lane.
+        </p>
+        <div id="rules-config-area">
+          <!-- As seções de regras por lane serão populadas aqui pelo JavaScript -->
+        </div>
+      </div>
+      <!-- FIM DO NOVO CONTEÚDO DA ABA DE REGRAS -->
+
+    </div>
+
+    <div class="actions">
+      <div class="left-actions">
+        <button id="cfg-replicate">Replicar</button>
+      </div>
+      <div>
+        <button id="cfg-cancel">Cancelar</button>
+        <button id="cfg-save" class="primary">Salvar Configurações</button>
+      </div>
+    </div>
+  </aside>
+
+  <div id="dbg" class="collapsed"><strong>API Debug</strong><br></div>
+</body>
+
+</html>
