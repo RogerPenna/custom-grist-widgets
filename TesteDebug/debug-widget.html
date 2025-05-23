@@ -14,6 +14,21 @@
         .cell-detail { font-size: 0.8em; color: #555; margin-top: 3px; }
         .record-row:hover { background-color: #f9f9f9; cursor: pointer; }
         h2, h3 { margin-top: 20px; border-bottom: 1px solid #eee; padding-bottom: 5px;}
+        /* Estilos para sub-tabelas */
+        #recordsTable td div > table { /* Seleciona tabelas diretamente dentro de um div na célula */
+            margin-top: 5px;
+            border: 1px dashed #aaa !important; /* !important para sobrescrever outros borders da tabela */
+            font-size: 0.9em;
+            background-color: #fdfdfd;
+        }
+         #recordsTable td div > table th,
+         #recordsTable td div > table td {
+            padding: 4px !important;
+            border: 1px dotted #ccc !important;
+         }
+         #recordsTable td div > table th {
+            background-color: #e9e9e9 !important;
+         }
     </style>
 </head>
 <body>
@@ -47,11 +62,7 @@
     </div>
     <div id="errorMessage" style="color:red; font-weight:bold;"></div>
 
-    <!-- Script da biblioteca GristTableLens -->
-    <!-- O caminho é relativo ao local do debug-widget.html -->
     <script src="../libraries/grist-table-lens/grist-table-lens.js"></script>
-
-    <!-- Script principal do widget de debug -->
     <script src="debug-widget-main.js"></script>
 </body>
 </html>

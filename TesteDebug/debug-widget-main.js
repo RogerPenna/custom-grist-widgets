@@ -1,6 +1,5 @@
 // custom-grist-widgets/TesteDebug/debug-widget-main.js
 document.addEventListener('DOMContentLoaded', function () {
-    // ... (elementos do DOM e applyGristCellStyles como antes) ...
     const loadingMessageEl = document.getElementById('loadingMessage');
     const tableInfoContainerEl = document.getElementById('tableInfoContainer');
     const tableNameEl = document.getElementById('tableName');
@@ -25,47 +24,115 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Função para renderizar uma sub-tabela de dados relacionados
-    function renderRelatedDataTable(relatedRecords, relatedSchema, parentCell) {
-        if (!relatedRecords || relatedRecords.length === 0) {
-            parentCell.innerHTML += '<div class="cell-detail"><em>(Sem registros relacionados)</em></div>';
+    async function renderRelatedDataTable(relatedRecords, parentCell, tableLens, currentDepth, maxDepth) {
+        if (currentDepth > maxDepth) {
+            const limitMsg = document.createElement('div');
+            limitMsg.className = 'cell-detail';
+            limitMsg.innerHTML = '<em>(Limite de profundidade de relações atingido)</em>';
+            parentCell.appendChild(limitMsg);
             return;
         }
 
+        if (!relatedRecords || relatedRecords.length === 0) {
+            return; // Não adiciona nada se não houver registros
+        }
+        
+        // Usa o schema que foi adicionado aos relatedRecords em fetchRelatedRecords
+        const relatedSchema = relatedRecords[0]?.gristHelper_schema;
+        if(!relatedSchema || relatedSchema.length === 0) {
+            console.warn("Não foi possível obter o schema para a tabela relacionada.");
+            parentCell.innerHTML += '<div class="cell-detail"><em>(Schema da tabela relacionada não encontrado)</em></div>';
+            return;
+        }
+
+
+        const subTableContainer = document.createElement('div');
+        subTableContainer.style.marginTop = '5px';
+        subTableContainer.style.border = '1px dashed #aaa';
+        subTableContainer.style.padding = '5px';
+        subTableContainer.style.backgroundColor = '#fdfdfd';
+
         const subTable = document.createElement('table');
-        subTable.style.marginTop = '5px';
-        subTable.style.border = '1px dashed #999';
         subTable.style.fontSize = '0.9em';
+        subTable.style.width = '100%';
 
         const subThead = subTable.createTHead();
         const subThRow = subThead.insertRow();
-        // Usar o schema da tabela relacionada para os cabeçalhos
-        const relatedColsToDisplay = relatedSchema.filter(col => !col.id.startsWith("gristHelper_")); // Não mostrar colunas helper
+        const relatedColsToDisplay = relatedSchema.filter(col => !col.id.startsWith("gristHelper_"));
 
         relatedColsToDisplay.forEach(col => {
             const th = document.createElement('th');
             th.textContent = col.label;
-            th.style.backgroundColor = "#f9f9f9";
+            th.style.backgroundColor = "#e9e9e9";
+            th.style.padding = "4px";
             subThRow.appendChild(th);
         });
 
         const subTbody = subTable.createTBody();
-        relatedRecords.forEach(relRec => {
+        for (const relRec of relatedRecords) {
             const subTr = subTbody.insertRow();
-            relatedColsToDisplay.forEach(colSchema => {
+            subTr.onclick = function(event) {
+                event.stopPropagation();
+                alert(`Clicou na linha relacionada ID: ${relRec.id} da Tabela: ${relRec.gristHelper_tableId}\n(Placeholder para abrir gaveta de detalhes para ESTE item)`);
+            };
+
+            for (const colSchema of relatedColsToDisplay) {
                 const td = subTr.insertCell();
+                td.style.padding = "4px";
                 const cellValue = relRec[colSchema.id];
-                // Simplificando a exibição do valor relacionado por agora
-                td.textContent = (cellValue === null || cellValue === undefined) ? '(vazio)' : String(cellValue);
-                applyGristCellStyles(td, colSchema, cellValue); // Aplicar estilos também às células relacionadas
-            });
-        });
-        parentCell.appendChild(subTable);
+                let displayValue = cellValue;
+                let contentContainer = document.createElement('div'); // Para aninhar texto e sub-tabelas
+
+                if (colSchema.type.startsWith('Ref:') && typeof cellValue === 'number' && cellValue > 0 && colSchema.referencedTableId) {
+                    if (currentDepth + 1 <= maxDepth) { // Verifica profundidade antes de buscar
+                        const nestedRefRecord = await tableLens.fetchRecordById(colSchema.referencedTableId, cellValue);
+                        if (nestedRefRecord) {
+                            const nestedRefSchema = await tableLens.getTableSchema(colSchema.referencedTableId);
+                            const displayCol = nestedRefSchema.find(c => c.id === colSchema.displayColId) || nestedRefSchema.find(c => c.label.toLowerCase() === 'name' || c.label.toLowerCase() === 'nome') || nestedRefSchema[0];
+                            displayText = `[Ref] ${nestedRefRecord[displayCol.id] || cellValue} (ID: ${cellValue})`;
+                        } else {
+                             displayText = `[Ref] ID: ${cellValue} (Registro não encontrado)`;
+                        }
+                    } else {
+                        displayText = `[Ref] ID: ${cellValue} (Limite profundidade)`;
+                    }
+                } else if (colSchema.type.startsWith('RefList:') && colSchema.referencedTableId) {
+                    displayText = `[RefList]`;
+                    contentContainer.appendChild(document.createTextNode(displayText));
+                    if (currentDepth + 1 <= maxDepth) {
+                        const nestedRelatedRecords = await tableLens.fetchRelatedRecords(relRec, colSchema.id); // Passa o registro atual da sub-tabela
+                        if (nestedRelatedRecords.length > 0) {
+                             const placeholderNode = Array.from(contentContainer.childNodes).find(node => node.nodeType === Node.TEXT_NODE && node.textContent.includes("[RefList]"));
+                             if(placeholderNode) placeholderNode.remove();
+                             await renderRelatedDataTable(nestedRelatedRecords, contentContainer, tableLens, currentDepth + 1, maxDepth);
+                        } else {
+                            contentContainer.appendChild(document.createTextNode(` (vazio)`));
+                        }
+                    } else {
+                         contentContainer.appendChild(document.createTextNode(` (limite profundidade)`));
+                    }
+                    displayText = ""; // Já tratado pelo contentContainer
+                } else if (Array.isArray(cellValue) && cellValue[0] === 'L') {
+                    displayText = `[Lista] ${cellValue.slice(1).join(', ')}`;
+                } else if (cellValue === null || cellValue === undefined) {
+                    displayText = '(vazio)';
+                    td.style.fontStyle = 'italic';
+                    td.style.color = '#999';
+                } else {
+                    displayText = String(cellValue);
+                }
+
+                if (displayText) contentContainer.appendChild(document.createTextNode(displayText));
+                td.appendChild(contentContainer);
+                applyGristCellStyles(td, colSchema, cellValue);
+            }
+        }
+        subTableContainer.appendChild(subTable);
+        parentCell.appendChild(subTableContainer);
     }
 
 
     async function initializeDebugWidget() {
-        // ... (início da função como antes) ...
         errorMessageEl.textContent = "";
         loadingMessageEl.style.display = 'block';
         tableInfoContainerEl.style.display = 'none';
@@ -88,7 +155,6 @@ document.addEventListener('DOMContentLoaded', function () {
             tableNameEl.textContent = `Tabela: ${currentTable.tableId}`;
             tableInfoContainerEl.style.display = 'block';
 
-            // Popular Schema (como antes)
             schemaTableBodyEl.innerHTML = "";
             columnCountEl.textContent = currentTable.schema.length;
             currentTable.schema.forEach(col => {
@@ -103,8 +169,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 row.insertCell().textContent = col.displayColId || '-';
             });
 
-
-            // Popular Registros
             recordsTableHeadEl.innerHTML = "";
             recordsTableBodyEl.innerHTML = "";
             recordCountEl.textContent = currentTable.records.length;
@@ -117,70 +181,82 @@ document.addEventListener('DOMContentLoaded', function () {
                     headerRow.appendChild(th);
                 });
 
-                for (const record of currentTable.records) { // Usando for...of para permitir await dentro do loop
+                for (const record of currentTable.records) {
                     const row = recordsTableBodyEl.insertRow();
                     row.className = 'record-row';
                     row.dataset.recordId = record.id;
+                    row.dataset.tableId = currentTable.tableId; // Adiciona tableId ao dataset
+                    record.gristHelper_tableId = currentTable.tableId; // Enriquece o objeto record
+
+
                     row.onclick = function() {
-                        alert(`Clicou na linha ID: ${this.dataset.recordId}\n(Placeholder para abrir gaveta de detalhes)`);
+                        alert(`Clicou na linha ID: ${this.dataset.recordId} da Tabela: ${this.dataset.tableId}\n(Placeholder para abrir gaveta de detalhes)`);
                     };
 
                     for (const colSchema of currentTable.schema) {
                         const cell = row.insertCell();
                         const cellValue = record[colSchema.id];
-                        let displayValue = cellValue;
+                        let cellContentContainer = document.createElement('div');
+                        let displayText = "";
 
                         if (colSchema.type.startsWith('Ref:') && typeof cellValue === 'number' && cellValue > 0 && colSchema.referencedTableId) {
-                            // Busca o registro referenciado para mostrar o displayCol (se houver)
-                            // ou apenas o ID se não houver displayCol
                             const relatedRecord = await tableLens.fetchRecordById(colSchema.referencedTableId, cellValue);
-                            if (relatedRecord && colSchema.displayColId && relatedRecord[colSchema.displayColId] !== undefined) {
-                                displayValue = `[Ref] ${relatedRecord[colSchema.displayColId]} (ID: ${cellValue})`;
+                            if (relatedRecord) {
+                                const relatedSchemaForRef = await tableLens.getTableSchema(colSchema.referencedTableId);
+                                const displayCol = relatedSchemaForRef.find(c => c.id === colSchema.displayColId) || relatedSchemaForRef.find(c => c.label.toLowerCase() === 'name' || c.label.toLowerCase() === 'nome') || relatedSchemaForRef[0];
+                                displayText = `[Ref] ${relatedRecord[displayCol?.id] || cellValue} (ID: ${cellValue})`;
                             } else {
-                                displayValue = `[Ref] ID: ${cellValue} (Tabela: ${colSchema.referencedTableId})`;
+                                displayText = `[Ref] ID: ${cellValue} (Registro não encontrado)`;
                             }
-                            // Poderia adicionar um link/botão para buscar e mostrar mais detalhes desta referência aqui
                         } else if (colSchema.type.startsWith('RefList:') && colSchema.referencedTableId) {
-                            displayValue = `[RefList] (clique para ver)`; // Placeholder
+                            displayText = `[RefList]`;
+                            cellContentContainer.appendChild(document.createTextNode(displayText));
                             const relatedRecords = await tableLens.fetchRelatedRecords(record, colSchema.id);
                             if (relatedRecords.length > 0) {
-                                const relatedSchema = await tableLens.getTableSchema(colSchema.referencedTableId); // Obter schema da tabela relacionada
-                                renderRelatedDataTable(relatedRecords, relatedSchema, cell); // Passa a célula atual como pai
-                                cell.style.padding = '0'; // Remover padding para a sub-tabela ocupar a célula
-                                displayValue = ""; // Limpa o texto placeholder se a tabela foi renderizada
+                                 const placeholderNode = Array.from(cellContentContainer.childNodes).find(node => node.nodeType === Node.TEXT_NODE && node.textContent.includes("[RefList]"));
+                                 if(placeholderNode) placeholderNode.remove();
+                                await renderRelatedDataTable(relatedRecords, cellContentContainer, tableLens, 1, 2); // Profundidade inicial 1, max 2
                             } else {
-                                displayValue = `[RefList] (vazio)`;
+                                 cellContentContainer.appendChild(document.createTextNode(` (vazio)`));
                             }
+                            displayText = ""; // Conteúdo já está em cellContentContainer
                         } else if (Array.isArray(cellValue) && cellValue[0] === 'L') {
-                            displayValue = `[Lista] ${cellValue.slice(1).join(', ')}`;
+                            displayText = `[Lista] ${cellValue.slice(1).join(', ')}`;
                         } else if (cellValue === null || cellValue === undefined) {
-                            displayValue = '(vazio)';
+                            displayText = '(vazio)';
                             cell.style.fontStyle = 'italic';
                             cell.style.color = '#999';
+                        } else {
+                            displayText = String(cellValue);
                         }
 
-                        if (displayValue) cell.appendChild(document.createTextNode(String(displayValue)));
+                        if (displayText) {
+                           cellContentContainer.insertBefore(document.createTextNode(displayText), cellContentContainer.firstChild);
+                        }
+                        cell.appendChild(cellContentContainer);
                         applyGristCellStyles(cell, colSchema, record[colSchema.id]);
 
                         const detail = document.createElement('div');
                         detail.className = 'cell-detail';
                         detail.innerHTML = `(Raw: <pre style="display:inline; padding:1px 2px; font-size:0.9em;">${JSON.stringify(record[colSchema.id])}</pre> Tipo: ${colSchema.type})`;
-                        if (displayValue) cell.appendChild(detail); // Só adiciona detail se houver displayValue
+                        cell.appendChild(detail);
                     }
                 }
             } else if (currentTable.schema.length === 0) {
-                // ... (tratamento de erro como antes)
+                recordsTableBodyEl.innerHTML = '<tr><td colspan="1">Nenhuma coluna definida.</td></tr>';
             } else {
-                // ... (tratamento de erro como antes)
+                recordsTableBodyEl.innerHTML = `<tr><td colspan="${currentTable.schema.length}">Nenhum registro.</td></tr>`;
             }
             loadingMessageEl.style.display = 'none';
 
         } catch (error) {
-            // ... (tratamento de erro como antes) ...
+            console.error("Erro ao inicializar widget de debug:", error);
+            errorMessageEl.textContent = `ERRO: ${error.message}. Veja o console.`;
+            loadingMessageEl.style.display = 'none';
         }
     }
 
     grist.ready({ requiredAccess: 'full' });
     grist.onRecord(initializeDebugWidget);
-    initializeDebugWidget();
+    initializeDebugWidget(); // Para carregar na primeira vez
 });
