@@ -178,6 +178,71 @@ const GristTableLens = function(gristInstance) {
             return null;
         }
     };
+	    this.fetchRelatedRecords = async function(primaryRecord, refColumnId, options = {}) {
+        if (!primaryRecord || !refColumnId) {
+            console.warn("GTL.fetchRelatedRecords: primaryRecord e refColumnId são obrigatórios.");
+            return [];
+        }
+
+        const refColumnSchema = (await this.getTableSchema(primaryRecord.gristHelper_tableId || (await _grist.selectedTable.getTableId())))
+                                .find(col => col.id === refColumnId);
+
+        if (!refColumnSchema) {
+            console.warn(`GTL.fetchRelatedRecords: Schema da coluna de referência '${refColumnId}' não encontrado.`);
+            return [];
+        }
+
+        const { referencedTableId } = refColumnSchema;
+        if (!referencedTableId) {
+            console.warn(`GTL.fetchRelatedRecords: Coluna '${refColumnId}' não é uma coluna de referência válida.`);
+            return [];
+        }
+
+        const refValue = primaryRecord[refColumnId];
+        let relatedRecordIds = [];
+
+        if (refColumnSchema.type.startsWith('Ref:') && typeof refValue === 'number' && refValue > 0) {
+            relatedRecordIds = [refValue];
+        } else if (refColumnSchema.type.startsWith('RefList:') && Array.isArray(refValue) && refValue[0] === 'L') {
+            relatedRecordIds = refValue.slice(1).filter(id => typeof id === 'number' && id > 0);
+        } else if (Array.isArray(refValue) && refValue.length > 0 && refValue.every(item => typeof item === 'number')) {
+            // Para o caso de uma coluna RefList já estar vindo como um array de números (sem o "L")
+             console.warn("GTL.fetchRelatedRecords: RefList recebida como array de números. Usando diretamente.");
+             relatedRecordIds = refValue.filter(id => id > 0);
+        }
+
+
+        if (relatedRecordIds.length === 0) {
+            return [];
+        }
+
+        try {
+            // Por enquanto, buscamos a tabela relacionada inteira e filtramos.
+            // Uma otimização futura seria buscar apenas os IDs necessários se a API permitir.
+            const allRelatedRecords = await this.fetchTableRecords(referencedTableId);
+            const relatedSchema = await this.getTableSchema(referencedTableId);
+
+            const filteredRecords = allRelatedRecords.filter(r => relatedRecordIds.includes(r.id));
+
+            // Se options.columnsForRelated for especificado, seleciona apenas essas colunas
+            if (options.columnsForRelated && Array.isArray(options.columnsForRelated) && options.columnsForRelated.length > 0) {
+                return filteredRecords.map(record => {
+                    const selectedData = { id: record.id }; // Sempre inclui o ID do registro relacionado
+                    options.columnsForRelated.forEach(colId => {
+                        if (record.hasOwnProperty(colId)) {
+                            selectedData[colId] = record[colId];
+                        }
+                    });
+                    return selectedData;
+                });
+            }
+
+            return filteredRecords.map(r => ({ ...r, gristHelper_tableId: referencedTableId, gristHelper_schema: relatedSchema })); // Adiciona info da tabela para uso posterior
+        } catch (error) {
+            console.error(`GTL.fetchRelatedRecords: Erro ao buscar registros relacionados para '${refColumnId}' da tabela '${referencedTableId}'.`, error);
+            return [];
+        }
+    };
 };
 if (typeof window !== 'undefined') {
     window.GristTableLens = GristTableLens;
