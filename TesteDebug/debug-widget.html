@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Grist TableLens Debug Widget</title>
+    <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+    <style>
+        body { font-family: sans-serif; margin: 10px; font-size: 14px; }
+        table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; vertical-align: top; }
+        th { background-color: #f0f0f0; }
+        .schema-table td, .records-table td { word-break: break-all; }
+        pre { background-color: #f5f5f5; padding: 5px; border-radius: 3px; font-size: 0.85em; white-space: pre-wrap; }
+        .cell-detail { font-size: 0.8em; color: #555; margin-top: 3px; }
+        .record-row:hover { background-color: #f9f9f9; cursor: pointer; }
+        h2, h3 { margin-top: 20px; border-bottom: 1px solid #eee; padding-bottom: 5px;}
+    </style>
+</head>
+<body>
+    <h1>Debug GristTableLens</h1>
+    <div id="loadingMessage">Carregando dados...</div>
+    <div id="tableInfoContainer" style="display:none;">
+        <h2 id="tableName">Nome da Tabela</h2>
+
+        <h3>Schema da Tabela (<span id="columnCount">0</span> colunas):</h3>
+        <table id="schemaTable">
+            <thead>
+                <tr>
+                    <th>ID da Coluna</th>
+                    <th>Label</th>
+                    <th>Tipo</th>
+                    <th>Fórmula?</th>
+                    <th>Choices</th>
+                    <th>Widget Options</th>
+                    <th>Ref. Tabela</th>
+                    <th>Display Col (Ref)</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+
+        <h3>Registros (<span id="recordCount">0</span> linhas):</h3>
+        <table id="recordsTable">
+            <thead></thead>
+            <tbody></tbody>
+        </table>
+    </div>
+    <div id="errorMessage" style="color:red; font-weight:bold;"></div>
+
+    <!-- Script da biblioteca GristTableLens -->
+    <!-- O caminho é relativo ao local do debug-widget.html -->
+    <script src="../../libraries/grist-table-lens/grist-table-lens.js"></script>
+
+    <!-- Script principal do widget de debug -->
+    <script src="debug-widget-main.js"></script>
+</body>
+</html>
