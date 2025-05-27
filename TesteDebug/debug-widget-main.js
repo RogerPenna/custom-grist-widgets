@@ -10,6 +10,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const recordsTableBodyEl = document.getElementById('recordsTable').querySelector('tbody');
     const errorMessageEl = document.getElementById('errorMessage');
 
+    let currentRenderedRecordId = null; // Para controlar se o registro atual já foi renderizado
+    let isRendering = false; // Flag para evitar renderizações concorrentes
+
     function applyGristCellStyles(cellElement, columnSchema, cellValue) {
         if (!columnSchema || !columnSchema.widgetOptions) return;
         const wo = columnSchema.widgetOptions;
@@ -34,17 +37,15 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         if (!relatedRecords || relatedRecords.length === 0) {
-            return; // Não adiciona nada se não houver registros
-        }
-        
-        // Usa o schema que foi adicionado aos relatedRecords em fetchRelatedRecords
-        const relatedSchema = relatedRecords[0]?.gristHelper_schema;
-        if(!relatedSchema || relatedSchema.length === 0) {
-            console.warn("Não foi possível obter o schema para a tabela relacionada.");
-            parentCell.innerHTML += '<div class="cell-detail"><em>(Schema da tabela relacionada não encontrado)</em></div>';
             return;
         }
-
+        
+        const relatedSchema = relatedRecords[0]?.gristHelper_schema;
+        if(!relatedSchema || relatedSchema.length === 0) {
+            console.warn("Não foi possível obter o schema para a tabela relacionada em renderRelatedDataTable.");
+            // Não adiciona mensagem de erro aqui para não poluir a célula se ela já tem conteúdo.
+            return;
+        }
 
         const subTableContainer = document.createElement('div');
         subTableContainer.style.marginTop = '5px';
@@ -80,15 +81,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 const td = subTr.insertCell();
                 td.style.padding = "4px";
                 const cellValue = relRec[colSchema.id];
-                let displayValue = cellValue;
-                let contentContainer = document.createElement('div'); // Para aninhar texto e sub-tabelas
+                let displayText = ""; // Modificado para displayText
+                let contentContainer = document.createElement('div');
 
                 if (colSchema.type.startsWith('Ref:') && typeof cellValue === 'number' && cellValue > 0 && colSchema.referencedTableId) {
-                    if (currentDepth + 1 <= maxDepth) { // Verifica profundidade antes de buscar
+                    if (currentDepth + 1 <= maxDepth) {
                         const nestedRefRecord = await tableLens.fetchRecordById(colSchema.referencedTableId, cellValue);
                         if (nestedRefRecord) {
                             const nestedRefSchema = await tableLens.getTableSchema(colSchema.referencedTableId);
-                            const displayCol = nestedRefSchema.find(c => c.id === colSchema.displayColId) || nestedRefSchema.find(c => c.label.toLowerCase() === 'name' || c.label.toLowerCase() === 'nome') || nestedRefSchema[0];
+                            const displayCol = nestedRefSchema.find(c => c.id === colSchema.displayColId) || nestedRefSchema.find(c => c.label.toLowerCase() === 'name' || c.label.toLowerCase() === 'nome') || (nestedRefSchema.length > 0 ? nestedRefSchema[0] : {id: 'id'}); // Fallback para ID se displayCol não for encontrado
                             displayText = `[Ref] ${nestedRefRecord[displayCol.id] || cellValue} (ID: ${cellValue})`;
                         } else {
                              displayText = `[Ref] ID: ${cellValue} (Registro não encontrado)`;
@@ -100,7 +101,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     displayText = `[RefList]`;
                     contentContainer.appendChild(document.createTextNode(displayText));
                     if (currentDepth + 1 <= maxDepth) {
-                        const nestedRelatedRecords = await tableLens.fetchRelatedRecords(relRec, colSchema.id); // Passa o registro atual da sub-tabela
+                        const nestedRelatedRecords = await tableLens.fetchRelatedRecords(relRec, colSchema.id);
                         if (nestedRelatedRecords.length > 0) {
                              const placeholderNode = Array.from(contentContainer.childNodes).find(node => node.nodeType === Node.TEXT_NODE && node.textContent.includes("[RefList]"));
                              if(placeholderNode) placeholderNode.remove();
@@ -111,7 +112,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     } else {
                          contentContainer.appendChild(document.createTextNode(` (limite profundidade)`));
                     }
-                    displayText = ""; // Já tratado pelo contentContainer
+                    displayText = "";
                 } else if (Array.isArray(cellValue) && cellValue[0] === 'L') {
                     displayText = `[Lista] ${cellValue.slice(1).join(', ')}`;
                 } else if (cellValue === null || cellValue === undefined) {
@@ -132,47 +133,61 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
 
-    async function initializeDebugWidget() {
-    console.log("DEBUG WIDGET: initializeDebugWidget() CHAMADO"); // NOVO LOG
-    errorMessageEl.textContent = "";
+    async function initializeDebugWidget(newRecord = null) { // Parâmetro para receber o registro do evento onRecord
+        console.log("DEBUG WIDGET: initializeDebugWidget() CHAMADO", newRecord ? `com registro ID: ${newRecord.id}` : "para carregamento inicial/sem registro");
+
+        if (isRendering) {
+            console.log("DEBUG WIDGET: Renderização já em progresso, pulando esta chamada.");
+            return;
+        }
+        isRendering = true;
+
+        // Limpa o conteúdo das tabelas e mensagens de erro ANTES de qualquer busca de dados
         errorMessageEl.textContent = "";
+        schemaTableBodyEl.innerHTML = "";
+        recordsTableHeadEl.innerHTML = "";
+        recordsTableBodyEl.innerHTML = "";
         loadingMessageEl.style.display = 'block';
         tableInfoContainerEl.style.display = 'none';
 
         try {
             if (typeof GristTableLens === 'undefined') {
                 errorMessageEl.textContent = "ERRO: Biblioteca GristTableLens não carregada.";
-                loadingMessageEl.style.display = 'none';
-                return;
+                isRendering = false; loadingMessageEl.style.display = 'none'; return;
             }
             const tableLens = new GristTableLens(grist);
-            const currentTable = await tableLens.getCurrentTableInfo();
-    // LOG PARA VERIFICAR OS DADOS BRUTOS RECEBIDOS
-    if (currentTable && currentTable.records) {
-        console.log("DEBUG WIDGET: Dados recebidos de tableLens.getCurrentTableInfo():");
-        console.log(" - ID da Tabela:", currentTable.tableId);
-        console.log(" - Número de registros recebidos:", currentTable.records.length);
-        console.log(" - IDs dos registros recebidos:", currentTable.records.map(r => r.id));
-        // Log mais detalhado dos primeiros registros, se houver muitos
-        // Cuidado ao logar objetos muito grandes, pode poluir o console.
-        // Fazendo uma cópia para evitar problemas com objetos proxy do Grist no console.
-        console.log(" - Amostra de registros (até 5):", JSON.parse(JSON.stringify(currentTable.records.slice(0, 5))));
-    } else {
-        console.error("DEBUG WIDGET: currentTable ou currentTable.records está indefinido após chamada a tableLens!");
-    }
-    // FIM DO LOG DE VERIFICAÇÃO
-            if (!currentTable) {
+
+            // Se newRecord foi passado (de onRecord), usamos ele, senão buscamos o atual
+            const currentTable = newRecord ? {
+                tableId: newRecord.gristHelper_tableId || (await grist.selectedTable.getTableId()), // Tenta pegar tableId do helper ou busca
+                schema: await tableLens.getTableSchema(newRecord.gristHelper_tableId || (await grist.selectedTable.getTableId())),
+                records: [newRecord] // Se for um onRecord, geralmente é para um único registro atualizado
+                                     // Para o widget de debug, queremos mostrar todos, então vamos rebuscar
+            } : await tableLens.getCurrentTableInfo();
+
+            // Para o widget de debug, sempre queremos a tabela completa.
+            // Se onRecord passou um único registro, vamos re-buscar todos para popular a tabela de debug.
+            // Em um widget real, você poderia usar o 'newRecord' para atualizar apenas aquela linha.
+            const fullTableData = await tableLens.getCurrentTableInfo();
+
+
+            if (!fullTableData || !fullTableData.records) {
                 errorMessageEl.textContent = "Nenhuma tabela selecionada ou dados não puderam ser carregados.";
-                loadingMessageEl.style.display = 'none';
-                return;
+                isRendering = false; loadingMessageEl.style.display = 'none'; return;
             }
 
-            tableNameEl.textContent = `Tabela: ${currentTable.tableId}`;
+            console.log("DEBUG WIDGET: Dados para renderizar (após getCurrentTableInfo):");
+            console.log(" - ID da Tabela:", fullTableData.tableId);
+            console.log(" - Número de registros:", fullTableData.records.length);
+            console.log(" - IDs dos registros:", fullTableData.records.map(r => r.id));
+            console.log(" - Amostra (até 5):", JSON.parse(JSON.stringify(fullTableData.records.slice(0, 5))));
+
+
+            tableNameEl.textContent = `Tabela: ${fullTableData.tableId}`;
             tableInfoContainerEl.style.display = 'block';
 
-            schemaTableBodyEl.innerHTML = "";
-            columnCountEl.textContent = currentTable.schema.length;
-            currentTable.schema.forEach(col => {
+            columnCountEl.textContent = fullTableData.schema.length;
+            fullTableData.schema.forEach(col => {
                 const row = schemaTableBodyEl.insertRow();
                 row.insertCell().textContent = col.id;
                 row.insertCell().textContent = col.label;
@@ -184,31 +199,28 @@ document.addEventListener('DOMContentLoaded', function () {
                 row.insertCell().textContent = col.displayColId || '-';
             });
 
-            recordsTableHeadEl.innerHTML = "";
-            recordsTableBodyEl.innerHTML = "";
-            recordCountEl.textContent = currentTable.records.length;
+            recordCountEl.textContent = fullTableData.records.length;
 
-            if (currentTable.records.length > 0 && currentTable.schema.length > 0) {
+            if (fullTableData.records.length > 0 && fullTableData.schema.length > 0) {
                 const headerRow = recordsTableHeadEl.insertRow();
-                currentTable.schema.forEach(col => {
+                fullTableData.schema.forEach(col => {
                     const th = document.createElement('th');
                     th.textContent = col.label;
                     headerRow.appendChild(th);
                 });
 
-                for (const record of currentTable.records) {
+                for (const record of fullTableData.records) {
                     const row = recordsTableBodyEl.insertRow();
                     row.className = 'record-row';
                     row.dataset.recordId = record.id;
-                    row.dataset.tableId = currentTable.tableId; // Adiciona tableId ao dataset
-                    record.gristHelper_tableId = currentTable.tableId; // Enriquece o objeto record
-
+                    row.dataset.tableId = fullTableData.tableId;
+                    record.gristHelper_tableId = fullTableData.tableId;
 
                     row.onclick = function() {
                         alert(`Clicou na linha ID: ${this.dataset.recordId} da Tabela: ${this.dataset.tableId}\n(Placeholder para abrir gaveta de detalhes)`);
                     };
 
-                    for (const colSchema of currentTable.schema) {
+                    for (const colSchema of fullTableData.schema) {
                         const cell = row.insertCell();
                         const cellValue = record[colSchema.id];
                         let cellContentContainer = document.createElement('div');
@@ -218,7 +230,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             const relatedRecord = await tableLens.fetchRecordById(colSchema.referencedTableId, cellValue);
                             if (relatedRecord) {
                                 const relatedSchemaForRef = await tableLens.getTableSchema(colSchema.referencedTableId);
-                                const displayCol = relatedSchemaForRef.find(c => c.id === colSchema.displayColId) || relatedSchemaForRef.find(c => c.label.toLowerCase() === 'name' || c.label.toLowerCase() === 'nome') || relatedSchemaForRef[0];
+                                const displayCol = relatedSchemaForRef.find(c => c.id === colSchema.displayColId) || relatedSchemaForRef.find(c => c.label.toLowerCase() === 'name' || c.label.toLowerCase() === 'nome') || (relatedSchemaForRef.length > 0 ? relatedSchemaForRef[0] : {id:'id'});
                                 displayText = `[Ref] ${relatedRecord[displayCol?.id] || cellValue} (ID: ${cellValue})`;
                             } else {
                                 displayText = `[Ref] ID: ${cellValue} (Registro não encontrado)`;
@@ -230,11 +242,11 @@ document.addEventListener('DOMContentLoaded', function () {
                             if (relatedRecords.length > 0) {
                                  const placeholderNode = Array.from(cellContentContainer.childNodes).find(node => node.nodeType === Node.TEXT_NODE && node.textContent.includes("[RefList]"));
                                  if(placeholderNode) placeholderNode.remove();
-                                await renderRelatedDataTable(relatedRecords, cellContentContainer, tableLens, 1, 2); // Profundidade inicial 1, max 2
+                                await renderRelatedDataTable(relatedRecords, cellContentContainer, tableLens, 1, 2);
                             } else {
                                  cellContentContainer.appendChild(document.createTextNode(` (vazio)`));
                             }
-                            displayText = ""; // Conteúdo já está em cellContentContainer
+                            displayText = "";
                         } else if (Array.isArray(cellValue) && cellValue[0] === 'L') {
                             displayText = `[Lista] ${cellValue.slice(1).join(', ')}`;
                         } else if (cellValue === null || cellValue === undefined) {
@@ -257,21 +269,42 @@ document.addEventListener('DOMContentLoaded', function () {
                         cell.appendChild(detail);
                     }
                 }
-            } else if (currentTable.schema.length === 0) {
+            } else if (fullTableData.schema.length === 0) {
                 recordsTableBodyEl.innerHTML = '<tr><td colspan="1">Nenhuma coluna definida.</td></tr>';
             } else {
-                recordsTableBodyEl.innerHTML = `<tr><td colspan="${currentTable.schema.length}">Nenhum registro.</td></tr>`;
+                recordsTableBodyEl.innerHTML = `<tr><td colspan="${fullTableData.schema.length || 1}">Nenhum registro.</td></tr>`;
             }
-            loadingMessageEl.style.display = 'none';
+            
 
         } catch (error) {
             console.error("Erro ao inicializar widget de debug:", error);
             errorMessageEl.textContent = `ERRO: ${error.message}. Veja o console.`;
+        } finally {
             loadingMessageEl.style.display = 'none';
+            isRendering = false; // Libera a flag de renderização
+            console.log("DEBUG WIDGET: initializeDebugWidget() CONCLUÍDO");
         }
     }
 
     grist.ready({ requiredAccess: 'full' });
-    grist.onRecord(initializeDebugWidget);
-    initializeDebugWidget(); // Para carregar na primeira vez
+
+    let debounceTimer;
+    grist.onRecord(async (record, mappings) => {
+        console.log("DEBUG WIDGET: grist.onRecord CHAMADO. Record ID:", record?.id);
+        // Adiciona um pequeno debounce para evitar múltiplas chamadas rápidas de onRecord
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(async () => {
+            // Passa o registro do evento para initializeDebugWidget.
+            // A lógica interna de initializeDebugWidget pode decidir se precisa rebuscar tudo
+            // ou se pode usar o 'record' para uma atualização mais direcionada (não implementado ainda para este debug widget).
+            // Por agora, ele sempre vai rebuscar a tabela inteira via getCurrentTableInfo.
+            await initializeDebugWidget(record);
+        }, 50); // 50ms debounce
+    });
+
+    // Chamada inicial
+    (async () => {
+        console.log("DEBUG WIDGET: Chamada inicial de initializeDebugWidget após DOMContentLoaded e grist.ready");
+        await initializeDebugWidget();
+    })();
 });
