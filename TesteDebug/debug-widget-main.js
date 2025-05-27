@@ -133,6 +133,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
     async function initializeDebugWidget() {
+    console.log("DEBUG WIDGET: initializeDebugWidget() CHAMADO"); // NOVO LOG
+    errorMessageEl.textContent = "";
         errorMessageEl.textContent = "";
         loadingMessageEl.style.display = 'block';
         tableInfoContainerEl.style.display = 'none';
@@ -145,7 +147,20 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             const tableLens = new GristTableLens(grist);
             const currentTable = await tableLens.getCurrentTableInfo();
-
+    // LOG PARA VERIFICAR OS DADOS BRUTOS RECEBIDOS
+    if (currentTable && currentTable.records) {
+        console.log("DEBUG WIDGET: Dados recebidos de tableLens.getCurrentTableInfo():");
+        console.log(" - ID da Tabela:", currentTable.tableId);
+        console.log(" - Número de registros recebidos:", currentTable.records.length);
+        console.log(" - IDs dos registros recebidos:", currentTable.records.map(r => r.id));
+        // Log mais detalhado dos primeiros registros, se houver muitos
+        // Cuidado ao logar objetos muito grandes, pode poluir o console.
+        // Fazendo uma cópia para evitar problemas com objetos proxy do Grist no console.
+        console.log(" - Amostra de registros (até 5):", JSON.parse(JSON.stringify(currentTable.records.slice(0, 5))));
+    } else {
+        console.error("DEBUG WIDGET: currentTable ou currentTable.records está indefinido após chamada a tableLens!");
+    }
+    // FIM DO LOG DE VERIFICAÇÃO
             if (!currentTable) {
                 errorMessageEl.textContent = "Nenhuma tabela selecionada ou dados não puderam ser carregados.";
                 loadingMessageEl.style.display = 'none';
