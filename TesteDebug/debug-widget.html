@@ -14,21 +14,10 @@
         .cell-detail { font-size: 0.8em; color: #555; margin-top: 3px; }
         .record-row:hover { background-color: #f9f9f9; cursor: pointer; }
         h2, h3 { margin-top: 20px; border-bottom: 1px solid #eee; padding-bottom: 5px;}
-        /* Estilos para sub-tabelas */
-        #recordsTable td div > table { /* Seleciona tabelas diretamente dentro de um div na célula */
-            margin-top: 5px;
-            border: 1px dashed #aaa !important; /* !important para sobrescrever outros borders da tabela */
-            font-size: 0.9em;
-            background-color: #fdfdfd;
-        }
-         #recordsTable td div > table th,
-         #recordsTable td div > table td {
-            padding: 4px !important;
-            border: 1px dotted #ccc !important;
-         }
-         #recordsTable td div > table th {
-            background-color: #e9e9e9 !important;
-         }
+        #recordsTable td div > table { margin-top: 5px; border: 1px dashed #aaa !important; font-size: 0.9em; background-color: #fdfdfd; }
+        #recordsTable td div > table th,
+        #recordsTable td div > table td { padding: 4px !important; border: 1px dotted #ccc !important; }
+        #recordsTable td div > table th { background-color: #e9e9e9 !important; }
     </style>
 </head>
 <body>
@@ -36,24 +25,16 @@
     <div id="loadingMessage">Carregando dados...</div>
     <div id="tableInfoContainer" style="display:none;">
         <h2 id="tableName">Nome da Tabela</h2>
-
         <h3>Schema da Tabela (<span id="columnCount">0</span> colunas):</h3>
         <table id="schemaTable">
             <thead>
                 <tr>
-                    <th>ID da Coluna</th>
-                    <th>Label</th>
-                    <th>Tipo</th>
-                    <th>Fórmula?</th>
-                    <th>Choices</th>
-                    <th>Widget Options</th>
-                    <th>Ref. Tabela</th>
-                    <th>Display Col (Ref)</th>
+                    <th>ID da Coluna</th><th>Label</th><th>Tipo</th><th>Fórmula?</th>
+                    <th>Choices</th><th>Widget Options</th><th>Ref. Tabela</th><th>Display Col (Ref)</th>
                 </tr>
             </thead>
             <tbody></tbody>
         </table>
-
         <h3>Registros (<span id="recordCount">0</span> linhas):</h3>
         <table id="recordsTable">
             <thead></thead>

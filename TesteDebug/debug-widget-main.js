@@ -10,8 +10,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const recordsTableBodyEl = document.getElementById('recordsTable').querySelector('tbody');
     const errorMessageEl = document.getElementById('errorMessage');
 
-    let currentRenderedRecordId = null; // Para controlar se o registro atual já foi renderizado
-    let isRendering = false; // Flag para evitar renderizações concorrentes
+    let lastProcessedRecordIdForOnRecord = undefined; // Usar undefined para distinguir de null (nenhum registro selecionado)
+    let isRendering = false;
+    let debounceTimer;
+
 
     function applyGristCellStyles(cellElement, columnSchema, cellValue) {
         if (!columnSchema || !columnSchema.widgetOptions) return;
@@ -43,7 +45,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const relatedSchema = relatedRecords[0]?.gristHelper_schema;
         if(!relatedSchema || relatedSchema.length === 0) {
             console.warn("Não foi possível obter o schema para a tabela relacionada em renderRelatedDataTable.");
-            // Não adiciona mensagem de erro aqui para não poluir a célula se ela já tem conteúdo.
             return;
         }
 
@@ -81,7 +82,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const td = subTr.insertCell();
                 td.style.padding = "4px";
                 const cellValue = relRec[colSchema.id];
-                let displayText = ""; // Modificado para displayText
+                let displayText = "";
                 let contentContainer = document.createElement('div');
 
                 if (colSchema.type.startsWith('Ref:') && typeof cellValue === 'number' && cellValue > 0 && colSchema.referencedTableId) {
@@ -89,8 +90,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         const nestedRefRecord = await tableLens.fetchRecordById(colSchema.referencedTableId, cellValue);
                         if (nestedRefRecord) {
                             const nestedRefSchema = await tableLens.getTableSchema(colSchema.referencedTableId);
-                            const displayCol = nestedRefSchema.find(c => c.id === colSchema.displayColId) || nestedRefSchema.find(c => c.label.toLowerCase() === 'name' || c.label.toLowerCase() === 'nome') || (nestedRefSchema.length > 0 ? nestedRefSchema[0] : {id: 'id'}); // Fallback para ID se displayCol não for encontrado
-                            displayText = `[Ref] ${nestedRefRecord[displayCol.id] || cellValue} (ID: ${cellValue})`;
+                            const displayCol = nestedRefSchema.find(c => c.id === colSchema.displayColId) || nestedRefSchema.find(c => c.label.toLowerCase() === 'name' || c.label.toLowerCase() === 'nome') || (nestedRefSchema.length > 0 ? nestedRefSchema[0] : {id: 'id'});
+                            displayText = `[Ref] ${nestedRefRecord[displayCol?.id] || cellValue} (ID: ${cellValue})`;
                         } else {
                              displayText = `[Ref] ID: ${cellValue} (Registro não encontrado)`;
                         }
@@ -133,61 +134,47 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
 
-    async function initializeDebugWidget(newRecord = null) { // Parâmetro para receber o registro do evento onRecord
-        console.log("DEBUG WIDGET: initializeDebugWidget() CHAMADO", newRecord ? `com registro ID: ${newRecord.id}` : "para carregamento inicial/sem registro");
+    async function initializeDebugWidget() {
+        const callTimestamp = Date.now();
+        console.log(`DEBUG WIDGET: initializeDebugWidget() INICIADO [${callTimestamp}]`);
 
         if (isRendering) {
-            console.log("DEBUG WIDGET: Renderização já em progresso, pulando esta chamada.");
+            console.warn(`DEBUG WIDGET: Renderização já em progresso [${callTimestamp}], pulando.`);
             return;
         }
         isRendering = true;
 
-        // Limpa o conteúdo das tabelas e mensagens de erro ANTES de qualquer busca de dados
         errorMessageEl.textContent = "";
-        schemaTableBodyEl.innerHTML = "";
-        recordsTableHeadEl.innerHTML = "";
-        recordsTableBodyEl.innerHTML = "";
         loadingMessageEl.style.display = 'block';
         tableInfoContainerEl.style.display = 'none';
+        
+        // Limpeza agressiva
+        while (schemaTableBodyEl.firstChild) schemaTableBodyEl.removeChild(schemaTableBodyEl.firstChild);
+        while (recordsTableHeadEl.firstChild) recordsTableHeadEl.removeChild(recordsTableHeadEl.firstChild);
+        while (recordsTableBodyEl.firstChild) recordsTableBodyEl.removeChild(recordsTableBodyEl.firstChild);
 
         try {
             if (typeof GristTableLens === 'undefined') {
                 errorMessageEl.textContent = "ERRO: Biblioteca GristTableLens não carregada.";
-                isRendering = false; loadingMessageEl.style.display = 'none'; return;
+                throw new Error("GristTableLens not loaded"); // Lança erro para cair no finally
             }
             const tableLens = new GristTableLens(grist);
+            const currentTable = await tableLens.getCurrentTableInfo();
 
-            // Se newRecord foi passado (de onRecord), usamos ele, senão buscamos o atual
-            const currentTable = newRecord ? {
-                tableId: newRecord.gristHelper_tableId || (await grist.selectedTable.getTableId()), // Tenta pegar tableId do helper ou busca
-                schema: await tableLens.getTableSchema(newRecord.gristHelper_tableId || (await grist.selectedTable.getTableId())),
-                records: [newRecord] // Se for um onRecord, geralmente é para um único registro atualizado
-                                     // Para o widget de debug, queremos mostrar todos, então vamos rebuscar
-            } : await tableLens.getCurrentTableInfo();
-
-            // Para o widget de debug, sempre queremos a tabela completa.
-            // Se onRecord passou um único registro, vamos re-buscar todos para popular a tabela de debug.
-            // Em um widget real, você poderia usar o 'newRecord' para atualizar apenas aquela linha.
-            const fullTableData = await tableLens.getCurrentTableInfo();
-
-
-            if (!fullTableData || !fullTableData.records) {
+            if (!currentTable || !currentTable.records) {
                 errorMessageEl.textContent = "Nenhuma tabela selecionada ou dados não puderam ser carregados.";
-                isRendering = false; loadingMessageEl.style.display = 'none'; return;
+                throw new Error("No table data from GristTableLens");
             }
 
-            console.log("DEBUG WIDGET: Dados para renderizar (após getCurrentTableInfo):");
-            console.log(" - ID da Tabela:", fullTableData.tableId);
-            console.log(" - Número de registros:", fullTableData.records.length);
-            console.log(" - IDs dos registros:", fullTableData.records.map(r => r.id));
-            console.log(" - Amostra (até 5):", JSON.parse(JSON.stringify(fullTableData.records.slice(0, 5))));
+            console.log(`DEBUG WIDGET [${callTimestamp}]: Dados para renderizar: Tabela: ${currentTable.tableId}, Registros: ${currentTable.records.length}, IDs: ${currentTable.records.map(r => r.id).join(', ')}`);
+            // console.log(" - Amostra (até 5):", JSON.parse(JSON.stringify(currentTable.records.slice(0, 5))));
 
 
-            tableNameEl.textContent = `Tabela: ${fullTableData.tableId}`;
+            tableNameEl.textContent = `Tabela: ${currentTable.tableId}`;
             tableInfoContainerEl.style.display = 'block';
 
-            columnCountEl.textContent = fullTableData.schema.length;
-            fullTableData.schema.forEach(col => {
+            columnCountEl.textContent = currentTable.schema.length;
+            currentTable.schema.forEach(col => {
                 const row = schemaTableBodyEl.insertRow();
                 row.insertCell().textContent = col.id;
                 row.insertCell().textContent = col.label;
@@ -199,28 +186,28 @@ document.addEventListener('DOMContentLoaded', function () {
                 row.insertCell().textContent = col.displayColId || '-';
             });
 
-            recordCountEl.textContent = fullTableData.records.length;
+            recordCountEl.textContent = currentTable.records.length;
 
-            if (fullTableData.records.length > 0 && fullTableData.schema.length > 0) {
+            if (currentTable.records.length > 0 && currentTable.schema.length > 0) {
                 const headerRow = recordsTableHeadEl.insertRow();
-                fullTableData.schema.forEach(col => {
+                currentTable.schema.forEach(col => {
                     const th = document.createElement('th');
                     th.textContent = col.label;
                     headerRow.appendChild(th);
                 });
 
-                for (const record of fullTableData.records) {
+                for (const record of currentTable.records) {
                     const row = recordsTableBodyEl.insertRow();
                     row.className = 'record-row';
                     row.dataset.recordId = record.id;
-                    row.dataset.tableId = fullTableData.tableId;
-                    record.gristHelper_tableId = fullTableData.tableId;
+                    row.dataset.tableId = currentTable.tableId;
+                    record.gristHelper_tableId = currentTable.tableId;
 
                     row.onclick = function() {
                         alert(`Clicou na linha ID: ${this.dataset.recordId} da Tabela: ${this.dataset.tableId}\n(Placeholder para abrir gaveta de detalhes)`);
                     };
 
-                    for (const colSchema of fullTableData.schema) {
+                    for (const colSchema of currentTable.schema) {
                         const cell = row.insertCell();
                         const cellValue = record[colSchema.id];
                         let cellContentContainer = document.createElement('div');
@@ -269,42 +256,53 @@ document.addEventListener('DOMContentLoaded', function () {
                         cell.appendChild(detail);
                     }
                 }
-            } else if (fullTableData.schema.length === 0) {
+                if (recordsTableBodyEl.rows.length !== currentTable.records.length) {
+                    console.error(`DISCREPÂNCIA APÓS RENDERIZAÇÃO [${callTimestamp}]! Esperado: ${currentTable.records.length}, DOM: ${recordsTableBodyEl.rows.length}`);
+                 }
+            } else if (currentTable.schema.length === 0) {
                 recordsTableBodyEl.innerHTML = '<tr><td colspan="1">Nenhuma coluna definida.</td></tr>';
             } else {
-                recordsTableBodyEl.innerHTML = `<tr><td colspan="${fullTableData.schema.length || 1}">Nenhum registro.</td></tr>`;
+                recordsTableBodyEl.innerHTML = `<tr><td colspan="${currentTable.schema.length || 1}">Nenhum registro.</td></tr>`;
             }
             
-
         } catch (error) {
-            console.error("Erro ao inicializar widget de debug:", error);
+            console.error(`Erro em initializeDebugWidget [${callTimestamp}]:`, error);
             errorMessageEl.textContent = `ERRO: ${error.message}. Veja o console.`;
         } finally {
             loadingMessageEl.style.display = 'none';
-            isRendering = false; // Libera a flag de renderização
-            console.log("DEBUG WIDGET: initializeDebugWidget() CONCLUÍDO");
+            isRendering = false;
+            console.log(`DEBUG WIDGET: initializeDebugWidget() CONCLUÍDO [${callTimestamp}]`);
         }
     }
 
     grist.ready({ requiredAccess: 'full' });
 
-    let debounceTimer;
-    grist.onRecord(async (record, mappings) => {
-        console.log("DEBUG WIDGET: grist.onRecord CHAMADO. Record ID:", record?.id);
-        // Adiciona um pequeno debounce para evitar múltiplas chamadas rápidas de onRecord
+    grist.onRecord(async (record) => {
+        const currentId = record ? record.id : null;
+        console.log(`DEBUG WIDGET: grist.onRecord disparado. ID do Registro: ${currentId}. Último ID Processado: ${lastProcessedRecordIdForOnRecord}`);
+
+        if (currentId === lastProcessedRecordIdForOnRecord) {
+            console.log("DEBUG WIDGET: onRecord - Mesmo ID ou ambos nulos, pulando re-renderização desnecessária.");
+            return;
+        }
+        lastProcessedRecordIdForOnRecord = currentId;
+
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(async () => {
-            // Passa o registro do evento para initializeDebugWidget.
-            // A lógica interna de initializeDebugWidget pode decidir se precisa rebuscar tudo
-            // ou se pode usar o 'record' para uma atualização mais direcionada (não implementado ainda para este debug widget).
-            // Por agora, ele sempre vai rebuscar a tabela inteira via getCurrentTableInfo.
-            await initializeDebugWidget(record);
-        }, 50); // 50ms debounce
+            console.log(`DEBUG WIDGET: Timeout do onRecord. Chamando initializeDebugWidget para ID: ${lastProcessedRecordIdForOnRecord}`);
+            await initializeDebugWidget(); // Sempre busca a tabela inteira para o debug widget
+        }, 150); // Aumentado o debounce para dar mais margem
     });
 
-    // Chamada inicial
-    (async () => {
-        console.log("DEBUG WIDGET: Chamada inicial de initializeDebugWidget após DOMContentLoaded e grist.ready");
-        await initializeDebugWidget();
-    })();
+    // Chamada inicial com um pequeno atraso para dar prioridade ao primeiro onRecord, se ocorrer
+    setTimeout(async () => {
+        // Só faz a chamada inicial se onRecord ainda não tiver definido um ID (ou seja, não processou nada ainda)
+        // E se não houver uma renderização em andamento.
+        if (lastProcessedRecordIdForOnRecord === undefined && !isRendering) {
+            console.log("DEBUG WIDGET: Fazendo chamada inicial a initializeDebugWidget.");
+            await initializeDebugWidget();
+        } else {
+            console.log("DEBUG WIDGET: Pulando chamada inicial (onRecord já pode ter processado ou renderização em progresso).");
+        }
+    }, 250); // Aumentado o atraso para a chamada inicial
 });

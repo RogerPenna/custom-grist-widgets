@@ -58,9 +58,9 @@ const GristTableLens = function(gristInstance) {
         if (!colData || typeof colData.id === 'undefined' || colData.id === null) { console.warn("GTL._colDataToRows: colData inválido."); return []; }
         const rows = []; const keys = Object.keys(colData);
         if (keys.length === 0 || !colData[keys[0]] || !Array.isArray(colData[keys[0]])) { console.warn("GTL._colDataToRows: colData sem chaves ou primeira chave não é array."); return []; }
-        const numRows = colData.id.length; // Usa colData.id.length como referência confiável para o número de linhas
+        const numRows = colData.id.length;
         for (let i = 0; i < numRows; i++) {
-            const r = { id: colData.id[i] }; // Garante que 'id' seja uma propriedade da linha
+            const r = { id: colData.id[i] };
             keys.forEach(k => { if (k !== 'id') r[k] = colData[k][i]; });
             rows.push(r);
         }
@@ -90,11 +90,7 @@ const GristTableLens = function(gristInstance) {
         if (!tableId) { console.warn("GTL.getCurrentTableInfo: Nenhuma tabela selecionada."); return null; }
         const schema = await this.getTableSchema(tableId);
         const records = await this.fetchTableRecords(tableId);
-        return {
-            tableId, // tableId (string)
-            schema,  // array de objetos de coluna
-            records  // array de objetos de linha
-        };
+        return { tableId, schema, records };
     };
 
      this.listAllTables = async function() {
@@ -110,7 +106,6 @@ const GristTableLens = function(gristInstance) {
              console.error("GTL.fetchRecordById: tableId e recordId são obrigatórios."); return null;
         }
         try {
-            // console.warn(`GTL.fetchRecordById: Buscando registro ${recordId} da tabela ${tableId} (buscando tabela inteira).`);
             const records = await this.fetchTableRecords(tableId);
             return records.find(r => r.id === recordId) || null;
         } catch (error) {
@@ -124,8 +119,6 @@ const GristTableLens = function(gristInstance) {
             console.warn("GTL.fetchRelatedRecords: primaryRecord e refColumnId são obrigatórios.");
             return [];
         }
-        // Tenta obter o tableId do primaryRecord se ele tiver sido enriquecido anteriormente,
-        // caso contrário, assume a tabela atualmente selecionada (pode não ser correto para todos os casos de uso profundos)
         const primaryTableId = primaryRecord.gristHelper_tableId || (await _grist.selectedTable.getTableId());
         if (!primaryTableId) {
             console.warn("GTL.fetchRelatedRecords: Não foi possível determinar o tableId do registro primário.");
@@ -162,7 +155,7 @@ const GristTableLens = function(gristInstance) {
 
         try {
             const allRelatedRecordsRaw = await this.fetchTableRecords(referencedTableId);
-            const relatedSchema = await this.getTableSchema(referencedTableId); // Pega o schema da tabela relacionada
+            const relatedSchema = await this.getTableSchema(referencedTableId);
 
             const filteredRecords = allRelatedRecordsRaw.filter(r => relatedRecordIds.includes(r.id));
 
