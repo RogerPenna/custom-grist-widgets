@@ -51,51 +51,49 @@ const GristTableLens = function(gristInstance) {
         const allEntries = _metaState.columnsAndRules;
         const numEntries = allEntries.id.length;
         const columnsOutput = [];
-        const rulesDefinitionsById = new Map();
+        const rulesDefinitionsFromMeta = new Map();
 
         const tableEntries = [];
         for (let i = 0; i < numEntries; i++) {
             if (String(allEntries.parentId[i]) === String(numericTableId)) {
                 const entry = {};
                 Object.keys(allEntries).forEach(key => {
-                    if (Array.isArray(allEntries[key])) {
+                    if (Array.isArray(allEntries[key]) && allEntries[key].length > i) { // Checa se o índice é válido
                         entry[key] = allEntries[key][i];
+                    } else if (!Array.isArray(allEntries[key])) { // Para propriedades que não são arrays (raro em _grist_Tables_column)
+                        entry[key] = allEntries[key];
                     }
                 });
-                tableEntries.push(entry);
+                if (Object.keys(entry).length > 0) tableEntries.push(entry); // Adiciona apenas se o entry foi populado
             }
         }
 
         tableEntries.forEach(entry => {
-            const entryId = String(entry.id);
-            // Identifica uma linha de regra se: type está vazio/nulo E tem uma fórmula E o colId parece um helper de regra
-            // Ou, de forma mais genérica, se é uma coluna helper (começa com gristHelper_) e tem uma fórmula, pode ser uma regra.
-            // A chave é que as colunas de dados reais têm um 'type' significativo.
-            const isRuleDefinition = (!entry.type || entry.type === "Any") && entry.formula && entry.colId.startsWith("gristHelper_ConditionalRule");
+            const entryNumId = String(entry.id);
+            const entryColId = String(entry.colId);
 
-            if (isRuleDefinition) {
+            // Identifica uma regra se o colId começa com gristHelper_ConditionalRule e tem uma fórmula
+            if (entryColId && entryColId.startsWith("gristHelper_ConditionalRule") && entry.formula) {
                 let ruleStyle = {};
                 if (entry.widgetOptions) {
-                    try { ruleStyle = JSON.parse(entry.widgetOptions); } catch (e) { console.warn(`GTL: JSON inválido em widgetOptions para regra ID ${entryId}`, entry.widgetOptions); }
+                    try { ruleStyle = JSON.parse(entry.widgetOptions); }
+                    catch (e) { console.warn(`GTL: JSON inválido em widgetOptions para regra ID ${entryNumId} (${entryColId})`, entry.widgetOptions); }
                 }
-                rulesDefinitionsById.set(entryId, { // O ID da regra é o 'id' numérico da sua linha
-                    id: entryId,
-                    helperColumnId: entry.colId,      // O nome da coluna booleana no registro de dados (ex: "gristHelper_ConditionalRule")
-                    conditionFormula: entry.formula,  // A fórmula da condição (para referência/debug)
-                    style: ruleStyle                  // O estilo a ser aplicado se a coluna helper for true
+                rulesDefinitionsFromMeta.set(entryNumId, {
+                    id: entryNumId,
+                    helperColumnId: entryColId,
+                    conditionFormula: entry.formula,
+                    style: ruleStyle
                 });
             }
         });
 
         tableEntries.forEach(entry => {
-            // Uma coluna de dados real tem um 'type' preenchido (que não seja 'Any' a menos que seja um Lookup Column que não comece com gristHelper_)
-            // A distinção mais simples: type não é vazio. Regras têm type vazio ou 'Any' e colId de helper.
-            const isDataColumn = entry.type && entry.type.trim() !== "";
+            // Uma coluna de dados real tem um 'type' preenchido e não é um helper óbvio
+            const isDataColumn = entry.type && entry.type.trim() !== "" && entry.colId && !String(entry.colId).startsWith("gristHelper_");
 
             if (isDataColumn) {
                 const colId = String(entry.colId);
-                if (colId.startsWith("gristHelper_")) return; // Ignora colunas helper que não são regras (como as de display para refs)
-
                 let referencedTableId = null;
                 if (entry.type.startsWith('Ref:') || entry.type.startsWith('RefList:')) {
                     referencedTableId = entry.type.split(':')[1];
@@ -107,7 +105,7 @@ const GristTableLens = function(gristInstance) {
                 else if (entry.choices) { const raw = entry.choices; if (Array.isArray(raw)) { choices = raw[0] === 'L' ? raw.slice(1) : raw; } else if (typeof raw === 'string' && raw.startsWith('L')) { choices = raw.substring(1).split(','); } }
                 
                 let displayColIdForRef = null;
-                if (entry.displayCol != null) {
+                if (entry.displayCol != null && entry.displayCol !== 0) { // displayCol é o ID numérico da linha da coluna de display
                     const displayColEntry = tableEntries.find(e => String(e.id) === String(entry.displayCol));
                     if (displayColEntry) {
                         displayColIdForRef = String(displayColEntry.colId);
@@ -115,14 +113,15 @@ const GristTableLens = function(gristInstance) {
                 }
 
                 const conditionalFormattingRules = [];
-                const ruleIdList = entry.rules; // Vem da coluna 'rules' em _grist_Tables_column
+                const ruleIdList = entry.rules; // Coluna 'rules' da linha da coluna de DADOS
+                
                 if (Array.isArray(ruleIdList) && ruleIdList[0] === 'L') {
-                    ruleIdList.slice(1).forEach(ruleId => { // ruleId aqui é o ID numérico da linha da regra
-                        const ruleDef = rulesDefinitionsById.get(String(ruleId));
+                    ruleIdList.slice(1).forEach(ruleNumericId => {
+                        const ruleDef = rulesDefinitionsFromMeta.get(String(ruleNumericId));
                         if (ruleDef) {
                             conditionalFormattingRules.push(ruleDef);
                         } else {
-                            // console.warn(`GTL: Definição para regra ID ${ruleId} (coluna ${colId}) não encontrada no rulesDefinitionsById. Pode ser uma regra sem estilo ou um helper diferente.`);
+                            // console.warn(`GTL: Definição para regra ID ${ruleNumericId} (associada à coluna ${colId}) não encontrada.`);
                         }
                     });
                 }
@@ -138,7 +137,7 @@ const GristTableLens = function(gristInstance) {
                     choices,
                     referencedTableId,
                     displayColId: displayColIdForRef,
-                    conditionalFormattingRules // Array de objetos de regra {id, helperColumnId, conditionFormula, style}
+                    conditionalFormattingRules
                 });
             }
         });
@@ -177,7 +176,7 @@ const GristTableLens = function(gristInstance) {
     };
 
     this.getCurrentTableInfo = async function(options = {}) {
-        const { keepEncoded = false } = options; // Default keepEncoded to false
+        const { keepEncoded = false } = options;
         const tableId = await _grist.selectedTable.getTableId();
         if (!tableId) { console.warn("GTL.getCurrentTableInfo: Nenhuma tabela selecionada."); return null; }
         const schema = await this.getTableSchema(tableId);
@@ -256,7 +255,7 @@ const GristTableLens = function(gristInstance) {
             if (columnsForRelated && Array.isArray(columnsForRelated) && columnsForRelated.length > 0) {
                 resultRecords = resultRecords.map(record => {
                     const selectedData = { id: record.id, gristHelper_tableId: record.gristHelper_tableId, gristHelper_schema: record.gristHelper_schema };
-                    columnsForRelated.forEach(colId => {
+                    options.columnsForRelated.forEach(colId => {
                         if (record.hasOwnProperty(colId)) {
                             selectedData[colId] = record[colId];
                         }
