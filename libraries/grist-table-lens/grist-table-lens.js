@@ -58,13 +58,13 @@ const GristTableLens = function(gristInstance) {
             if (String(allEntries.parentId[i]) === String(numericTableId)) {
                 const entry = {};
                 Object.keys(allEntries).forEach(key => {
-                    if (Array.isArray(allEntries[key]) && allEntries[key].length > i) { // Checa se o índice é válido
+                    if (Array.isArray(allEntries[key]) && allEntries[key].length > i) {
                         entry[key] = allEntries[key][i];
-                    } else if (!Array.isArray(allEntries[key])) { // Para propriedades que não são arrays (raro em _grist_Tables_column)
+                    } else if (!Array.isArray(allEntries[key])) {
                         entry[key] = allEntries[key];
                     }
                 });
-                if (Object.keys(entry).length > 0) tableEntries.push(entry); // Adiciona apenas se o entry foi populado
+                if (Object.keys(entry).length > 0 && entry.id !== undefined) tableEntries.push(entry);
             }
         }
 
@@ -72,7 +72,6 @@ const GristTableLens = function(gristInstance) {
             const entryNumId = String(entry.id);
             const entryColId = String(entry.colId);
 
-            // Identifica uma regra se o colId começa com gristHelper_ConditionalRule e tem uma fórmula
             if (entryColId && entryColId.startsWith("gristHelper_ConditionalRule") && entry.formula) {
                 let ruleStyle = {};
                 if (entry.widgetOptions) {
@@ -89,7 +88,6 @@ const GristTableLens = function(gristInstance) {
         });
 
         tableEntries.forEach(entry => {
-            // Uma coluna de dados real tem um 'type' preenchido e não é um helper óbvio
             const isDataColumn = entry.type && entry.type.trim() !== "" && entry.colId && !String(entry.colId).startsWith("gristHelper_");
 
             if (isDataColumn) {
@@ -105,7 +103,7 @@ const GristTableLens = function(gristInstance) {
                 else if (entry.choices) { const raw = entry.choices; if (Array.isArray(raw)) { choices = raw[0] === 'L' ? raw.slice(1) : raw; } else if (typeof raw === 'string' && raw.startsWith('L')) { choices = raw.substring(1).split(','); } }
                 
                 let displayColIdForRef = null;
-                if (entry.displayCol != null && entry.displayCol !== 0) { // displayCol é o ID numérico da linha da coluna de display
+                if (entry.displayCol != null && entry.displayCol !== 0) {
                     const displayColEntry = tableEntries.find(e => String(e.id) === String(entry.displayCol));
                     if (displayColEntry) {
                         displayColIdForRef = String(displayColEntry.colId);
@@ -113,15 +111,13 @@ const GristTableLens = function(gristInstance) {
                 }
 
                 const conditionalFormattingRules = [];
-                const ruleIdList = entry.rules; // Coluna 'rules' da linha da coluna de DADOS
+                const ruleIdList = entry.rules;
                 
                 if (Array.isArray(ruleIdList) && ruleIdList[0] === 'L') {
                     ruleIdList.slice(1).forEach(ruleNumericId => {
                         const ruleDef = rulesDefinitionsFromMeta.get(String(ruleNumericId));
                         if (ruleDef) {
                             conditionalFormattingRules.push(ruleDef);
-                        } else {
-                            // console.warn(`GTL: Definição para regra ID ${ruleNumericId} (associada à coluna ${colId}) não encontrada.`);
                         }
                     });
                 }

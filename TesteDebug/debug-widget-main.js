@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const tableInfoContainerEl = document.getElementById('tableInfoContainer');
     const tableNameEl = document.getElementById('tableName');
     const columnCountEl = document.getElementById('columnCount');
-    const schemaTableEl = document.getElementById('schemaTable'); // Referência à tabela de schema
+    const schemaTableEl = document.getElementById('schemaTable');
     const schemaTableBodyEl = schemaTableEl.querySelector('tbody');
     const recordCountEl = document.getElementById('recordCount');
     const recordsTableHeadEl = document.getElementById('recordsTable').querySelector('thead');
@@ -20,51 +20,46 @@ document.addEventListener('DOMContentLoaded', function () {
         cellElement.style.backgroundColor = '';
         cellElement.style.fontWeight = '';
         cellElement.style.fontStyle = '';
-        cellElement.style.textAlign = ''; // Reset alignment
+        cellElement.style.textAlign = '';
 
-        let styleAppliedByRuleOrChoice = false;
+        let styleAppliedByRule = false;
 
-        // 1. Aplicar Estilos de Regras Condicionais (a última regra TRUE prevalece)
         if (columnSchema.conditionalFormattingRules && columnSchema.conditionalFormattingRules.length > 0) {
             for (const rule of columnSchema.conditionalFormattingRules) {
-                if (record && record[rule.helperColumnId] === true) { // Checa a coluna helper booleana
-                    // console.log(`Aplicando regra ID ${rule.id} (Helper: ${rule.helperColumnId}) para col ${columnSchema.id}`);
+                if (record && record[rule.helperColumnId] === true) {
                     if (rule.style) {
                         if (rule.style.textColor) cellElement.style.color = rule.style.textColor;
                         if (rule.style.fillColor) cellElement.style.backgroundColor = rule.style.fillColor;
                         if (rule.style.fontBold !== undefined) cellElement.style.fontWeight = rule.style.fontBold ? 'bold' : 'normal';
                         if (rule.style.fontItalic !== undefined) cellElement.style.fontStyle = rule.style.fontItalic ? 'italic' : 'normal';
-                        // Adicionar outros como fontUnderline, etc.
-                        styleAppliedByRuleOrChoice = true;
+                        styleAppliedByRule = true;
                     }
                 }
             }
         }
 
-        // 2. Aplicar Estilos de ChoiceOptions (se não houve regra ou se a regra não definiu a propriedade)
-        // Geralmente, o estilo de uma Choice específica tem alta prioridade.
-        if ((columnSchema.type === 'Choice' || columnSchema.type === 'ChoiceList') &&
-            columnSchema.widgetOptions && columnSchema.widgetOptions.choiceOptions &&
-            cellValue != null && columnSchema.widgetOptions.choiceOptions[String(cellValue)]) {
+        if (columnSchema.widgetOptions) {
+            const wo = columnSchema.widgetOptions;
+            if (wo.alignment) cellElement.style.textAlign = wo.alignment;
+
+            if (!styleAppliedByRule) { // Só aplica estilos base da coluna se NENHUMA regra aplicou algo
+                if (wo.textColor) cellElement.style.color = wo.textColor;
+                if (wo.fillColor) cellElement.style.backgroundColor = wo.fillColor;
+                if (wo.fontBold) cellElement.style.fontWeight = 'bold';
+                if (wo.fontItalic) cellElement.style.fontStyle = 'italic';
+            }
+        }
+        
+        if ((columnSchema.type === 'Choice' || columnSchema.type === 'ChoiceList') && 
+            columnSchema.widgetOptions?.choiceOptions && 
+            cellValue != null && 
+            columnSchema.widgetOptions.choiceOptions[String(cellValue)]) {
             const choiceStyle = columnSchema.widgetOptions.choiceOptions[String(cellValue)];
+            // Estilos de ChoiceOptions podem sobrescrever o que foi aplicado anteriormente
             if (choiceStyle.textColor) cellElement.style.color = choiceStyle.textColor;
             if (choiceStyle.fillColor) cellElement.style.backgroundColor = choiceStyle.fillColor;
             if (typeof choiceStyle.fontBold !== 'undefined') cellElement.style.fontWeight = choiceStyle.fontBold ? 'bold' : 'normal';
             if (typeof choiceStyle.fontItalic !== 'undefined') cellElement.style.fontStyle = choiceStyle.fontItalic ? 'italic' : 'normal';
-            styleAppliedByRuleOrChoice = true;
-        }
-        
-        // 3. Aplicar Estilos de WidgetOptions da Coluna (como fallback se nada mais foi aplicado)
-        if (!styleAppliedByRuleOrChoice && columnSchema.widgetOptions) {
-            const wo = columnSchema.widgetOptions;
-            if (wo.textColor) cellElement.style.color = wo.textColor;
-            if (wo.fillColor) cellElement.style.backgroundColor = wo.fillColor;
-            if (wo.fontBold) cellElement.style.fontWeight = 'bold';
-            if (wo.fontItalic) cellElement.style.fontStyle = 'italic';
-        }
-        // Sempre aplicar alinhamento se definido no widgetOptions da coluna (não é usualmente definido por regras ou choices)
-        if (columnSchema.widgetOptions && columnSchema.widgetOptions.alignment) {
-             cellElement.style.textAlign = columnSchema.widgetOptions.alignment;
         }
     }
 
@@ -109,7 +104,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (currentDepth + 1 <= maxDepth) {
                         const nestedRefRecord = await tableLens.fetchRecordById(colSchema.referencedTableId, cellValue, {keepEncoded: false});
                         if (nestedRefRecord) {
-                            const nestedRefSchema = await tableLens.getTableSchema(colSchema.referencedTableId); // Schema já terá regras
+                            const nestedRefSchema = await tableLens.getTableSchema(colSchema.referencedTableId);
                             const displayCol = nestedRefSchema.find(c => c.id === colSchema.displayColId) || nestedRefSchema.find(c => c.label.toLowerCase() === 'name' || c.label.toLowerCase() === 'nome') || (nestedRefSchema.length > 0 ? nestedRefSchema[0] : {id: 'id'});
                             displayText = `[Ref] ${nestedRefRecord[displayCol?.id] || cellValue} (ID: ${cellValue})`;
                         } else { displayText = `[Ref] ID: ${cellValue} (Reg. não enc.)`; }
@@ -174,14 +169,17 @@ document.addEventListener('DOMContentLoaded', function () {
             
             console.log(`DEBUG WIDGET [${callTimestamp}]: Dados para renderizar: Tabela: ${currentTable.tableId}, Registros: ${currentTable.records.length}, IDs: ${currentTable.records.map(r => r.id).join(', ')}`);
             if (currentTable.records.length > 0) {
-                 console.log("DEBUG WIDGET: Amostra do primeiro registro (com colunas helper, se keepEncoded:false):", JSON.parse(JSON.stringify(currentTable.records[0])));
+                 console.log("DEBUG WIDGET: Amostra do primeiro registro (keepEncoded:false):", JSON.parse(JSON.stringify(currentTable.records[0])));
             }
 
             tableNameEl.textContent = `Tabela: ${currentTable.tableId}`;
             tableInfoContainerEl.style.display = 'block';
 
             const schemaHeaderRow = schemaTableEl.querySelector('thead tr');
-            while(schemaHeaderRow.cells.length > 8) schemaHeaderRow.deleteCell(-1); // Reseta para 8 colunas base
+            // Garante que o cabeçalho da tabela de schema tenha no máximo 8 colunas antes de adicionar a de regras
+            while(schemaHeaderRow.cells.length > 8 && schemaHeaderRow.lastChild.textContent.includes("Regras Cond.")) {
+                 schemaHeaderRow.deleteCell(-1);
+            }
             columnCountEl.textContent = currentTable.schema.length;
 
             currentTable.schema.forEach(col => {
@@ -206,11 +204,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     rulesCell.innerHTML = rulesHtml + '</ul>';
                 } else { rulesCell.textContent = '-'; }
             });
-             if (schemaHeaderRow && schemaHeaderRow.cells.length === 8) {
+             if (schemaHeaderRow && schemaHeaderRow.cells.length === 8) { // Adiciona cabeçalho para regras se não existir (depois das 8 colunas base)
                  const thRules = document.createElement('th');
                  thRules.textContent = "Regras Cond. (Definição)";
                  schemaHeaderRow.appendChild(thRules);
             }
+
 
             recordCountEl.textContent = currentTable.records.length;
             if (currentTable.records.length > 0 && currentTable.schema.length > 0) {
@@ -252,14 +251,14 @@ document.addEventListener('DOMContentLoaded', function () {
                             displayText = "";
                         } else if (colSchema.type.startsWith("Date") || colSchema.type.startsWith("DateTime")) {
                             if (typeof cellValue === 'number' && cellValue !== 0) {
-                                const dateObj = new Date(cellValue * 1000);
+                                const dateObj = new Date(cellValue * 1000); // Timestamps Grist são em segundos
                                 const dateFormat = colSchema.widgetOptions?.dateFormat;
                                 if (dateFormat === "DD/MM/YYYY") {
                                     displayText = `${String(dateObj.getUTCDate()).padStart(2,'0')}/${String(dateObj.getUTCMonth() + 1).padStart(2,'0')}/${dateObj.getUTCFullYear()}`;
                                 } else if (dateFormat === "YYYY-MM-DD") {
                                      displayText = `${dateObj.getUTCFullYear()}-${String(dateObj.getUTCMonth() + 1).padStart(2,'0')}-${String(dateObj.getUTCDate()).padStart(2,'0')}`;
                                 } else { displayText = colSchema.type.startsWith("DateTime") ? dateObj.toLocaleString() : dateObj.toLocaleDateString(); }
-                            } else if (cellValue) { displayText = String(cellValue); }
+                            } else if (cellValue) { displayText = String(cellValue); } // Caso já venha formatado (improvável com keepEncoded:false)
                             else { displayText = '(vazio)'; }
                         } else if (Array.isArray(cellValue) && cellValue[0] === 'L') {
                             displayText = `[Lista] ${cellValue.slice(1).join(', ')}`;
@@ -289,6 +288,7 @@ document.addEventListener('DOMContentLoaded', function () {
             } else {
                 recordsTableBodyEl.innerHTML = `<tr><td colspan="${currentTable.schema.length || 1}">Nenhum registro.</td></tr>`;
             }
+            
         } catch (error) {
             console.error(`Erro em initializeDebugWidget [${callTimestamp}]:`, error);
             errorMessageEl.textContent = `ERRO: ${error.message}. Veja o console.`;
@@ -311,14 +311,14 @@ document.addEventListener('DOMContentLoaded', function () {
         lastProcessedRecordIdForOnRecord = currentId;
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(async () => {
-            console.log(`DEBUG WIDGET: Timeout do onRecord. Chamando initializeDebugWidget para ID: ${lastProcessedRecordIdForOnRecord}`);
-            await initializeDebugWidget(); // Sempre busca a tabela inteira para o debug widget
+            // console.log(`DEBUG WIDGET: Timeout do onRecord. Chamando initializeDebugWidget para ID: ${lastProcessedRecordIdForOnRecord}`);
+            await initializeDebugWidget();
         }, 150);
     });
 
     setTimeout(async () => {
         if (lastProcessedRecordIdForOnRecord === undefined && !isRendering) {
-            console.log("DEBUG WIDGET: Fazendo chamada inicial a initializeDebugWidget.");
+            // console.log("DEBUG WIDGET: Fazendo chamada inicial a initializeDebugWidget.");
             await initializeDebugWidget();
         } else {
             // console.log("DEBUG WIDGET: Pulando chamada inicial (onRecord já pode ter processado ou renderização em progresso).");
