@@ -4,16 +4,33 @@ const GristTableLens = function(gristInstance) {
         throw new Error("GristTableLens: Instância do Grist (grist object) é obrigatória.");
     }
     const _grist = gristInstance;
-    const _metaState = { tables: null, columns: null, tableSchemasCache: {} };
+    const _metaState = {
+        tables: null,
+        columnsAndRules: null, // Cache para _grist_Tables_column
+        tableSchemasCache: {}
+    };
 
     async function _loadGristMeta() {
-        if (_metaState.tables && _metaState.columns) return;
+        if (_metaState.tables && _metaState.columnsAndRules) return;
         const p = [];
         try {
-            if (!_metaState.tables) { p.push(_grist.docApi.fetchTable('_grist_Tables').then(d => _metaState.tables = d).catch(e => { console.error("GTL: Erro _grist_Tables", e); throw e; })); }
-            if (!_metaState.columns) { p.push(_grist.docApi.fetchTable('_grist_Tables_column').then(d => _metaState.columns = d).catch(e => { console.error("GTL: Erro _grist_Tables_column", e); throw e; }));}
-            if (p.length) { await Promise.all(p); }
-        } catch (error) { console.error("GTL: Falha _loadGristMeta.", error); throw error; }
+            if (!_metaState.tables) {
+                p.push(_grist.docApi.fetchTable('_grist_Tables').then(d => _metaState.tables = d));
+            }
+            if (!_metaState.columnsAndRules) {
+                p.push(_grist.docApi.fetchTable('_grist_Tables_column').then(d => _metaState.columnsAndRules = d));
+            }
+            await Promise.all(p);
+
+            if (!_metaState.tables || !_metaState.columnsAndRules) {
+                throw new Error("_grist_Tables ou _grist_Tables_column não puderam ser carregados.");
+            }
+        } catch (error) {
+            console.error("GTL: Falha _loadGristMeta.", error);
+            _metaState.tables = null;
+            _metaState.columnsAndRules = null;
+            throw error;
+        }
     }
 
     function _getNumericTableId(tableId) {
@@ -25,33 +42,107 @@ const GristTableLens = function(gristInstance) {
         return idx === -1 ? null : String(_metaState.tables.id[idx]);
     }
 
-    function _getColumnsForTable(numericTableId) {
-        if (!_metaState.columns?.colId) {
-            console.warn("GTL._getColumnsForTable: _metaState.columns não carregado ou sem colId.");
+    function _processColumnsAndRulesForTable(numericTableId) {
+        if (!_metaState.columnsAndRules?.id) {
+            console.warn("GTL._processColumnsAndRulesForTable: _metaState.columnsAndRules não carregado ou inválido.");
             return [];
         }
-        const cols = []; const m = _metaState.columns;
-        const tidKey = m.parentId ? 'parentId' : 'tableId';
-        const cidKey = m.colId ? 'colId' : 'columnId';
 
-        for (let i = 0; i < m[cidKey].length; i++) {
-            if (String(m[tidKey][i]) !== String(numericTableId)) continue;
-            const colType = String(m.type[i]);
-            let referencedTableId = null;
-            if (colType.startsWith('Ref:') || colType.startsWith('RefList:')) {
-                referencedTableId = colType.split(':')[1];
+        const allEntries = _metaState.columnsAndRules;
+        const numEntries = allEntries.id.length;
+        const columnsOutput = [];
+        const rulesDefinitionsById = new Map();
+
+        const tableEntries = [];
+        for (let i = 0; i < numEntries; i++) {
+            if (String(allEntries.parentId[i]) === String(numericTableId)) {
+                const entry = {};
+                Object.keys(allEntries).forEach(key => {
+                    if (Array.isArray(allEntries[key])) {
+                        entry[key] = allEntries[key][i];
+                    }
+                });
+                tableEntries.push(entry);
             }
-            const isFormula = String(m.formula?.[i] ?? '').trim() !== '';
-            let wopts = {}; if (m.widgetOptions?.[i]) { try { wopts = JSON.parse(m.widgetOptions[i]); } catch (e) {} }
-            let choices = [];
-            if (Array.isArray(wopts.choices) && wopts.choices.length) { choices = wopts.choices.slice(); }
-            else if (m.choices?.[i]) { const raw = m.choices[i]; if (Array.isArray(raw)) { choices = raw[0] === 'L' ? raw.slice(1) : raw; } else if (typeof raw === 'string' && raw.startsWith('L')) { choices = raw.substring(1).split(','); } }
-            let displayColIdForRef = null;
-            if (m.displayCol?.[i] != null) { const dci = m.id.findIndex(idVal => String(idVal) === String(m.displayCol[i])); if (dci !== -1) displayColIdForRef = String(m[cidKey][dci]); }
-
-            cols.push({ id: String(m[cidKey][i]), label: String(m.label[i] || m[cidKey][i]), type: colType, isFormula, widgetOptions: wopts, choices, referencedTableId, displayColId: displayColIdForRef });
         }
-        return cols;
+
+        tableEntries.forEach(entry => {
+            const entryId = String(entry.id);
+            // Identifica uma linha de regra se: type está vazio/nulo E tem uma fórmula E o colId parece um helper de regra
+            // Ou, de forma mais genérica, se é uma coluna helper (começa com gristHelper_) e tem uma fórmula, pode ser uma regra.
+            // A chave é que as colunas de dados reais têm um 'type' significativo.
+            const isRuleDefinition = (!entry.type || entry.type === "Any") && entry.formula && entry.colId.startsWith("gristHelper_ConditionalRule");
+
+            if (isRuleDefinition) {
+                let ruleStyle = {};
+                if (entry.widgetOptions) {
+                    try { ruleStyle = JSON.parse(entry.widgetOptions); } catch (e) { console.warn(`GTL: JSON inválido em widgetOptions para regra ID ${entryId}`, entry.widgetOptions); }
+                }
+                rulesDefinitionsById.set(entryId, { // O ID da regra é o 'id' numérico da sua linha
+                    id: entryId,
+                    helperColumnId: entry.colId,      // O nome da coluna booleana no registro de dados (ex: "gristHelper_ConditionalRule")
+                    conditionFormula: entry.formula,  // A fórmula da condição (para referência/debug)
+                    style: ruleStyle                  // O estilo a ser aplicado se a coluna helper for true
+                });
+            }
+        });
+
+        tableEntries.forEach(entry => {
+            // Uma coluna de dados real tem um 'type' preenchido (que não seja 'Any' a menos que seja um Lookup Column que não comece com gristHelper_)
+            // A distinção mais simples: type não é vazio. Regras têm type vazio ou 'Any' e colId de helper.
+            const isDataColumn = entry.type && entry.type.trim() !== "";
+
+            if (isDataColumn) {
+                const colId = String(entry.colId);
+                if (colId.startsWith("gristHelper_")) return; // Ignora colunas helper que não são regras (como as de display para refs)
+
+                let referencedTableId = null;
+                if (entry.type.startsWith('Ref:') || entry.type.startsWith('RefList:')) {
+                    referencedTableId = entry.type.split(':')[1];
+                }
+                const isFormula = String(entry.formula ?? '').trim() !== '';
+                let wopts = {}; if (entry.widgetOptions) { try { wopts = JSON.parse(entry.widgetOptions); } catch (e) {} }
+                let choices = [];
+                if (Array.isArray(wopts.choices) && wopts.choices.length) { choices = wopts.choices.slice(); }
+                else if (entry.choices) { const raw = entry.choices; if (Array.isArray(raw)) { choices = raw[0] === 'L' ? raw.slice(1) : raw; } else if (typeof raw === 'string' && raw.startsWith('L')) { choices = raw.substring(1).split(','); } }
+                
+                let displayColIdForRef = null;
+                if (entry.displayCol != null) {
+                    const displayColEntry = tableEntries.find(e => String(e.id) === String(entry.displayCol));
+                    if (displayColEntry) {
+                        displayColIdForRef = String(displayColEntry.colId);
+                    }
+                }
+
+                const conditionalFormattingRules = [];
+                const ruleIdList = entry.rules; // Vem da coluna 'rules' em _grist_Tables_column
+                if (Array.isArray(ruleIdList) && ruleIdList[0] === 'L') {
+                    ruleIdList.slice(1).forEach(ruleId => { // ruleId aqui é o ID numérico da linha da regra
+                        const ruleDef = rulesDefinitionsById.get(String(ruleId));
+                        if (ruleDef) {
+                            conditionalFormattingRules.push(ruleDef);
+                        } else {
+                            // console.warn(`GTL: Definição para regra ID ${ruleId} (coluna ${colId}) não encontrada no rulesDefinitionsById. Pode ser uma regra sem estilo ou um helper diferente.`);
+                        }
+                    });
+                }
+
+                columnsOutput.push({
+                    id: colId,
+                    internalId: String(entry.id),
+                    label: String(entry.label || colId),
+                    type: entry.type,
+                    isFormula,
+                    formula: entry.formula ?? '',
+                    widgetOptions: wopts,
+                    choices,
+                    referencedTableId,
+                    displayColId: displayColIdForRef,
+                    conditionalFormattingRules // Array de objetos de regra {id, helperColumnId, conditionFormula, style}
+                });
+            }
+        });
+        return columnsOutput;
     }
 
     function _colDataToRows(colData) {
@@ -72,24 +163,25 @@ const GristTableLens = function(gristInstance) {
         await _loadGristMeta();
         const numId = _getNumericTableId(tableId);
         if (!numId) { console.warn(`GTL.getTableSchema: numId não encontrado para tabela '${tableId}'.`); _metaState.tableSchemasCache[tableId] = []; return []; }
-        const schema = _getColumnsForTable(numId);
+        const schema = _processColumnsAndRulesForTable(numId);
         _metaState.tableSchemasCache[tableId] = schema;
         return schema;
     };
 
-    this.fetchTableRecords = async function(tableId) {
+    this.fetchTableRecords = async function(tableId, keepEncodedOption = false) {
         if (!tableId) { console.error("GTL.fetchTableRecords: tableId é obrigatório."); return [];}
         try {
-            const rawData = await _grist.docApi.fetchTable(tableId);
+            const rawData = await _grist.docApi.fetchTable(tableId, { keepEncoded: keepEncodedOption });
             return _colDataToRows(rawData);
         } catch (error) { console.error(`GTL.fetchTableRecords: Erro ao buscar registros para tabela '${tableId}'.`, error); return []; }
     };
 
-    this.getCurrentTableInfo = async function() {
+    this.getCurrentTableInfo = async function(options = {}) {
+        const { keepEncoded = false } = options; // Default keepEncoded to false
         const tableId = await _grist.selectedTable.getTableId();
         if (!tableId) { console.warn("GTL.getCurrentTableInfo: Nenhuma tabela selecionada."); return null; }
         const schema = await this.getTableSchema(tableId);
-        const records = await this.fetchTableRecords(tableId);
+        const records = await this.fetchTableRecords(tableId, keepEncoded);
         return { tableId, schema, records };
     };
 
@@ -101,12 +193,13 @@ const GristTableLens = function(gristInstance) {
             .filter(t => !t.id.startsWith('_grist_'));
     };
 
-    this.fetchRecordById = async function(tableId, recordId) {
+    this.fetchRecordById = async function(tableId, recordId, options = {}) {
+        const { keepEncoded = false } = options;
         if (!tableId || recordId === undefined || recordId === null) {
              console.error("GTL.fetchRecordById: tableId e recordId são obrigatórios."); return null;
         }
         try {
-            const records = await this.fetchTableRecords(tableId);
+            const records = await this.fetchTableRecords(tableId, keepEncoded);
             return records.find(r => r.id === recordId) || null;
         } catch (error) {
             console.error(`GTL.fetchRecordById: Erro ao buscar registro ${recordId} da tabela '${tableId}'.`, error);
@@ -115,6 +208,8 @@ const GristTableLens = function(gristInstance) {
     };
 
     this.fetchRelatedRecords = async function(primaryRecord, refColumnId, options = {}) {
+        const { keepEncoded = false, columnsForRelated } = options;
+
         if (!primaryRecord || !refColumnId) {
             console.warn("GTL.fetchRelatedRecords: primaryRecord e refColumnId são obrigatórios.");
             return [];
@@ -149,22 +244,19 @@ const GristTableLens = function(gristInstance) {
              relatedRecordIds = refValue.filter(id => id > 0);
         }
 
-        if (relatedRecordIds.length === 0) {
-            return [];
-        }
+        if (relatedRecordIds.length === 0) return [];
 
         try {
-            const allRelatedRecordsRaw = await this.fetchTableRecords(referencedTableId);
+            const allRelatedRecordsRaw = await this.fetchTableRecords(referencedTableId, keepEncoded);
             const relatedSchema = await this.getTableSchema(referencedTableId);
 
             const filteredRecords = allRelatedRecordsRaw.filter(r => relatedRecordIds.includes(r.id));
-
             let resultRecords = filteredRecords.map(r => ({ ...r, gristHelper_tableId: referencedTableId, gristHelper_schema: relatedSchema }));
 
-            if (options.columnsForRelated && Array.isArray(options.columnsForRelated) && options.columnsForRelated.length > 0) {
+            if (columnsForRelated && Array.isArray(columnsForRelated) && columnsForRelated.length > 0) {
                 resultRecords = resultRecords.map(record => {
                     const selectedData = { id: record.id, gristHelper_tableId: record.gristHelper_tableId, gristHelper_schema: record.gristHelper_schema };
-                    options.columnsForRelated.forEach(colId => {
+                    columnsForRelated.forEach(colId => {
                         if (record.hasOwnProperty(colId)) {
                             selectedData[colId] = record[colId];
                         }
