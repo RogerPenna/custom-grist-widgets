@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Grist Column Type Tester</title>
+    <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+    <style>
+      body { font-family: sans-serif; padding: 10px; }
+      pre { background: #eee; padding: 10px; margin-bottom: 10px; }
+    </style>
+  </head>
+  <body>
+    <h1>Grist Column Type Tester</h1>
+    <div id="output">Loading...</div>
+    <script>
+      (async function(){
+        // Solicita acesso total ao documento.
+        grist.ready({ requiredAccess: 'full' });
+      
+        const output = document.getElementById("output");
+        function log(method, msg) {
+          output.innerHTML += "<pre><strong>" + method + ":</strong>\n" + msg + "</pre>";
+        }
+      
+        try {
+          // Option 1: Listar tabelas (grist.docApi.listTables).
+          log("Chamada 1 (listTables)", "Fetching list of tables...");
+          const tables = await grist.docApi.listTables();
+          log("Chamada 1 (listTables)", "Tables: " + JSON.stringify(tables, null, 2));
+      
+          // Option 2: Buscar dados da primeira tabela conectada (grist.docApi.fetchTable).
+          if (tables.length > 0) {
+            const tableId = tables[0];
+            log("Chamada 2 (fetchTable)", "Fetching data for connected table: " + tableId);
+            const tableData = await grist.docApi.fetchTable(tableId);
+            log("Chamada 2 (fetchTable)", "Table Data: " + JSON.stringify(tableData, null, 2));
+          }
+      
+          // Option 3: Usar grist.docApi.getTable (se disponível).
+          if (typeof grist.docApi.getTable === "function") {
+            const tableId = tables[0];
+            log("Chamada 3 (getTable)", "Using grist.docApi.getTable for table: " + tableId);
+            const tableOps = grist.docApi.getTable(tableId);
+            log("Chamada 3 (getTable)", "Table Operations Object: " + JSON.stringify(tableOps, null, 2));
+          } else {
+            log("Chamada 3 (getTable)", "grist.docApi.getTable is not available.");
+          }
+      
+          // Option 4: Buscar tabela de metadados interna para obter informações de tipos de colunas.
+          log("Chamada 4 (fetchTable _grist_Tables_column)", "Fetching internal metadata table (_grist_Tables_column)...");
+          const metaTable = await grist.docApi.fetchTable("_grist_Tables_column");
+          log("Chamada 4 (fetchTable _grist_Tables_column)", "Metadata Table: " + JSON.stringify(metaTable, null, 2));
+          // Extrair informações de metadados.
+          let metaColumns = [];
+          // Tenta usar as chaves "parentId"/"colId" ou "tableId"/"columnId"
+          const tableKey = metaTable.parentId ? "parentId" : "tableId";
+          const colKey = metaTable.colId ? "colId" : "columnId";
+          if (metaTable[tableKey] && metaTable[colKey] && metaTable.type) {
+            metaTable[tableKey].forEach((val, i) => {
+              metaColumns.push({
+                tableId: metaTable[tableKey][i],
+                colName: metaTable[colKey][i],
+                colType: metaTable.type[i]
+              });
+            });
+          }
+          log("Chamada 4 (Extração de metadados)", "Extracted Meta Columns: " + JSON.stringify(metaColumns, null, 2));
+      
+          // Option 5: Usar grist.mapColumnNames em um registro de exemplo da tabela conectada.
+          if (tables.length > 0) {
+            const tableId = tables[0];
+            log("Chamada 5 (fetchTable + mapColumnNames)", "Fetching sample record from table: " + tableId);
+            const tableData = await grist.docApi.fetchTable(tableId);
+            const dataCols = Object.keys(tableData);
+            if (dataCols.length > 0 && tableData[dataCols[0]].length > 0) {
+              let record = {};
+              dataCols.forEach(col => {
+                record[col] = tableData[col][0];
+              });
+              log("Chamada 5 (Sample Record)", "Sample record: " + JSON.stringify(record, null, 2));
+              const mapped = grist.mapColumnNames(record);
+              log("Chamada 5 (mapColumnNames)", "Mapped record (grist.mapColumnNames): " + JSON.stringify(mapped, null, 2));
+            } else {
+              log("Chamada 5 (mapColumnNames)", "No data in table to sample a record.");
+            }
+          }
+      
+          // Option 6: Usar grist.mapColumnNamesBack no registro mapeado.
+          if (tables.length > 0) {
+            const tableId = tables[0];
+            const tableData = await grist.docApi.fetchTable(tableId);
+            const dataCols = Object.keys(tableData);
+            if (dataCols.length > 0 && tableData[dataCols[0]].length > 0) {
+              let record = {};
+              dataCols.forEach(col => {
+                record[col] = tableData[col][0];
+              });
+              const mapped = grist.mapColumnNames(record);
+              if (mapped) {
+                const mappedBack = grist.mapColumnNamesBack(mapped);
+                log("Chamada 6 (mapColumnNamesBack)", "Mapped back record (grist.mapColumnNamesBack): " + JSON.stringify(mappedBack, null, 2));
+              } else {
+                log("Chamada 6 (mapColumnNamesBack)", "grist.mapColumnNames did not return a mapped record.");
+              }
+            }
+          }
+      
+        } catch(e) {
+          log("Erro", e.toString());
+        }
+      })();
+    </script>
+  </body>
+</html>
