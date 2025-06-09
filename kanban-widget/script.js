@@ -1,34 +1,13 @@
 document.addEventListener('DOMContentLoaded', function () {
-  console.log("KANBAN WIDGET SCRIPT: DOMContentLoaded event fired."); // Este é o seu original, mantenha-o.
+  console.log("KANBAN WIDGET SCRIPT: DOMContentLoaded event fired.");
 
-  // Adicione mais logs AQUI DENTRO, após o primeiro log:
-  console.log("KANBAN WIDGET SCRIPT: Attempting to initialize GristDataManager...");
-  window.GristDataManager = (function () {
-    // ... (conteúdo do GristDataManager como estava)
-  })();
-  console.log("KANBAN WIDGET SCRIPT: GristDataManager initialized (or attempted).");
-
-  console.log("KANBAN WIDGET SCRIPT: Attempting to initialize WidgetConfigManager...");
-  window.WidgetConfigManager = (function() {
-    // ... (conteúdo do WidgetConfigManager como estava)
-  })();
-  console.log("KANBAN WIDGET SCRIPT: WidgetConfigManager initialized (or attempted).");
-
-  console.log("KANBAN WIDGET SCRIPT: Attempting to initialize ConfigUIBuilder...");
-  window.ConfigUIBuilder = (function () {
-    // ... (conteúdo do ConfigUIBuilder como estava)
-  })();
-  console.log("KANBAN WIDGET SCRIPT: ConfigUIBuilder initialized (or attempted).");
-
-  // Suas constantes
-  const CURRENT_CONFIG_KEY_FOR_GRIST = 'kanbanWidgetConfig_v17_dropdown_fix_configbtn';
+  const CURRENT_CONFIG_KEY_FOR_GRIST = 'kanbanWidgetConfig_v18_reflist_manager';
   const CARDS_PER_PAGE = 25;
 
   /*****************************************************************
    * 1.  Módulos reutilizáveis
    *****************************************************************/
 
-  /* ---------- GristDataManager (sem alterações) ---------- */
   window.GristDataManager = (function () {
     const state = { tables: null, columns: null, allTableMetas: {} };
     async function loadMeta() {
@@ -66,38 +45,16 @@ document.addEventListener('DOMContentLoaded', function () {
     return { fetchAll, getAllTableIdsAndNames, getTableSchema, colToRows, columnsOf };
   })();
 
-
-  /* ---------- WidgetConfigManager ---------- */
   window.WidgetConfigManager = (function() {
-    const KANBAN_DEFAULTS_INTERNAL = { // Renomeado para evitar conflito de nome no escopo global
+    const KANBAN_DEFAULTS_INTERNAL = {
         kanbanDefiningColumnId: null,
         restrictAdjacentMove: false,
         laneWipLimits: {},
-        cardSortCriteria: [
-            { columnId: null, direction: 'asc', displayType: '' },
-            { columnId: null, direction: 'asc', displayType: '' },
-            { columnId: null, direction: 'asc', displayType: '' }
-        ],
-        visual: {
-            centerColumns: false,
-            columnWidthPercent:  25,
-            columnMinWidth: 200,
-            columnMaxWidth: 400,
-            columnColor: '#F8F9FA',
-            cardColor: '#FFFFFF',
-            cardShadow: true,
-            backgroundType: 'solid',
-            solidBackgroundColor: '#E9ECEF',
-            gradientColor1: '#E9ECEF',
-            gradientColor2: '#D8DCDF',
-            gradientDirection: 'to right',
-            drawerFontColor: '#333333',
-            cardTitleFontColor: '#333333',
-            cardFieldsFontColor: '#333333'
-        },
+        cardSortCriteria: [{ columnId: null, direction: 'asc', displayType: '' }, { columnId: null, direction: 'asc', displayType: '' }, { columnId: null, direction: 'asc', displayType: '' }],
+        visual: { centerColumns: false, columnWidthPercent:  25, columnMinWidth: 200, columnMaxWidth: 400, columnColor: '#F8F9FA', cardColor: '#FFFFFF', cardShadow: true, backgroundType: 'solid', solidBackgroundColor: '#E9ECEF', gradientColor1: '#E9ECEF', gradientColor2: '#D8DCDF', gradientDirection: 'to right', drawerFontColor: '#333333', cardTitleFontColor: '#333333', cardFieldsFontColor: '#333333' },
         rules: {}
     };
-    const FIELD_DEFAULTS_INTERNAL = { visible: true, editable: true, position: 0, card: false, cardPosition: 0, showLabel: true, useFormatting: false }; // Renomeado
+    const FIELD_DEFAULTS_INTERNAL = { visible: true, editable: true, position: 0, card: false, cardPosition: 0, showLabel: true, useFormatting: false, refListFieldConfigs: {} };
     let currentConfig = JSON.parse(JSON.stringify(KANBAN_DEFAULTS_INTERNAL));
 
     return {
@@ -107,33 +64,14 @@ document.addEventListener('DOMContentLoaded', function () {
             ...JSON.parse(JSON.stringify(KANBAN_DEFAULTS_INTERNAL)),
             ...(stored || {}),
             laneConfigs: stored?.laneConfigs || {},
-            visual: {
-                ...JSON.parse(JSON.stringify(KANBAN_DEFAULTS_INTERNAL.visual)),
-                ...(stored?.visual || {})
-            },
-            rules: {
-                ...JSON.parse(JSON.stringify(KANBAN_DEFAULTS_INTERNAL.rules)),
-                ...(stored?.rules || {})
-            }
+            visual: { ...JSON.parse(JSON.stringify(KANBAN_DEFAULTS_INTERNAL.visual)), ...(stored?.visual || {}) },
+            rules: { ...JSON.parse(JSON.stringify(KANBAN_DEFAULTS_INTERNAL.rules)), ...(stored?.rules || {}) }
         };
-        if (stored?.visual && typeof stored.visual.cardShadow !== 'undefined') {
-            currentConfig.visual.cardShadow = Boolean(stored.visual.cardShadow);
-        } else {
-            currentConfig.visual.cardShadow = KANBAN_DEFAULTS_INTERNAL.visual.cardShadow;
-        }
+        if (stored?.visual && typeof stored.visual.cardShadow !== 'undefined') { currentConfig.visual.cardShadow = Boolean(stored.visual.cardShadow); } else { currentConfig.visual.cardShadow = KANBAN_DEFAULTS_INTERNAL.visual.cardShadow; }
       },
       saveConfig: async () => { await grist.setOption(CURRENT_CONFIG_KEY_FOR_GRIST, currentConfig); },
       getVisualConfig: () => ({ ...currentConfig.visual }),
-      setVisualConfig: (vis) => {
-        currentConfig.visual = {
-            ...KANBAN_DEFAULTS_INTERNAL.visual,
-            ...currentConfig.visual,
-            ...vis
-        };
-        if (typeof vis.cardShadow === 'boolean') {
-            currentConfig.visual.cardShadow = vis.cardShadow;
-        }
-      },
+      setVisualConfig: (vis) => { currentConfig.visual = { ...KANBAN_DEFAULTS_INTERNAL.visual, ...currentConfig.visual, ...vis }; if (typeof vis.cardShadow === 'boolean') { currentConfig.visual.cardShadow = vis.cardShadow; } },
       getKanbanDefiningColumn: () => currentConfig.kanbanDefiningColumnId,
       setKanbanDefiningColumn: (colId) => { currentConfig.kanbanDefiningColumnId = colId; },
       getRestrictAdjacentMove: () => currentConfig.restrictAdjacentMove,
@@ -142,19 +80,24 @@ document.addEventListener('DOMContentLoaded', function () {
       setLaneWipLimit: (lv, lim) => { currentConfig.laneWipLimits = currentConfig.laneWipLimits || {}; currentConfig.laneWipLimits[String(lv)] = {maxVisible: parseInt(lim.maxVisible, 10) || 0, maxAllowed: parseInt(lim.maxAllowed, 10) || 0};},
       getCardSortCriteria: () => currentConfig.cardSortCriteria.map(c => ({ ...c })),
       setCardSortCriteria: (crit) => { if (Array.isArray(crit) && crit.length === 3) currentConfig.cardSortCriteria = crit; else console.warn("setCardSortCriteria inválido"); },
-      getFieldConfigForLane: (t, lv, f) => ({ ...FIELD_DEFAULTS_INTERNAL, ...(currentConfig.laneConfigs?.[t]?.[String(lv)]?.[f] || {}) }),
+      getFieldConfigForLane: (t, lv, f) => {
+        const laneCfg = currentConfig.laneConfigs?.[t]?.[String(lv)]?.[f] || {};
+        // Ensure refListFieldConfigs exists and is an object
+        if (!laneCfg.refListFieldConfigs || typeof laneCfg.refListFieldConfigs !== 'object') {
+            laneCfg.refListFieldConfigs = {};
+        }
+        return { ...FIELD_DEFAULTS_INTERNAL, ...laneCfg };
+      },
       updateFieldConfigForLane: (t, lv, f, cfg) => { if (!t||lv==null||!f) return; currentConfig.laneConfigs[t] = currentConfig.laneConfigs[t] || {}; currentConfig.laneConfigs[t][String(lv)] = currentConfig.laneConfigs[t][String(lv)] || {}; currentConfig.laneConfigs[t][String(lv)][f] = { ...FIELD_DEFAULTS_INTERNAL, ...cfg }; },
-      getDefaults: () => ({ ...FIELD_DEFAULTS_INTERNAL }), // Para ConfigUIBuilder
-      getKanbanDefaults: () => JSON.parse(JSON.stringify(KANBAN_DEFAULTS_INTERNAL)), // Para ConfigUIBuilder, se necessário
+      getDefaults: () => ({ ...FIELD_DEFAULTS_INTERNAL }),
+      getKanbanDefaults: () => JSON.parse(JSON.stringify(KANBAN_DEFAULTS_INTERNAL)),
       getAllRules: () => JSON.parse(JSON.stringify(currentConfig.rules)),
       getRulesForLane: laneValue => (currentConfig.rules[String(laneValue)] || []).map(r => ({ ...r })),
       setAllRules: rules => { currentConfig.rules = JSON.parse(JSON.stringify(rules)); },
     };
   })();
 
-  /* ---------- ConfigUIBuilder ---------- */
   window.ConfigUIBuilder = (function () {
-    // ... (declarações de variáveis como antes) ...
     let drawerEl, laneSelectEl, fieldsTableContainerEl, saveBtnEl, cancelBtnEl, closeBtnEl, replicateBtnEl, onSaveCallback, currentGristTableMeta, currentKanbanLanes, allGristTablesList, configSortState = { columnKey: 'iniOrder', direction: 'asc' }, tabBtnFields, tabBtnGeneral, tabBtnVisual, tabBtnRules, tabContentFields, tabContentGeneral, tabContentVisual, tabContentRules, definingColumnMapSelectEl, wipLimitsTableContainerEl, restrictAdjacentMoveCbEl, cardSortCriteriaContainerEl, centerColumnsCb, colWidthPercentInput, colMinWidthInput, colMaxWidthInput, colColorInput, cardColorInput, cardShadowInput, rulesConfigAreaEl,
     cfgBackgroundTypeSelect, cfgSolidColorSettingsDiv, cfgSolidBgColorInput,
     cfgGradientSettingsDiv, cfgGradientColor1Input, cfgGradientColor2Input,
@@ -162,6 +105,8 @@ document.addEventListener('DOMContentLoaded', function () {
     cfgDrawerFontColorInput, cfgCardTitleFontColorInput, cfgCardFieldsFontColorInput;
 
     const RULE_OPERATORS = [ { value: '==', text: 'Igual a (==)' }, { value: '!=', text: 'Diferente de (!=)' }, { value: '>',  text: 'Maior que (>)' }, { value: '<',  text: 'Menor que (<)' }, { value: '>=', text: 'Maior ou igual a (>=)' }, { value: '<=', text: 'Menor ou igual a (<=)' }, { value: 'contains', text: 'Contém (texto)' }, { value: 'not_contains', text: 'Não contém (texto)' }, { value: 'is_empty', text: 'Está vazio' }, { value: 'is_not_empty', text: 'Não está vazio' } ];
+    
+    // ... init, handleLaneChanged, switchTab, populateAndOpen (no changes here) ...
     function init(options) {
         drawerEl = options.drawerEl;
         laneSelectEl = drawerEl.querySelector('#kanban-lane-select'); fieldsTableContainerEl = drawerEl.querySelector('#cfg-fields-table-container'); replicateBtnEl = drawerEl.querySelector('#cfg-replicate'); definingColumnMapSelectEl = drawerEl.querySelector('#kanban-defining-column-map-select'); wipLimitsTableContainerEl = drawerEl.querySelector('#wip-limits-table-container'); restrictAdjacentMoveCbEl = drawerEl.querySelector('#cfg-restrict-adjacent-move'); cardSortCriteriaContainerEl = drawerEl.querySelector('#card-sort-criteria-container'); tabBtnFields = drawerEl.querySelector('#cfg-tab-btn-fields'); tabBtnGeneral = drawerEl.querySelector('#cfg-tab-btn-general'); tabBtnVisual = drawerEl.querySelector('#cfg-tab-btn-visual'); tabBtnRules = drawerEl.querySelector('#cfg-tab-btn-rules'); tabContentFields = drawerEl.querySelector('#cfg-tab-content-fields'); tabContentGeneral = drawerEl.querySelector('#cfg-tab-content-general'); tabContentVisual = drawerEl.querySelector('#cfg-tab-content-visual'); tabContentRules = drawerEl.querySelector('#cfg-tab-content-rules'); rulesConfigAreaEl = drawerEl.querySelector('#rules-config-area'); centerColumnsCb = drawerEl.querySelector('#cfg-center-columns'); colWidthPercentInput = drawerEl.querySelector('#cfg-col-width-percent'); colMinWidthInput = drawerEl.querySelector('#cfg-col-min-width'); colMaxWidthInput = drawerEl.querySelector('#cfg-col-max-width'); colColorInput = drawerEl.querySelector('#cfg-col-color'); cardColorInput = drawerEl.querySelector('#cfg-card-color'); cardShadowInput = drawerEl.querySelector('#cfg-card-shadow');
@@ -187,32 +132,30 @@ document.addEventListener('DOMContentLoaded', function () {
             };
         }
     }
-    // ... (handleLaneChanged, switchTab - sem alterações) ...
-        function handleLaneChanged() {
-      const selectedLaneValue = laneSelectEl.value;
-      configSortState = { columnKey: 'iniOrder', direction: 'asc' }; // Reset sort state for fields table
-      if (typeof selectedLaneValue !== 'undefined' && selectedLaneValue !== "") {
-        if (fieldsTableContainerEl) { // Adicionada verificação de existência
-            fieldsTableContainerEl.style.display = 'block';
-            populateFieldsTableForLane(selectedLaneValue, true); // Carrega com dados salvos primeiro
+    
+    function handleLaneChanged() {
+        const selectedLaneValue = laneSelectEl.value;
+        configSortState = { columnKey: 'iniOrder', direction: 'asc' }; // Reset sort state for fields table
+        if (typeof selectedLaneValue !== 'undefined' && selectedLaneValue !== "") {
+            if (fieldsTableContainerEl) {
+                fieldsTableContainerEl.style.display = 'block';
+                populateFieldsTableForLane(selectedLaneValue, true);
+            } else {
+                console.error("CUIB.handleLaneChanged: fieldsTableContainerEl não encontrado.");
+            }
         } else {
-            console.error("CUIB.handleLaneChanged: fieldsTableContainerEl não encontrado.");
+            if (fieldsTableContainerEl) {
+                fieldsTableContainerEl.style.display = 'none';
+                fieldsTableContainerEl.innerHTML = '';
+            }
         }
-      } else {
-        if (fieldsTableContainerEl) {
-            fieldsTableContainerEl.style.display = 'none';
-            fieldsTableContainerEl.innerHTML = '';
-        }
-      }
     }
-    function switchTab(tabName) { /* ... (como antes) ... */ [tabBtnFields, tabBtnGeneral, tabBtnVisual, tabBtnRules].forEach(btn => btn?.classList.remove('active')); [tabContentFields, tabContentGeneral, tabContentVisual, tabContentRules].forEach(content => content?.classList.remove('active')); if (tabName === 'fields') { tabBtnFields.classList.add('active'); tabContentFields.classList.add('active'); } else if (tabName === 'general') { tabBtnGeneral.classList.add('active'); tabContentGeneral.classList.add('active'); } else if (tabName === 'visual') { tabBtnVisual.classList.add('active'); tabContentVisual.classList.add('active'); } else if (tabName === 'rules') { tabBtnRules.classList.add('active'); tabContentRules.classList.add('active'); } }
+    function switchTab(tabName) { [tabBtnFields, tabBtnGeneral, tabBtnVisual, tabBtnRules].forEach(btn => btn?.classList.remove('active')); [tabContentFields, tabContentGeneral, tabContentVisual, tabContentRules].forEach(content => content?.classList.remove('active')); if (tabName === 'fields') { tabBtnFields.classList.add('active'); tabContentFields.classList.add('active'); } else if (tabName === 'general') { tabBtnGeneral.classList.add('active'); tabContentGeneral.classList.add('active'); } else if (tabName === 'visual') { tabBtnVisual.classList.add('active'); tabContentVisual.classList.add('active'); } else if (tabName === 'rules') { tabBtnRules.classList.add('active'); tabContentRules.classList.add('active'); } }
 
     function populateAndOpen(gristTableMetaIn, processedKanbanLanesIn, allTablesListIn) {
         currentGristTableMeta = gristTableMetaIn; currentKanbanLanes = processedKanbanLanesIn; allGristTablesList = allTablesListIn; if (fieldsTableContainerEl) { fieldsTableContainerEl.style.display = 'none'; fieldsTableContainerEl.innerHTML = ''; } configSortState = { columnKey: 'iniOrder', direction: 'asc' }; const laneSelectorDiv = drawerEl.querySelector('#kanban-lane-selector-div'); if (currentKanbanLanes && currentKanbanLanes.length > 0) { if (laneSelectorDiv) laneSelectorDiv.style.display = 'block'; if (laneSelectEl) laneSelectEl.innerHTML = '<option value="">-- Selecione uma lane --</option>'; currentKanbanLanes.forEach(lane => { if (lane.value === "_UNMATCHED_LANE_" || lane.isUnmatched) return; const option = document.createElement('option'); option.value = lane.value; option.textContent = lane.value || "[Vazio]"; if (laneSelectEl) laneSelectEl.appendChild(option); }); if (laneSelectEl) laneSelectEl.value = ""; } else { if (laneSelectorDiv) laneSelectorDiv.style.display = 'block'; if (laneSelectEl) laneSelectEl.innerHTML = '<option value="">-- Nenhuma lane Kanban definida --</option>'; } if (definingColumnMapSelectEl) definingColumnMapSelectEl.innerHTML = '<option value="">-- Selecione uma coluna --</option>'; if (currentGristTableMeta && currentGristTableMeta.columns) { currentGristTableMeta.columns.forEach(col => { if (['Choice', 'ChoiceList', 'Text', 'Any', 'Date', 'DateTime', 'Numeric', 'Int', 'Ref', 'RefList'].includes(col.type.split(':')[0])) { const option = document.createElement('option'); option.value = col.id; option.textContent = `${col.label} (${col.id}) - Tipo: ${col.type}`; if (definingColumnMapSelectEl) definingColumnMapSelectEl.appendChild(option); } }); } const currentDefiningCol = WidgetConfigManager.getKanbanDefiningColumn(); if (currentDefiningCol && definingColumnMapSelectEl) { definingColumnMapSelectEl.value = currentDefiningCol; } else if (definingColumnMapSelectEl) { definingColumnMapSelectEl.value = ""; } populateCardSortCriteriaUI(); populateWipLimitsTable(); if (restrictAdjacentMoveCbEl) { restrictAdjacentMoveCbEl.checked = WidgetConfigManager.getRestrictAdjacentMove(); }
-
         const vis = WidgetConfigManager.getVisualConfig();
-        const visDefaults = WidgetConfigManager.getKanbanDefaults().visual; // Corrigido para usar o método getKanbanDefaults()
-
+        const visDefaults = WidgetConfigManager.getKanbanDefaults().visual;
         centerColumnsCb.checked = vis.centerColumns;
         colWidthPercentInput.value = vis.columnWidthPercent;
         colMinWidthInput.value = vis.columnMinWidth;
@@ -220,34 +163,25 @@ document.addEventListener('DOMContentLoaded', function () {
         colColorInput.value = vis.columnColor || visDefaults.columnColor;
         cardColorInput.value = vis.cardColor || visDefaults.cardColor;
         cardShadowInput.checked = Boolean(vis.cardShadow);
-
         cfgDrawerFontColorInput.value = vis.drawerFontColor || visDefaults.drawerFontColor;
         cfgCardTitleFontColorInput.value = vis.cardTitleFontColor || visDefaults.cardTitleFontColor;
         cfgCardFieldsFontColorInput.value = vis.cardFieldsFontColor || visDefaults.cardFieldsFontColor;
-
         cfgBackgroundTypeSelect.value = vis.backgroundType || visDefaults.backgroundType;
         cfgSolidBgColorInput.value = vis.solidBackgroundColor || visDefaults.solidBackgroundColor;
         cfgGradientColor1Input.value = vis.gradientColor1 || visDefaults.gradientColor1;
         cfgGradientColor2Input.value = vis.gradientColor2 || visDefaults.gradientColor2;
         cfgGradientDirectionSelect.value = vis.gradientDirection || visDefaults.gradientDirection;
-
         if (cfgBackgroundTypeSelect.onchange) cfgBackgroundTypeSelect.onchange();
-
         populateRulesUI(); switchTab('fields'); if (drawerEl) drawerEl.classList.add('visible'); else console.error("CUIB.populateAndOpen: drawerEl é null!");
     }
 
-    // ... (restante de ConfigUIBuilder: populateRulesUI, etc. e handleSaveConfiguration sem alterações no trecho problemático)
-        function populateRulesUI() { /* ... (como antes) ... */ if (!rulesConfigAreaEl || !currentKanbanLanes || !currentGristTableMeta) { if (rulesConfigAreaEl) rulesConfigAreaEl.innerHTML = "<p><i>Lanes ou metadados da tabela principal não disponíveis.</i></p>"; return; } rulesConfigAreaEl.innerHTML = ''; const allRules = WidgetConfigManager.getAllRules(); currentKanbanLanes.filter(lane => !lane.isUnmatched).forEach(lane => { const laneSection = document.createElement('div'); laneSection.className = 'rules-lane-section'; laneSection.dataset.laneValue = lane.value; const title = document.createElement('h4'); title.textContent = `Regras para Lane: "${lane.value || '[Vazio]'}"`; laneSection.appendChild(title); const rulesContainer = document.createElement('div'); rulesContainer.className = 'rules-items-container'; laneSection.appendChild(rulesContainer); const existingRulesForLane = allRules[String(lane.value)] || []; existingRulesForLane.forEach(ruleData => { rulesContainer.appendChild(createRuleItemElement(ruleData, String(lane.value))); }); const addRuleBtn = document.createElement('button'); addRuleBtn.textContent = '+ Adicionar Regra'; addRuleBtn.className = 'add-rule-btn'; addRuleBtn.type = 'button'; addRuleBtn.onclick = () => { rulesContainer.appendChild(createRuleItemElement({}, String(lane.value))); }; laneSection.appendChild(addRuleBtn); rulesConfigAreaEl.appendChild(laneSection); }); }
-
+    // ... populateRulesUI, createRuleItemElement, populateWipLimitsTable, populateCardSortCriteriaUI (no changes here) ...
+    function populateRulesUI() { if (!rulesConfigAreaEl || !currentKanbanLanes || !currentGristTableMeta) { if (rulesConfigAreaEl) rulesConfigAreaEl.innerHTML = "<p><i>Lanes ou metadados da tabela principal não disponíveis.</i></p>"; return; } rulesConfigAreaEl.innerHTML = ''; const allRules = WidgetConfigManager.getAllRules(); currentKanbanLanes.filter(lane => !lane.isUnmatched).forEach(lane => { const laneSection = document.createElement('div'); laneSection.className = 'rules-lane-section'; laneSection.dataset.laneValue = lane.value; const title = document.createElement('h4'); title.textContent = `Regras para Lane: "${lane.value || '[Vazio]'}"`; laneSection.appendChild(title); const rulesContainer = document.createElement('div'); rulesContainer.className = 'rules-items-container'; laneSection.appendChild(rulesContainer); const existingRulesForLane = allRules[String(lane.value)] || []; existingRulesForLane.forEach(ruleData => { rulesContainer.appendChild(createRuleItemElement(ruleData, String(lane.value))); }); const addRuleBtn = document.createElement('button'); addRuleBtn.textContent = '+ Adicionar Regra'; addRuleBtn.className = 'add-rule-btn'; addRuleBtn.type = 'button'; addRuleBtn.onclick = () => { rulesContainer.appendChild(createRuleItemElement({}, String(lane.value))); }; laneSection.appendChild(addRuleBtn); rulesConfigAreaEl.appendChild(laneSection); }); }
     function createRuleItemElement(ruleData = {}, laneValue) {
         const ruleItemDiv = document.createElement('div'); ruleItemDiv.className = 'rule-item'; ruleItemDiv.dataset.ruleId = ruleData.id || `temp_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
         const headerDiv = document.createElement('div'); headerDiv.className = 'rule-item-header';
         const typeSelect = document.createElement('select'); typeSelect.className = 'rule-type';
-        [
-            {value: 'allow', text: 'Só permite cartões SE...'},
-            {value: 'create', text: 'SE cartão entrar ENTÃO criar em outra tabela...'},
-            {value: 'move', text: 'SE condição ENTÃO mover automaticamente para...'}
-        ].forEach(opt => { typeSelect.add(new Option(opt.text, opt.value)); }); // CORREÇÃO APLICADA AQUI
+        [{value: 'allow', text: 'Só permite cartões SE...'}, {value: 'create', text: 'SE cartão entrar ENTÃO criar em outra tabela...'}, {value: 'move', text: 'SE condição ENTÃO mover automaticamente para...'}].forEach(opt => { typeSelect.add(new Option(opt.text, opt.value)); });
         typeSelect.value = ruleData.type || 'allow';
         headerDiv.appendChild(typeSelect);
         const removeRuleBtn = document.createElement('button'); removeRuleBtn.textContent = 'Remover Regra'; removeRuleBtn.className = 'rule-remove-btn'; removeRuleBtn.type = 'button'; removeRuleBtn.onclick = () => ruleItemDiv.remove();
@@ -257,23 +191,19 @@ document.addEventListener('DOMContentLoaded', function () {
         const renderParamsForType = async (selectedType) => {
             paramsDiv.innerHTML = '';
             if (selectedType === 'allow') { const conditionDiv = document.createElement('div'); conditionDiv.style.display = 'flex'; conditionDiv.style.gap = '8px'; conditionDiv.style.alignItems = 'center'; const fieldSelect = document.createElement('select'); fieldSelect.className = 'rule-param-field'; fieldSelect.add(new Option('-- Campo Tabela Atual --', '')); currentGristTableMeta.columns.forEach(col => fieldSelect.add(new Option(`${col.label || col.id} (${col.type.split(':')[0]})`, col.id))); if (ruleData.fieldId) fieldSelect.value = ruleData.fieldId; conditionDiv.appendChild(fieldSelect); const operatorSelect = document.createElement('select'); operatorSelect.className = 'rule-param-operator'; operatorSelect.add(new Option('-- Operador --', '')); RULE_OPERATORS.forEach(op => operatorSelect.add(new Option(op.text, op.value))); if (ruleData.operator) operatorSelect.value = ruleData.operator; conditionDiv.appendChild(operatorSelect); const valueInput = document.createElement('input'); valueInput.type = 'text'; valueInput.className = 'rule-param-value'; valueInput.placeholder = 'Valor para comparar'; valueInput.value = ruleData.value || ''; conditionDiv.appendChild(valueInput); paramsDiv.appendChild(conditionDiv); }
-            else if (selectedType === 'create') { // **** REGRA CREATE SIMPLIFICADA ****
+            else if (selectedType === 'create') {
                 const actionDiv = document.createElement('div'); actionDiv.style.display = 'flex'; actionDiv.style.flexDirection = 'column'; actionDiv.style.gap = '10px';
                 const createRow = (labelText, element) => { const rowDiv = document.createElement('div'); rowDiv.style.display = 'flex'; rowDiv.style.alignItems = 'center'; rowDiv.style.gap = '5px'; const label = document.createElement('label'); label.textContent = labelText; label.style.minWidth = '220px'; rowDiv.append(label, element); return rowDiv; };
-
                 const targetTableSelect = document.createElement('select'); targetTableSelect.className = 'rule-param-target-table'; targetTableSelect.style.flexGrow = '1';
                 targetTableSelect.add(new Option('-- Selecione Tabela Destino --', ''));
                 allGristTablesList.forEach(tbl => { if (tbl.id !== currentGristTableMeta.nameId) { targetTableSelect.add(new Option(tbl.name || tbl.id, tbl.id)); } });
                 actionDiv.appendChild(createRow('Tabela de Destino:', targetTableSelect));
-
                 const relationFieldSelect = document.createElement('select'); relationFieldSelect.className = 'rule-param-relation-field'; relationFieldSelect.style.flexGrow = '1';
                 relationFieldSelect.add(new Option('-- Campo de Relação (em Destino) --', ''));
                 actionDiv.appendChild(createRow('Campo de Relação (ID do cartão Kanban):', relationFieldSelect));
-
                 const targetLaneColSelect = document.createElement('select'); targetLaneColSelect.className = 'rule-param-target-lane-column'; targetLaneColSelect.style.flexGrow = '1';
                 targetLaneColSelect.add(new Option('-- Coluna de Status/Lane (em Destino) --', ''));
                 actionDiv.appendChild(createRow('Coluna de Status/Lane (em Destino):', targetLaneColSelect));
-
                 const initialLaneValueSelect = document.createElement('select'); initialLaneValueSelect.className = 'rule-param-initial-lane-value'; initialLaneValueSelect.style.flexGrow = '1';
                 initialLaneValueSelect.add(new Option('-- Lane Inicial no Destino --', ''));
                 actionDiv.appendChild(createRow('Lane Inicial para Novo Cartão (em Destino):', initialLaneValueSelect));
@@ -288,237 +218,125 @@ document.addEventListener('DOMContentLoaded', function () {
                         else if (Array.from(selectElement.options).some(opt => opt.value === originalValue)) { selectElement.value = originalValue; }
                     } catch (e) { console.error("Erro em populateSelectWithOptions:", e); }
                 };
-
                 targetTableSelect.onchange = async () => {
                     const selectedTargetTableId = targetTableSelect.value;
-                    await populateSelectWithOptions(relationFieldSelect, async () => {
-                        if (!selectedTargetTableId) return []; const schema = await GristDataManager.getTableSchema(selectedTargetTableId);
-                        return schema.columns.map(c => ({ text: `${c.label || c.id} (${c.type.split(':')[0]})`, value: c.id }));
-                    }, ruleData.relationFieldIdInTarget, '-- Campo de Relação --');
-
-                    await populateSelectWithOptions(targetLaneColSelect, async () => {
-                        if (!selectedTargetTableId) return []; const schema = await GristDataManager.getTableSchema(selectedTargetTableId);
-                        return schema.columns.filter(c => c.type === 'Choice' || c.type === 'ChoiceList').map(c => ({ text: `${c.label || c.id}`, value: c.id }));
-                    }, ruleData.targetColumnIdForLane, '-- Coluna de Status/Lane --');
-
-                    initialLaneValueSelect.innerHTML = '<option value="">-- Lane Inicial --</option>'; // Limpa
-                    if (targetLaneColSelect.value) { // Se uma coluna de lane foi auto-selecionada ou escolhida
-                        const schema = await GristDataManager.getTableSchema(selectedTargetTableId);
-                        const choiceCol = schema.columns.find(c => c.id === targetLaneColSelect.value);
-                        if (choiceCol && choiceCol.choices) {
-                            await populateSelectWithOptions(initialLaneValueSelect, async () => choiceCol.choices.map(ch => ({text: ch, value: ch})), ruleData.initialLaneValue, '-- Lane Inicial --');
-                        }
-                    }
+                    await populateSelectWithOptions(relationFieldSelect, async () => { if (!selectedTargetTableId) return []; const schema = await GristDataManager.getTableSchema(selectedTargetTableId); return schema.columns.map(c => ({ text: `${c.label || c.id} (${c.type.split(':')[0]})`, value: c.id })); }, ruleData.relationFieldIdInTarget, '-- Campo de Relação --');
+                    await populateSelectWithOptions(targetLaneColSelect, async () => { if (!selectedTargetTableId) return []; const schema = await GristDataManager.getTableSchema(selectedTargetTableId); return schema.columns.filter(c => c.type === 'Choice' || c.type === 'ChoiceList').map(c => ({ text: `${c.label || c.id}`, value: c.id })); }, ruleData.targetColumnIdForLane, '-- Coluna de Status/Lane --');
+                    initialLaneValueSelect.innerHTML = '<option value="">-- Lane Inicial --</option>';
+                    if (targetLaneColSelect.value) { const schema = await GristDataManager.getTableSchema(selectedTargetTableId); const choiceCol = schema.columns.find(c => c.id === targetLaneColSelect.value); if (choiceCol && choiceCol.choices) { await populateSelectWithOptions(initialLaneValueSelect, async () => choiceCol.choices.map(ch => ({text: ch, value: ch})), ruleData.initialLaneValue, '-- Lane Inicial --'); } }
                 };
-
                 targetLaneColSelect.onchange = async () => {
                     const selectedTargetTableId = targetTableSelect.value;
                     const selectedLaneColumnId = targetLaneColSelect.value;
-                    if (selectedTargetTableId && selectedLaneColumnId) {
-                        const schema = await GristDataManager.getTableSchema(selectedTargetTableId);
-                        const choiceCol = schema.columns.find(c => c.id === selectedLaneColumnId);
-                        if (choiceCol && choiceCol.choices) {
-                           await populateSelectWithOptions(initialLaneValueSelect, async () => choiceCol.choices.map(ch => ({text: ch, value: ch})), ruleData.initialLaneValue, '-- Lane Inicial --');
-                        } else {
-                           initialLaneValueSelect.innerHTML = '<option value="">-- Sem opções --</option>';
-                        }
-                    } else {
-                        initialLaneValueSelect.innerHTML = '<option value="">-- Selecione Coluna de Lane --</option>';
-                    }
+                    if (selectedTargetTableId && selectedLaneColumnId) { const schema = await GristDataManager.getTableSchema(selectedTargetTableId); const choiceCol = schema.columns.find(c => c.id === selectedLaneColumnId); if (choiceCol && choiceCol.choices) { await populateSelectWithOptions(initialLaneValueSelect, async () => choiceCol.choices.map(ch => ({text: ch, value: ch})), ruleData.initialLaneValue, '-- Lane Inicial --'); } else { initialLaneValueSelect.innerHTML = '<option value="">-- Sem opções --</option>'; } } else { initialLaneValueSelect.innerHTML = '<option value="">-- Selecione Coluna de Lane --</option>'; }
                 };
-
-                if (ruleData.targetTableId) {
-                    targetTableSelect.value = ruleData.targetTableId;
-                    await targetTableSelect.onchange(); // Dispara para popular tudo
-                    // Os valores subsequentes (relationField, targetLaneCol, initialLane) serão setados pelo populateSelectWithOptions se ruleData os tiver
-                }
+                if (ruleData.targetTableId) { targetTableSelect.value = ruleData.targetTableId; await targetTableSelect.onchange(); }
                 paramsDiv.appendChild(actionDiv);
-
-            } else if (selectedType === 'move') { /* ... (como antes) ... */ const moveParamsDiv = document.createElement('div'); moveParamsDiv.style.display = 'flex'; moveParamsDiv.style.flexDirection = 'column'; moveParamsDiv.style.gap = '10px'; const conditionTitle = document.createElement('strong'); conditionTitle.textContent = 'Condição (SE):'; moveParamsDiv.appendChild(conditionTitle); const conditionLineDiv = document.createElement('div'); conditionLineDiv.style.display = 'flex'; conditionLineDiv.style.gap = '8px'; conditionLineDiv.style.alignItems = 'center'; const fieldSelectMove = document.createElement('select'); fieldSelectMove.className = 'rule-param-field-move'; fieldSelectMove.add(new Option('-- Campo Tabela Atual --', '')); currentGristTableMeta.columns.forEach(col => fieldSelectMove.add(new Option(`${col.label || col.id} (${col.type.split(':')[0]})`, col.id))); if (ruleData.fieldId) fieldSelectMove.value = ruleData.fieldId; conditionLineDiv.appendChild(fieldSelectMove); const operatorSelectMove = document.createElement('select'); operatorSelectMove.className = 'rule-param-operator-move'; operatorSelectMove.add(new Option('-- Operador --', '')); RULE_OPERATORS.forEach(op => operatorSelectMove.add(new Option(op.text, op.value))); if (ruleData.operator) operatorSelectMove.value = ruleData.operator; conditionLineDiv.appendChild(operatorSelectMove); const valueInputMove = document.createElement('input'); valueInputMove.type = 'text'; valueInputMove.className = 'rule-param-value-move'; valueInputMove.placeholder = 'Valor para comparar'; valueInputMove.value = ruleData.value || ''; conditionLineDiv.appendChild(valueInputMove); moveParamsDiv.appendChild(conditionLineDiv); const actionTitle = document.createElement('strong'); actionTitle.textContent = 'Ação (ENTÃO Mover Para):'; actionTitle.style.marginTop = '10px'; moveParamsDiv.appendChild(actionTitle); const targetLaneSelect = document.createElement('select'); targetLaneSelect.className = 'rule-param-target-lane'; targetLaneSelect.add(new Option('-- Selecione Lane Destino --', '')); currentKanbanLanes.filter(l => !l.isUnmatched && l.value !== laneValue).forEach(kLane => { targetLaneSelect.add(new Option(kLane.value || '[Vazio]', kLane.value)); }); if (ruleData.targetLaneValue) targetLaneSelect.value = ruleData.targetLaneValue; moveParamsDiv.appendChild(targetLaneSelect); paramsDiv.appendChild(moveParamsDiv); }
+            } else if (selectedType === 'move') { const moveParamsDiv = document.createElement('div'); moveParamsDiv.style.display = 'flex'; moveParamsDiv.style.flexDirection = 'column'; moveParamsDiv.style.gap = '10px'; const conditionTitle = document.createElement('strong'); conditionTitle.textContent = 'Condição (SE):'; moveParamsDiv.appendChild(conditionTitle); const conditionLineDiv = document.createElement('div'); conditionLineDiv.style.display = 'flex'; conditionLineDiv.style.gap = '8px'; conditionLineDiv.style.alignItems = 'center'; const fieldSelectMove = document.createElement('select'); fieldSelectMove.className = 'rule-param-field-move'; fieldSelectMove.add(new Option('-- Campo Tabela Atual --', '')); currentGristTableMeta.columns.forEach(col => fieldSelectMove.add(new Option(`${col.label || col.id} (${col.type.split(':')[0]})`, col.id))); if (ruleData.fieldId) fieldSelectMove.value = ruleData.fieldId; conditionLineDiv.appendChild(fieldSelectMove); const operatorSelectMove = document.createElement('select'); operatorSelectMove.className = 'rule-param-operator-move'; operatorSelectMove.add(new Option('-- Operador --', '')); RULE_OPERATORS.forEach(op => operatorSelectMove.add(new Option(op.text, op.value))); if (ruleData.operator) operatorSelectMove.value = ruleData.operator; conditionLineDiv.appendChild(operatorSelectMove); const valueInputMove = document.createElement('input'); valueInputMove.type = 'text'; valueInputMove.className = 'rule-param-value-move'; valueInputMove.placeholder = 'Valor para comparar'; valueInputMove.value = ruleData.value || ''; conditionLineDiv.appendChild(valueInputMove); moveParamsDiv.appendChild(conditionLineDiv); const actionTitle = document.createElement('strong'); actionTitle.textContent = 'Ação (ENTÃO Mover Para):'; actionTitle.style.marginTop = '10px'; moveParamsDiv.appendChild(actionTitle); const targetLaneSelect = document.createElement('select'); targetLaneSelect.className = 'rule-param-target-lane'; targetLaneSelect.add(new Option('-- Selecione Lane Destino --', '')); currentKanbanLanes.filter(l => !l.isUnmatched && l.value !== laneValue).forEach(kLane => { targetLaneSelect.add(new Option(kLane.value || '[Vazio]', kLane.value)); }); if (ruleData.targetLaneValue) targetLaneSelect.value = ruleData.targetLaneValue; moveParamsDiv.appendChild(targetLaneSelect); paramsDiv.appendChild(moveParamsDiv); }
         };
         typeSelect.onchange = () => renderParamsForType(typeSelect.value);
         renderParamsForType(typeSelect.value);
         return ruleItemDiv;
     }
-        function populateWipLimitsTable() {
-      if (!wipLimitsTableContainerEl || !currentKanbanLanes || currentKanbanLanes.length === 0) {
-        if (wipLimitsTableContainerEl) {
-          wipLimitsTableContainerEl.innerHTML = "<p><i>Nenhuma lane definida para configurar WIP. Selecione uma 'Coluna para Lanes do Kanban' na aba 'Geral'.</i></p>";
-        }
-        return;
-      }
-      wipLimitsTableContainerEl.innerHTML = ''; // Limpa conteúdo anterior
-      const table = document.createElement('table');
-      table.className = 'wip-limit-table'; // Classe para estilização
-      const thead = table.createTHead();
-      const headerRow = thead.insertRow();
-      ["Lane", "Max Cartões Visíveis (Inicial)", "Max Cartões Permitidos (Limite WIP)"].forEach(text => {
-        const th = document.createElement('th');
-        th.textContent = text;
-        headerRow.appendChild(th);
-      });
+    function populateWipLimitsTable() {
+      if (!wipLimitsTableContainerEl || !currentKanbanLanes || currentKanbanLanes.length === 0) { if (wipLimitsTableContainerEl) { wipLimitsTableContainerEl.innerHTML = "<p><i>Nenhuma lane definida para configurar WIP. Selecione uma 'Coluna para Lanes do Kanban' na aba 'Geral'.</i></p>"; } return; }
+      wipLimitsTableContainerEl.innerHTML = '';
+      const table = document.createElement('table'); table.className = 'wip-limit-table';
+      const thead = table.createTHead(); const headerRow = thead.insertRow();
+      ["Lane", "Max Cartões Visíveis (Inicial)", "Max Cartões Permitidos (Limite WIP)"].forEach(text => { const th = document.createElement('th'); th.textContent = text; headerRow.appendChild(th); });
       const tbody = table.createTBody();
       currentKanbanLanes.filter(lane => !lane.isUnmatched).forEach(lane => {
-        const row = tbody.insertRow();
-        const laneDisplayValue = lane.value || "[Vazio]";
-        row.insertCell().textContent = laneDisplayValue;
-
+        const row = tbody.insertRow(); row.insertCell().textContent = lane.value || "[Vazio]";
         const currentLimits = WidgetConfigManager.getLaneWipLimit(lane.value);
-
-        // Input para Max Visíveis
-        let cellVisible = row.insertCell();
-        let inputVisible = document.createElement('input');
-        inputVisible.type = 'number';
-        inputVisible.min = '0';
-        inputVisible.placeholder = "Todos"; // Placeholder se vazio
-        inputVisible.dataset.laneValue = lane.value;
-        inputVisible.dataset.limitType = 'maxVisible';
-        inputVisible.value = currentLimits.maxVisible > 0 ? currentLimits.maxVisible : ''; // Mostra vazio se 0 (sem limite)
-        cellVisible.appendChild(inputVisible);
-
-        // Input para Max Permitidos
-        let cellAllowed = row.insertCell();
-        let inputAllowed = document.createElement('input');
-        inputAllowed.type = 'number';
-        inputAllowed.min = '0';
-        inputAllowed.placeholder = "Sem limite"; // Placeholder se vazio
-        inputAllowed.dataset.laneValue = lane.value;
-        inputAllowed.dataset.limitType = 'maxAllowed';
-        inputAllowed.value = currentLimits.maxAllowed > 0 ? currentLimits.maxAllowed : ''; // Mostra vazio se 0 (sem limite)
-        cellAllowed.appendChild(inputAllowed);
+        let cellVisible = row.insertCell(); let inputVisible = document.createElement('input'); inputVisible.type = 'number'; inputVisible.min = '0'; inputVisible.placeholder = "Todos"; inputVisible.dataset.laneValue = lane.value; inputVisible.dataset.limitType = 'maxVisible'; inputVisible.value = currentLimits.maxVisible > 0 ? currentLimits.maxVisible : ''; cellVisible.appendChild(inputVisible);
+        let cellAllowed = row.insertCell(); let inputAllowed = document.createElement('input'); inputAllowed.type = 'number'; inputAllowed.min = '0'; inputAllowed.placeholder = "Sem limite"; inputAllowed.dataset.laneValue = lane.value; inputAllowed.dataset.limitType = 'maxAllowed'; inputAllowed.value = currentLimits.maxAllowed > 0 ? currentLimits.maxAllowed : ''; cellAllowed.appendChild(inputAllowed);
       });
       wipLimitsTableContainerEl.appendChild(table);
     }
-        function populateCardSortCriteriaUI() {
-      if (!cardSortCriteriaContainerEl || !currentGristTableMeta || !currentGristTableMeta.columns) {
-        if (cardSortCriteriaContainerEl) {
-          cardSortCriteriaContainerEl.innerHTML = "<p><i>Carregue metadados da tabela para configurar ordenação.</i></p>";
-        }
-        return;
-      }
+    function populateCardSortCriteriaUI() {
+      if (!cardSortCriteriaContainerEl || !currentGristTableMeta || !currentGristTableMeta.columns) { if (cardSortCriteriaContainerEl) { cardSortCriteriaContainerEl.innerHTML = "<p><i>Carregue metadados da tabela para configurar ordenação.</i></p>"; } return; }
       cardSortCriteriaContainerEl.innerHTML = '';
       const currentSortCriteria = WidgetConfigManager.getCardSortCriteria();
       for (let i = 0; i < 3; i++) {
-        const criterionDiv = document.createElement('div');
-        criterionDiv.className = 'sort-criterion';
-        const label = document.createElement('label');
-        label.textContent = i === 0 ? "Ordenar por:" : (i === 1 ? "Então por:" : "E então por:");
-        criterionDiv.appendChild(label);
-        const colSelect = document.createElement('select');
-        colSelect.id = `sort-col-${i}`;
-        colSelect.innerHTML = '<option value="">-- Nenhum --</option>';
-        currentGristTableMeta.columns.forEach(col =>
-          colSelect.appendChild(Object.assign(document.createElement('option'), {
-            value: col.id,
-            textContent: `${col.label} (${col.type.split(':')[0]})` // Mostra tipo base
-          }))
-        );
-        colSelect.value = currentSortCriteria[i]?.columnId || ''; // Adicionado '?' para segurança
-        criterionDiv.appendChild(colSelect);
-        const dirSelect = document.createElement('select');
-        dirSelect.id = `sort-dir-${i}`;
-        dirSelect.className = 'direction';
-        ['asc','desc'].forEach(dir =>
-          dirSelect.appendChild(Object.assign(document.createElement('option'),{
-            value: dir,
-            textContent: dir==='asc' ? 'Ascendente' : 'Descendente'
-          }))
-        );
-        dirSelect.value = currentSortCriteria[i]?.direction || 'asc'; // Adicionado '?' e default
-        criterionDiv.appendChild(dirSelect);
-        const typeSelect = document.createElement('select');
-        typeSelect.id = `sort-type-${i}`;
-        typeSelect.title = "Define como este campo será tratado/exibido no cartão se usado para ordenação especial (ex: prioridade, data limite)";
-        ['','priority','dueDate'].forEach(tp => {
-          const opt = document.createElement('option');
-          opt.value = tp;
-          opt.textContent = tp === '' ? '-- Normal --'
-            : tp === 'priority' ? 'Prioridade (destaque)'
-            : 'Data Limite (destaque)';
-          typeSelect.appendChild(opt);
-        });
-        typeSelect.value = currentSortCriteria[i]?.displayType || ''; // Adicionado '?'
-        criterionDiv.appendChild(typeSelect);
+        const criterionDiv = document.createElement('div'); criterionDiv.className = 'sort-criterion';
+        const label = document.createElement('label'); label.textContent = i === 0 ? "Ordenar por:" : (i === 1 ? "Então por:" : "E então por:"); criterionDiv.appendChild(label);
+        const colSelect = document.createElement('select'); colSelect.id = `sort-col-${i}`; colSelect.innerHTML = '<option value="">-- Nenhum --</option>';
+        currentGristTableMeta.columns.forEach(col => colSelect.appendChild(Object.assign(document.createElement('option'), { value: col.id, textContent: `${col.label} (${col.type.split(':')[0]})` })));
+        colSelect.value = currentSortCriteria[i]?.columnId || ''; criterionDiv.appendChild(colSelect);
+        const dirSelect = document.createElement('select'); dirSelect.id = `sort-dir-${i}`; dirSelect.className = 'direction';
+        ['asc','desc'].forEach(dir => dirSelect.appendChild(Object.assign(document.createElement('option'),{ value: dir, textContent: dir==='asc' ? 'Ascendente' : 'Descendente' })));
+        dirSelect.value = currentSortCriteria[i]?.direction || 'asc'; criterionDiv.appendChild(dirSelect);
+        const typeSelect = document.createElement('select'); typeSelect.id = `sort-type-${i}`; typeSelect.title = "Define como este campo será tratado/exibido no cartão se usado para ordenação especial (ex: prioridade, data limite)";
+        ['','priority','dueDate'].forEach(tp => { const opt = document.createElement('option'); opt.value = tp; opt.textContent = tp === '' ? '-- Normal --' : tp === 'priority' ? 'Prioridade (destaque)' : 'Data Limite (destaque)'; typeSelect.appendChild(opt); });
+        typeSelect.value = currentSortCriteria[i]?.displayType || ''; criterionDiv.appendChild(typeSelect);
         cardSortCriteriaContainerEl.appendChild(criterionDiv);
       }
     }
-        function getColumnIndex(dataKey) {
-      const headerMap = {
-        'iniOrder': 1, 'labelName': 2, 'useFormatting': 3, 'card': 4,
-        'cardPosition': 5, 'showLabel': 6, 'visible': 7, 'editable': 8, 'position': 9
-      };
-      return headerMap[dataKey] || -1;
-    }
-
+    function getColumnIndex(dataKey) { const headerMap = { 'iniOrder': 1, 'labelName': 2, 'useFormatting': 3, 'card': 4, 'cardPosition': 5, 'showLabel': 6, 'visible': 7, 'editable': 8, 'position': 9 }; return headerMap[dataKey] || -1; }
     function createSelectAllCheckbox(columnKey) {
-      const selectAllCb = document.createElement('input');
-      selectAllCb.type = 'checkbox';
-      selectAllCb.title = `Marcar/Desmarcar todos para ${columnKey}`;
+      const selectAllCb = document.createElement('input'); selectAllCb.type = 'checkbox'; selectAllCb.title = `Marcar/Desmarcar todos para ${columnKey}`;
       selectAllCb.onclick = function (e) {
-        e.stopPropagation();
-        const isChecked = e.target.checked;
-        const tableBody = fieldsTableContainerEl.querySelector('tbody');
-        const colIdx = getColumnIndex(columnKey);
-        if (!tableBody || colIdx < 0) return;
-        tableBody.querySelectorAll(`tr td:nth-child(${colIdx}) input[type="checkbox"]`).forEach(cb => {
-          cb.checked = isChecked;
-        });
+        e.stopPropagation(); const isChecked = e.target.checked; const tableBody = fieldsTableContainerEl.querySelector('tbody'); const colIdx = getColumnIndex(columnKey); if (!tableBody || colIdx < 0) return;
+        tableBody.querySelectorAll(`tr td:nth-child(${colIdx}) input[type="checkbox"]`).forEach(cb => { cb.checked = isChecked; });
       };
-      // A atualização do estado do checkbox "Selecionar todos" é feita após a tabela ser populada.
       return selectAllCb;
     }
-
     function updateSelectAllCheckboxState(headerCheckbox, columnKey) {
       if (!headerCheckbox) return;
-      const tableBody = fieldsTableContainerEl.querySelector('tbody');
-      const colIdx = getColumnIndex(columnKey);
-      if (!tableBody || !tableBody.hasChildNodes() || colIdx < 0) {
-        if (headerCheckbox) { // Garante que headerCheckbox existe
-            headerCheckbox.checked = false;
-            headerCheckbox.indeterminate = false;
-        }
-        return;
-      }
+      const tableBody = fieldsTableContainerEl.querySelector('tbody'); const colIdx = getColumnIndex(columnKey);
+      if (!tableBody || !tableBody.hasChildNodes() || colIdx < 0) { if (headerCheckbox) { headerCheckbox.checked = false; headerCheckbox.indeterminate = false; } return; }
       const checkboxes = tableBody.querySelectorAll(`tr td:nth-child(${colIdx}) input[type="checkbox"]`);
-      if (checkboxes.length === 0) {
-        if (headerCheckbox) { // Garante que headerCheckbox existe
-            headerCheckbox.style.display = 'none'; // Esconde se não há checkboxes para controlar
-            headerCheckbox.checked = false;
-            headerCheckbox.indeterminate = false;
-        }
-        return;
-      } else {
-        if (headerCheckbox) headerCheckbox.style.display = '';
-      }
-      const total = checkboxes.length;
-      const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
-
-      if (!headerCheckbox) return; // Checagem adicional
-
-      if (checkedCount === 0) {
-        headerCheckbox.checked = false;
-        headerCheckbox.indeterminate = false;
-      } else if (checkedCount === total) {
-        headerCheckbox.checked = true;
-        headerCheckbox.indeterminate = false;
-      } else {
-        headerCheckbox.checked = false;
-        headerCheckbox.indeterminate = true;
-      }
+      if (checkboxes.length === 0) { if (headerCheckbox) { headerCheckbox.style.display = 'none'; headerCheckbox.checked = false; headerCheckbox.indeterminate = false; } return; } else { if (headerCheckbox) headerCheckbox.style.display = ''; }
+      const total = checkboxes.length; const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+      if (!headerCheckbox) return;
+      if (checkedCount === 0) { headerCheckbox.checked = false; headerCheckbox.indeterminate = false; } else if (checkedCount === total) { headerCheckbox.checked = true; headerCheckbox.indeterminate = false; } else { headerCheckbox.checked = false; headerCheckbox.indeterminate = true; }
     }
 
+    // UPDATED to handle RefList config
+    async function populateRefListFieldsConfigTable(container, parentFieldData, laneValue) {
+        if (!parentFieldData.referencedTableId) {
+            container.innerHTML = '<em>ID da tabela referenciada não encontrado.</em>';
+            return;
+        }
+        const refTableSchema = await GristDataManager.getTableSchema(parentFieldData.referencedTableId);
+        container.innerHTML = `<h5>Configuração de Colunas da Tabela Vinculada (${refTableSchema.tableId})</h5>`;
+        const table = document.createElement('table');
+        const thead = table.createTHead();
+        const headerRow = thead.insertRow();
+        ["Campo Vinculado", "No Card", "Pos# Card", "Visível Drawer", "Editável Drawer", "Pos# Drawer"].forEach(txt => {
+            const th = document.createElement('th');
+            th.textContent = txt;
+            headerRow.appendChild(th);
+        });
+        const tbody = table.createTBody();
+        const parentFieldConfig = WidgetConfigManager.getFieldConfigForLane(currentGristTableMeta.nameId, laneValue, parentFieldData.id);
+
+        refTableSchema.columns.filter(c => c.id !== 'manualSort').forEach(col => {
+            const childConfig = parentFieldConfig.refListFieldConfigs?.[col.id] || {};
+            const row = tbody.insertRow();
+            row.dataset.refFieldId = col.id;
+
+            row.insertCell().textContent = `${col.label} (${col.id})`;
+            
+            const createCb = (checked) => { const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !!checked; return cb; };
+            const createNum = (value) => { const num = document.createElement('input'); num.type = 'number'; num.min = '0'; num.value = value || 0; return num; };
+
+            row.insertCell().appendChild(createCb(childConfig.card)).dataset.key = 'card';
+            row.insertCell().appendChild(createNum(childConfig.cardPosition)).dataset.key = 'cardPosition';
+            row.insertCell().appendChild(createCb(childConfig.visible === undefined ? true : childConfig.visible)).dataset.key = 'visible';
+            row.insertCell().appendChild(createCb(childConfig.editable === undefined ? true : childConfig.editable)).dataset.key = 'editable';
+            row.insertCell().appendChild(createNum(childConfig.position)).dataset.key = 'position';
+        });
+        container.appendChild(table);
+    }
+    
+    // UPDATED to add RefList config table
     function populateFieldsTableForLane(laneValue, fromSavedDataOnly = false) {
-      if (!currentGristTableMeta || !fieldsTableContainerEl) {
-        console.warn("populateFieldsTableForLane: Metadados da tabela ou container da tabela de campos não disponíveis.");
-        if (fieldsTableContainerEl) fieldsTableContainerEl.innerHTML = "<p><i>Erro ao carregar campos.</i></p>";
-        return;
-      }
+      if (!currentGristTableMeta || !fieldsTableContainerEl) { console.warn("populateFieldsTableForLane: Metadados da tabela ou container da tabela de campos não disponíveis."); if (fieldsTableContainerEl) fieldsTableContainerEl.innerHTML = "<p><i>Erro ao carregar campos.</i></p>"; return; }
       const tableId = currentGristTableMeta.nameId;
       const kanbanStatusDefiningColumnId = WidgetConfigManager.getKanbanDefiningColumn();
       const defaults = WidgetConfigManager.getDefaults();
-
-      let fieldsData = currentGristTableMeta.columns
-        .map((col, index) => {
+      let fieldsData = currentGristTableMeta.columns.map((col, index) => {
           let currentDataFromUI = {};
           if (!fromSavedDataOnly && fieldsTableContainerEl.querySelector('tbody')) {
             const rowInUI = fieldsTableContainerEl.querySelector(`tbody tr[data-field-id="${col.id}"]`);
@@ -536,8 +354,7 @@ document.addEventListener('DOMContentLoaded', function () {
           }
           const savedConfig = WidgetConfigManager.getFieldConfigForLane(tableId, laneValue, col.id);
           return {
-            id: col.id,
-            label: col.label,
+            id: col.id, label: col.label, type: col.type, referencedTableId: col.referencedTableId,
             config: {
               useFormatting: currentDataFromUI.hasOwnProperty('useFormatting') && !fromSavedDataOnly ? currentDataFromUI.useFormatting : (savedConfig.useFormatting !== undefined ? savedConfig.useFormatting : defaults.useFormatting),
               card: currentDataFromUI.hasOwnProperty('card') && !fromSavedDataOnly ? currentDataFromUI.card : savedConfig.card,
@@ -545,22 +362,16 @@ document.addEventListener('DOMContentLoaded', function () {
               showLabel: currentDataFromUI.hasOwnProperty('showLabel') && !fromSavedDataOnly ? currentDataFromUI.showLabel : (savedConfig.showLabel !== undefined ? savedConfig.showLabel : defaults.showLabel),
               visible: currentDataFromUI.hasOwnProperty('visible') && !fromSavedDataOnly ? currentDataFromUI.visible : savedConfig.visible,
               editable: currentDataFromUI.hasOwnProperty('editable') && !fromSavedDataOnly ? currentDataFromUI.editable : savedConfig.editable,
-              position: currentDataFromUI.hasOwnProperty('position') && !isNaN(currentDataFromUI.position) && !fromSavedDataOnly ? currentDataFromUI.position : (savedConfig.position !== undefined ? savedConfig.position : defaults.position)
+              position: currentDataFromUI.hasOwnProperty('position') && !isNaN(currentDataFromUI.position) && !fromSavedDataOnly ? currentDataFromUI.position : (savedConfig.position !== undefined ? savedConfig.position : defaults.position),
+              refListFieldConfigs: savedConfig.refListFieldConfigs || {},
             },
             iniOrder: index
           };
-        })
-        .filter(data => data.id !== kanbanStatusDefiningColumnId); // Não configurar a própria coluna de lane
-
-      fieldsTableContainerEl.innerHTML = ''; // Limpa antes de repopular
-      if (typeof laneValue === 'undefined' || laneValue === "") {
-          fieldsTableContainerEl.innerHTML = "<p><i>Selecione uma lane para ver/configurar seus campos.</i></p>";
-          return;
-      }
-
+        }).filter(data => data.id !== kanbanStatusDefiningColumnId);
+      fieldsTableContainerEl.innerHTML = '';
+      if (typeof laneValue === 'undefined' || laneValue === "") { fieldsTableContainerEl.innerHTML = "<p><i>Selecione uma lane para ver/configurar seus campos.</i></p>"; return; }
       const table = document.createElement('table');
-      const thead = table.createTHead();
-      const headerRow = thead.insertRow();
+      const thead = table.createTHead(); const headerRow = thead.insertRow();
       const headers = [
         { text: "Ini#", dataKey: 'iniOrder', sortable: true }, { text: "Nome do Campo", dataKey: 'labelName', sortable: true },
         { text: "Usar Formatação (Card)", dataKey: 'useFormatting', sortable: true, hasSelectAll: true }, { text: "No Card", dataKey: 'card', sortable: true, hasSelectAll: true },
@@ -568,30 +379,18 @@ document.addEventListener('DOMContentLoaded', function () {
         { text: "Visível Drawer", dataKey: 'visible', sortable: true, hasSelectAll: true }, { text: "Editável Drawer", dataKey: 'editable', sortable: true, hasSelectAll: true },
         { text: "Pos# Drawer", dataKey: 'position', sortable: true }
       ];
-
       headers.forEach(headerInfo => {
         const th = document.createElement('th'); const span = document.createElement('span'); span.textContent = headerInfo.text; th.appendChild(span);
         if (headerInfo.hasSelectAll) { th.appendChild(document.createElement('br')); th.appendChild(createSelectAllCheckbox(headerInfo.dataKey)); }
-        if (headerInfo.sortable) {
-          th.style.cursor = 'pointer';
-          th.onclick = (e) => { if (e.target.type === 'checkbox') return; const newDirection = (configSortState.columnKey === headerInfo.dataKey && configSortState.direction === 'asc') ? 'desc' : 'asc'; configSortState = { columnKey: headerInfo.dataKey, direction: newDirection }; populateFieldsTableForLane(laneValue, false); };
-          if (configSortState.columnKey === headerInfo.dataKey) { span.textContent += (configSortState.direction === 'asc' ? ' ▲' : ' ▼'); }
-        }
+        if (headerInfo.sortable) { th.style.cursor = 'pointer'; th.onclick = (e) => { if (e.target.type === 'checkbox') return; const newDirection = (configSortState.columnKey === headerInfo.dataKey && configSortState.direction === 'asc') ? 'desc' : 'asc'; configSortState = { columnKey: headerInfo.dataKey, direction: newDirection }; populateFieldsTableForLane(laneValue, false); }; if (configSortState.columnKey === headerInfo.dataKey) { span.textContent += (configSortState.direction === 'asc' ? ' ▲' : ' ▼'); } }
         headerRow.appendChild(th);
       });
-
       fieldsData.sort((a, b) => {
         let valA, valB; const key = configSortState.columnKey;
-        if (key === 'iniOrder') { valA = a.iniOrder; valB = b.iniOrder; }
-        else if (key === 'labelName') { valA = a.label.toLowerCase(); valB = b.label.toLowerCase(); }
-        else if (key === 'cardPosition' || key === 'position') { valA = a.config[key]; valB = b.config[key];}
-        else { valA = a.config[key]; valB = b.config[key];} // Para booleanos (checkboxes)
-        if (typeof valA === 'boolean' && typeof valB === 'boolean') { valA = valA ? 1 : 0; valB = valB ? 1 : 0; } // Converte booleanos para números para ordenação
-        if (valA < valB) return configSortState.direction === 'asc' ? -1 : 1;
-        if (valA > valB) return configSortState.direction === 'asc' ? 1 : -1;
-        if (key !== 'iniOrder') { return a.iniOrder - b.iniOrder; } return 0;
+        if (key === 'iniOrder') { valA = a.iniOrder; valB = b.iniOrder; } else if (key === 'labelName') { valA = a.label.toLowerCase(); valB = b.label.toLowerCase(); } else if (key === 'cardPosition' || key === 'position') { valA = a.config[key]; valB = b.config[key];} else { valA = a.config[key]; valB = b.config[key];}
+        if (typeof valA === 'boolean' && typeof valB === 'boolean') { valA = valA ? 1 : 0; valB = valB ? 1 : 0; }
+        if (valA < valB) return configSortState.direction === 'asc' ? -1 : 1; if (valA > valB) return configSortState.direction === 'asc' ? 1 : -1; if (key !== 'iniOrder') { return a.iniOrder - b.iniOrder; } return 0;
       });
-
       const tbody = table.createTBody();
       fieldsData.forEach(data => {
         const row = tbody.insertRow(); row.dataset.fieldId = data.id;
@@ -606,55 +405,51 @@ document.addEventListener('DOMContentLoaded', function () {
         cell = row.insertCell(); cell.appendChild(createCb('visible', data.config.visible, 'visible'));
         cell = row.insertCell(); cell.appendChild(createCb('editable', data.config.editable, 'editable'));
         cell = row.insertCell(); numInput = document.createElement('input'); numInput.type = 'number'; numInput.min = '0'; numInput.value = data.config.position; numInput.dataset.fieldKey = 'position'; cell.appendChild(numInput);
-      });
-      fieldsTableContainerEl.appendChild(table);
-
-      // Atualiza o estado dos checkboxes "Selecionar Todos" no cabeçalho após a tabela ser populada
-      headers.forEach(headerInfo => {
-        if (headerInfo.hasSelectAll) {
-          const headerCheckbox = fieldsTableContainerEl.querySelector(`th input[type="checkbox"][title*="${headerInfo.dataKey}"]`);
-          if (headerCheckbox) updateSelectAllCheckboxState(headerCheckbox, headerInfo.dataKey);
+        
+        if (data.type.startsWith('RefList')) {
+            const configRow = tbody.insertRow();
+            configRow.dataset.refConfigRowFor = data.id;
+            const configCell = configRow.insertCell();
+            configCell.colSpan = headers.length;
+            const configContainer = document.createElement('div');
+            configContainer.className = 'reflist-config-container';
+            configCell.appendChild(configContainer);
+            populateRefListFieldsConfigTable(configContainer, data, laneValue);
         }
       });
+      fieldsTableContainerEl.appendChild(table);
+      headers.forEach(headerInfo => { if (headerInfo.hasSelectAll) { const headerCheckbox = fieldsTableContainerEl.querySelector(`th input[type="checkbox"][title*="${headerInfo.dataKey}"]`); if (headerCheckbox) updateSelectAllCheckboxState(headerCheckbox, headerInfo.dataKey); } });
     }
 
+    // UPDATED to handle RefList config
     function handleSaveConfiguration() {
-        console.log("CUIB.handleSaveConfiguration: Iniciando salvamento..."); if (!currentGristTableMeta) { console.warn("CUIB.handleSaveConfiguration: Tentativa de salvar config sem metadados da tabela."); alert("Erro: Metadados da tabela não disponíveis para salvar."); return; } const tableId = currentGristTableMeta.nameId; const selectedLaneValue = laneSelectEl.value; if (selectedLaneValue && fieldsTableContainerEl.querySelector('tbody')) { const tableRows = fieldsTableContainerEl.querySelectorAll('tbody tr'); tableRows.forEach(row => { const fieldId = row.dataset.fieldId; if (!fieldId) return; const newFieldCfg = { useFormatting: row.cells[getColumnIndex('useFormatting') - 1].querySelector('input').checked, card: row.cells[getColumnIndex('card') - 1].querySelector('input').checked, cardPosition: parseInt(row.cells[getColumnIndex('cardPosition') - 1].querySelector('input').value, 10) || 0, showLabel: row.cells[getColumnIndex('showLabel') - 1].querySelector('input').checked, visible: row.cells[getColumnIndex('visible') - 1].querySelector('input').checked, editable: row.cells[getColumnIndex('editable') - 1].querySelector('input').checked, position: parseInt(row.cells[getColumnIndex('position') - 1].querySelector('input').value, 10) || 0, }; WidgetConfigManager.updateFieldConfigForLane(tableId, selectedLaneValue, fieldId, newFieldCfg); }); } if (definingColumnMapSelectEl) WidgetConfigManager.setKanbanDefiningColumn(definingColumnMapSelectEl.value || null); if (restrictAdjacentMoveCbEl) WidgetConfigManager.setRestrictAdjacentMove(restrictAdjacentMoveCbEl.checked); if (wipLimitsTableContainerEl) { wipLimitsTableContainerEl.querySelectorAll('input[type="number"][data-lane-value]').forEach(input => { const laneVal = input.dataset.laneValue; const limitType = input.dataset.limitType; const val = parseInt(input.value, 10) || 0; const limits = WidgetConfigManager.getLaneWipLimit(laneVal); if (limitType === 'maxVisible') limits.maxVisible = val; else if (limitType === 'maxAllowed') limits.maxAllowed = val; WidgetConfigManager.setLaneWipLimit(laneVal, limits); }); } if (cardSortCriteriaContainerEl) { const newSortCriteria = []; for (let i = 0; i < 3; i++) { newSortCriteria.push({ columnId: cardSortCriteriaContainerEl.querySelector(`#sort-col-${i}`)?.value || null, direction: cardSortCriteriaContainerEl.querySelector(`#sort-dir-${i}`)?.value || 'asc', displayType: cardSortCriteriaContainerEl.querySelector(`#sort-type-${i}`)?.value || '' }); } WidgetConfigManager.setCardSortCriteria(newSortCriteria); }
-
-        WidgetConfigManager.setVisualConfig({
-            centerColumns: centerColumnsCb.checked,
-            columnWidthPercent: Number(colWidthPercentInput.value) || 0,
-            columnMinWidth: Number(colMinWidthInput.value) || 0,
-            columnMaxWidth: Number(colMaxWidthInput.value) || 0,
-            columnColor: colColorInput.value,
-            cardColor: cardColorInput.value,
-            cardShadow: cardShadowInput.checked,
-            backgroundType: cfgBackgroundTypeSelect.value,
-            solidBackgroundColor: cfgSolidBgColorInput.value,
-            gradientColor1: cfgGradientColor1Input.value,
-            gradientColor2: cfgGradientColor2Input.value,
-            gradientDirection: cfgGradientDirectionSelect.value,
-            drawerFontColor: cfgDrawerFontColorInput.value,
-            cardTitleFontColor: cfgCardTitleFontColorInput.value,
-            cardFieldsFontColor: cfgCardFieldsFontColorInput.value
-        });
-
+        console.log("CUIB.handleSaveConfiguration: Iniciando salvamento..."); if (!currentGristTableMeta) { console.warn("CUIB.handleSaveConfiguration: Tentativa de salvar config sem metadados da tabela."); alert("Erro: Metadados da tabela não disponíveis para salvar."); return; } const tableId = currentGristTableMeta.nameId; const selectedLaneValue = laneSelectEl.value; if (selectedLaneValue && fieldsTableContainerEl.querySelector('tbody')) { const tableRows = fieldsTableContainerEl.querySelectorAll('tbody tr[data-field-id]'); tableRows.forEach(row => { const fieldId = row.dataset.fieldId; if (!fieldId) return; const newFieldCfg = { useFormatting: row.cells[getColumnIndex('useFormatting') - 1].querySelector('input').checked, card: row.cells[getColumnIndex('card') - 1].querySelector('input').checked, cardPosition: parseInt(row.cells[getColumnIndex('cardPosition') - 1].querySelector('input').value, 10) || 0, showLabel: row.cells[getColumnIndex('showLabel') - 1].querySelector('input').checked, visible: row.cells[getColumnIndex('visible') - 1].querySelector('input').checked, editable: row.cells[getColumnIndex('editable') - 1].querySelector('input').checked, position: parseInt(row.cells[getColumnIndex('position') - 1].querySelector('input').value, 10) || 0, refListFieldConfigs: {} }; 
+        const refConfigRow = fieldsTableContainerEl.querySelector(`tbody tr[data-ref-config-row-for="${fieldId}"]`);
+        if (refConfigRow) {
+            refConfigRow.querySelectorAll('tbody tr[data-ref-field-id]').forEach(refRow => {
+                const refFieldId = refRow.dataset.refFieldId;
+                const refFieldConfig = {};
+                refRow.querySelectorAll('td[data-key]').forEach(cell => {
+                    const input = cell.querySelector('input');
+                    const key = cell.dataset.key;
+                    refFieldConfig[key] = input.type === 'checkbox' ? input.checked : (parseInt(input.value, 10) || 0);
+                });
+                newFieldCfg.refListFieldConfigs[refFieldId] = refFieldConfig;
+            });
+        }
+        WidgetConfigManager.updateFieldConfigForLane(tableId, selectedLaneValue, fieldId, newFieldCfg); }); }
+        if (definingColumnMapSelectEl) WidgetConfigManager.setKanbanDefiningColumn(definingColumnMapSelectEl.value || null); if (restrictAdjacentMoveCbEl) WidgetConfigManager.setRestrictAdjacentMove(restrictAdjacentMoveCbEl.checked); if (wipLimitsTableContainerEl) { wipLimitsTableContainerEl.querySelectorAll('input[type="number"][data-lane-value]').forEach(input => { const laneVal = input.dataset.laneValue; const limitType = input.dataset.limitType; const val = parseInt(input.value, 10) || 0; const limits = WidgetConfigManager.getLaneWipLimit(laneVal); if (limitType === 'maxVisible') limits.maxVisible = val; else if (limitType === 'maxAllowed') limits.maxAllowed = val; WidgetConfigManager.setLaneWipLimit(laneVal, limits); }); } if (cardSortCriteriaContainerEl) { const newSortCriteria = []; for (let i = 0; i < 3; i++) { newSortCriteria.push({ columnId: cardSortCriteriaContainerEl.querySelector(`#sort-col-${i}`)?.value || null, direction: cardSortCriteriaContainerEl.querySelector(`#sort-dir-${i}`)?.value || 'asc', displayType: cardSortCriteriaContainerEl.querySelector(`#sort-type-${i}`)?.value || '' }); } WidgetConfigManager.setCardSortCriteria(newSortCriteria); }
+        WidgetConfigManager.setVisualConfig({ centerColumns: centerColumnsCb.checked, columnWidthPercent: Number(colWidthPercentInput.value) || 0, columnMinWidth: Number(colMinWidthInput.value) || 0, columnMaxWidth: Number(colMaxWidthInput.value) || 0, columnColor: colColorInput.value, cardColor: cardColorInput.value, cardShadow: cardShadowInput.checked, backgroundType: cfgBackgroundTypeSelect.value, solidBackgroundColor: cfgSolidBgColorInput.value, gradientColor1: cfgGradientColor1Input.value, gradientColor2: cfgGradientColor2Input.value, gradientDirection: cfgGradientDirectionSelect.value, drawerFontColor: cfgDrawerFontColorInput.value, cardTitleFontColor: cfgCardTitleFontColorInput.value, cardFieldsFontColor: cfgCardFieldsFontColorInput.value });
         const newRulesConfig = {};
         if (rulesConfigAreaEl) {
           rulesConfigAreaEl.querySelectorAll('.rules-lane-section').forEach(laneSection => {
             const laneVal = laneSection.dataset.laneValue;
             newRulesConfig[laneVal] = [];
             laneSection.querySelectorAll('.rule-item').forEach((ruleItem, ruleIndex) => {
-              const ruleType = ruleItem.querySelector('.rule-type').value;
-              const ruleId = ruleItem.dataset.ruleId || `rule_${laneVal}_${ruleIndex}`;
-              let ruleData = { id: ruleId, type: ruleType };
+              const ruleType = ruleItem.querySelector('.rule-type').value; const ruleId = ruleItem.dataset.ruleId || `rule_${laneVal}_${ruleIndex}`; let ruleData = { id: ruleId, type: ruleType };
               if (ruleType === 'allow') { ruleData.fieldId = ruleItem.querySelector('.rule-param-field')?.value || null; ruleData.operator = ruleItem.querySelector('.rule-param-operator')?.value || null; ruleData.value = ruleItem.querySelector('.rule-param-value')?.value || ''; }
-              else if (ruleType === 'create') {
-                ruleData.targetTableId = ruleItem.querySelector('.rule-param-target-table')?.value || null;
-                ruleData.relationFieldIdInTarget = ruleItem.querySelector('.rule-param-relation-field')?.value || null;
-                ruleData.targetColumnIdForLane = ruleItem.querySelector('.rule-param-target-lane-column')?.value || null;
-                ruleData.initialLaneValue = ruleItem.querySelector('.rule-param-initial-lane-value')?.value || null;
-              } else if (ruleType === 'move') { ruleData.fieldId = ruleItem.querySelector('.rule-param-field-move')?.value || null; ruleData.operator = ruleItem.querySelector('.rule-param-operator-move')?.value || null; ruleData.value = ruleItem.querySelector('.rule-param-value-move')?.value || ''; ruleData.targetLaneValue = ruleItem.querySelector('.rule-param-target-lane')?.value || null; }
+              else if (ruleType === 'create') { ruleData.targetTableId = ruleItem.querySelector('.rule-param-target-table')?.value || null; ruleData.relationFieldIdInTarget = ruleItem.querySelector('.rule-param-relation-field')?.value || null; ruleData.targetColumnIdForLane = ruleItem.querySelector('.rule-param-target-lane-column')?.value || null; ruleData.initialLaneValue = ruleItem.querySelector('.rule-param-initial-lane-value')?.value || null; }
+              else if (ruleType === 'move') { ruleData.fieldId = ruleItem.querySelector('.rule-param-field-move')?.value || null; ruleData.operator = ruleItem.querySelector('.rule-param-operator-move')?.value || null; ruleData.value = ruleItem.querySelector('.rule-param-value-move')?.value || ''; ruleData.targetLaneValue = ruleItem.querySelector('.rule-param-target-lane')?.value || null; }
               if (ruleData.type && (ruleData.fieldId || ruleData.targetTableId || ruleData.targetLaneValue)) { newRulesConfig[laneVal].push(ruleData); }
             });
           });
@@ -662,122 +457,92 @@ document.addEventListener('DOMContentLoaded', function () {
         WidgetConfigManager.setAllRules(newRulesConfig);
         console.log("CUIB.handleSaveConfiguration: Chamando onSaveCallback..."); if (onSaveCallback) { onSaveCallback() .then(() => { console.log("CUIB.handleSaveConfiguration: onSaveCallback concluído com sucesso."); alert("Configurações salvas e widget recarregado!"); }) .catch(err => { console.error("CUIB.handleSaveConfiguration: ERRO no onSaveCallback:", err); alert("Erro ao salvar ou recarregar: " + err.message); }); } else { console.error("CUIB.handleSaveConfiguration: onSaveCallback não definido!"); alert("ERRO: Função de salvamento principal não encontrada!"); }
     }
-    // ... (handleReplicateConfig, handleReplicateSelection, closeDrawer - sem alterações)
+    
+    // ... handleReplicateConfig, handleReplicateSelection, closeDrawer (no changes here) ...
     function handleReplicateConfig(applyToAllLanes) { const currentLaneValue = laneSelectEl.value; if (!currentLaneValue || !currentGristTableMeta || !fieldsTableContainerEl.querySelector('tbody')) { alert("Selecione e configure uma lane antes de replicar."); return; } const allLaneOptions = Array.from(laneSelectEl.options).filter(opt => opt.value !== ""); const currentLaneIndexInAll = allLaneOptions.findIndex(opt => opt.value === currentLaneValue); if (currentLaneIndexInAll === -1) { alert("Lane atual não encontrada para replicação."); return; } const tableId = currentGristTableMeta.nameId; const sourceConfigFromUI = {}; const tableRows = fieldsTableContainerEl.querySelectorAll('tbody tr'); tableRows.forEach(row => { const fieldId = row.dataset.fieldId; if (!fieldId) return; const cfg = { useFormatting: row.cells[getColumnIndex('useFormatting') - 1].querySelector('input').checked, card: row.cells[getColumnIndex('card') - 1].querySelector('input').checked, cardPosition: parseInt(row.cells[getColumnIndex('cardPosition') - 1].querySelector('input').value, 10) || 0, showLabel: row.cells[getColumnIndex('showLabel') - 1].querySelector('input').checked, visible: row.cells[getColumnIndex('visible') - 1].querySelector('input').checked, editable: row.cells[getColumnIndex('editable') - 1].querySelector('input').checked, position: parseInt(row.cells[getColumnIndex('position') - 1].querySelector('input').value, 10) || 0, }; sourceConfigFromUI[fieldId] = cfg; }); if (applyToAllLanes) { allLaneOptions.forEach(opt => { if (opt.value !== currentLaneValue) { Object.keys(sourceConfigFromUI).forEach(fieldId => { WidgetConfigManager.updateFieldConfigForLane(tableId, opt.value, fieldId, sourceConfigFromUI[fieldId]); }); } }); alert(`Configuração da lane "${currentLaneValue}" replicada para TODAS as outras lanes. Salve para persistir.`); } else { if (currentLaneIndexInAll >= allLaneOptions.length - 1) { alert("Não há próxima lane para replicar."); return; } const nextLaneValue = allLaneOptions[currentLaneIndexInAll + 1].value; Object.keys(sourceConfigFromUI).forEach(fieldId => { WidgetConfigManager.updateFieldConfigForLane(tableId, nextLaneValue, fieldId, sourceConfigFromUI[fieldId]); }); laneSelectEl.value = nextLaneValue; handleLaneChanged(); alert(`Config da lane "${currentLaneValue}" replicada para "${nextLaneValue}". Salve para persistir.`); } }
     function handleReplicateSelection() { const currentLane = laneSelectEl.value; if (!currentLane) { alert("Selecione primeiro a lane de origem."); return; } const sourceConfig = {}; fieldsTableContainerEl.querySelectorAll('tbody tr').forEach(row => { const fid = row.dataset.fieldId; sourceConfig[fid] = { useFormatting: row.cells[2].querySelector('input').checked, card: row.cells[3].querySelector('input').checked, cardPosition: parseInt(row.cells[4].querySelector('input').value,10)||0, showLabel: row.cells[5].querySelector('input').checked, visible: row.cells[6].querySelector('input').checked, editable: row.cells[7].querySelector('input').checked, position: parseInt(row.cells[8].querySelector('input').value,10)||0 }; }); const modal = document.createElement('div'); modal.className = 'replicate-modal'; modal.innerHTML = ` <div class="replicate-content"> <h3>Replicar configuração de CAMPOS para quais lanes?</h3> <label><input type="checkbox" id="rep-all" /> Marcar todos</label> <div id="rep-list" style="margin:8px 0; max-height: 200px; overflow-y:auto;"></div> <button id="rep-ok">OK</button> <button id="rep-cancel">Cancelar</button> </div>`; document.body.appendChild(modal); const list = modal.querySelector('#rep-list'); currentKanbanLanes.filter(l=>!l.isUnmatched).forEach(lane=>{ if (lane.value === currentLane) return; const cbDiv = document.createElement('div'); const cb = document.createElement('input'); cb.type = 'checkbox'; cb.value = lane.value; cb.id = `rep-cb-${lane.value}`; cb.className = 'rep-cb'; const lbl = document.createElement('label'); lbl.htmlFor = `rep-cb-${lane.value}`; lbl.appendChild(document.createTextNode(` ${lane.value || "[Vazio]"}`)); cbDiv.appendChild(cb); cbDiv.appendChild(lbl); list.appendChild(cbDiv); }); modal.querySelector('#rep-all').onchange = e => { list.querySelectorAll('input.rep-cb').forEach(cb=> cb.checked = e.target.checked); }; modal.querySelector('#rep-cancel').onclick = () => document.body.removeChild(modal); modal.querySelector('#rep-ok').onclick = () => { const targets = Array.from(list.querySelectorAll('input.rep-cb:checked')).map(cb=>cb.value); if (targets.length === 0) { alert("Nenhuma lane selecionada para replicar."); return; } const tableId = currentGristTableMeta.nameId; targets.forEach(lv=>{ Object.entries(sourceConfig).forEach(([fid,cfg])=>{ WidgetConfigManager.updateFieldConfigForLane(tableId, lv, fid, cfg); }); }); alert(`Configuração de CAMPOS da lane "${currentLane}" replicada para: ${targets.join(', ')}. Salve as configurações para persistir.`); document.body.removeChild(modal); }; }
     const closeDrawer = () => { if (drawerEl) drawerEl.classList.remove('visible'); };
+    
     return { init, populateAndOpen, close: closeDrawer };
   })();
 
   /*****************************************************************
    * 2.  Lógica Kanban (Principal)
    *****************************************************************/
-   console.log("KANBAN WIDGET SCRIPT: Starting main Kanban logic IIFE...");
   (async function () {
-    // ... (constantes, formatEpoch, etc. - sem alterações)
-    console.log("KANBAN IIFE Principal: Iniciando lógica Kanban."); function formatEpoch(val, type) { const num = Number(val); if (isNaN(num) || num === 0) { return val; } const dateObj = new Date(num * 1000); if (isNaN(dateObj.valueOf())) return val; return type === 'Date' ? dateObj.toLocaleDateString(undefined, { timeZone: 'UTC' }) : dateObj.toLocaleString(undefined, { timeZone: 'UTC' }); } const pal = ["#1E88E5", "#43A047", "#FB8C00", "#E53935", "#8E24AA", "#00838F", "#6D4C41", "#546E7A"]; const palette = i => pal[i % pal.length]; const dbg = document.getElementById('dbg'); const boardEl = document.getElementById('board'); const errEl = document.getElementById('errorMsg'); const editDrawerEl = document.getElementById('drawer'); const editDrawerTitleEl = document.getElementById('drawerTitle'); const editDrawerContentEl = document.getElementById('drawerContent'); const editDrawerSaveBtn = document.getElementById('saveBtn'); const editDrawerCloseBtn = document.getElementById('closeBtn'); const editDrawerCancelBtn = document.getElementById('cancelBtnDrawer'); const cfgBtn = document.getElementById('cfg-btn'); if (dbg) dbg.onclick = () => dbg.classList.toggle('collapsed'); const safe = (o, k, f = null) => (o && k in o && o[k] !== undefined && o[k] !== null) ? o[k] : f; let gristTableMeta = null; let gristRows = []; let allGristTables = []; let gristTableOps = null; let kanbanLanesStructure = []; let currentEditingCardId = null; let currentEditingCardData = null; let currentVisibleCardsByLane = {};
+    const pal = ["#1E88E5", "#43A047", "#FB8C00", "#E53935", "#8E24AA", "#00838F", "#6D4C41", "#546E7A"];
+    const palette = i => pal[i % pal.length];
+    const dbg = document.getElementById('dbg');
+    const boardEl = document.getElementById('board');
+    const errEl = document.getElementById('errorMsg');
+    const editDrawerEl = document.getElementById('drawer');
+    const editDrawerTitleEl = document.getElementById('drawerTitle');
+    const editDrawerContentEl = document.getElementById('drawerContent');
+    const editDrawerSaveBtn = document.getElementById('saveBtn');
+    const editDrawerCloseBtn = document.getElementById('closeBtn');
+    const editDrawerCancelBtn = document.getElementById('cancelBtnDrawer');
+    const cfgBtn = document.getElementById('cfg-btn');
+    if (dbg) dbg.onclick = () => dbg.classList.toggle('collapsed');
+    const safe = (o, k, f = null) => (o && k in o && o[k] !== undefined && o[k] !== null) ? o[k] : f;
+    let gristTableMeta = null, gristRows = [], allGristTables = [], gristTableOps = null, kanbanLanesStructure = [], currentEditingCardId = null, currentEditingCardData = null, currentVisibleCardsByLane = {}, refListCache = {};
 
-    // =================================================================
-    // NEW AND MODIFIED FUNCTIONS FOR REFLIST MANAGER
-    // =================================================================
-
-    // NEW UTILITY FUNCTION: Finds the column in Table B that links back to Table A.
+    function formatEpoch(val, type) { const num = Number(val); if (isNaN(num) || num === 0) { return val; } const dateObj = new Date(num * 1000); if (isNaN(dateObj.valueOf())) return val; return type === 'Date' ? dateObj.toLocaleDateString(undefined, { timeZone: 'UTC' }) : dateObj.toLocaleString(undefined, { timeZone: 'UTC' }); }
+    
+    // REFLIST MANAGER HELPERS
     async function findBackReferenceColumn(tableA_Id, tableB_Schema) {
         const expectedRefType = `Ref:${tableA_Id}`;
-        for (const col of tableB_Schema.columns) {
-            if (col.type === expectedRefType) {
-                return col.id; // Found it!
-            }
-        }
-        // This could happen if the link is not two-way.
+        const col = tableB_Schema.columns.find(c => c.type === expectedRefType);
+        if (col) return col.id;
         throw new Error(`Could not find a column in table '${tableB_Schema.tableId}' that references '${tableA_Id}'. Is the link two-way?`);
     }
 
-    // REVISED: This function is now the heart of the inline manager.
     async function populateRefListTable(containerEl, colDef, refListValue) {
         containerEl.innerHTML = '<p>Carregando registros vinculados...</p>';
-
         try {
             const tableA_Id = gristTableMeta.nameId;
             const tableB_Id = colDef.referencedTableId;
             const linkedRecordIds = Array.isArray(refListValue) && refListValue[0] === 'L' ? refListValue.slice(1) : [];
-
-            // Fetch schema for Table B and find the crucial back-reference column
-            const tableB_Schema = await GristDataManager.getTableSchema(tableB_Id);
+            const [tableB_Schema, allRefTableRecords] = await Promise.all([ GristDataManager.getTableSchema(tableB_Id), GristDataManager.colToRows(await grist.docApi.fetchTable(tableB_Id)) ]);
             const backRefColId = await findBackReferenceColumn(tableA_Id, tableB_Schema);
-
-            // Fetch all records from Table B and filter for the linked ones
-            const allRefTableRecords = GristDataManager.colToRows(await grist.docApi.fetchTable(tableB_Id));
             const linkedRecords = allRefTableRecords.filter(r => linkedRecordIds.includes(r.id));
-
-            // Start building the UI
-            containerEl.innerHTML = ''; // Clear loading
-
-            // --- Controls (Add/Unlink buttons) ---
-            const controlsDiv = document.createElement('div');
-            controlsDiv.style.marginBottom = '8px';
-            const addBtn = document.createElement('button');
-            addBtn.textContent = '+ Adicionar Novo';
+            containerEl.innerHTML = '';
+            
+            const controlsDiv = document.createElement('div'); controlsDiv.style.marginBottom = '8px';
+            const addBtn = document.createElement('button'); addBtn.textContent = '+ Adicionar Novo';
             addBtn.onclick = () => handleRefListRecordAction(containerEl, colDef, tableB_Schema, backRefColId, null);
-            
-            const unlinkBtn = document.createElement('button');
-            unlinkBtn.textContent = '⨉ Desvincular Selecionados';
-            unlinkBtn.style.marginLeft = '8px';
-            unlinkBtn.onclick = () => handleRefListUnlink(containerEl, colDef, tableB_Schema, backRefColId);
-            
-            controlsDiv.append(addBtn, unlinkBtn);
+            controlsDiv.append(addBtn);
             containerEl.appendChild(controlsDiv);
 
-            // --- The Table ---
-            const table = document.createElement('table');
-            table.className = 'wip-limit-table';
-            containerEl.appendChild(table);
-
-            const thead = table.createTHead();
-            const headerRow = thead.insertRow();
-            
-            const thSelect = document.createElement('th');
-            thSelect.innerHTML = '&#10003;'; // Checkmark for select
-            headerRow.appendChild(thSelect);
-
-            // Create headers, but skip the back-reference column as it's implicit
+            const table = document.createElement('table'); table.className = 'wip-limit-table'; containerEl.appendChild(table);
+            const thead = table.createTHead(); const headerRow = thead.insertRow();
             const columnsToShow = tableB_Schema.columns.filter(c => c.id !== backRefColId && c.id !== 'manualSort');
-            columnsToShow.forEach(c => {
-                const th = document.createElement('th');
-                th.textContent = c.label;
-                headerRow.appendChild(th);
-            });
+            columnsToShow.forEach(c => { headerRow.insertCell().textContent = c.label; });
+            headerRow.insertCell().textContent = 'Ações';
             
-            const thActions = document.createElement('th');
-            thActions.textContent = 'Ações';
-            headerRow.appendChild(thActions);
-
             const tbody = table.createTBody();
             if (linkedRecords.length === 0) {
-                // Render empty state
                 const emptyRow = tbody.insertRow();
                 const emptyCell = emptyRow.insertCell();
-                emptyCell.colSpan = columnsToShow.length + 2;
+                emptyCell.colSpan = columnsToShow.length + 1;
                 emptyCell.textContent = 'Nenhum registro vinculado.';
-                emptyCell.style.textAlign = 'center';
-                emptyCell.style.fontStyle = 'italic';
+                emptyCell.style.textAlign = 'center'; emptyCell.style.fontStyle = 'italic';
             } else {
                 linkedRecords.forEach(rec => {
-                    const tr = tbody.insertRow();
-                    tr.dataset.recordId = rec.id;
-
-                    const cellSelect = tr.insertCell();
-                    cellSelect.appendChild(document.createElement('input')).type = 'checkbox';
-                    
+                    const tr = tbody.insertRow(); tr.dataset.recordId = rec.id;
                     columnsToShow.forEach(c => {
-                        tr.insertCell().textContent = safe(rec, c.id, '');
+                        const cell = tr.insertCell();
+                        if (c.type === 'Bool') {
+                            const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !!rec[c.id]; cb.disabled = true; cell.appendChild(cb);
+                        } else {
+                            cell.textContent = safe(rec, c.id, '');
+                        }
                     });
-
                     const cellActions = tr.insertCell();
-                    const editBtn = document.createElement('button');
-                    editBtn.textContent = 'Editar';
+                    const editBtn = document.createElement('button'); editBtn.className = 'reflist-action-btn'; editBtn.textContent = '✏️'; editBtn.title = 'Editar';
                     editBtn.onclick = () => handleRefListRecordAction(containerEl, colDef, tableB_Schema, backRefColId, rec);
-                    cellActions.appendChild(editBtn);
+                    const unlinkBtn = document.createElement('button'); unlinkBtn.className = 'reflist-action-btn'; unlinkBtn.textContent = '🗑️'; unlinkBtn.title = 'Desvincular';
+                    unlinkBtn.onclick = () => handleRefListUnlink_Single(containerEl, colDef, tableB_Schema, backRefColId, rec.id);
+                    cellActions.append(editBtn, unlinkBtn);
                 });
             }
         } catch (err) {
@@ -786,239 +551,205 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // REVISED: A generic handler for both adding and editing a record in Table B.
     async function handleRefListRecordAction(containerEl, colDef, tableB_Schema, backRefColId, recordToEdit = null) {
         const isEditing = recordToEdit !== null;
         const modalTitle = isEditing ? `Editar em "${tableB_Schema.tableId}"` : `Adicionar em "${tableB_Schema.tableId}"`;
+        const modal = document.createElement('div'); modal.className = 'replicate-modal';
+        const content = document.createElement('div'); content.className = 'replicate-content'; content.style.width = '500px';
+        modal.appendChild(content); content.innerHTML = `<h3>${modalTitle}</h3>`;
+        const form = document.createElement('div'); form.id = 'reflist-add-form'; content.appendChild(form);
 
-        const modal = document.createElement('div');
-        modal.className = 'replicate-modal';
-        const content = document.createElement('div');
-        content.className = 'replicate-content';
-        content.style.width = '500px';
-        modal.appendChild(content);
-        content.innerHTML = `<h3>${modalTitle}</h3>`;
-        const form = document.createElement('div');
-        form.id = 'reflist-add-form';
-        content.appendChild(form);
-
-        // Build form fields, skipping the back-reference column
         tableB_Schema.columns.filter(c => !c.isFormula && c.id !== backRefColId && c.id !== 'id' && c.id !== 'manualSort').forEach(c => {
-            const fieldContainer = document.createElement('div');
-            fieldContainer.style.marginBottom = '10px';
-            const label = document.createElement('label');
-            label.textContent = c.label;
-            label.style.display = 'block';
-            label.style.fontWeight = 'bold';
-            
+            const fieldContainer = document.createElement('div'); fieldContainer.style.marginBottom = '10px';
+            const label = document.createElement('label'); label.textContent = c.label; label.style.display = 'block'; label.style.fontWeight = 'bold';
             let input;
             if (c.choices && c.choices.length > 0) {
-                input = document.createElement('select');
-                input.add(new Option('-- Selecione --', ''));
+                input = document.createElement('select'); input.add(new Option('-- Selecione --', ''));
                 c.choices.forEach(ch => input.add(new Option(ch, ch)));
                 if (isEditing) input.value = recordToEdit[c.id] || '';
             } else if (c.type === 'Bool') {
-                input = document.createElement('input');
-                input.type = 'checkbox';
+                input = document.createElement('input'); input.type = 'checkbox';
                 if (isEditing) input.checked = recordToEdit[c.id] || false;
             } else {
-                input = document.createElement('input');
-                input.type = 'text';
+                input = document.createElement('input'); input.type = 'text';
                 if (isEditing) input.value = recordToEdit[c.id] || '';
             }
-            input.dataset.colId = c.id;
-            input.style.width = '100%';
-            input.style.padding = '4px';
+            input.dataset.colId = c.id; input.style.width = '100%'; input.style.padding = '4px';
             fieldContainer.append(label, input);
             form.appendChild(fieldContainer);
         });
 
-        const actions = document.createElement('div');
-        actions.style.marginTop = '15px';
-        const saveBtn = document.createElement('button');
-        saveBtn.textContent = 'Salvar';
-        const cancelBtn = document.createElement('button');
-        cancelBtn.textContent = 'Cancelar';
-        cancelBtn.style.marginLeft = '8px';
-        actions.append(saveBtn, cancelBtn);
-        content.appendChild(actions);
+        const actions = document.createElement('div'); actions.style.marginTop = '15px';
+        const saveBtn = document.createElement('button'); saveBtn.textContent = 'Salvar';
+        const cancelBtn = document.createElement('button'); cancelBtn.textContent = 'Cancelar'; cancelBtn.style.marginLeft = '8px';
+        actions.append(saveBtn, cancelBtn); content.appendChild(actions);
         document.body.appendChild(modal);
 
         cancelBtn.onclick = () => document.body.removeChild(modal);
         saveBtn.onclick = async () => {
             try {
-                saveBtn.disabled = true;
-                saveBtn.textContent = 'Salvando...';
-
+                saveBtn.disabled = true; saveBtn.textContent = 'Salvando...';
                 const fieldsToSave = {};
-                form.querySelectorAll('[data-col-id]').forEach(inp => {
-                    fieldsToSave[inp.dataset.colId] = (inp.type === 'checkbox') ? inp.checked : inp.value;
-                });
-                
-                // This is the magic: link it back to the Table A record.
-                if (!isEditing) {
-                    fieldsToSave[backRefColId] = currentEditingCardId;
-                }
-
+                form.querySelectorAll('[data-col-id]').forEach(inp => { fieldsToSave[inp.dataset.colId] = (inp.type === 'checkbox') ? inp.checked : inp.value; });
+                if (!isEditing) { fieldsToSave[backRefColId] = currentEditingCardId; }
                 const tableB_Ops = grist.getTable(tableB_Schema.tableId);
                 if (isEditing) {
                     await tableB_Ops.update([{ id: recordToEdit.id, fields: fieldsToSave }]);
                 } else {
                     await tableB_Ops.create([{ fields: fieldsToSave }]);
                 }
-
-                // The onRecords event will trigger a full refresh, but we can also
-                // optimistically refresh the inline table for a faster UI response.
-                const updatedMainRecord = await grist.docApi.getRecord(gristTableMeta.nameId, currentEditingCardId);
+                const mainTableOps = grist.getTable(gristTableMeta.nameId);
+                const updatedMainRecord = await mainTableOps.getRecord(currentEditingCardId);
                 await populateRefListTable(containerEl, colDef, updatedMainRecord[colDef.id]);
-                
                 document.body.removeChild(modal);
             } catch (err) {
                 alert(`Erro ao salvar: ${err.message}`);
-                saveBtn.disabled = false;
-                saveBtn.textContent = 'Salvar';
+                saveBtn.disabled = false; saveBtn.textContent = 'Salvar';
             }
         };
     }
 
-    // NEW: Handler for unlinking records (non-destructive)
-    async function handleRefListUnlink(containerEl, colDef, tableB_Schema, backRefColId) {
-        const table = containerEl.querySelector('table');
-        if (!table) return;
-
-        const idsToUnlink = Array.from(table.querySelectorAll('tbody input[type="checkbox"]:checked'))
-                                .map(cb => Number(cb.closest('tr').dataset.recordId));
-
-        if (idsToUnlink.length === 0) {
-            alert("Nenhum item selecionado para desvincular.");
-            return;
-        }
-
-        if (!confirm(`Tem certeza que deseja desvincular ${idsToUnlink.length} item(ns)? Eles não serão excluídos, apenas desassociados deste cartão.`)) {
-            return;
-        }
-
+    async function handleRefListUnlink_Single(containerEl, colDef, tableB_Schema, backRefColId, recordIdToUnlink) {
+        if (!confirm(`Tem certeza que deseja desvincular este item? Ele não será excluído, apenas desassociado deste cartão.`)) { return; }
         try {
-            const recordsToUpdate = idsToUnlink.map(id => ({
-                id: id,
-                fields: { [backRefColId]: null } // Set the reference to null
-            }));
-            
             const tableB_Ops = grist.getTable(tableB_Schema.tableId);
-            await tableB_Ops.update(recordsToUpdate);
-
-            // Optimistically refresh the inline table
-            const updatedMainRecord = await grist.docApi.getRecord(gristTableMeta.nameId, currentEditingCardId);
+            await tableB_Ops.update([{ id: recordIdToUnlink, fields: { [backRefColId]: null } }]);
+            const mainTableOps = grist.getTable(gristTableMeta.nameId);
+            const updatedMainRecord = await mainTableOps.getRecord(currentEditingCardId);
             await populateRefListTable(containerEl, colDef, updatedMainRecord[colDef.id]);
-            
         } catch (err) {
             alert(`Erro ao desvincular: ${err.message}`);
         }
     }
-
-
-    // =================================================================
-    // ORIGINAL KANBAN LOGIC (with modifications)
-    // =================================================================
-
+    
+    // ... getFieldDisplayConfig, applyStylesFromWidgetOptions (no changes) ...
     function getFieldDisplayConfig(gristFieldId, cardLaneValue) { if (!gristTableMeta || !gristFieldId || typeof cardLaneValue === 'undefined') { return { ...WidgetConfigManager.getDefaults(), visible: false, card: false }; } return WidgetConfigManager.getFieldConfigForLane(gristTableMeta.nameId, String(cardLaneValue), gristFieldId); }
-
     function applyStylesFromWidgetOptions(element, fieldDef, fieldValue, isLabel = false) {
         if (!element || !fieldDef || !fieldDef.widgetOptions) return;
-        const wo = fieldDef.widgetOptions;
-        let styleToApply = {};
-
-        if (isLabel) {
-            if (wo.headerFillColor) styleToApply.backgroundColor = wo.headerFillColor;
-            if (wo.headerTextColor) styleToApply.color = wo.headerTextColor;
-            if (wo.headerFontBold) styleToApply.fontWeight = 'bold';
-            if (wo.headerFontItalic) styleToApply.fontStyle = 'italic';
-            if (wo.headerFontUnderline) styleToApply.textDecoration = 'underline';
+        const wo = fieldDef.widgetOptions; let styleToApply = {};
+        if (isLabel) { if (wo.headerFillColor) styleToApply.backgroundColor = wo.headerFillColor; if (wo.headerTextColor) styleToApply.color = wo.headerTextColor; if (wo.headerFontBold) styleToApply.fontWeight = 'bold'; if (wo.headerFontItalic) styleToApply.fontStyle = 'italic'; if (wo.headerFontUnderline) styleToApply.textDecoration = 'underline';
         } else {
-            if (wo.fillColor) styleToApply.backgroundColor = wo.fillColor;
-            if (wo.textColor) styleToApply.color = wo.textColor;
-            if (wo.fontBold) styleToApply.fontWeight = 'bold';
-            if (wo.fontItalic) styleToApply.fontStyle = 'italic';
-            if (wo.fontUnderline) styleToApply.textDecoration = 'underline';
-
-            if ((fieldDef.type === 'Choice' || fieldDef.type === 'ChoiceList') && wo.choiceOptions && fieldValue && wo.choiceOptions[String(fieldValue)]) { // Garantir que fieldValue seja string para lookup
-                const choiceStyle = wo.choiceOptions[String(fieldValue)];
-                if (choiceStyle.fillColor) styleToApply.backgroundColor = choiceStyle.fillColor;
-                if (choiceStyle.textColor) styleToApply.color = choiceStyle.textColor;
-                if (typeof choiceStyle.fontBold !== 'undefined') styleToApply.fontWeight = choiceStyle.fontBold ? 'bold' : (wo.fontBold ? 'bold' : 'normal'); // Herda do campo se não especificado na opção
-                if (typeof choiceStyle.fontItalic !== 'undefined') styleToApply.fontStyle = choiceStyle.fontItalic ? 'italic' : (wo.fontItalic ? 'italic' : 'normal');
-                if (typeof choiceStyle.fontUnderline !== 'undefined') styleToApply.textDecoration = choiceStyle.fontUnderline ? 'underline' : (wo.fontUnderline ? 'underline' : 'none');
-            } else if (fieldDef.type === 'Rules' && wo.rulesOptions && Array.isArray(wo.rulesOptions)) {
-                // Lógica simplificada para regras.
-                const matchingRule = wo.rulesOptions.find(rule => { /* ... sua lógica de match ... */ return false; }); // Placeholder
-                if (matchingRule && matchingRule.style) {
-                    if (matchingRule.style.textColor) styleToApply.color = matchingRule.style.textColor;
-                    if (matchingRule.style.fillColor) styleToApply.backgroundColor = matchingRule.style.fillColor;
-                }
-            }
+            if (wo.fillColor) styleToApply.backgroundColor = wo.fillColor; if (wo.textColor) styleToApply.color = wo.textColor; if (wo.fontBold) styleToApply.fontWeight = 'bold'; if (wo.fontItalic) styleToApply.fontStyle = 'italic'; if (wo.fontUnderline) styleToApply.textDecoration = 'underline';
+            if ((fieldDef.type === 'Choice' || fieldDef.type === 'ChoiceList') && wo.choiceOptions && fieldValue && wo.choiceOptions[String(fieldValue)]) { const choiceStyle = wo.choiceOptions[String(fieldValue)]; if (choiceStyle.fillColor) styleToApply.backgroundColor = choiceStyle.fillColor; if (choiceStyle.textColor) styleToApply.color = choiceStyle.textColor; if (typeof choiceStyle.fontBold !== 'undefined') styleToApply.fontWeight = choiceStyle.fontBold ? 'bold' : (wo.fontBold ? 'bold' : 'normal'); if (typeof choiceStyle.fontItalic !== 'undefined') styleToApply.fontStyle = choiceStyle.fontItalic ? 'italic' : (wo.fontItalic ? 'italic' : 'normal'); if (typeof choiceStyle.fontUnderline !== 'undefined') styleToApply.textDecoration = choiceStyle.fontUnderline ? 'underline' : 'none';
+            } else if (fieldDef.type === 'Rules' && wo.rulesOptions && Array.isArray(wo.rulesOptions)) { const matchingRule = wo.rulesOptions.find(rule => { return false; }); if (matchingRule && matchingRule.style) { if (matchingRule.style.textColor) styleToApply.color = matchingRule.style.textColor; if (matchingRule.style.fillColor) styleToApply.backgroundColor = matchingRule.style.fillColor; } }
         }
         Object.assign(element.style, styleToApply);
     }
-    // ... (createCardElement, renderKanbanView - sem alterações diretas aqui) ...
+
+    // UPDATED createCardElement to handle RefList as table
     function createCardElement(cardData, cardLaneValue) {
         const cardDiv = document.createElement('div'); cardDiv.className = 'card'; cardDiv.dataset.cardId = cardData.id;
         const vis = WidgetConfigManager.getVisualConfig();
         if (vis.cardColor) cardDiv.style.background = vis.cardColor;
         if (vis.cardShadow) { cardDiv.classList.add('with-shadow'); } else { cardDiv.classList.remove('with-shadow'); cardDiv.style.boxShadow = 'none'; }
-        if (vis.cardFieldsFontColor) {
-            cardDiv.style.color = vis.cardFieldsFontColor;
-        }
+        if (vis.cardFieldsFontColor) { cardDiv.style.color = vis.cardFieldsFontColor; }
 
-        const laneInfo = kanbanLanesStructure.find(l => l.value === cardLaneValue) || { color: "#ccc" }; cardDiv.style.setProperty('--card-status-color', laneInfo.color); const sortCrit = WidgetConfigManager.getCardSortCriteria(); const prioCrit = sortCrit.find(c => c.displayType === 'priority' && c.columnId); if (prioCrit) { const fieldDef = gristTableMeta.columns.find(c => c.id === prioCrit.columnId); const raw = safe(cardData, prioCrit.columnId, ''); const el = document.createElement('div'); el.className = 'card-priority'; el.textContent = raw ?? ''; if (fieldDef) applyStylesFromWidgetOptions(el, fieldDef, raw, false); cardDiv.appendChild(el); } const dueCrit = sortCrit.find(c => c.displayType === 'dueDate' && c.columnId); if (dueCrit) { const fieldDef = gristTableMeta.columns.find(c => c.id === dueCrit.columnId); let rawVal = safe(cardData, dueCrit.columnId, ''); let displayVal = rawVal; if (fieldDef && (fieldDef.type === 'Date' || fieldDef.type === 'DateTime')) { displayVal = formatEpoch(rawVal, fieldDef.type); } const el2 = document.createElement('div'); el2.className = 'card-dueDate'; el2.textContent = displayVal ?? ''; if (fieldDef) applyStylesFromWidgetOptions(el2, fieldDef, rawVal, false); cardDiv.appendChild(el2); } let fieldsOnCardRaw = gristTableMeta.columns .map(col => ({ colDef: col, config: getFieldDisplayConfig(col.id, cardLaneValue) })) .filter(item => item.config.card && item.colDef.id !== WidgetConfigManager.getKanbanDefiningColumn()) .sort((a, b) => (a.config.cardPosition ?? 999) - (b.config.cardPosition ?? 999)); let titleItemConfig = null; const idx0 = fieldsOnCardRaw.findIndex(i => i.config.cardPosition === 0); if (idx0 !== -1) titleItemConfig = fieldsOnCardRaw.splice(idx0, 1)[0]; else if (fieldsOnCardRaw.length > 0 && fieldsOnCardRaw[0].config.cardPosition > 0) titleItemConfig = fieldsOnCardRaw.shift();
+        const laneInfo = kanbanLanesStructure.find(l => l.value === cardLaneValue) || { color: "#ccc" }; cardDiv.style.setProperty('--card-status-color', laneInfo.color); const sortCrit = WidgetConfigManager.getCardSortCriteria(); const prioCrit = sortCrit.find(c => c.displayType === 'priority' && c.columnId); if (prioCrit) { const fieldDef = gristTableMeta.columns.find(c => c.id === prioCrit.columnId); const raw = safe(cardData, prioCrit.columnId, ''); const el = document.createElement('div'); el.className = 'card-priority'; el.textContent = raw ?? ''; if (fieldDef) applyStylesFromWidgetOptions(el, fieldDef, raw, false); cardDiv.appendChild(el); } const dueCrit = sortCrit.find(c => c.displayType === 'dueDate' && c.columnId); if (dueCrit) { const fieldDef = gristTableMeta.columns.find(c => c.id === dueCrit.columnId); let rawVal = safe(cardData, dueCrit.columnId, ''); let displayVal = rawVal; if (fieldDef && (fieldDef.type === 'Date' || fieldDef.type === 'DateTime')) { displayVal = formatEpoch(rawVal, fieldDef.type); } const el2 = document.createElement('div'); el2.className = 'card-dueDate'; el2.textContent = displayVal ?? ''; if (fieldDef) applyStylesFromWidgetOptions(el2, fieldDef, rawVal, false); cardDiv.appendChild(el2); }
+        let fieldsOnCardRaw = gristTableMeta.columns.map(col => ({ colDef: col, config: getFieldDisplayConfig(col.id, cardLaneValue) })).filter(item => item.config.card && item.colDef.id !== WidgetConfigManager.getKanbanDefiningColumn()).sort((a, b) => (a.config.cardPosition ?? 999) - (b.config.cardPosition ?? 999));
+        let titleItemConfig = null; const idx0 = fieldsOnCardRaw.findIndex(i => i.config.cardPosition === 0); if (idx0 !== -1) titleItemConfig = fieldsOnCardRaw.splice(idx0, 1)[0]; else if (fieldsOnCardRaw.length > 0 && fieldsOnCardRaw[0].config.cardPosition > 0) titleItemConfig = fieldsOnCardRaw.shift();
 
         const titleEl = document.createElement('div'); titleEl.className = 'card-title';
-        if (vis.cardTitleFontColor) {
-            titleEl.style.color = vis.cardTitleFontColor;
-        }
-
-        if (titleItemConfig) { const colDef = titleItemConfig.colDef; let titleValueToDisplay = safe(cardData, colDef.id); if (colDef.type.startsWith('Ref') && colDef.displayColId) { titleValueToDisplay = safe(cardData, colDef.displayColId, ''); if (safe(cardData, colDef.id) === 0 || String(titleValueToDisplay).startsWith("E,Invalid")) { titleValueToDisplay = `[${colDef.label}]`; } } else if (!colDef.type.startsWith('Ref') && (colDef.type === 'Date' || colDef.type === 'DateTime')) { titleValueToDisplay = formatEpoch(safe(cardData, colDef.id), colDef.type); } titleEl.textContent = titleValueToDisplay ?? `[${colDef.label}]`; if (titleItemConfig.config.useFormatting) { applyStylesFromWidgetOptions(titleEl, colDef, safe(cardData, colDef.id), false); } } else { titleEl.textContent = `Cartão ${cardData.id}`; } cardDiv.appendChild(titleEl);
+        if (vis.cardTitleFontColor) { titleEl.style.color = vis.cardTitleFontColor; }
+        if (titleItemConfig) { const colDef = titleItemConfig.colDef; let titleValueToDisplay = safe(cardData, colDef.id); if (colDef.type.startsWith('Ref') && colDef.displayColId) { titleValueToDisplay = safe(cardData, colDef.displayColId, ''); if (safe(cardData, colDef.id) === 0 || String(titleValueToDisplay).startsWith("E,Invalid")) { titleValueToDisplay = `[${colDef.label}]`; } } else if (!colDef.type.startsWith('Ref') && (colDef.type === 'Date' || colDef.type === 'DateTime')) { titleValueToDisplay = formatEpoch(safe(cardData, colDef.id), colDef.type); } titleEl.textContent = titleValueToDisplay ?? `[${colDef.label}]`; if (titleItemConfig.config.useFormatting) { applyStylesFromWidgetOptions(titleEl, colDef, safe(cardData, colDef.id), false); } } else { titleEl.textContent = `Cartão ${cardData.id}`; }
+        cardDiv.appendChild(titleEl);
+        
         fieldsOnCardRaw.forEach(item => {
           const fieldDiv = document.createElement('div'); fieldDiv.className = 'card-field';
-          const colDef = item.colDef; let rawValueFromGrist = safe(cardData, colDef.id); let displayValue = rawValueFromGrist;
-          if (colDef.type.startsWith('Ref:') && colDef.displayColId) { displayValue = safe(cardData, colDef.displayColId, ''); if (rawValueFromGrist === 0 || String(displayValue).startsWith("E,Invalid")) { displayValue = "[Nenhum]"; } }
-          else if (colDef.type.startsWith('Ref:') && !colDef.displayColId) { if (rawValueFromGrist && rawValueFromGrist !== 0) { displayValue = `[Ref ID: ${rawValueFromGrist}]`; } else { displayValue = "[Nenhum]"; } }
-          else if (colDef.type === 'Date' || colDef.type === 'DateTime') { displayValue = formatEpoch(rawValueFromGrist, colDef.type); }
-          else if (colDef.type === 'ChoiceList') { /* Exibição já tratada abaixo com chips */ }
-          else if (colDef.type.startsWith('RefList') && colDef.displayColId) { displayValue = safe(cardData, colDef.displayColId, ''); const refListIds = Array.isArray(rawValueFromGrist) && rawValueFromGrist[0] === 'L' ? rawValueFromGrist.slice(1) : []; if (refListIds.length === 0) { displayValue = "[Nenhum]"; } else if (String(displayValue).startsWith("E,Invalid")) { displayValue = refListIds.map(id => `[Ref ID: ${id}]`).join(', '); } }
-          else if (colDef.type.startsWith('RefList') && !colDef.displayColId) { const refListIds = Array.isArray(rawValueFromGrist) && rawValueFromGrist[0] === 'L' ? rawValueFromGrist.slice(1) : []; if (refListIds.length > 0) { displayValue = refListIds.map(id => `[Ref ID: ${id}]`).join(', '); } else { displayValue = "[Nenhum]"; } }
-
+          const colDef = item.colDef; let rawValueFromGrist = safe(cardData, colDef.id);
           if (item.config.showLabel) { const lab = document.createElement('span'); lab.className = 'label'; lab.textContent = `${colDef.label}: `; if (item.config.useFormatting) applyStylesFromWidgetOptions(lab, colDef, rawValueFromGrist, true); fieldDiv.appendChild(lab); }
+          
           let fieldEl;
-          if (colDef.type === 'Bool') { fieldEl = document.createElement('input'); fieldEl.type = 'checkbox'; fieldEl.disabled = true; fieldEl.checked = Boolean(rawValueFromGrist); }
-          else if (colDef.type === 'ChoiceList') { fieldEl = document.createElement('div'); const choicesSelected = Array.isArray(rawValueFromGrist) && rawValueFromGrist[0] === 'L' ? rawValueFromGrist.slice(1) : []; if (choicesSelected.length > 0) { choicesSelected.forEach(opt => { const chip = document.createElement('span'); chip.className = 'choice-chip'; chip.textContent = opt; if (item.config.useFormatting && colDef.widgetOptions?.choiceOptions?.[opt]) { const cs = colDef.widgetOptions.choiceOptions[opt]; if (cs.fillColor) chip.style.backgroundColor = cs.fillColor; if (cs.textColor) chip.style.color = cs.textColor; } fieldEl.appendChild(chip); }); } else { fieldEl.textContent = "[Nenhum]"; fieldEl.style.fontStyle = 'italic'; fieldEl.style.color = '#757575'; } }
-          else { fieldEl = document.createElement('span'); fieldEl.className = 'value'; fieldEl.textContent = displayValue ?? ''; if (displayValue === "[Nenhum]" && (colDef.type.startsWith('Ref:') || colDef.type.startsWith('RefList'))) { fieldEl.style.fontStyle = 'italic'; fieldEl.style.color = '#757575'; } }
-          if (item.config.useFormatting && colDef.type !== 'ChoiceList') { applyStylesFromWidgetOptions(fieldEl, colDef, rawValueFromGrist, false); }
+          if (colDef.type.startsWith('RefList') && item.config.useFormatting) {
+              fieldEl = document.createElement('div');
+              const linkedRecords = refListCache[cardData.id]?.[colDef.id] || [];
+              if (linkedRecords.length > 0) {
+                  const table = document.createElement('table'); table.className = 'card-reflist-table';
+                  const thead = table.createTHead(); const headerRow = thead.insertRow();
+                  const refTableSchema = refListCache.schemas[colDef.referencedTableId];
+                  const childColsToShow = Object.values(item.config.refListFieldConfigs || {}).filter(c => c.card).sort((a,b) => a.cardPosition - b.cardPosition);
+                  const childColDefs = childColsToShow.map(c => refTableSchema.columns.find(sc => sc.id === c.fieldId)).filter(Boolean);
+                  
+                  childColDefs.forEach(cc => headerRow.insertCell().textContent = cc.label);
+                  const tbody = table.createTBody();
+                  linkedRecords.forEach(rec => {
+                      const tr = tbody.insertRow();
+                      childColDefs.forEach(cc => tr.insertCell().textContent = safe(rec, cc.id, ''));
+                  });
+                  fieldEl.appendChild(table);
+              } else {
+                  fieldEl.textContent = "[Nenhum]"; fieldEl.style.fontStyle = 'italic';
+              }
+          } else {
+            let displayValue = rawValueFromGrist;
+            if (colDef.type.startsWith('Ref:') && colDef.displayColId) { displayValue = safe(cardData, colDef.displayColId, ''); if (rawValueFromGrist === 0 || String(displayValue).startsWith("E,Invalid")) { displayValue = "[Nenhum]"; } }
+            else if (colDef.type.startsWith('Ref:') && !colDef.displayColId) { displayValue = (rawValueFromGrist && rawValueFromGrist !== 0) ? `[Ref ID: ${rawValueFromGrist}]` : "[Nenhum]"; }
+            else if (colDef.type === 'Date' || colDef.type === 'DateTime') { displayValue = formatEpoch(rawValueFromGrist, colDef.type); }
+            else if (colDef.type.startsWith('RefList')) { const ids = Array.isArray(rawValueFromGrist) && rawValueFromGrist[0]==='L' ? rawValueFromGrist.slice(1) : []; displayValue = ids.length > 0 ? `${ids.length} item(ns) vinculado(s)` : '[Nenhum]';}
+            
+            if (colDef.type === 'Bool') { fieldEl = document.createElement('input'); fieldEl.type = 'checkbox'; fieldEl.disabled = true; fieldEl.checked = Boolean(rawValueFromGrist); }
+            else if (colDef.type === 'ChoiceList') { fieldEl = document.createElement('div'); const choicesSelected = Array.isArray(rawValueFromGrist) && rawValueFromGrist[0] === 'L' ? rawValueFromGrist.slice(1) : []; if (choicesSelected.length > 0) { choicesSelected.forEach(opt => { const chip = document.createElement('span'); chip.className = 'choice-chip'; chip.textContent = opt; if (item.config.useFormatting && colDef.widgetOptions?.choiceOptions?.[opt]) { const cs = colDef.widgetOptions.choiceOptions[opt]; if (cs.fillColor) chip.style.backgroundColor = cs.fillColor; if (cs.textColor) chip.style.color = cs.textColor; } fieldEl.appendChild(chip); }); } else { fieldEl.textContent = "[Nenhum]"; fieldEl.style.fontStyle = 'italic'; fieldEl.style.color = '#757575'; } }
+            else { fieldEl = document.createElement('span'); fieldEl.className = 'value'; fieldEl.textContent = displayValue ?? ''; if (displayValue === "[Nenhum]") { fieldEl.style.fontStyle = 'italic'; fieldEl.style.color = '#757575'; } }
+            if (item.config.useFormatting && colDef.type !== 'ChoiceList') { applyStylesFromWidgetOptions(fieldEl, colDef, rawValueFromGrist, false); }
+          }
           fieldDiv.appendChild(fieldEl); cardDiv.appendChild(fieldDiv);
         });
         cardDiv.onclick = () => openCardEditDrawer(cardData.id, cardLaneValue, cardData); return cardDiv;
     }
-    function renderKanbanView() { /* ... (como antes) ... */ const vis = WidgetConfigManager.getVisualConfig(); boardEl.style.display = 'flex'; boardEl.style.justifyContent = vis.centerColumns ? 'center' : 'flex-start'; boardEl.innerHTML = ''; currentVisibleCardsByLane = {}; const errorMsgEl = errEl; if (!gristTableMeta || !WidgetConfigManager.getKanbanDefiningColumn()) { const msg = "Configure a coluna Kanban em ⚙️ Config > Geral > Mapeamento."; errorMsgEl.textContent = msg; boardEl.innerHTML = `<p>${msg}</p>`; return; } if (kanbanLanesStructure.length === 0) { const msg = "Nenhuma lane encontrada para a coluna Kanban definida. Verifique as 'choices' da coluna ou se há dados."; errorMsgEl.textContent = msg; boardEl.innerHTML = `<p>${msg}</p>`; return; } const definingColId = WidgetConfigManager.getKanbanDefiningColumn(); const cardsByLane = {}; kanbanLanesStructure.forEach(l => cardsByLane[l.value] = []); gristRows.forEach(row => { const laneValue = String(safe(row, definingColId, "")); if (cardsByLane.hasOwnProperty(laneValue)) { cardsByLane[laneValue].push(row); } else { if (!cardsByLane["_UNMATCHED_LANE_"]) cardsByLane["_UNMATCHED_LANE_"] = []; cardsByLane["_UNMATCHED_LANE_"].push(row); } }); const sortCriteria = WidgetConfigManager.getCardSortCriteria(); if (sortCriteria.some(c => c.columnId)) { for (const lv in cardsByLane) { if (lv === "_UNMATCHED_LANE_") continue; cardsByLane[lv].sort((A, B) => { for (const c of sortCriteria) { if (!c.columnId) continue; const colMeta = gristTableMeta.columns.find(x => x.id === c.columnId); const vA = safe(A, c.columnId), vB = safe(B, c.columnId); let cmp = 0; if (vA == null && vB != null) cmp = 1; else if (vB == null && vA != null) cmp = -1; else if (vA == null && vB == null) cmp = 0; else if (colMeta && (colMeta.type === 'Numeric' || colMeta.type === 'Int' || colMeta.type === 'Date' || colMeta.type === 'DateTime')) { cmp = parseFloat(vA) - parseFloat(vB); } else { cmp = String(vA).localeCompare(String(vB), undefined, { sensitivity: 'base' }); } if (cmp !== 0) return c.direction === 'asc' ? cmp : -cmp; } return 0; }); } } kanbanLanesStructure.filter(l => !l.isUnmatched).forEach((lane, laneIndex) => { const columnDiv = document.createElement('div'); columnDiv.className = 'column'; columnDiv.dataset.laneValue = lane.value; columnDiv.style.flex = `0 0 ${vis.columnWidthPercent || 25}%`; columnDiv.style.minWidth = `${vis.columnMinWidth || 200}px`; columnDiv.style.maxWidth = `${vis.columnMaxWidth || 400}px`; if (vis.columnColor) columnDiv.style.backgroundColor = vis.columnColor; const headerDiv = document.createElement('div'); headerDiv.className = 'column-header'; headerDiv.style.backgroundColor = lane.color; headerDiv.style.color = lane.textColor; if (lane.fontBold) headerDiv.style.fontWeight = 'bold'; const totalInLane = (cardsByLane[lane.value] || []).length; const limits = WidgetConfigManager.getLaneWipLimit(lane.value); let headerText = `${lane.value || "[Vazio]"} (${totalInLane}`; if (limits.maxAllowed > 0) { headerText += `/${limits.maxAllowed}`; if (totalInLane >= limits.maxAllowed) { headerDiv.classList.add('wip-limit-exceeded'); headerDiv.title = `Limite WIP de ${limits.maxAllowed} atingido/excedido!`; } } headerText += ")"; headerDiv.textContent = headerText; columnDiv.appendChild(headerDiv); const addBtn = document.createElement('button'); addBtn.className = 'add-btn'; addBtn.textContent = '+ Novo cartão'; addBtn.onclick = () => { if (limits.maxAllowed > 0 && totalInLane >= limits.maxAllowed) { alert(`A lane "${lane.value}" atingiu o limite máximo de ${limits.maxAllowed} cartões.`); return; } addNewCardToLane(lane.value); }; columnDiv.appendChild(addBtn); const bodyDiv = document.createElement('div'); bodyDiv.className = 'column-body'; const cardsInThisLane = cardsByLane[lane.value] || []; currentVisibleCardsByLane[lane.value] = 0; const initiallyVisible = limits.maxVisible > 0 ? limits.maxVisible : CARDS_PER_PAGE; for (let i = 0; i < Math.min(cardsInThisLane.length, initiallyVisible); i++) { bodyDiv.appendChild(createCardElement(cardsInThisLane[i], lane.value)); currentVisibleCardsByLane[lane.value]++; } columnDiv.appendChild(bodyDiv); const pagDiv = document.createElement('div'); pagDiv.className = 'column-pagination-controls'; columnDiv.appendChild(pagDiv); function updatePaginationControls() { pagDiv.innerHTML = ''; const visibleCount = currentVisibleCardsByLane[lane.value]; const totalCount = cardsInThisLane.length; if (totalCount <= initiallyVisible && totalCount <= CARDS_PER_PAGE && limits.maxVisible === 0) { return; } if (totalCount > 0) { const showLessBtn = document.createElement('button'); showLessBtn.innerHTML = '▲'; showLessBtn.title = 'Mostrar menos'; showLessBtn.disabled = visibleCount <= (limits.maxVisible > 0 ? limits.maxVisible : CARDS_PER_PAGE); showLessBtn.onclick = () => { const targetVisible = limits.maxVisible > 0 ? limits.maxVisible : CARDS_PER_PAGE; Array.from(bodyDiv.querySelectorAll('.card')).slice(targetVisible).forEach(n => n.remove()); currentVisibleCardsByLane[lane.value] = Math.min(visibleCount, targetVisible); updatePaginationControls(); }; pagDiv.appendChild(showLessBtn); const countSpan = document.createElement('span'); countSpan.textContent = `(${visibleCount}/${totalCount})`; pagDiv.appendChild(countSpan); const showMoreBtn = document.createElement('button'); showMoreBtn.innerHTML = '▼'; showMoreBtn.title = 'Mostrar mais'; showMoreBtn.disabled = visibleCount >= totalCount; showMoreBtn.onclick = () => { const nextBatchStart = visibleCount; const nextBatchEnd = Math.min(totalCount, visibleCount + CARDS_PER_PAGE); for (let i = nextBatchStart; i < nextBatchEnd; i++) { bodyDiv.appendChild(createCardElement(cardsInThisLane[i], lane.value)); currentVisibleCardsByLane[lane.value]++; } updatePaginationControls(); }; pagDiv.appendChild(showMoreBtn); } } updatePaginationControls();
+
+    // UPDATED to pre-cache RefList data
+    async function renderKanbanView() {
+        const vis = WidgetConfigManager.getVisualConfig(); boardEl.style.display = 'flex'; boardEl.style.justifyContent = vis.centerColumns ? 'center' : 'flex-start'; boardEl.innerHTML = ''; currentVisibleCardsByLane = {};
+        if (!gristTableMeta || !WidgetConfigManager.getKanbanDefiningColumn()) { errEl.textContent = "Configure a coluna Kanban em ⚙️ Config > Geral > Mapeamento."; boardEl.innerHTML = `<p>${errEl.textContent}</p>`; return; }
+        if (kanbanLanesStructure.length === 0) { errEl.textContent = "Nenhuma lane encontrada para a coluna Kanban definida."; boardEl.innerHTML = `<p>${errEl.textContent}</p>`; return; }
+        
+        // --- PRE-FETCH & CACHE REFLIST DATA ---
+        refListCache = { schemas: {}, data: {} };
+        const refListsToFetch = new Map();
+        gristRows.forEach(row => {
+            gristTableMeta.columns.forEach(col => {
+                if (col.type.startsWith('RefList:')) {
+                    const ids = Array.isArray(row[col.id]) && row[col.id][0] === 'L' ? row[col.id].slice(1) : [];
+                    if (ids.length > 0) {
+                        if (!refListsToFetch.has(col.referencedTableId)) {
+                            refListsToFetch.set(col.referencedTableId, new Set());
+                        }
+                        const idSet = refListsToFetch.get(col.referencedTableId);
+                        ids.forEach(id => idSet.add(id));
+                        if (!refListCache[row.id]) refListCache[row.id] = {};
+                        refListCache[row.id][col.id] = ids; // Store the ids for now
+                    }
+                }
+            });
+        });
+        const promises = [];
+        for (const [tableId, idSet] of refListsToFetch.entries()) {
+            promises.push(GristDataManager.getTableSchema(tableId).then(s => refListCache.schemas[tableId] = s));
+            promises.push(GristDataManager.colToRows(await grist.docApi.fetchTable(tableId)).then(data => refListCache.data[tableId] = data));
+        }
+        await Promise.all(promises);
+        Object.keys(refListCache).filter(k => k !== 'schemas' && k !== 'data').forEach(cardId => {
+            Object.keys(refListCache[cardId]).forEach(refListColId => {
+                const colDef = gristTableMeta.columns.find(c => c.id === refListColId);
+                const linkedIds = refListCache[cardId][refListColId];
+                const refTableData = refListCache.data[colDef.referencedTableId] || [];
+                refListCache[cardId][refListColId] = refTableData.filter(r => linkedIds.includes(r.id));
+            });
+        });
+        // --- END PRE-FETCH ---
+
+        const definingColId = WidgetConfigManager.getKanbanDefiningColumn(); const cardsByLane = {}; kanbanLanesStructure.forEach(l => cardsByLane[l.value] = []); gristRows.forEach(row => { const laneValue = String(safe(row, definingColId, "")); if (cardsByLane.hasOwnProperty(laneValue)) { cardsByLane[laneValue].push(row); } else { if (!cardsByLane["_UNMATCHED_LANE_"]) cardsByLane["_UNMATCHED_LANE_"] = []; cardsByLane["_UNMATCHED_LANE_"].push(row); } }); const sortCriteria = WidgetConfigManager.getCardSortCriteria(); if (sortCriteria.some(c => c.columnId)) { for (const lv in cardsByLane) { if (lv === "_UNMATCHED_LANE_") continue; cardsByLane[lv].sort((A, B) => { for (const c of sortCriteria) { if (!c.columnId) continue; const colMeta = gristTableMeta.columns.find(x => x.id === c.columnId); const vA = safe(A, c.columnId), vB = safe(B, c.columnId); let cmp = 0; if (vA == null && vB != null) cmp = 1; else if (vB == null && vA != null) cmp = -1; else if (vA == null && vB == null) cmp = 0; else if (colMeta && (colMeta.type === 'Numeric' || colMeta.type === 'Int' || colMeta.type === 'Date' || colMeta.type === 'DateTime')) { cmp = parseFloat(vA) - parseFloat(vB); } else { cmp = String(vA).localeCompare(String(vB), undefined, { sensitivity: 'base' }); } if (cmp !== 0) return c.direction === 'asc' ? cmp : -cmp; } return 0; }); } }
+        kanbanLanesStructure.filter(l => !l.isUnmatched).forEach((lane, laneIndex) => { const columnDiv = document.createElement('div'); columnDiv.className = 'column'; columnDiv.dataset.laneValue = lane.value; columnDiv.style.flex = `0 0 ${vis.columnWidthPercent || 25}%`; columnDiv.style.minWidth = `${vis.columnMinWidth || 200}px`; columnDiv.style.maxWidth = `${vis.columnMaxWidth || 400}px`; if (vis.columnColor) columnDiv.style.backgroundColor = vis.columnColor; const headerDiv = document.createElement('div'); headerDiv.className = 'column-header'; headerDiv.style.backgroundColor = lane.color; headerDiv.style.color = lane.textColor; if (lane.fontBold) headerDiv.style.fontWeight = 'bold'; const totalInLane = (cardsByLane[lane.value] || []).length; const limits = WidgetConfigManager.getLaneWipLimit(lane.value); let headerText = `${lane.value || "[Vazio]"} (${totalInLane}`; if (limits.maxAllowed > 0) { headerText += `/${limits.maxAllowed}`; if (totalInLane >= limits.maxAllowed) { headerDiv.classList.add('wip-limit-exceeded'); headerDiv.title = `Limite WIP de ${limits.maxAllowed} atingido/excedido!`; } } headerText += ")"; headerDiv.textContent = headerText; columnDiv.appendChild(headerDiv); const addBtn = document.createElement('button'); addBtn.className = 'add-btn'; addBtn.textContent = '+ Novo cartão'; addBtn.onclick = () => { if (limits.maxAllowed > 0 && totalInLane >= limits.maxAllowed) { alert(`A lane "${lane.value}" atingiu o limite máximo de ${limits.maxAllowed} cartões.`); return; } addNewCardToLane(lane.value); }; columnDiv.appendChild(addBtn); const bodyDiv = document.createElement('div'); bodyDiv.className = 'column-body'; const cardsInThisLane = cardsByLane[lane.value] || []; currentVisibleCardsByLane[lane.value] = 0; const initiallyVisible = limits.maxVisible > 0 ? limits.maxVisible : CARDS_PER_PAGE; for (let i = 0; i < Math.min(cardsInThisLane.length, initiallyVisible); i++) { bodyDiv.appendChild(createCardElement(cardsInThisLane[i], lane.value)); currentVisibleCardsByLane[lane.value]++; } columnDiv.appendChild(bodyDiv); const pagDiv = document.createElement('div'); pagDiv.className = 'column-pagination-controls'; columnDiv.appendChild(pagDiv);
+        function updatePaginationControls() { pagDiv.innerHTML = ''; const visibleCount = currentVisibleCardsByLane[lane.value]; const totalCount = cardsInThisLane.length; if (totalCount <= initiallyVisible && totalCount <= CARDS_PER_PAGE && limits.maxVisible === 0) { return; } if (totalCount > 0) { const showLessBtn = document.createElement('button'); showLessBtn.innerHTML = '▲'; showLessBtn.title = 'Mostrar menos'; showLessBtn.disabled = visibleCount <= (limits.maxVisible > 0 ? limits.maxVisible : CARDS_PER_PAGE); showLessBtn.onclick = () => { const targetVisible = limits.maxVisible > 0 ? limits.maxVisible : CARDS_PER_PAGE; Array.from(bodyDiv.querySelectorAll('.card')).slice(targetVisible).forEach(n => n.remove()); currentVisibleCardsByLane[lane.value] = Math.min(visibleCount, targetVisible); updatePaginationControls(); }; pagDiv.appendChild(showLessBtn); const countSpan = document.createElement('span'); countSpan.textContent = `(${visibleCount}/${totalCount})`; pagDiv.appendChild(countSpan); const showMoreBtn = document.createElement('button'); showMoreBtn.innerHTML = '▼'; showMoreBtn.title = 'Mostrar mais'; showMoreBtn.disabled = visibleCount >= totalCount; showMoreBtn.onclick = () => { const nextBatchStart = visibleCount; const nextBatchEnd = Math.min(totalCount, visibleCount + CARDS_PER_PAGE); for (let i = nextBatchStart; i < nextBatchEnd; i++) { bodyDiv.appendChild(createCardElement(cardsInThisLane[i], lane.value)); currentVisibleCardsByLane[lane.value]++; } updatePaginationControls(); }; pagDiv.appendChild(showMoreBtn); } }
+        updatePaginationControls();
         new Sortable(bodyDiv, {
           group: 'kanban-cards', animation: 150,
-          onMove: evt => { /* ... (como antes) ... */ const toLaneValue = evt.to.closest('.column').dataset.laneValue; const fromLaneValue = evt.from.closest('.column').dataset.laneValue; const toLaneLimits = WidgetConfigManager.getLaneWipLimit(toLaneValue); const cardsInToLane = (cardsByLane[toLaneValue] || []).length; if (evt.from !== evt.to && toLaneLimits.maxAllowed > 0 && cardsInToLane >= toLaneLimits.maxAllowed) { console.log(`WIP Limit block: ${toLaneValue} has ${cardsInToLane}/${toLaneLimits.maxAllowed}`); return false; } if (WidgetConfigManager.getRestrictAdjacentMove()) { const fromLaneIdx = kanbanLanesStructure.findIndex(l => l.value === fromLaneValue); const toLaneIdx = kanbanLanesStructure.findIndex(l => l.value === toLaneValue); if (Math.abs(toLaneIdx - fromLaneIdx) > 1) { console.log("Adjacent move block"); return false; } } const fromLaneRules = WidgetConfigManager.getRulesForLane(fromLaneValue); const hasCreateRuleInFromLane = fromLaneRules.some(r => r.type === 'create'); if (hasCreateRuleInFromLane) { const fromIdx = kanbanLanesStructure.findIndex(l => l.value === fromLaneValue); const toIdx = kanbanLanesStructure.findIndex(l => l.value === toLaneValue); if (toIdx < fromIdx) { console.log("Cannot move back: 'create' rule exists in source lane."); return false; } } return true; },
-          onEnd: async evt => { /* ... (onEnd com a lógica de regras create simplificada) ... */ const cardId = parseInt(evt.item.dataset.cardId, 10); let destinationLaneValue = evt.to.closest('.column').dataset.laneValue; const sourceLaneValue = evt.from.closest('.column').dataset.laneValue; if (destinationLaneValue === sourceLaneValue && evt.oldIndex === evt.newIndex) return; const cardData = gristRows.find(r => r.id === cardId); if (!cardData) { console.error("Card data not found for ID:", cardId); evt.from.insertBefore(evt.item, evt.from.children[evt.oldIndex]); return; } const allowRulesManual = WidgetConfigManager.getRulesForLane(destinationLaneValue).filter(r => r.type === 'allow'); for (const rule of allowRulesManual) { if (!rule.fieldId || !rule.operator) continue; const actualValue = cardData[rule.fieldId]; const fieldDef = gristTableMeta.columns.find(c => c.id === rule.fieldId); const fieldType = fieldDef ? fieldDef.type : 'Text'; if (!evaluateCondition(actualValue, rule.operator, rule.value, fieldType)) { alert(`Não permitido mover para "${destinationLaneValue}":\nCondição não satisfeita: Campo "${fieldDef?.label || rule.fieldId}" ${rule.operator} "${rule.value}"`); evt.from.insertBefore(evt.item, evt.from.children[evt.oldIndex]); return; } } let cardMovedAutomatically = false; const moveRules = WidgetConfigManager.getRulesForLane(destinationLaneValue).filter(r => r.type === 'move'); for (const rule of moveRules) { if (!rule.fieldId || !rule.operator || !rule.targetLaneValue) continue; const actualValue = cardData[rule.fieldId]; const fieldDef = gristTableMeta.columns.find(c => c.id === rule.fieldId); const fieldType = fieldDef ? fieldDef.type : 'Text'; if (evaluateCondition(actualValue, rule.operator, rule.value, fieldType)) { console.log(`Regra 'move' disparada: movendo da ${destinationLaneValue} para ${rule.targetLaneValue}`); const allowRulesAutoMoveTarget = WidgetConfigManager.getRulesForLane(rule.targetLaneValue).filter(r => r.type === 'allow'); let autoMoveAllowed = true; for (const allowRuleTarget of allowRulesAutoMoveTarget) { if (!allowRuleTarget.fieldId || !allowRuleTarget.operator) continue; const valTarget = cardData[allowRuleTarget.fieldId]; const fdTarget = gristTableMeta.columns.find(c => c.id === allowRuleTarget.fieldId); const ftTarget = fdTarget ? fdTarget.type : 'Text'; if (!evaluateCondition(valTarget, allowRuleTarget.operator, allowRuleTarget.value, ftTarget)) { alert(`Movimento automático para "${rule.targetLaneValue}" bloqueado pela regra 'allow' dessa lane:\nCondição: ${fdTarget?.label || allowRuleTarget.fieldId} ${allowRuleTarget.operator} "${allowRuleTarget.value}"`); autoMoveAllowed = false; break; } } if (autoMoveAllowed) { destinationLaneValue = rule.targetLaneValue; cardMovedAutomatically = true; } else { console.log(`Movimento automático para ${rule.targetLaneValue} foi bloqueado por uma regra 'allow' da lane destino.`); } } } const definingColId = WidgetConfigManager.getKanbanDefiningColumn(); if (destinationLaneValue !== sourceLaneValue || cardMovedAutomatically) { try { console.log(`Atualizando Grist: Cartão ${cardId} para lane ${destinationLaneValue}`); await gristTableOps.update([{ id: cardId, fields: { [definingColId]: destinationLaneValue } }]); } catch (err) { console.error("Erro ao mover cartão (update Grist final):", err); alert("Erro ao mover cartão: " + err.message); evt.from.insertBefore(evt.item, evt.from.children[evt.oldIndex]); return; } } else if (destinationLaneValue === sourceLaneValue && evt.oldIndex !== evt.newIndex) { console.log("Cartão reordenado dentro da mesma lane. Nenhuma atualização de lane para Grist."); }
+          onMove: evt => { const toLaneValue = evt.to.closest('.column').dataset.laneValue; const fromLaneValue = evt.from.closest('.column').dataset.laneValue; const toLaneLimits = WidgetConfigManager.getLaneWipLimit(toLaneValue); const cardsInToLane = (cardsByLane[toLaneValue] || []).length; if (evt.from !== evt.to && toLaneLimits.maxAllowed > 0 && cardsInToLane >= toLaneLimits.maxAllowed) { console.log(`WIP Limit block: ${toLaneValue} has ${cardsInToLane}/${toLaneLimits.maxAllowed}`); return false; } if (WidgetConfigManager.getRestrictAdjacentMove()) { const fromLaneIdx = kanbanLanesStructure.findIndex(l => l.value === fromLaneValue); const toLaneIdx = kanbanLanesStructure.findIndex(l => l.value === toLaneValue); if (Math.abs(toLaneIdx - fromLaneIdx) > 1) { console.log("Adjacent move block"); return false; } } const fromLaneRules = WidgetConfigManager.getRulesForLane(fromLaneValue); const hasCreateRuleInFromLane = fromLaneRules.some(r => r.type === 'create'); if (hasCreateRuleInFromLane) { const fromIdx = kanbanLanesStructure.findIndex(l => l.value === fromLaneValue); const toIdx = kanbanLanesStructure.findIndex(l => l.value === toLaneValue); if (toIdx < fromIdx) { console.log("Cannot move back: 'create' rule exists in source lane."); return false; } } return true; },
+          onEnd: async evt => { const cardId = parseInt(evt.item.dataset.cardId, 10); let destinationLaneValue = evt.to.closest('.column').dataset.laneValue; const sourceLaneValue = evt.from.closest('.column').dataset.laneValue; if (destinationLaneValue === sourceLaneValue && evt.oldIndex === evt.newIndex) return; const cardData = gristRows.find(r => r.id === cardId); if (!cardData) { console.error("Card data not found for ID:", cardId); evt.from.insertBefore(evt.item, evt.from.children[evt.oldIndex]); return; } const allowRulesManual = WidgetConfigManager.getRulesForLane(destinationLaneValue).filter(r => r.type === 'allow'); for (const rule of allowRulesManual) { if (!rule.fieldId || !rule.operator) continue; const actualValue = cardData[rule.fieldId]; const fieldDef = gristTableMeta.columns.find(c => c.id === rule.fieldId); const fieldType = fieldDef ? fieldDef.type : 'Text'; if (!evaluateCondition(actualValue, rule.operator, rule.value, fieldType)) { alert(`Não permitido mover para "${destinationLaneValue}":\nCondição não satisfeita: Campo "${fieldDef?.label || rule.fieldId}" ${rule.operator} "${rule.value}"`); evt.from.insertBefore(evt.item, evt.from.children[evt.oldIndex]); return; } } let cardMovedAutomatically = false; const moveRules = WidgetConfigManager.getRulesForLane(destinationLaneValue).filter(r => r.type === 'move'); for (const rule of moveRules) { if (!rule.fieldId || !rule.operator || !rule.targetLaneValue) continue; const actualValue = cardData[rule.fieldId]; const fieldDef = gristTableMeta.columns.find(c => c.id === rule.fieldId); const fieldType = fieldDef ? fieldDef.type : 'Text'; if (evaluateCondition(actualValue, rule.operator, rule.value, fieldType)) { console.log(`Regra 'move' disparada: movendo da ${destinationLaneValue} para ${rule.targetLaneValue}`); const allowRulesAutoMoveTarget = WidgetConfigManager.getRulesForLane(rule.targetLaneValue).filter(r => r.type === 'allow'); let autoMoveAllowed = true; for (const allowRuleTarget of allowRulesAutoMoveTarget) { if (!allowRuleTarget.fieldId || !allowRuleTarget.operator) continue; const valTarget = cardData[allowRuleTarget.fieldId]; const fdTarget = gristTableMeta.columns.find(c => c.id === allowRuleTarget.fieldId); const ftTarget = fdTarget ? fdTarget.type : 'Text'; if (!evaluateCondition(valTarget, allowRuleTarget.operator, allowRuleTarget.value, ftTarget)) { alert(`Movimento automático para "${rule.targetLaneValue}" bloqueado pela regra 'allow' dessa lane:\nCondição: ${fdTarget?.label || allowRuleTarget.fieldId} ${allowRuleTarget.operator} "${allowRuleTarget.value}"`); autoMoveAllowed = false; break; } } if (autoMoveAllowed) { destinationLaneValue = rule.targetLaneValue; cardMovedAutomatically = true; } else { console.log(`Movimento automático para ${rule.targetLaneValue} foi bloqueado por uma regra 'allow' da lane destino.`); } } } const definingColId = WidgetConfigManager.getKanbanDefiningColumn(); if (destinationLaneValue !== sourceLaneValue || cardMovedAutomatically) { try { console.log(`Atualizando Grist: Cartão ${cardId} para lane ${destinationLaneValue}`); await gristTableOps.update([{ id: cardId, fields: { [definingColId]: destinationLaneValue } }]); } catch (err) { console.error("Erro ao mover cartão (update Grist final):", err); alert("Erro ao mover cartão: " + err.message); evt.from.insertBefore(evt.item, evt.from.children[evt.oldIndex]); return; } } else if (destinationLaneValue === sourceLaneValue && evt.oldIndex !== evt.newIndex) { console.log("Cartão reordenado dentro da mesma lane. Nenhuma atualização de lane para Grist."); }
             if (destinationLaneValue !== sourceLaneValue) {
                 const createRules = WidgetConfigManager.getRulesForLane(destinationLaneValue).filter(r => r.type === 'create');
                 for (const rule of createRules) {
-                    // MODIFICADO para regra 'create' simplificada
-                    if (!rule.targetTableId || !rule.relationFieldIdInTarget || !rule.targetColumnIdForLane || rule.initialLaneValue === null || rule.initialLaneValue === undefined) {
-                        console.warn("Regra 'create' (simplificada) mal configurada ou lane inicial não definida:", rule); continue;
-                    }
-                    try {
-                        const targetTable = grist.getTable(rule.targetTableId);
-                        if (!targetTable) { console.error(`Tabela de destino "${rule.targetTableId}" não encontrada para regra 'create'.`); continue; }
-                        const newRecordFields = {
-                            [rule.relationFieldIdInTarget]: cardId,
-                            [rule.targetColumnIdForLane]: rule.initialLaneValue
-                        };
-                        console.log("Criando registro (simplificado) em subprocesso:", rule.targetTableId, newRecordFields);
-                        await targetTable.create([{ fields: newRecordFields }]);
-                    } catch (err) { console.error(`Erro ao executar regra 'create' (simplificada) para lane "${destinationLaneValue}":`, err); alert(`Erro ao criar registro em subprocesso para tabela "${rule.targetTableId}": ${err.message}`); }
+                    if (!rule.targetTableId || !rule.relationFieldIdInTarget || !rule.targetColumnIdForLane || rule.initialLaneValue === null || rule.initialLaneValue === undefined) { console.warn("Regra 'create' (simplificada) mal configurada ou lane inicial não definida:", rule); continue; }
+                    try { const targetTable = grist.getTable(rule.targetTableId); if (!targetTable) { console.error(`Tabela de destino "${rule.targetTableId}" não encontrada para regra 'create'.`); continue; } const newRecordFields = { [rule.relationFieldIdInTarget]: cardId, [rule.targetColumnIdForLane]: rule.initialLaneValue }; console.log("Criando registro (simplificado) em subprocesso:", rule.targetTableId, newRecordFields); await targetTable.create([{ fields: newRecordFields }]); } catch (err) { console.error(`Erro ao executar regra 'create' (simplificada) para lane "${destinationLaneValue}":`, err); alert(`Erro ao criar registro em subprocesso para tabela "${rule.targetTableId}": ${err.message}`); }
                 }
             }
           }
@@ -1027,163 +758,111 @@ document.addEventListener('DOMContentLoaded', function () {
       });
     }
 
+    // UPDATED openCardEditDrawer (minor change to how it calls populateRefListTable)
     function openCardEditDrawer(cardId, cardLaneValue, preloadedCardData = null) {
         currentEditingCardId = cardId;
         const cardData = preloadedCardData || gristRows.find(r => r.id === cardId);
-        if (!cardData) {
-            console.warn(`openCardEditDrawer: Dados não encontrados para cardId ${cardId}`);
-            return;
-        }
+        if (!cardData) { console.warn(`openCardEditDrawer: Dados não encontrados para cardId ${cardId}`); return; }
         currentEditingCardData = { ...cardData };
-        const drawerContent = editDrawerContentEl;
-        drawerContent.innerHTML = '';
-
+        const drawerContent = editDrawerContentEl; drawerContent.innerHTML = '';
         const visualConfig = WidgetConfigManager.getVisualConfig();
-        if (visualConfig.drawerFontColor) {
-            drawerContent.style.color = visualConfig.drawerFontColor;
-        }
-
+        if (visualConfig.drawerFontColor) { drawerContent.style.color = visualConfig.drawerFontColor; }
         let cardTitle = `Editar Cartão ${cardId}`;
         const fieldsOnCard = gristTableMeta.columns.map(col => ({ colDef: col, config: getFieldDisplayConfig(col.id, cardLaneValue) })).filter(item => item.config.card).sort((a, b) => (a.config.cardPosition ?? 999) - (b.config.cardPosition ?? 999));
         const titleFieldConfiguredOnCard = fieldsOnCard.find(item => item.config.cardPosition === 0);
         if (titleFieldConfiguredOnCard) { const colDefForTitle = titleFieldConfiguredOnCard.colDef; let titleValue = safe(cardData, colDefForTitle.id); if (String(colDefForTitle.type).startsWith('Ref') && colDefForTitle.displayColId) { titleValue = safe(cardData, colDefForTitle.displayColId, `[Ref ${colDefForTitle.id}]`); } else if (!String(colDefForTitle.type).startsWith('Ref') && (colDefForTitle.type === 'Date' || colDefForTitle.type === 'DateTime')) { titleValue = formatEpoch(titleValue, colDefForTitle.type); } cardTitle = titleValue || `[${colDefForTitle.label}]`; } else if (fieldsOnCard.length > 0) { const firstFieldOnCard = fieldsOnCard[0].colDef; let titleValue = safe(cardData, firstFieldOnCard.id); if (String(firstFieldOnCard.type).startsWith('Ref') && firstFieldOnCard.displayColId) { titleValue = safe(cardData, firstFieldOnCard.displayColId, `[Ref ${firstFieldOnCard.id}]`); } else if (!String(firstFieldOnCard.type).startsWith('Ref') && (firstFieldOnCard.type === 'Date' || firstFieldOnCard.type === 'DateTime')) { titleValue = formatEpoch(titleValue, firstFieldOnCard.type); } cardTitle = titleValue || `[${firstFieldOnCard.label}]`;}
         editDrawerTitleEl.textContent = cardTitle;
-
-        const fieldsForDrawer = gristTableMeta.columns
-            .map(col => ({ colDef: col, config: getFieldDisplayConfig(col.id, cardLaneValue) }))
-            .filter(item => item.config.visible)
-            .sort((a, b) => (a.config.position || 999) - (b.config.position || 999));
-
+        const fieldsForDrawer = gristTableMeta.columns.map(col => ({ colDef: col, config: getFieldDisplayConfig(col.id, cardLaneValue) })).filter(item => item.config.visible).sort((a, b) => (a.config.position || 999) - (b.config.position || 999));
         fieldsForDrawer.forEach(item => {
-            const col = item.colDef;
-            const cfg = item.config;
-            let val = safe(currentEditingCardData, col.id, '');
-
-            const label = document.createElement('label');
-            label.htmlFor = `field-${col.id}`;
-            label.textContent = col.label;
-            label.classList.add('formatted');
-            applyStylesFromWidgetOptions(label, col, val, true);
-            drawerContent.appendChild(label);
-
-            let inputEl;
-            let displayValueForReadonly = val;
+            const col = item.colDef; const cfg = item.config; let val = safe(currentEditingCardData, col.id, '');
+            const label = document.createElement('label'); label.htmlFor = `field-${col.id}`; label.textContent = col.label; label.classList.add('formatted'); applyStylesFromWidgetOptions(label, col, val, true); drawerContent.appendChild(label);
+            let inputEl; let displayValueForReadonly = val;
             if (col.type.startsWith('Ref:') && col.displayColId && cardData[col.displayColId] !== undefined) { displayValueForReadonly = safe(cardData, col.displayColId, ''); if (val === 0 || String(displayValueForReadonly).startsWith("E,Invalid")) { displayValueForReadonly = "[Nenhum]"; }}
             else if (col.type.startsWith('Ref:') && !col.displayColId) { displayValueForReadonly = (val && val !== 0) ? `[Ref ID: ${val}]` : "[Nenhum]"; }
             else if (col.type.startsWith('RefList') && col.displayColId && cardData[col.displayColId] !== undefined) { displayValueForReadonly = safe(cardData, col.displayColId, ''); const ids = Array.isArray(val) && val[0] === 'L' ? val.slice(1) : []; if (ids.length === 0) displayValueForReadonly = "[Nenhum]"; }
             else if (col.type.startsWith('RefList') && !col.displayColId) { const ids = Array.isArray(val) && val[0] === 'L' ? val.slice(1) : []; displayValueForReadonly = ids.length > 0 ? ids.map(id => `[Ref ID: ${id}]`).join(', ') : "[Nenhum]"; }
             else if (col.type === 'Date' || col.type === 'DateTime') { displayValueForReadonly = formatEpoch(val, col.type); }
-
-
             if (!cfg.editable || col.isFormula || col.id === WidgetConfigManager.getKanbanDefiningColumn()) {
-                inputEl = document.createElement('div');
-                inputEl.className = 'readonly-field';
+                inputEl = document.createElement('div'); inputEl.className = 'readonly-field';
                 if (col.type === 'ChoiceList') { const choices = Array.isArray(val) && val[0] === 'L' ? val.slice(1) : []; if(choices.length > 0) { choices.forEach(opt => { const chip = document.createElement('span'); chip.className = 'choice-chip'; chip.textContent = opt; if (col.widgetOptions?.choiceOptions?.[opt]) { const cs = col.widgetOptions.choiceOptions[opt]; if (cs.fillColor) chip.style.backgroundColor = cs.fillColor; if (cs.textColor) chip.style.color = cs.textColor; } inputEl.appendChild(chip); }); } else { inputEl.textContent = "[Nenhum]"; inputEl.style.fontStyle="italic"; inputEl.style.color="#777";} }
                 else if (col.type === 'Bool') { inputEl.textContent = Boolean(val) ? 'Sim' : 'Não'; }
-                else if (col.type.startsWith('Ref') || col.type.startsWith('RefList')) { inputEl.textContent = displayValueForReadonly; if (displayValueForReadonly === "[Nenhum]" || String(displayValueForReadonly).startsWith("[Ref ID:")) { inputEl.style.color = '#757575'; inputEl.style.fontStyle = 'italic'; } }
+                else if (col.type.startsWith('Ref')) { inputEl.textContent = displayValueForReadonly; if (displayValueForReadonly === "[Nenhum]" || String(displayValueForReadonly).startsWith("[Ref ID:")) { inputEl.style.color = '#757575'; inputEl.style.fontStyle = 'italic'; } }
                 else { inputEl.textContent = displayValueForReadonly ?? ''; }
                 applyStylesFromWidgetOptions(inputEl, col, val, false);
             } else {
                 if (col.type.startsWith('Ref:') && col.referencedTableId && !col.type.startsWith('RefList')) { inputEl = document.createElement('select'); inputEl.add(new Option('-- Selecione --', '')); inputEl.dataset.currentRefValue = (val === 0 ? "" : String(val)); const populateRefSelect = async (selectElement, refTableId, currentRefId) => { selectElement.options[0].text = 'Carregando...'; try { const rawRefTableData = await grist.docApi.fetchTable(refTableId); const refTableRecords = GristDataManager.colToRows(rawRefTableData); const refTableSchema = await GristDataManager.getTableSchema(refTableId); let displayRefColId = null; if (refTableSchema && refTableSchema.columns) { const commonDisplayNames = ['nome', 'name', 'title', 'título', 'label', 'rótulo', 'descricao', 'description']; let bestCandidate = refTableSchema.columns.find(c => commonDisplayNames.includes(c.label.toLowerCase()) && c.id.toLowerCase() !== 'id' && !c.id.startsWith('gristHelper_')); if (!bestCandidate) { bestCandidate = refTableSchema.columns.find(c => c.type === 'Text' && !c.isFormula && c.id.toLowerCase() !== 'id' && !c.id.startsWith('gristHelper_')); } if (!bestCandidate) { bestCandidate = refTableSchema.columns.find(c => !c.isFormula && c.id.toLowerCase() !== 'id' && !c.id.startsWith('gristHelper_')); } if (!bestCandidate && refTableSchema.columns.length > 0) { bestCandidate = refTableSchema.columns.find(c => c.id.toLowerCase() !== 'id' && !c.id.startsWith('gristHelper_')) || refTableSchema.columns[0]; } if (bestCandidate) { displayRefColId = bestCandidate.id; } else if (refTableRecords.length > 0 && Object.keys(refTableRecords[0]).length > 0) { displayRefColId = Object.keys(refTableRecords[0])[0]; } } selectElement.options[0].text = '-- Selecione --'; refTableRecords.forEach(refRec => { const optionText = displayRefColId ? (safe(refRec, displayRefColId) ?? `ID ${refRec.id}`) : `ID ${refRec.id}`; selectElement.add(new Option(optionText, String(refRec.id))); }); selectElement.value = currentRefId || ""; } catch (err) { console.error(`Erro ao popular select de referência para tabela ${refTableId}:`, err); selectElement.options[0].text = 'Erro ao carregar'; } }; populateRefSelect(inputEl, col.referencedTableId, inputEl.dataset.currentRefValue); }
-                else if (col.type === 'ChoiceList') { inputEl = document.createElement('select'); inputEl.multiple = true; inputEl.size = Math.min(Math.max(3, (col.choices || []).length), 6); const currentValues = Array.isArray(val) && val[0] === 'L' ? val.slice(1) : []; (col.choices || []).forEach(choice => { const option = new Option(choice, choice); if (currentValues.includes(choice)) { option.selected = true; } applyStylesFromWidgetOptions(option, col, choice, false); inputEl.add(option); }); } // Estilo aplicado a cada option
-                
-                // MODIFIED BLOCK FOR RefList
-                else if (col.type.startsWith('RefList')) {
-                    inputEl = document.createElement('div');
-                    inputEl.className = 'reflist-container';
-                    inputEl.id = `reflist-container-${col.id}`; // Unique ID for the container
-                    // This will be populated asynchronously
-                    populateRefListTable(inputEl, col, val);
-                }
-                
+                else if (col.type === 'ChoiceList') { inputEl = document.createElement('select'); inputEl.multiple = true; inputEl.size = Math.min(Math.max(3, (col.choices || []).length), 6); const currentValues = Array.isArray(val) && val[0] === 'L' ? val.slice(1) : []; (col.choices || []).forEach(choice => { const option = new Option(choice, choice); if (currentValues.includes(choice)) { option.selected = true; } applyStylesFromWidgetOptions(option, col, choice, false); inputEl.add(option); }); }
+                else if (col.type.startsWith('RefList')) { inputEl = document.createElement('div'); inputEl.className = 'reflist-container'; inputEl.id = `reflist-container-${col.id}`; populateRefListTable(inputEl, col, val); }
                 else if (col.type === 'Date' || col.type === 'DateTime') { inputEl = document.createElement('input'); inputEl.type = col.type === 'DateTime' ? 'datetime-local' : 'date'; if (val) { const dateObj = new Date(Number(val) * 1000); if (!isNaN(dateObj.valueOf())) { if (col.type === 'Date') { inputEl.value = dateObj.toISOString().split('T')[0]; } else { const localDate = new Date(dateObj.getTime() - (dateObj.getTimezoneOffset() * 60000)); inputEl.value = localDate.toISOString().slice(0,16); } } else { inputEl.value = ''; } } else { inputEl.value = ''; } applyStylesFromWidgetOptions(inputEl, col, val, false); }
                 else if (col.type === 'Choice') {
-                    inputEl = document.createElement('select');
-                    inputEl.add(new Option('-- Nenhum --', ''));
-                    (col.choices || []).forEach(choice => {
-                        const option = new Option(choice, choice);
-                        applyStylesFromWidgetOptions(option, col, choice, false); // Aplicar estilo a cada <option>
-                        inputEl.add(option);
-                    });
-                    inputEl.value = val;
-                    // Aplicar estilo da opção selecionada ao <select>
-                    if (val) { applyStylesFromWidgetOptions(inputEl, col, val, false); }
-                    inputEl.onchange = function() { // Atualizar estilo do select ao mudar a opção
-                        if (this.value) { applyStylesFromWidgetOptions(this, col, this.value, false); }
-                        else { this.style.backgroundColor = ''; this.style.color = ''; /* Resetar para default */ }
-                    };
+                    inputEl = document.createElement('select'); inputEl.add(new Option('-- Nenhum --', ''));
+                    (col.choices || []).forEach(choice => { const option = new Option(choice, choice); applyStylesFromWidgetOptions(option, col, choice, false); inputEl.add(option); });
+                    inputEl.value = val; if (val) { applyStylesFromWidgetOptions(inputEl, col, val, false); }
+                    inputEl.onchange = function() { if (this.value) { applyStylesFromWidgetOptions(this, col, this.value, false); } else { this.style.backgroundColor = ''; this.style.color = ''; } };
                 }
-                else if (col.type === 'Bool') { inputEl = document.createElement('input'); inputEl.type = 'checkbox'; inputEl.checked = Boolean(val); /* Checkbox não recebe estilo de cor de fundo/texto facilmente */ }
+                else if (col.type === 'Bool') { inputEl = document.createElement('input'); inputEl.type = 'checkbox'; inputEl.checked = Boolean(val); }
                 else if (col.type === 'Int' || col.type === 'Numeric') { inputEl = document.createElement('input'); inputEl.type = 'number'; if (col.type === 'Numeric') inputEl.step = 'any'; inputEl.value = val; applyStylesFromWidgetOptions(inputEl, col, val, false); }
                 else { inputEl = document.createElement('textarea'); inputEl.value = val; applyStylesFromWidgetOptions(inputEl, col, val, false); }
             }
-            inputEl.id = `field-${col.id}`;
-            inputEl.dataset.colId = col.id;
+            inputEl.id = `field-${col.id}`; if (!col.type.startsWith('RefList')) { inputEl.dataset.colId = col.id; }
             drawerContent.appendChild(inputEl);
         });
         editDrawerEl.classList.add('visible');
     }
-    // ... (editDrawerSaveBtn.onclick, etc. - sem alterações)
+    
+    // UPDATED to remove RefList save logic
     editDrawerSaveBtn.onclick = async () => { if (!currentEditingCardId || !currentEditingCardData || !gristTableOps) return; const fieldsToUpdate = {}; const definingColId = WidgetConfigManager.getKanbanDefiningColumn(); const currentLaneValueForDrawer = String(safe(currentEditingCardData, definingColId, "")); 
-        
-        // This loop now only handles non-RefList fields
         editDrawerContentEl.querySelectorAll('[data-col-id]').forEach(inputEl => { 
-            if (inputEl.closest('.reflist-container')) return; // IMPORTANT: Skip inputs inside our new manager
-
-            const colId = inputEl.dataset.colId; const colMeta = gristTableMeta.columns.find(c => c.id === colId); const cfg = getFieldDisplayConfig(colId, currentLaneValueForDrawer); if (cfg.editable && colMeta && !colMeta.isFormula && colId !== definingColId) { let newValue; const originalValue = currentEditingCardData[colId]; if (inputEl.tagName === 'SELECT' && colMeta.type.startsWith('Ref:') && !colMeta.type.startsWith('RefList:')) { newValue = inputEl.value === "" ? 0 : Number(inputEl.value); } else if (inputEl.tagName === 'SELECT' && colMeta.type === 'ChoiceList' && inputEl.multiple) { const selectedOptions = Array.from(inputEl.selectedOptions).map(opt => opt.value); newValue = selectedOptions.length > 0 ? ['L', ...selectedOptions] : null; } else if (inputEl.type === 'checkbox' && inputEl.tagName === 'INPUT') { newValue = inputEl.checked; } else if (inputEl.type === 'number') { newValue = inputEl.value === '' ? null : parseFloat(inputEl.value); } else if (inputEl.type === 'date') { if (inputEl.value === '') { newValue = null; } else { const [year, month, day] = inputEl.value.split('-').map(Number); newValue = Date.UTC(year, month - 1, day) / 1000; } } else if (inputEl.type === 'datetime-local') { if (inputEl.value === '') { newValue = null; } else { newValue = new Date(inputEl.value).getTime() / 1000; } } else { newValue = (inputEl.value === '' && colMeta.type !== 'Text' && colMeta.type !== 'Any') ? null : inputEl.value; } let changed = false; if (colMeta.type === 'ChoiceList' || colMeta.type.startsWith('RefList')) { const originalArray = Array.isArray(originalValue) && originalValue[0] === 'L' ? originalValue.slice(1).sort() : (Array.isArray(originalValue) ? originalValue.sort() : []); const newArray = Array.isArray(newValue) && newValue[0] === 'L' ? newValue.slice(1).sort() : (Array.isArray(newValue) ? newValue.sort() : []); if (originalArray.join(',') !== newArray.join(',')) { changed = true; } } else if (colMeta.type.startsWith('Ref:')) { const origRefVal = originalValue === 0 ? null : Number(originalValue); const newRefVal = newValue === 0 ? null : Number(newValue); if (newRefVal !== origRefVal) changed = true; } else if (newValue !== originalValue && !(newValue == null && (originalValue == null || originalValue === ''))) { changed = true; } if (changed) { fieldsToUpdate[colId] = newValue; } } }); 
-        
-        // RefList actions are now live, so we no longer need to check them here on save.
-
+            const colId = inputEl.dataset.colId; const colMeta = gristTableMeta.columns.find(c => c.id === colId); const cfg = getFieldDisplayConfig(colId, currentLaneValueForDrawer);
+            if (cfg.editable && colMeta && !colMeta.isFormula && colId !== definingColId) {
+                let newValue; const originalValue = currentEditingCardData[colId];
+                if (inputEl.tagName === 'SELECT' && colMeta.type.startsWith('Ref:') && !colMeta.type.startsWith('RefList:')) { newValue = inputEl.value === "" ? 0 : Number(inputEl.value); }
+                else if (inputEl.tagName === 'SELECT' && colMeta.type === 'ChoiceList' && inputEl.multiple) { const selectedOptions = Array.from(inputEl.selectedOptions).map(opt => opt.value); newValue = selectedOptions.length > 0 ? ['L', ...selectedOptions] : null; }
+                else if (inputEl.type === 'checkbox' && inputEl.tagName === 'INPUT') { newValue = inputEl.checked; }
+                else if (inputEl.type === 'number') { newValue = inputEl.value === '' ? null : parseFloat(inputEl.value); }
+                else if (inputEl.type === 'date') { if (inputEl.value === '') { newValue = null; } else { const [year, month, day] = inputEl.value.split('-').map(Number); newValue = Date.UTC(year, month - 1, day) / 1000; } }
+                else if (inputEl.type === 'datetime-local') { if (inputEl.value === '') { newValue = null; } else { newValue = new Date(inputEl.value).getTime() / 1000; } }
+                else { newValue = (inputEl.value === '' && colMeta.type !== 'Text' && colMeta.type !== 'Any') ? null : inputEl.value; }
+                let changed = false;
+                if (colMeta.type === 'ChoiceList') { const originalArray = (Array.isArray(originalValue) && originalValue[0]==='L' ? originalValue.slice(1) : []).sort(); const newArray = (Array.isArray(newValue) && newValue[0]==='L' ? newValue.slice(1) : []).sort(); if (originalArray.join(',') !== newArray.join(',')) changed = true; }
+                else if (colMeta.type.startsWith('Ref:')) { const origRefVal = originalValue === 0 ? null : Number(originalValue); const newRefVal = newValue === 0 ? null : Number(newValue); if (newRefVal !== origRefVal) changed = true; }
+                else if (newValue !== originalValue && !(newValue == null && (originalValue == null || originalValue === ''))) { changed = true; }
+                if (changed) { fieldsToUpdate[colId] = newValue; }
+            }
+        }); 
         if (Object.keys(fieldsToUpdate).length > 0) { console.log("Saving fields to Grist:", fieldsToUpdate); try { await gristTableOps.update([{ id: currentEditingCardId, fields: fieldsToUpdate }]); } catch (err) { console.error("Erro ao salvar cartão:", err); alert("Erro ao salvar cartão: " + err.message); } } 
-        
         editDrawerEl.classList.remove('visible'); currentEditingCardId = null; currentEditingCardData = null; };
     editDrawerCloseBtn.onclick = () => { editDrawerEl.classList.remove('visible'); currentEditingCardId = null; currentEditingCardData = null; };
     editDrawerCancelBtn.onclick = () => { editDrawerEl.classList.remove('visible'); currentEditingCardId = null; currentEditingCardData = null; };
+    
+    // ... addNewCardToLane, ConfigUIBuilder.init, cfgBtn.onclick (no changes) ...
     async function addNewCardToLane(laneValue) { if (!gristTableOps || !gristTableMeta) return; const definingColId = WidgetConfigManager.getKanbanDefiningColumn(); if (!definingColId) { alert("Coluna Kanban (status/lane) não está definida nas configurações."); return; } const newCardFields = { [definingColId]: laneValue }; const titleFieldCand = gristTableMeta.columns.find(c => !c.isFormula && (c.label.toLowerCase() === 'title' || c.label.toLowerCase() === 'título' || c.label.toLowerCase() === 'nome')); if (titleFieldCand) { newCardFields[titleFieldCand.id] = "Novo Cartão"; } gristTableMeta.columns.forEach(col => { if (!newCardFields.hasOwnProperty(col.id) && !col.isFormula && col.id !== definingColId) { newCardFields[col.id] = (col.type.startsWith('Ref:') || col.type.startsWith('RefList:')) ? 0 : null; } }); try { await gristTableOps.create([{ fields: newCardFields }]); } catch (err) { console.error("Erro ao criar novo cartão:", err); alert("Erro ao criar novo cartão: " + err.message); } }
     ConfigUIBuilder.init({ drawerEl: document.getElementById('cfg-drawer'), saveBtnEl: document.getElementById('cfg-save'), cancelBtnEl: document.getElementById('cfg-cancel'), closeBtnEl: document.getElementById('cfg-close'), onSave: async () => { await WidgetConfigManager.saveConfig(); await loadGristDataAndSetupKanban(); } });
     if (cfgBtn) { cfgBtn.onclick = async () => { console.log("CFG Button: Clicked."); await WidgetConfigManager.loadConfig(); console.log("CFG Button: Config loaded."); if (!gristTableMeta || (gristRows.length === 0 && gristTableMeta?.nameId) || allGristTables.length === 0) { console.log("CFG Button: Fetching table meta, data, and all tables list..."); const dataPack = await GristDataManager.fetchAll(); if (!dataPack?.mainTable?.nameId) { alert("Nenhuma tabela Grist selecionada ou falha ao carregar dados."); console.error("CFG Button: dataPack inválido ou sem mainTable."); return; } gristTableMeta = dataPack.mainTable; gristRows = dataPack.allData[gristTableMeta.nameId] || []; allGristTables = dataPack.allTablesList || []; console.log("CFG Button: Table meta, data, and all tables list fetched."); } let definingColIdFromConfig = WidgetConfigManager.getKanbanDefiningColumn(); kanbanLanesStructure = []; if (definingColIdFromConfig && gristTableMeta && gristTableMeta.columns.find(c => c.id === definingColIdFromConfig)) { const definingColMeta = gristTableMeta.columns.find(c => c.id === definingColIdFromConfig); if (definingColMeta) { let orderedLaneValues = definingColMeta.choices || []; if (orderedLaneValues.length === 0 && gristRows.length > 0) { const uniqueValuesFromData = new Set(); gristRows.forEach(r => { const v = r[definingColIdFromConfig]; if (v != null && v !== '') uniqueValuesFromData.add(String(v)); }); orderedLaneValues = Array.from(uniqueValuesFromData).sort(); } kanbanLanesStructure = orderedLaneValues.map((valStr, index) => { let laneColor = palette(index); let laneTextColor = '#fff'; let fontBold = false; if (definingColMeta.widgetOptions?.choiceOptions?.[valStr]) { const co = definingColMeta.widgetOptions.choiceOptions[valStr]; if (co.fillColor) laneColor = co.fillColor; if (co.textColor) laneTextColor = co.textColor; if (co.fontBold) fontBold = co.fontBold; } return { value: valStr, color: laneColor, textColor: laneTextColor, fontBold: fontBold, isUnmatched: false }; }); } } if (gristTableMeta) { ConfigUIBuilder.populateAndOpen(gristTableMeta, kanbanLanesStructure, allGristTables); } else { alert("Não foi possível abrir a configuração: metadados da tabela principal não disponíveis."); } }; } else { console.error("Botão #cfg-btn não encontrado no DOM."); if (errEl) errEl.textContent = "ERRO CRÍTICO: Botão de configuração ausente."; }
     grist.ready({ requiredAccess: 'full', columns: [] });
 
+    // ... applyWidgetVisualSettings (no changes) ...
     function applyWidgetVisualSettings() {
-        const visualConfig = WidgetConfigManager.getVisualConfig();
-        const bodyStyle = document.body.style;
-
-        if (visualConfig.backgroundType === 'linear' && visualConfig.gradientColor1 && visualConfig.gradientColor2) {
-            bodyStyle.backgroundImage = `linear-gradient(${visualConfig.gradientDirection || 'to right'}, ${visualConfig.gradientColor1}, ${visualConfig.gradientColor2})`;
-            bodyStyle.backgroundColor = visualConfig.gradientColor1;
-        } else if (visualConfig.backgroundType === 'radial' && visualConfig.gradientColor1 && visualConfig.gradientColor2) {
-            bodyStyle.backgroundImage = `radial-gradient(circle, ${visualConfig.gradientColor1}, ${visualConfig.gradientColor2})`;
-            bodyStyle.backgroundColor = visualConfig.gradientColor1;
-        } else {
-            bodyStyle.backgroundImage = 'none';
-            bodyStyle.backgroundColor = visualConfig.solidBackgroundColor || WidgetConfigManager.getKanbanDefaults().visual.solidBackgroundColor; // Usar o default se não definido
-        }
-
-        const drawerElement = document.getElementById('drawer');
-        if (drawerElement && visualConfig.drawerFontColor) {
-            drawerElement.style.color = visualConfig.drawerFontColor;
-        }
+        const visualConfig = WidgetConfigManager.getVisualConfig(); const bodyStyle = document.body.style;
+        if (visualConfig.backgroundType === 'linear' && visualConfig.gradientColor1 && visualConfig.gradientColor2) { bodyStyle.backgroundImage = `linear-gradient(${visualConfig.gradientDirection || 'to right'}, ${visualConfig.gradientColor1}, ${visualConfig.gradientColor2})`; bodyStyle.backgroundColor = visualConfig.gradientColor1; }
+        else if (visualConfig.backgroundType === 'radial' && visualConfig.gradientColor1 && visualConfig.gradientColor2) { bodyStyle.backgroundImage = `radial-gradient(circle, ${visualConfig.gradientColor1}, ${visualConfig.gradientColor2})`; bodyStyle.backgroundColor = visualConfig.gradientColor1; }
+        else { bodyStyle.backgroundImage = 'none'; bodyStyle.backgroundColor = visualConfig.solidBackgroundColor || WidgetConfigManager.getKanbanDefaults().visual.solidBackgroundColor; }
+        const drawerElement = document.getElementById('drawer'); if (drawerElement && visualConfig.drawerFontColor) { drawerElement.style.color = visualConfig.drawerFontColor; }
     }
-    // ... (loadGristDataAndSetupKanban, grist.onRecords, grist.onRecord - sem alterações)
+
+    // ... loadGristDataAndSetupKanban, grist.onRecords, grist.onRecord (no changes) ...
     async function loadGristDataAndSetupKanban() {
         console.log("MAIN.loadGristDataAndSetupKanban: Iniciando...");
-        if (errEl) errEl.textContent = '';
-        if (boardEl) boardEl.innerHTML = '<p>Carregando dados e configurações...</p>';
+        if (errEl) errEl.textContent = ''; if (boardEl) boardEl.innerHTML = '<p>Carregando dados e configurações...</p>';
         try {
             await WidgetConfigManager.loadConfig();
             applyWidgetVisualSettings();
-
             const dataPack = await GristDataManager.fetchAll();
             if (!dataPack?.mainTable?.nameId) { if (errEl) errEl.textContent = "Falha ao buscar dados da tabela Grist. Verifique se uma tabela está selecionada."; if (boardEl) boardEl.innerHTML = ''; gristTableMeta = null; gristRows = []; allGristTables = []; return; }
-            gristTableMeta = dataPack.mainTable;
-            gristRows = dataPack.allData[gristTableMeta.nameId] || [];
-            allGristTables = dataPack.allTablesList || [];
-            gristTableOps = grist.getTable(gristTableMeta.nameId);
-
+            gristTableMeta = dataPack.mainTable; gristRows = dataPack.allData[gristTableMeta.nameId] || []; allGristTables = dataPack.allTablesList || []; gristTableOps = grist.getTable(gristTableMeta.nameId);
             let definingColId = WidgetConfigManager.getKanbanDefiningColumn();
             const currentFullConfig = await grist.getOption(CURRENT_CONFIG_KEY_FOR_GRIST);
             if (definingColId === null && gristTableMeta?.columns && typeof currentFullConfig === 'undefined') { const guessedStatusCol = gristTableMeta.columns.find(c => (c.label.toLowerCase() === 'status' || c.label.toLowerCase() === 'estado') && (c.type === 'Choice' || c.type === 'ChoiceList')); if (guessedStatusCol) { definingColId = guessedStatusCol.id; WidgetConfigManager.setKanbanDefiningColumn(definingColId); console.log(`Coluna Kanban PRÉ-SUGERIDA (primeiro uso ou config resetada): ${definingColId}. Usuário precisa salvar na UI de Config para persistir.`); } }
-
             kanbanLanesStructure = [];
             if (definingColId && gristTableMeta.columns.find(c => c.id === definingColId)) {
                 const definingColMeta = gristTableMeta.columns.find(c => c.id === definingColId);
@@ -1196,12 +875,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     kanbanLanesStructure.push({ value: String(laneValueStr), color: laneColor, textColor: laneTextColor, fontBold: fontBold, isUnmatched: false });
                 });
                 if (kanbanLanesStructure.length === 0 && definingColMeta) { if(errEl) errEl.textContent = `A coluna Kanban "${definingColMeta.label}" (${definingColId}) não possui 'choices' definidos nas opções da coluna no Grist, nem há dados nessa coluna para derivar as lanes. Adicione 'choices' ou preencha alguns cartões com status.`; }
-            } else if (definingColId) {
-                if (errEl) errEl.textContent = `A coluna Kanban configurada ('${definingColId}') não foi encontrada na tabela "${gristTableMeta.nameId}". Reconfigure na aba 'Geral'.`;
-            } else {
-                if (errEl) errEl.textContent = "Coluna Kanban principal não configurada. Vá em '⚙️ Config' > 'Geral' > 'Mapeamento da Coluna Principal'.";
-            }
-            renderKanbanView();
+            } else if (definingColId) { if (errEl) errEl.textContent = `A coluna Kanban configurada ('${definingColId}') não foi encontrada na tabela "${gristTableMeta.nameId}". Reconfigure na aba 'Geral'.`;
+            } else { if (errEl) errEl.textContent = "Coluna Kanban principal não configurada. Vá em '⚙️ Config' > 'Geral' > 'Mapeamento da Coluna Principal'."; }
+            await renderKanbanView();
         } catch (error) {
             console.error("Erro CRÍTICO em loadGristDataAndSetupKanban:", error);
             if (errEl) errEl.textContent = `Erro ao carregar: ${error.message}. Verifique o console para detalhes.`;
@@ -1209,9 +885,13 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         console.log("MAIN.loadGristDataAndSetupKanban: Concluído.");
     }
-    grist.onRecords(async (newRecords, oldRecords, summaryOrTableId) => { let tableId = null; if (summaryOrTableId && typeof summaryOrTableId === 'object' && summaryOrTableId.tableId) { tableId = summaryOrTableId.tableId; } else if (typeof summaryOrTableId === 'string') { tableId = summaryOrTableId; } if (!tableId && newRecords && newRecords.length > 0 && gristTableMeta && gristTableMeta.nameId) { tableId = gristTableMeta.nameId; } if (gristTableMeta && tableId === gristTableMeta.nameId) { setTimeout(async () => { await loadGristDataAndSetupKanban(); }, 150); } else if (!gristTableMeta && tableId) { setTimeout(async () => { await loadGristDataAndSetupKanban(); }, 150); } });
+    grist.onRecords(async (newRecords, oldRecords, summaryOrTableId) => {
+        // This event now triggers on changes to ANY table, which is what we need for live updates.
+        console.log("grist.onRecords triggered. Reloading Kanban.");
+        setTimeout(async () => { await loadGristDataAndSetupKanban(); }, 250); // Add a small delay
+    });
     grist.onRecord(async (updatedRec, oldRec, summaryOrTableId) => { let tableId = null; if (summaryOrTableId && typeof summaryOrTableId === 'object' && summaryOrTableId.tableId) { tableId = summaryOrTableId.tableId; } else if (typeof summaryOrTableId === 'string') { tableId = summaryOrTableId; } else if (updatedRec && gristTableMeta && gristTableMeta.nameId) { tableId = gristTableMeta.nameId; } if (gristTableMeta && tableId === gristTableMeta.nameId && updatedRec) { if (currentEditingCardId === updatedRec.id && editDrawerEl.classList.contains('visible')) { const definingColId = WidgetConfigManager.getKanbanDefiningColumn(); const currentLaneValueForDrawer = String(safe(updatedRec, definingColId, "")); try { const fullCardData = await gristTableOps.getRecord(updatedRec.id); if (fullCardData) { openCardEditDrawer(fullCardData.id, currentLaneValueForDrawer, fullCardData); } } catch (fetchErr) { console.error(`GRIST.ONRECORD: Erro ao buscar dados completos para o cartão ${updatedRec.id}:`, fetchErr); } } } });
+    
     loadGristDataAndSetupKanban();
   })();
-    console.log("KANBAN WIDGET SCRIPT: End of DOMContentLoaded callback.");
 });

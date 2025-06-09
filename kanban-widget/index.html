@@ -729,8 +729,8 @@
       min-height: 50px; /* Para dar algum espaço */
     }
     /* --- FIM DOS ESTILOS PARA REGRAS --- */
-
-    /* --- NEW STYLES for RefList Inline Manager --- */
+    
+    /* --- NEW/UPDATED STYLES --- */
     .reflist-container {
         padding: 8px;
         border: 1px solid #ddd;
@@ -739,7 +739,7 @@
         margin-top: 4px;
         margin-bottom: 8px;
     }
-    .reflist-container button {
+    .reflist-container button, .reflist-action-btn {
         padding: 2px 8px;
         font-size: 0.8em;
         border: 1px solid #ccc;
@@ -747,18 +747,50 @@
         cursor: pointer;
         background: #f0f0f0;
     }
+    .reflist-action-btn {
+      background: none;
+      border: none;
+      font-size: 1.1em;
+      padding: 0 4px;
+      cursor: pointer;
+    }
     .reflist-container table {
         margin-top: 8px;
     }
     .reflist-container table td, .reflist-container table th {
         font-size: 0.8em;
         padding: 4px;
+        vertical-align: middle;
     }
-    .reflist-container table button {
-        padding: 1px 5px;
-        font-size: 0.9em;
+
+    .card-reflist-table {
+      width: 100%;
+      margin-top: 5px;
+      border-collapse: collapse;
+      font-size: 0.9em;
     }
-    /* --- END NEW STYLES --- */
+    .card-reflist-table th, .card-reflist-table td {
+      border: 1px solid #eee;
+      padding: 2px 4px;
+      text-align: left;
+    }
+    .card-reflist-table th {
+      background-color: #f8f8f8;
+      font-weight: bold;
+    }
+    .reflist-config-container {
+      padding: 10px;
+      margin-top: 5px;
+      border: 1px dashed #0d6efd;
+      background-color: #f5faff;
+    }
+    .reflist-config-container h5 {
+      margin-top: 0;
+      margin-bottom: 10px;
+      font-size: 0.9em;
+      color: #0d6efd;
+    }
+    /* --- END NEW/UPDATED STYLES --- */
 
   </style>
 </head>
