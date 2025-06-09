@@ -106,7 +106,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const RULE_OPERATORS = [ { value: '==', text: 'Igual a (==)' }, { value: '!=', text: 'Diferente de (!=)' }, { value: '>',  text: 'Maior que (>)' }, { value: '<',  text: 'Menor que (<)' }, { value: '>=', text: 'Maior ou igual a (>=)' }, { value: '<=', text: 'Menor ou igual a (<=)' }, { value: 'contains', text: 'Contém (texto)' }, { value: 'not_contains', text: 'Não contém (texto)' }, { value: 'is_empty', text: 'Está vazio' }, { value: 'is_not_empty', text: 'Não está vazio' } ];
     
-    // ... init, handleLaneChanged, switchTab, populateAndOpen (no changes here) ...
     function init(options) {
         drawerEl = options.drawerEl;
         laneSelectEl = drawerEl.querySelector('#kanban-lane-select'); fieldsTableContainerEl = drawerEl.querySelector('#cfg-fields-table-container'); replicateBtnEl = drawerEl.querySelector('#cfg-replicate'); definingColumnMapSelectEl = drawerEl.querySelector('#kanban-defining-column-map-select'); wipLimitsTableContainerEl = drawerEl.querySelector('#wip-limits-table-container'); restrictAdjacentMoveCbEl = drawerEl.querySelector('#cfg-restrict-adjacent-move'); cardSortCriteriaContainerEl = drawerEl.querySelector('#card-sort-criteria-container'); tabBtnFields = drawerEl.querySelector('#cfg-tab-btn-fields'); tabBtnGeneral = drawerEl.querySelector('#cfg-tab-btn-general'); tabBtnVisual = drawerEl.querySelector('#cfg-tab-btn-visual'); tabBtnRules = drawerEl.querySelector('#cfg-tab-btn-rules'); tabContentFields = drawerEl.querySelector('#cfg-tab-content-fields'); tabContentGeneral = drawerEl.querySelector('#cfg-tab-content-general'); tabContentVisual = drawerEl.querySelector('#cfg-tab-content-visual'); tabContentRules = drawerEl.querySelector('#cfg-tab-content-rules'); rulesConfigAreaEl = drawerEl.querySelector('#rules-config-area'); centerColumnsCb = drawerEl.querySelector('#cfg-center-columns'); colWidthPercentInput = drawerEl.querySelector('#cfg-col-width-percent'); colMinWidthInput = drawerEl.querySelector('#cfg-col-min-width'); colMaxWidthInput = drawerEl.querySelector('#cfg-col-max-width'); colColorInput = drawerEl.querySelector('#cfg-col-color'); cardColorInput = drawerEl.querySelector('#cfg-card-color'); cardShadowInput = drawerEl.querySelector('#cfg-card-shadow');
@@ -175,7 +174,6 @@ document.addEventListener('DOMContentLoaded', function () {
         populateRulesUI(); switchTab('fields'); if (drawerEl) drawerEl.classList.add('visible'); else console.error("CUIB.populateAndOpen: drawerEl é null!");
     }
 
-    // ... populateRulesUI, createRuleItemElement, populateWipLimitsTable, populateCardSortCriteriaUI (no changes here) ...
     function populateRulesUI() { if (!rulesConfigAreaEl || !currentKanbanLanes || !currentGristTableMeta) { if (rulesConfigAreaEl) rulesConfigAreaEl.innerHTML = "<p><i>Lanes ou metadados da tabela principal não disponíveis.</i></p>"; return; } rulesConfigAreaEl.innerHTML = ''; const allRules = WidgetConfigManager.getAllRules(); currentKanbanLanes.filter(lane => !lane.isUnmatched).forEach(lane => { const laneSection = document.createElement('div'); laneSection.className = 'rules-lane-section'; laneSection.dataset.laneValue = lane.value; const title = document.createElement('h4'); title.textContent = `Regras para Lane: "${lane.value || '[Vazio]'}"`; laneSection.appendChild(title); const rulesContainer = document.createElement('div'); rulesContainer.className = 'rules-items-container'; laneSection.appendChild(rulesContainer); const existingRulesForLane = allRules[String(lane.value)] || []; existingRulesForLane.forEach(ruleData => { rulesContainer.appendChild(createRuleItemElement(ruleData, String(lane.value))); }); const addRuleBtn = document.createElement('button'); addRuleBtn.textContent = '+ Adicionar Regra'; addRuleBtn.className = 'add-rule-btn'; addRuleBtn.type = 'button'; addRuleBtn.onclick = () => { rulesContainer.appendChild(createRuleItemElement({}, String(lane.value))); }; laneSection.appendChild(addRuleBtn); rulesConfigAreaEl.appendChild(laneSection); }); }
     function createRuleItemElement(ruleData = {}, laneValue) {
         const ruleItemDiv = document.createElement('div'); ruleItemDiv.className = 'rule-item'; ruleItemDiv.dataset.ruleId = ruleData.id || `temp_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
@@ -292,7 +290,6 @@ document.addEventListener('DOMContentLoaded', function () {
       if (checkedCount === 0) { headerCheckbox.checked = false; headerCheckbox.indeterminate = false; } else if (checkedCount === total) { headerCheckbox.checked = true; headerCheckbox.indeterminate = false; } else { headerCheckbox.checked = false; headerCheckbox.indeterminate = true; }
     }
 
-    // UPDATED to handle RefList config
     async function populateRefListFieldsConfigTable(container, parentFieldData, laneValue) {
         if (!parentFieldData.referencedTableId) {
             container.innerHTML = '<em>ID da tabela referenciada não encontrado.</em>';
@@ -330,7 +327,6 @@ document.addEventListener('DOMContentLoaded', function () {
         container.appendChild(table);
     }
     
-    // UPDATED to add RefList config table
     function populateFieldsTableForLane(laneValue, fromSavedDataOnly = false) {
       if (!currentGristTableMeta || !fieldsTableContainerEl) { console.warn("populateFieldsTableForLane: Metadados da tabela ou container da tabela de campos não disponíveis."); if (fieldsTableContainerEl) fieldsTableContainerEl.innerHTML = "<p><i>Erro ao carregar campos.</i></p>"; return; }
       const tableId = currentGristTableMeta.nameId;
@@ -421,14 +417,13 @@ document.addEventListener('DOMContentLoaded', function () {
       headers.forEach(headerInfo => { if (headerInfo.hasSelectAll) { const headerCheckbox = fieldsTableContainerEl.querySelector(`th input[type="checkbox"][title*="${headerInfo.dataKey}"]`); if (headerCheckbox) updateSelectAllCheckboxState(headerCheckbox, headerInfo.dataKey); } });
     }
 
-    // UPDATED to handle RefList config
     function handleSaveConfiguration() {
         console.log("CUIB.handleSaveConfiguration: Iniciando salvamento..."); if (!currentGristTableMeta) { console.warn("CUIB.handleSaveConfiguration: Tentativa de salvar config sem metadados da tabela."); alert("Erro: Metadados da tabela não disponíveis para salvar."); return; } const tableId = currentGristTableMeta.nameId; const selectedLaneValue = laneSelectEl.value; if (selectedLaneValue && fieldsTableContainerEl.querySelector('tbody')) { const tableRows = fieldsTableContainerEl.querySelectorAll('tbody tr[data-field-id]'); tableRows.forEach(row => { const fieldId = row.dataset.fieldId; if (!fieldId) return; const newFieldCfg = { useFormatting: row.cells[getColumnIndex('useFormatting') - 1].querySelector('input').checked, card: row.cells[getColumnIndex('card') - 1].querySelector('input').checked, cardPosition: parseInt(row.cells[getColumnIndex('cardPosition') - 1].querySelector('input').value, 10) || 0, showLabel: row.cells[getColumnIndex('showLabel') - 1].querySelector('input').checked, visible: row.cells[getColumnIndex('visible') - 1].querySelector('input').checked, editable: row.cells[getColumnIndex('editable') - 1].querySelector('input').checked, position: parseInt(row.cells[getColumnIndex('position') - 1].querySelector('input').value, 10) || 0, refListFieldConfigs: {} }; 
         const refConfigRow = fieldsTableContainerEl.querySelector(`tbody tr[data-ref-config-row-for="${fieldId}"]`);
         if (refConfigRow) {
             refConfigRow.querySelectorAll('tbody tr[data-ref-field-id]').forEach(refRow => {
                 const refFieldId = refRow.dataset.refFieldId;
-                const refFieldConfig = {};
+                const refFieldConfig = { fieldId: refFieldId };
                 refRow.querySelectorAll('td[data-key]').forEach(cell => {
                     const input = cell.querySelector('input');
                     const key = cell.dataset.key;
@@ -458,7 +453,6 @@ document.addEventListener('DOMContentLoaded', function () {
         console.log("CUIB.handleSaveConfiguration: Chamando onSaveCallback..."); if (onSaveCallback) { onSaveCallback() .then(() => { console.log("CUIB.handleSaveConfiguration: onSaveCallback concluído com sucesso."); alert("Configurações salvas e widget recarregado!"); }) .catch(err => { console.error("CUIB.handleSaveConfiguration: ERRO no onSaveCallback:", err); alert("Erro ao salvar ou recarregar: " + err.message); }); } else { console.error("CUIB.handleSaveConfiguration: onSaveCallback não definido!"); alert("ERRO: Função de salvamento principal não encontrada!"); }
     }
     
-    // ... handleReplicateConfig, handleReplicateSelection, closeDrawer (no changes here) ...
     function handleReplicateConfig(applyToAllLanes) { const currentLaneValue = laneSelectEl.value; if (!currentLaneValue || !currentGristTableMeta || !fieldsTableContainerEl.querySelector('tbody')) { alert("Selecione e configure uma lane antes de replicar."); return; } const allLaneOptions = Array.from(laneSelectEl.options).filter(opt => opt.value !== ""); const currentLaneIndexInAll = allLaneOptions.findIndex(opt => opt.value === currentLaneValue); if (currentLaneIndexInAll === -1) { alert("Lane atual não encontrada para replicação."); return; } const tableId = currentGristTableMeta.nameId; const sourceConfigFromUI = {}; const tableRows = fieldsTableContainerEl.querySelectorAll('tbody tr'); tableRows.forEach(row => { const fieldId = row.dataset.fieldId; if (!fieldId) return; const cfg = { useFormatting: row.cells[getColumnIndex('useFormatting') - 1].querySelector('input').checked, card: row.cells[getColumnIndex('card') - 1].querySelector('input').checked, cardPosition: parseInt(row.cells[getColumnIndex('cardPosition') - 1].querySelector('input').value, 10) || 0, showLabel: row.cells[getColumnIndex('showLabel') - 1].querySelector('input').checked, visible: row.cells[getColumnIndex('visible') - 1].querySelector('input').checked, editable: row.cells[getColumnIndex('editable') - 1].querySelector('input').checked, position: parseInt(row.cells[getColumnIndex('position') - 1].querySelector('input').value, 10) || 0, }; sourceConfigFromUI[fieldId] = cfg; }); if (applyToAllLanes) { allLaneOptions.forEach(opt => { if (opt.value !== currentLaneValue) { Object.keys(sourceConfigFromUI).forEach(fieldId => { WidgetConfigManager.updateFieldConfigForLane(tableId, opt.value, fieldId, sourceConfigFromUI[fieldId]); }); } }); alert(`Configuração da lane "${currentLaneValue}" replicada para TODAS as outras lanes. Salve para persistir.`); } else { if (currentLaneIndexInAll >= allLaneOptions.length - 1) { alert("Não há próxima lane para replicar."); return; } const nextLaneValue = allLaneOptions[currentLaneIndexInAll + 1].value; Object.keys(sourceConfigFromUI).forEach(fieldId => { WidgetConfigManager.updateFieldConfigForLane(tableId, nextLaneValue, fieldId, sourceConfigFromUI[fieldId]); }); laneSelectEl.value = nextLaneValue; handleLaneChanged(); alert(`Config da lane "${currentLaneValue}" replicada para "${nextLaneValue}". Salve para persistir.`); } }
     function handleReplicateSelection() { const currentLane = laneSelectEl.value; if (!currentLane) { alert("Selecione primeiro a lane de origem."); return; } const sourceConfig = {}; fieldsTableContainerEl.querySelectorAll('tbody tr').forEach(row => { const fid = row.dataset.fieldId; sourceConfig[fid] = { useFormatting: row.cells[2].querySelector('input').checked, card: row.cells[3].querySelector('input').checked, cardPosition: parseInt(row.cells[4].querySelector('input').value,10)||0, showLabel: row.cells[5].querySelector('input').checked, visible: row.cells[6].querySelector('input').checked, editable: row.cells[7].querySelector('input').checked, position: parseInt(row.cells[8].querySelector('input').value,10)||0 }; }); const modal = document.createElement('div'); modal.className = 'replicate-modal'; modal.innerHTML = ` <div class="replicate-content"> <h3>Replicar configuração de CAMPOS para quais lanes?</h3> <label><input type="checkbox" id="rep-all" /> Marcar todos</label> <div id="rep-list" style="margin:8px 0; max-height: 200px; overflow-y:auto;"></div> <button id="rep-ok">OK</button> <button id="rep-cancel">Cancelar</button> </div>`; document.body.appendChild(modal); const list = modal.querySelector('#rep-list'); currentKanbanLanes.filter(l=>!l.isUnmatched).forEach(lane=>{ if (lane.value === currentLane) return; const cbDiv = document.createElement('div'); const cb = document.createElement('input'); cb.type = 'checkbox'; cb.value = lane.value; cb.id = `rep-cb-${lane.value}`; cb.className = 'rep-cb'; const lbl = document.createElement('label'); lbl.htmlFor = `rep-cb-${lane.value}`; lbl.appendChild(document.createTextNode(` ${lane.value || "[Vazio]"}`)); cbDiv.appendChild(cb); cbDiv.appendChild(lbl); list.appendChild(cbDiv); }); modal.querySelector('#rep-all').onchange = e => { list.querySelectorAll('input.rep-cb').forEach(cb=> cb.checked = e.target.checked); }; modal.querySelector('#rep-cancel').onclick = () => document.body.removeChild(modal); modal.querySelector('#rep-ok').onclick = () => { const targets = Array.from(list.querySelectorAll('input.rep-cb:checked')).map(cb=>cb.value); if (targets.length === 0) { alert("Nenhuma lane selecionada para replicar."); return; } const tableId = currentGristTableMeta.nameId; targets.forEach(lv=>{ Object.entries(sourceConfig).forEach(([fid,cfg])=>{ WidgetConfigManager.updateFieldConfigForLane(tableId, lv, fid, cfg); }); }); alert(`Configuração de CAMPOS da lane "${currentLane}" replicada para: ${targets.join(', ')}. Salve as configurações para persistir.`); document.body.removeChild(modal); }; }
     const closeDrawer = () => { if (drawerEl) drawerEl.classList.remove('visible'); };
@@ -599,8 +593,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     await tableB_Ops.create([{ fields: fieldsToSave }]);
                 }
                 const mainTableOps = grist.getTable(gristTableMeta.nameId);
-                const updatedMainRecord = await mainTableOps.getRecord(currentEditingCardId);
-                await populateRefListTable(containerEl, colDef, updatedMainRecord[colDef.id]);
+                // BUG FIX: The error was here. It should be grist.docApi.getRecord. But Grist's onRecords will handle the refresh.
+                // We'll let the onRecords event do its job instead of calling a non-existent function.
+                // const updatedMainRecord = await grist.docApi.getRecord(gristTableMeta.nameId, currentEditingCardId);
+                // await populateRefListTable(containerEl, colDef, updatedMainRecord[colDef.id]);
                 document.body.removeChild(modal);
             } catch (err) {
                 alert(`Erro ao salvar: ${err.message}`);
@@ -614,15 +610,12 @@ document.addEventListener('DOMContentLoaded', function () {
         try {
             const tableB_Ops = grist.getTable(tableB_Schema.tableId);
             await tableB_Ops.update([{ id: recordIdToUnlink, fields: { [backRefColId]: null } }]);
-            const mainTableOps = grist.getTable(gristTableMeta.nameId);
-            const updatedMainRecord = await mainTableOps.getRecord(currentEditingCardId);
-            await populateRefListTable(containerEl, colDef, updatedMainRecord[colDef.id]);
+            // Again, onRecords will handle the refresh, so we just let it happen.
         } catch (err) {
             alert(`Erro ao desvincular: ${err.message}`);
         }
     }
     
-    // ... getFieldDisplayConfig, applyStylesFromWidgetOptions (no changes) ...
     function getFieldDisplayConfig(gristFieldId, cardLaneValue) { if (!gristTableMeta || !gristFieldId || typeof cardLaneValue === 'undefined') { return { ...WidgetConfigManager.getDefaults(), visible: false, card: false }; } return WidgetConfigManager.getFieldConfigForLane(gristTableMeta.nameId, String(cardLaneValue), gristFieldId); }
     function applyStylesFromWidgetOptions(element, fieldDef, fieldValue, isLabel = false) {
         if (!element || !fieldDef || !fieldDef.widgetOptions) return;
@@ -636,7 +629,6 @@ document.addEventListener('DOMContentLoaded', function () {
         Object.assign(element.style, styleToApply);
     }
 
-    // UPDATED createCardElement to handle RefList as table
     function createCardElement(cardData, cardLaneValue) {
         const cardDiv = document.createElement('div'); cardDiv.className = 'card'; cardDiv.dataset.cardId = cardData.id;
         const vis = WidgetConfigManager.getVisualConfig();
@@ -661,7 +653,7 @@ document.addEventListener('DOMContentLoaded', function () {
           let fieldEl;
           if (colDef.type.startsWith('RefList') && item.config.useFormatting) {
               fieldEl = document.createElement('div');
-              const linkedRecords = refListCache[cardData.id]?.[colDef.id] || [];
+              const linkedRecords = refListCache.data?.[colDef.referencedTableId]?.filter(r => (rawValueFromGrist || []).includes(r.id)) || [];
               if (linkedRecords.length > 0) {
                   const table = document.createElement('table'); table.className = 'card-reflist-table';
                   const thead = table.createTHead(); const headerRow = thead.insertRow();
@@ -696,47 +688,26 @@ document.addEventListener('DOMContentLoaded', function () {
         cardDiv.onclick = () => openCardEditDrawer(cardData.id, cardLaneValue, cardData); return cardDiv;
     }
 
-    // UPDATED to pre-cache RefList data
     async function renderKanbanView() {
         const vis = WidgetConfigManager.getVisualConfig(); boardEl.style.display = 'flex'; boardEl.style.justifyContent = vis.centerColumns ? 'center' : 'flex-start'; boardEl.innerHTML = ''; currentVisibleCardsByLane = {};
         if (!gristTableMeta || !WidgetConfigManager.getKanbanDefiningColumn()) { errEl.textContent = "Configure a coluna Kanban em ⚙️ Config > Geral > Mapeamento."; boardEl.innerHTML = `<p>${errEl.textContent}</p>`; return; }
         if (kanbanLanesStructure.length === 0) { errEl.textContent = "Nenhuma lane encontrada para a coluna Kanban definida."; boardEl.innerHTML = `<p>${errEl.textContent}</p>`; return; }
         
-        // --- PRE-FETCH & CACHE REFLIST DATA ---
         refListCache = { schemas: {}, data: {} };
-        const refListsToFetch = new Map();
-        gristRows.forEach(row => {
-            gristTableMeta.columns.forEach(col => {
-                if (col.type.startsWith('RefList:')) {
-                    const ids = Array.isArray(row[col.id]) && row[col.id][0] === 'L' ? row[col.id].slice(1) : [];
-                    if (ids.length > 0) {
-                        if (!refListsToFetch.has(col.referencedTableId)) {
-                            refListsToFetch.set(col.referencedTableId, new Set());
-                        }
-                        const idSet = refListsToFetch.get(col.referencedTableId);
-                        ids.forEach(id => idSet.add(id));
-                        if (!refListCache[row.id]) refListCache[row.id] = {};
-                        refListCache[row.id][col.id] = ids; // Store the ids for now
-                    }
-                }
-            });
-        });
+        const refListsToFetch = new Set();
+        gristTableMeta.columns.forEach(col => { if(col.type.startsWith('RefList:')) refListsToFetch.add(col.referencedTableId); });
+        
         const promises = [];
-        for (const [tableId, idSet] of refListsToFetch.entries()) {
+        for (const tableId of refListsToFetch) {
             promises.push(GristDataManager.getTableSchema(tableId).then(s => refListCache.schemas[tableId] = s));
-            promises.push(GristDataManager.colToRows(await grist.docApi.fetchTable(tableId)).then(data => refListCache.data[tableId] = data));
+            // **** THIS IS THE CORRECTED LINE ****
+            promises.push((async () => {
+                const data = await grist.docApi.fetchTable(tableId);
+                refListCache.data[tableId] = GristDataManager.colToRows(data);
+            })());
         }
         await Promise.all(promises);
-        Object.keys(refListCache).filter(k => k !== 'schemas' && k !== 'data').forEach(cardId => {
-            Object.keys(refListCache[cardId]).forEach(refListColId => {
-                const colDef = gristTableMeta.columns.find(c => c.id === refListColId);
-                const linkedIds = refListCache[cardId][refListColId];
-                const refTableData = refListCache.data[colDef.referencedTableId] || [];
-                refListCache[cardId][refListColId] = refTableData.filter(r => linkedIds.includes(r.id));
-            });
-        });
-        // --- END PRE-FETCH ---
-
+        
         const definingColId = WidgetConfigManager.getKanbanDefiningColumn(); const cardsByLane = {}; kanbanLanesStructure.forEach(l => cardsByLane[l.value] = []); gristRows.forEach(row => { const laneValue = String(safe(row, definingColId, "")); if (cardsByLane.hasOwnProperty(laneValue)) { cardsByLane[laneValue].push(row); } else { if (!cardsByLane["_UNMATCHED_LANE_"]) cardsByLane["_UNMATCHED_LANE_"] = []; cardsByLane["_UNMATCHED_LANE_"].push(row); } }); const sortCriteria = WidgetConfigManager.getCardSortCriteria(); if (sortCriteria.some(c => c.columnId)) { for (const lv in cardsByLane) { if (lv === "_UNMATCHED_LANE_") continue; cardsByLane[lv].sort((A, B) => { for (const c of sortCriteria) { if (!c.columnId) continue; const colMeta = gristTableMeta.columns.find(x => x.id === c.columnId); const vA = safe(A, c.columnId), vB = safe(B, c.columnId); let cmp = 0; if (vA == null && vB != null) cmp = 1; else if (vB == null && vA != null) cmp = -1; else if (vA == null && vB == null) cmp = 0; else if (colMeta && (colMeta.type === 'Numeric' || colMeta.type === 'Int' || colMeta.type === 'Date' || colMeta.type === 'DateTime')) { cmp = parseFloat(vA) - parseFloat(vB); } else { cmp = String(vA).localeCompare(String(vB), undefined, { sensitivity: 'base' }); } if (cmp !== 0) return c.direction === 'asc' ? cmp : -cmp; } return 0; }); } }
         kanbanLanesStructure.filter(l => !l.isUnmatched).forEach((lane, laneIndex) => { const columnDiv = document.createElement('div'); columnDiv.className = 'column'; columnDiv.dataset.laneValue = lane.value; columnDiv.style.flex = `0 0 ${vis.columnWidthPercent || 25}%`; columnDiv.style.minWidth = `${vis.columnMinWidth || 200}px`; columnDiv.style.maxWidth = `${vis.columnMaxWidth || 400}px`; if (vis.columnColor) columnDiv.style.backgroundColor = vis.columnColor; const headerDiv = document.createElement('div'); headerDiv.className = 'column-header'; headerDiv.style.backgroundColor = lane.color; headerDiv.style.color = lane.textColor; if (lane.fontBold) headerDiv.style.fontWeight = 'bold'; const totalInLane = (cardsByLane[lane.value] || []).length; const limits = WidgetConfigManager.getLaneWipLimit(lane.value); let headerText = `${lane.value || "[Vazio]"} (${totalInLane}`; if (limits.maxAllowed > 0) { headerText += `/${limits.maxAllowed}`; if (totalInLane >= limits.maxAllowed) { headerDiv.classList.add('wip-limit-exceeded'); headerDiv.title = `Limite WIP de ${limits.maxAllowed} atingido/excedido!`; } } headerText += ")"; headerDiv.textContent = headerText; columnDiv.appendChild(headerDiv); const addBtn = document.createElement('button'); addBtn.className = 'add-btn'; addBtn.textContent = '+ Novo cartão'; addBtn.onclick = () => { if (limits.maxAllowed > 0 && totalInLane >= limits.maxAllowed) { alert(`A lane "${lane.value}" atingiu o limite máximo de ${limits.maxAllowed} cartões.`); return; } addNewCardToLane(lane.value); }; columnDiv.appendChild(addBtn); const bodyDiv = document.createElement('div'); bodyDiv.className = 'column-body'; const cardsInThisLane = cardsByLane[lane.value] || []; currentVisibleCardsByLane[lane.value] = 0; const initiallyVisible = limits.maxVisible > 0 ? limits.maxVisible : CARDS_PER_PAGE; for (let i = 0; i < Math.min(cardsInThisLane.length, initiallyVisible); i++) { bodyDiv.appendChild(createCardElement(cardsInThisLane[i], lane.value)); currentVisibleCardsByLane[lane.value]++; } columnDiv.appendChild(bodyDiv); const pagDiv = document.createElement('div'); pagDiv.className = 'column-pagination-controls'; columnDiv.appendChild(pagDiv);
         function updatePaginationControls() { pagDiv.innerHTML = ''; const visibleCount = currentVisibleCardsByLane[lane.value]; const totalCount = cardsInThisLane.length; if (totalCount <= initiallyVisible && totalCount <= CARDS_PER_PAGE && limits.maxVisible === 0) { return; } if (totalCount > 0) { const showLessBtn = document.createElement('button'); showLessBtn.innerHTML = '▲'; showLessBtn.title = 'Mostrar menos'; showLessBtn.disabled = visibleCount <= (limits.maxVisible > 0 ? limits.maxVisible : CARDS_PER_PAGE); showLessBtn.onclick = () => { const targetVisible = limits.maxVisible > 0 ? limits.maxVisible : CARDS_PER_PAGE; Array.from(bodyDiv.querySelectorAll('.card')).slice(targetVisible).forEach(n => n.remove()); currentVisibleCardsByLane[lane.value] = Math.min(visibleCount, targetVisible); updatePaginationControls(); }; pagDiv.appendChild(showLessBtn); const countSpan = document.createElement('span'); countSpan.textContent = `(${visibleCount}/${totalCount})`; pagDiv.appendChild(countSpan); const showMoreBtn = document.createElement('button'); showMoreBtn.innerHTML = '▼'; showMoreBtn.title = 'Mostrar mais'; showMoreBtn.disabled = visibleCount >= totalCount; showMoreBtn.onclick = () => { const nextBatchStart = visibleCount; const nextBatchEnd = Math.min(totalCount, visibleCount + CARDS_PER_PAGE); for (let i = nextBatchStart; i < nextBatchEnd; i++) { bodyDiv.appendChild(createCardElement(cardsInThisLane[i], lane.value)); currentVisibleCardsByLane[lane.value]++; } updatePaginationControls(); }; pagDiv.appendChild(showMoreBtn); } }
@@ -758,7 +729,6 @@ document.addEventListener('DOMContentLoaded', function () {
       });
     }
 
-    // UPDATED openCardEditDrawer (minor change to how it calls populateRefListTable)
     function openCardEditDrawer(cardId, cardLaneValue, preloadedCardData = null) {
         currentEditingCardId = cardId;
         const cardData = preloadedCardData || gristRows.find(r => r.id === cardId);
@@ -810,7 +780,6 @@ document.addEventListener('DOMContentLoaded', function () {
         editDrawerEl.classList.add('visible');
     }
     
-    // UPDATED to remove RefList save logic
     editDrawerSaveBtn.onclick = async () => { if (!currentEditingCardId || !currentEditingCardData || !gristTableOps) return; const fieldsToUpdate = {}; const definingColId = WidgetConfigManager.getKanbanDefiningColumn(); const currentLaneValueForDrawer = String(safe(currentEditingCardData, definingColId, "")); 
         editDrawerContentEl.querySelectorAll('[data-col-id]').forEach(inputEl => { 
             const colId = inputEl.dataset.colId; const colMeta = gristTableMeta.columns.find(c => c.id === colId); const cfg = getFieldDisplayConfig(colId, currentLaneValueForDrawer);
@@ -835,13 +804,11 @@ document.addEventListener('DOMContentLoaded', function () {
     editDrawerCloseBtn.onclick = () => { editDrawerEl.classList.remove('visible'); currentEditingCardId = null; currentEditingCardData = null; };
     editDrawerCancelBtn.onclick = () => { editDrawerEl.classList.remove('visible'); currentEditingCardId = null; currentEditingCardData = null; };
     
-    // ... addNewCardToLane, ConfigUIBuilder.init, cfgBtn.onclick (no changes) ...
     async function addNewCardToLane(laneValue) { if (!gristTableOps || !gristTableMeta) return; const definingColId = WidgetConfigManager.getKanbanDefiningColumn(); if (!definingColId) { alert("Coluna Kanban (status/lane) não está definida nas configurações."); return; } const newCardFields = { [definingColId]: laneValue }; const titleFieldCand = gristTableMeta.columns.find(c => !c.isFormula && (c.label.toLowerCase() === 'title' || c.label.toLowerCase() === 'título' || c.label.toLowerCase() === 'nome')); if (titleFieldCand) { newCardFields[titleFieldCand.id] = "Novo Cartão"; } gristTableMeta.columns.forEach(col => { if (!newCardFields.hasOwnProperty(col.id) && !col.isFormula && col.id !== definingColId) { newCardFields[col.id] = (col.type.startsWith('Ref:') || col.type.startsWith('RefList:')) ? 0 : null; } }); try { await gristTableOps.create([{ fields: newCardFields }]); } catch (err) { console.error("Erro ao criar novo cartão:", err); alert("Erro ao criar novo cartão: " + err.message); } }
     ConfigUIBuilder.init({ drawerEl: document.getElementById('cfg-drawer'), saveBtnEl: document.getElementById('cfg-save'), cancelBtnEl: document.getElementById('cfg-cancel'), closeBtnEl: document.getElementById('cfg-close'), onSave: async () => { await WidgetConfigManager.saveConfig(); await loadGristDataAndSetupKanban(); } });
     if (cfgBtn) { cfgBtn.onclick = async () => { console.log("CFG Button: Clicked."); await WidgetConfigManager.loadConfig(); console.log("CFG Button: Config loaded."); if (!gristTableMeta || (gristRows.length === 0 && gristTableMeta?.nameId) || allGristTables.length === 0) { console.log("CFG Button: Fetching table meta, data, and all tables list..."); const dataPack = await GristDataManager.fetchAll(); if (!dataPack?.mainTable?.nameId) { alert("Nenhuma tabela Grist selecionada ou falha ao carregar dados."); console.error("CFG Button: dataPack inválido ou sem mainTable."); return; } gristTableMeta = dataPack.mainTable; gristRows = dataPack.allData[gristTableMeta.nameId] || []; allGristTables = dataPack.allTablesList || []; console.log("CFG Button: Table meta, data, and all tables list fetched."); } let definingColIdFromConfig = WidgetConfigManager.getKanbanDefiningColumn(); kanbanLanesStructure = []; if (definingColIdFromConfig && gristTableMeta && gristTableMeta.columns.find(c => c.id === definingColIdFromConfig)) { const definingColMeta = gristTableMeta.columns.find(c => c.id === definingColIdFromConfig); if (definingColMeta) { let orderedLaneValues = definingColMeta.choices || []; if (orderedLaneValues.length === 0 && gristRows.length > 0) { const uniqueValuesFromData = new Set(); gristRows.forEach(r => { const v = r[definingColIdFromConfig]; if (v != null && v !== '') uniqueValuesFromData.add(String(v)); }); orderedLaneValues = Array.from(uniqueValuesFromData).sort(); } kanbanLanesStructure = orderedLaneValues.map((valStr, index) => { let laneColor = palette(index); let laneTextColor = '#fff'; let fontBold = false; if (definingColMeta.widgetOptions?.choiceOptions?.[valStr]) { const co = definingColMeta.widgetOptions.choiceOptions[valStr]; if (co.fillColor) laneColor = co.fillColor; if (co.textColor) laneTextColor = co.textColor; if (co.fontBold) fontBold = co.fontBold; } return { value: valStr, color: laneColor, textColor: laneTextColor, fontBold: fontBold, isUnmatched: false }; }); } } if (gristTableMeta) { ConfigUIBuilder.populateAndOpen(gristTableMeta, kanbanLanesStructure, allGristTables); } else { alert("Não foi possível abrir a configuração: metadados da tabela principal não disponíveis."); } }; } else { console.error("Botão #cfg-btn não encontrado no DOM."); if (errEl) errEl.textContent = "ERRO CRÍTICO: Botão de configuração ausente."; }
     grist.ready({ requiredAccess: 'full', columns: [] });
 
-    // ... applyWidgetVisualSettings (no changes) ...
     function applyWidgetVisualSettings() {
         const visualConfig = WidgetConfigManager.getVisualConfig(); const bodyStyle = document.body.style;
         if (visualConfig.backgroundType === 'linear' && visualConfig.gradientColor1 && visualConfig.gradientColor2) { bodyStyle.backgroundImage = `linear-gradient(${visualConfig.gradientDirection || 'to right'}, ${visualConfig.gradientColor1}, ${visualConfig.gradientColor2})`; bodyStyle.backgroundColor = visualConfig.gradientColor1; }
@@ -850,7 +817,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const drawerElement = document.getElementById('drawer'); if (drawerElement && visualConfig.drawerFontColor) { drawerElement.style.color = visualConfig.drawerFontColor; }
     }
 
-    // ... loadGristDataAndSetupKanban, grist.onRecords, grist.onRecord (no changes) ...
     async function loadGristDataAndSetupKanban() {
         console.log("MAIN.loadGristDataAndSetupKanban: Iniciando...");
         if (errEl) errEl.textContent = ''; if (boardEl) boardEl.innerHTML = '<p>Carregando dados e configurações...</p>';
@@ -886,9 +852,8 @@ document.addEventListener('DOMContentLoaded', function () {
         console.log("MAIN.loadGristDataAndSetupKanban: Concluído.");
     }
     grist.onRecords(async (newRecords, oldRecords, summaryOrTableId) => {
-        // This event now triggers on changes to ANY table, which is what we need for live updates.
         console.log("grist.onRecords triggered. Reloading Kanban.");
-        setTimeout(async () => { await loadGristDataAndSetupKanban(); }, 250); // Add a small delay
+        setTimeout(async () => { await loadGristDataAndSetupKanban(); }, 250);
     });
     grist.onRecord(async (updatedRec, oldRec, summaryOrTableId) => { let tableId = null; if (summaryOrTableId && typeof summaryOrTableId === 'object' && summaryOrTableId.tableId) { tableId = summaryOrTableId.tableId; } else if (typeof summaryOrTableId === 'string') { tableId = summaryOrTableId; } else if (updatedRec && gristTableMeta && gristTableMeta.nameId) { tableId = gristTableMeta.nameId; } if (gristTableMeta && tableId === gristTableMeta.nameId && updatedRec) { if (currentEditingCardId === updatedRec.id && editDrawerEl.classList.contains('visible')) { const definingColId = WidgetConfigManager.getKanbanDefiningColumn(); const currentLaneValueForDrawer = String(safe(updatedRec, definingColId, "")); try { const fullCardData = await gristTableOps.getRecord(updatedRec.id); if (fullCardData) { openCardEditDrawer(fullCardData.id, currentLaneValueForDrawer, fullCardData); } } catch (fetchErr) { console.error(`GRIST.ONRECORD: Erro ao buscar dados completos para o cartão ${updatedRec.id}:`, fetchErr); } } } });
     
