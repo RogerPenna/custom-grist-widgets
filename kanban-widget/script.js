@@ -676,6 +676,251 @@ document.addEventListener('DOMContentLoaded', function () {
   (async function () {
     // ... (constantes, formatEpoch, etc. - sem alterações)
     console.log("KANBAN IIFE Principal: Iniciando lógica Kanban."); function formatEpoch(val, type) { const num = Number(val); if (isNaN(num) || num === 0) { return val; } const dateObj = new Date(num * 1000); if (isNaN(dateObj.valueOf())) return val; return type === 'Date' ? dateObj.toLocaleDateString(undefined, { timeZone: 'UTC' }) : dateObj.toLocaleString(undefined, { timeZone: 'UTC' }); } const pal = ["#1E88E5", "#43A047", "#FB8C00", "#E53935", "#8E24AA", "#00838F", "#6D4C41", "#546E7A"]; const palette = i => pal[i % pal.length]; const dbg = document.getElementById('dbg'); const boardEl = document.getElementById('board'); const errEl = document.getElementById('errorMsg'); const editDrawerEl = document.getElementById('drawer'); const editDrawerTitleEl = document.getElementById('drawerTitle'); const editDrawerContentEl = document.getElementById('drawerContent'); const editDrawerSaveBtn = document.getElementById('saveBtn'); const editDrawerCloseBtn = document.getElementById('closeBtn'); const editDrawerCancelBtn = document.getElementById('cancelBtnDrawer'); const cfgBtn = document.getElementById('cfg-btn'); if (dbg) dbg.onclick = () => dbg.classList.toggle('collapsed'); const safe = (o, k, f = null) => (o && k in o && o[k] !== undefined && o[k] !== null) ? o[k] : f; let gristTableMeta = null; let gristRows = []; let allGristTables = []; let gristTableOps = null; let kanbanLanesStructure = []; let currentEditingCardId = null; let currentEditingCardData = null; let currentVisibleCardsByLane = {};
+
+    // =================================================================
+    // NEW AND MODIFIED FUNCTIONS FOR REFLIST MANAGER
+    // =================================================================
+
+    // NEW UTILITY FUNCTION: Finds the column in Table B that links back to Table A.
+    async function findBackReferenceColumn(tableA_Id, tableB_Schema) {
+        const expectedRefType = `Ref:${tableA_Id}`;
+        for (const col of tableB_Schema.columns) {
+            if (col.type === expectedRefType) {
+                return col.id; // Found it!
+            }
+        }
+        // This could happen if the link is not two-way.
+        throw new Error(`Could not find a column in table '${tableB_Schema.tableId}' that references '${tableA_Id}'. Is the link two-way?`);
+    }
+
+    // REVISED: This function is now the heart of the inline manager.
+    async function populateRefListTable(containerEl, colDef, refListValue) {
+        containerEl.innerHTML = '<p>Carregando registros vinculados...</p>';
+
+        try {
+            const tableA_Id = gristTableMeta.nameId;
+            const tableB_Id = colDef.referencedTableId;
+            const linkedRecordIds = Array.isArray(refListValue) && refListValue[0] === 'L' ? refListValue.slice(1) : [];
+
+            // Fetch schema for Table B and find the crucial back-reference column
+            const tableB_Schema = await GristDataManager.getTableSchema(tableB_Id);
+            const backRefColId = await findBackReferenceColumn(tableA_Id, tableB_Schema);
+
+            // Fetch all records from Table B and filter for the linked ones
+            const allRefTableRecords = GristDataManager.colToRows(await grist.docApi.fetchTable(tableB_Id));
+            const linkedRecords = allRefTableRecords.filter(r => linkedRecordIds.includes(r.id));
+
+            // Start building the UI
+            containerEl.innerHTML = ''; // Clear loading
+
+            // --- Controls (Add/Unlink buttons) ---
+            const controlsDiv = document.createElement('div');
+            controlsDiv.style.marginBottom = '8px';
+            const addBtn = document.createElement('button');
+            addBtn.textContent = '+ Adicionar Novo';
+            addBtn.onclick = () => handleRefListRecordAction(containerEl, colDef, tableB_Schema, backRefColId, null);
+            
+            const unlinkBtn = document.createElement('button');
+            unlinkBtn.textContent = '⨉ Desvincular Selecionados';
+            unlinkBtn.style.marginLeft = '8px';
+            unlinkBtn.onclick = () => handleRefListUnlink(containerEl, colDef, tableB_Schema, backRefColId);
+            
+            controlsDiv.append(addBtn, unlinkBtn);
+            containerEl.appendChild(controlsDiv);
+
+            // --- The Table ---
+            const table = document.createElement('table');
+            table.className = 'wip-limit-table';
+            containerEl.appendChild(table);
+
+            const thead = table.createTHead();
+            const headerRow = thead.insertRow();
+            
+            const thSelect = document.createElement('th');
+            thSelect.innerHTML = '&#10003;'; // Checkmark for select
+            headerRow.appendChild(thSelect);
+
+            // Create headers, but skip the back-reference column as it's implicit
+            const columnsToShow = tableB_Schema.columns.filter(c => c.id !== backRefColId && c.id !== 'manualSort');
+            columnsToShow.forEach(c => {
+                const th = document.createElement('th');
+                th.textContent = c.label;
+                headerRow.appendChild(th);
+            });
+            
+            const thActions = document.createElement('th');
+            thActions.textContent = 'Ações';
+            headerRow.appendChild(thActions);
+
+            const tbody = table.createTBody();
+            if (linkedRecords.length === 0) {
+                // Render empty state
+                const emptyRow = tbody.insertRow();
+                const emptyCell = emptyRow.insertCell();
+                emptyCell.colSpan = columnsToShow.length + 2;
+                emptyCell.textContent = 'Nenhum registro vinculado.';
+                emptyCell.style.textAlign = 'center';
+                emptyCell.style.fontStyle = 'italic';
+            } else {
+                linkedRecords.forEach(rec => {
+                    const tr = tbody.insertRow();
+                    tr.dataset.recordId = rec.id;
+
+                    const cellSelect = tr.insertCell();
+                    cellSelect.appendChild(document.createElement('input')).type = 'checkbox';
+                    
+                    columnsToShow.forEach(c => {
+                        tr.insertCell().textContent = safe(rec, c.id, '');
+                    });
+
+                    const cellActions = tr.insertCell();
+                    const editBtn = document.createElement('button');
+                    editBtn.textContent = 'Editar';
+                    editBtn.onclick = () => handleRefListRecordAction(containerEl, colDef, tableB_Schema, backRefColId, rec);
+                    cellActions.appendChild(editBtn);
+                });
+            }
+        } catch (err) {
+            console.error("Failed to populate RefList table:", err);
+            containerEl.innerHTML = `<p style="color:red;">Erro ao carregar lista: ${err.message}</p>`;
+        }
+    }
+
+    // REVISED: A generic handler for both adding and editing a record in Table B.
+    async function handleRefListRecordAction(containerEl, colDef, tableB_Schema, backRefColId, recordToEdit = null) {
+        const isEditing = recordToEdit !== null;
+        const modalTitle = isEditing ? `Editar em "${tableB_Schema.tableId}"` : `Adicionar em "${tableB_Schema.tableId}"`;
+
+        const modal = document.createElement('div');
+        modal.className = 'replicate-modal';
+        const content = document.createElement('div');
+        content.className = 'replicate-content';
+        content.style.width = '500px';
+        modal.appendChild(content);
+        content.innerHTML = `<h3>${modalTitle}</h3>`;
+        const form = document.createElement('div');
+        form.id = 'reflist-add-form';
+        content.appendChild(form);
+
+        // Build form fields, skipping the back-reference column
+        tableB_Schema.columns.filter(c => !c.isFormula && c.id !== backRefColId && c.id !== 'id' && c.id !== 'manualSort').forEach(c => {
+            const fieldContainer = document.createElement('div');
+            fieldContainer.style.marginBottom = '10px';
+            const label = document.createElement('label');
+            label.textContent = c.label;
+            label.style.display = 'block';
+            label.style.fontWeight = 'bold';
+            
+            let input;
+            if (c.choices && c.choices.length > 0) {
+                input = document.createElement('select');
+                input.add(new Option('-- Selecione --', ''));
+                c.choices.forEach(ch => input.add(new Option(ch, ch)));
+                if (isEditing) input.value = recordToEdit[c.id] || '';
+            } else if (c.type === 'Bool') {
+                input = document.createElement('input');
+                input.type = 'checkbox';
+                if (isEditing) input.checked = recordToEdit[c.id] || false;
+            } else {
+                input = document.createElement('input');
+                input.type = 'text';
+                if (isEditing) input.value = recordToEdit[c.id] || '';
+            }
+            input.dataset.colId = c.id;
+            input.style.width = '100%';
+            input.style.padding = '4px';
+            fieldContainer.append(label, input);
+            form.appendChild(fieldContainer);
+        });
+
+        const actions = document.createElement('div');
+        actions.style.marginTop = '15px';
+        const saveBtn = document.createElement('button');
+        saveBtn.textContent = 'Salvar';
+        const cancelBtn = document.createElement('button');
+        cancelBtn.textContent = 'Cancelar';
+        cancelBtn.style.marginLeft = '8px';
+        actions.append(saveBtn, cancelBtn);
+        content.appendChild(actions);
+        document.body.appendChild(modal);
+
+        cancelBtn.onclick = () => document.body.removeChild(modal);
+        saveBtn.onclick = async () => {
+            try {
+                saveBtn.disabled = true;
+                saveBtn.textContent = 'Salvando...';
+
+                const fieldsToSave = {};
+                form.querySelectorAll('[data-col-id]').forEach(inp => {
+                    fieldsToSave[inp.dataset.colId] = (inp.type === 'checkbox') ? inp.checked : inp.value;
+                });
+                
+                // This is the magic: link it back to the Table A record.
+                if (!isEditing) {
+                    fieldsToSave[backRefColId] = currentEditingCardId;
+                }
+
+                const tableB_Ops = grist.getTable(tableB_Schema.tableId);
+                if (isEditing) {
+                    await tableB_Ops.update([{ id: recordToEdit.id, fields: fieldsToSave }]);
+                } else {
+                    await tableB_Ops.create([{ fields: fieldsToSave }]);
+                }
+
+                // The onRecords event will trigger a full refresh, but we can also
+                // optimistically refresh the inline table for a faster UI response.
+                const updatedMainRecord = await grist.docApi.getRecord(gristTableMeta.nameId, currentEditingCardId);
+                await populateRefListTable(containerEl, colDef, updatedMainRecord[colDef.id]);
+                
+                document.body.removeChild(modal);
+            } catch (err) {
+                alert(`Erro ao salvar: ${err.message}`);
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Salvar';
+            }
+        };
+    }
+
+    // NEW: Handler for unlinking records (non-destructive)
+    async function handleRefListUnlink(containerEl, colDef, tableB_Schema, backRefColId) {
+        const table = containerEl.querySelector('table');
+        if (!table) return;
+
+        const idsToUnlink = Array.from(table.querySelectorAll('tbody input[type="checkbox"]:checked'))
+                                .map(cb => Number(cb.closest('tr').dataset.recordId));
+
+        if (idsToUnlink.length === 0) {
+            alert("Nenhum item selecionado para desvincular.");
+            return;
+        }
+
+        if (!confirm(`Tem certeza que deseja desvincular ${idsToUnlink.length} item(ns)? Eles não serão excluídos, apenas desassociados deste cartão.`)) {
+            return;
+        }
+
+        try {
+            const recordsToUpdate = idsToUnlink.map(id => ({
+                id: id,
+                fields: { [backRefColId]: null } // Set the reference to null
+            }));
+            
+            const tableB_Ops = grist.getTable(tableB_Schema.tableId);
+            await tableB_Ops.update(recordsToUpdate);
+
+            // Optimistically refresh the inline table
+            const updatedMainRecord = await grist.docApi.getRecord(gristTableMeta.nameId, currentEditingCardId);
+            await populateRefListTable(containerEl, colDef, updatedMainRecord[colDef.id]);
+            
+        } catch (err) {
+            alert(`Erro ao desvincular: ${err.message}`);
+        }
+    }
+
+
+    // =================================================================
+    // ORIGINAL KANBAN LOGIC (with modifications)
+    // =================================================================
+
     function getFieldDisplayConfig(gristFieldId, cardLaneValue) { if (!gristTableMeta || !gristFieldId || typeof cardLaneValue === 'undefined') { return { ...WidgetConfigManager.getDefaults(), visible: false, card: false }; } return WidgetConfigManager.getFieldConfigForLane(gristTableMeta.nameId, String(cardLaneValue), gristFieldId); }
 
     function applyStylesFromWidgetOptions(element, fieldDef, fieldValue, isLabel = false) {
@@ -841,7 +1086,16 @@ document.addEventListener('DOMContentLoaded', function () {
             } else {
                 if (col.type.startsWith('Ref:') && col.referencedTableId && !col.type.startsWith('RefList')) { inputEl = document.createElement('select'); inputEl.add(new Option('-- Selecione --', '')); inputEl.dataset.currentRefValue = (val === 0 ? "" : String(val)); const populateRefSelect = async (selectElement, refTableId, currentRefId) => { selectElement.options[0].text = 'Carregando...'; try { const rawRefTableData = await grist.docApi.fetchTable(refTableId); const refTableRecords = GristDataManager.colToRows(rawRefTableData); const refTableSchema = await GristDataManager.getTableSchema(refTableId); let displayRefColId = null; if (refTableSchema && refTableSchema.columns) { const commonDisplayNames = ['nome', 'name', 'title', 'título', 'label', 'rótulo', 'descricao', 'description']; let bestCandidate = refTableSchema.columns.find(c => commonDisplayNames.includes(c.label.toLowerCase()) && c.id.toLowerCase() !== 'id' && !c.id.startsWith('gristHelper_')); if (!bestCandidate) { bestCandidate = refTableSchema.columns.find(c => c.type === 'Text' && !c.isFormula && c.id.toLowerCase() !== 'id' && !c.id.startsWith('gristHelper_')); } if (!bestCandidate) { bestCandidate = refTableSchema.columns.find(c => !c.isFormula && c.id.toLowerCase() !== 'id' && !c.id.startsWith('gristHelper_')); } if (!bestCandidate && refTableSchema.columns.length > 0) { bestCandidate = refTableSchema.columns.find(c => c.id.toLowerCase() !== 'id' && !c.id.startsWith('gristHelper_')) || refTableSchema.columns[0]; } if (bestCandidate) { displayRefColId = bestCandidate.id; } else if (refTableRecords.length > 0 && Object.keys(refTableRecords[0]).length > 0) { displayRefColId = Object.keys(refTableRecords[0])[0]; } } selectElement.options[0].text = '-- Selecione --'; refTableRecords.forEach(refRec => { const optionText = displayRefColId ? (safe(refRec, displayRefColId) ?? `ID ${refRec.id}`) : `ID ${refRec.id}`; selectElement.add(new Option(optionText, String(refRec.id))); }); selectElement.value = currentRefId || ""; } catch (err) { console.error(`Erro ao popular select de referência para tabela ${refTableId}:`, err); selectElement.options[0].text = 'Erro ao carregar'; } }; populateRefSelect(inputEl, col.referencedTableId, inputEl.dataset.currentRefValue); }
                 else if (col.type === 'ChoiceList') { inputEl = document.createElement('select'); inputEl.multiple = true; inputEl.size = Math.min(Math.max(3, (col.choices || []).length), 6); const currentValues = Array.isArray(val) && val[0] === 'L' ? val.slice(1) : []; (col.choices || []).forEach(choice => { const option = new Option(choice, choice); if (currentValues.includes(choice)) { option.selected = true; } applyStylesFromWidgetOptions(option, col, choice, false); inputEl.add(option); }); } // Estilo aplicado a cada option
-                else if (col.type.startsWith('RefList')) { inputEl = document.createElement('div'); inputEl.className = 'readonly-field'; inputEl.textContent = `${displayValueForReadonly} (Lista de Refs não editável aqui)`; if (displayValueForReadonly === "[Nenhum]") {inputEl.style.fontStyle = 'italic'; inputEl.style.color = '#757575';}}
+                
+                // MODIFIED BLOCK FOR RefList
+                else if (col.type.startsWith('RefList')) {
+                    inputEl = document.createElement('div');
+                    inputEl.className = 'reflist-container';
+                    inputEl.id = `reflist-container-${col.id}`; // Unique ID for the container
+                    // This will be populated asynchronously
+                    populateRefListTable(inputEl, col, val);
+                }
+                
                 else if (col.type === 'Date' || col.type === 'DateTime') { inputEl = document.createElement('input'); inputEl.type = col.type === 'DateTime' ? 'datetime-local' : 'date'; if (val) { const dateObj = new Date(Number(val) * 1000); if (!isNaN(dateObj.valueOf())) { if (col.type === 'Date') { inputEl.value = dateObj.toISOString().split('T')[0]; } else { const localDate = new Date(dateObj.getTime() - (dateObj.getTimezoneOffset() * 60000)); inputEl.value = localDate.toISOString().slice(0,16); } } else { inputEl.value = ''; } } else { inputEl.value = ''; } applyStylesFromWidgetOptions(inputEl, col, val, false); }
                 else if (col.type === 'Choice') {
                     inputEl = document.createElement('select');
@@ -870,7 +1124,19 @@ document.addEventListener('DOMContentLoaded', function () {
         editDrawerEl.classList.add('visible');
     }
     // ... (editDrawerSaveBtn.onclick, etc. - sem alterações)
-    editDrawerSaveBtn.onclick = async () => { if (!currentEditingCardId || !currentEditingCardData || !gristTableOps) return; const fieldsToUpdate = {}; const definingColId = WidgetConfigManager.getKanbanDefiningColumn(); const currentLaneValueForDrawer = String(safe(currentEditingCardData, definingColId, "")); editDrawerContentEl.querySelectorAll('[data-col-id]').forEach(inputEl => { const colId = inputEl.dataset.colId; const colMeta = gristTableMeta.columns.find(c => c.id === colId); const cfg = getFieldDisplayConfig(colId, currentLaneValueForDrawer); if (cfg.editable && colMeta && !colMeta.isFormula && colId !== definingColId) { let newValue; const originalValue = currentEditingCardData[colId]; if (inputEl.tagName === 'SELECT' && colMeta.type.startsWith('Ref:') && !colMeta.type.startsWith('RefList:')) { newValue = inputEl.value === "" ? 0 : Number(inputEl.value); } else if (inputEl.tagName === 'SELECT' && colMeta.type === 'ChoiceList' && inputEl.multiple) { const selectedOptions = Array.from(inputEl.selectedOptions).map(opt => opt.value); newValue = selectedOptions.length > 0 ? ['L', ...selectedOptions] : null; } else if (inputEl.type === 'checkbox' && inputEl.tagName === 'INPUT') { newValue = inputEl.checked; } else if (inputEl.type === 'number') { newValue = inputEl.value === '' ? null : parseFloat(inputEl.value); } else if (inputEl.type === 'date') { if (inputEl.value === '') { newValue = null; } else { const [year, month, day] = inputEl.value.split('-').map(Number); newValue = Date.UTC(year, month - 1, day) / 1000; } } else if (inputEl.type === 'datetime-local') { if (inputEl.value === '') { newValue = null; } else { newValue = new Date(inputEl.value).getTime() / 1000; } } else { newValue = (inputEl.value === '' && colMeta.type !== 'Text' && colMeta.type !== 'Any') ? null : inputEl.value; } let changed = false; if (colMeta.type === 'ChoiceList' || colMeta.type.startsWith('RefList')) { const originalArray = Array.isArray(originalValue) && originalValue[0] === 'L' ? originalValue.slice(1).sort() : (Array.isArray(originalValue) ? originalValue.sort() : []); const newArray = Array.isArray(newValue) && newValue[0] === 'L' ? newValue.slice(1).sort() : (Array.isArray(newValue) ? newValue.sort() : []); if (originalArray.join(',') !== newArray.join(',')) { changed = true; } } else if (colMeta.type.startsWith('Ref:')) { const origRefVal = originalValue === 0 ? null : Number(originalValue); const newRefVal = newValue === 0 ? null : Number(newValue); if (newRefVal !== origRefVal) changed = true; } else if (newValue !== originalValue && !(newValue == null && (originalValue == null || originalValue === ''))) { changed = true; } if (changed) { fieldsToUpdate[colId] = newValue; } } }); if (Object.keys(fieldsToUpdate).length > 0) { console.log("Saving fields to Grist:", fieldsToUpdate); try { await gristTableOps.update([{ id: currentEditingCardId, fields: fieldsToUpdate }]); } catch (err) { console.error("Erro ao salvar cartão:", err); alert("Erro ao salvar cartão: " + err.message); } } editDrawerEl.classList.remove('visible'); currentEditingCardId = null; currentEditingCardData = null; };
+    editDrawerSaveBtn.onclick = async () => { if (!currentEditingCardId || !currentEditingCardData || !gristTableOps) return; const fieldsToUpdate = {}; const definingColId = WidgetConfigManager.getKanbanDefiningColumn(); const currentLaneValueForDrawer = String(safe(currentEditingCardData, definingColId, "")); 
+        
+        // This loop now only handles non-RefList fields
+        editDrawerContentEl.querySelectorAll('[data-col-id]').forEach(inputEl => { 
+            if (inputEl.closest('.reflist-container')) return; // IMPORTANT: Skip inputs inside our new manager
+
+            const colId = inputEl.dataset.colId; const colMeta = gristTableMeta.columns.find(c => c.id === colId); const cfg = getFieldDisplayConfig(colId, currentLaneValueForDrawer); if (cfg.editable && colMeta && !colMeta.isFormula && colId !== definingColId) { let newValue; const originalValue = currentEditingCardData[colId]; if (inputEl.tagName === 'SELECT' && colMeta.type.startsWith('Ref:') && !colMeta.type.startsWith('RefList:')) { newValue = inputEl.value === "" ? 0 : Number(inputEl.value); } else if (inputEl.tagName === 'SELECT' && colMeta.type === 'ChoiceList' && inputEl.multiple) { const selectedOptions = Array.from(inputEl.selectedOptions).map(opt => opt.value); newValue = selectedOptions.length > 0 ? ['L', ...selectedOptions] : null; } else if (inputEl.type === 'checkbox' && inputEl.tagName === 'INPUT') { newValue = inputEl.checked; } else if (inputEl.type === 'number') { newValue = inputEl.value === '' ? null : parseFloat(inputEl.value); } else if (inputEl.type === 'date') { if (inputEl.value === '') { newValue = null; } else { const [year, month, day] = inputEl.value.split('-').map(Number); newValue = Date.UTC(year, month - 1, day) / 1000; } } else if (inputEl.type === 'datetime-local') { if (inputEl.value === '') { newValue = null; } else { newValue = new Date(inputEl.value).getTime() / 1000; } } else { newValue = (inputEl.value === '' && colMeta.type !== 'Text' && colMeta.type !== 'Any') ? null : inputEl.value; } let changed = false; if (colMeta.type === 'ChoiceList' || colMeta.type.startsWith('RefList')) { const originalArray = Array.isArray(originalValue) && originalValue[0] === 'L' ? originalValue.slice(1).sort() : (Array.isArray(originalValue) ? originalValue.sort() : []); const newArray = Array.isArray(newValue) && newValue[0] === 'L' ? newValue.slice(1).sort() : (Array.isArray(newValue) ? newValue.sort() : []); if (originalArray.join(',') !== newArray.join(',')) { changed = true; } } else if (colMeta.type.startsWith('Ref:')) { const origRefVal = originalValue === 0 ? null : Number(originalValue); const newRefVal = newValue === 0 ? null : Number(newValue); if (newRefVal !== origRefVal) changed = true; } else if (newValue !== originalValue && !(newValue == null && (originalValue == null || originalValue === ''))) { changed = true; } if (changed) { fieldsToUpdate[colId] = newValue; } } }); 
+        
+        // RefList actions are now live, so we no longer need to check them here on save.
+
+        if (Object.keys(fieldsToUpdate).length > 0) { console.log("Saving fields to Grist:", fieldsToUpdate); try { await gristTableOps.update([{ id: currentEditingCardId, fields: fieldsToUpdate }]); } catch (err) { console.error("Erro ao salvar cartão:", err); alert("Erro ao salvar cartão: " + err.message); } } 
+        
+        editDrawerEl.classList.remove('visible'); currentEditingCardId = null; currentEditingCardData = null; };
     editDrawerCloseBtn.onclick = () => { editDrawerEl.classList.remove('visible'); currentEditingCardId = null; currentEditingCardData = null; };
     editDrawerCancelBtn.onclick = () => { editDrawerEl.classList.remove('visible'); currentEditingCardId = null; currentEditingCardData = null; };
     async function addNewCardToLane(laneValue) { if (!gristTableOps || !gristTableMeta) return; const definingColId = WidgetConfigManager.getKanbanDefiningColumn(); if (!definingColId) { alert("Coluna Kanban (status/lane) não está definida nas configurações."); return; } const newCardFields = { [definingColId]: laneValue }; const titleFieldCand = gristTableMeta.columns.find(c => !c.isFormula && (c.label.toLowerCase() === 'title' || c.label.toLowerCase() === 'título' || c.label.toLowerCase() === 'nome')); if (titleFieldCand) { newCardFields[titleFieldCand.id] = "Novo Cartão"; } gristTableMeta.columns.forEach(col => { if (!newCardFields.hasOwnProperty(col.id) && !col.isFormula && col.id !== definingColId) { newCardFields[col.id] = (col.type.startsWith('Ref:') || col.type.startsWith('RefList:')) ? 0 : null; } }); try { await gristTableOps.create([{ fields: newCardFields }]); } catch (err) { console.error("Erro ao criar novo cartão:", err); alert("Erro ao criar novo cartão: " + err.message); } }

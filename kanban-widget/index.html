@@ -697,38 +697,68 @@
         margin-top: 5px;
     }
     .attachment-preview-container a,
-.readonly-field a { /* Para links de anexo no drawer */
-    display: inline-block;
-    margin-right: 8px;
-    text-decoration: none;
-    padding: 2px 5px;
-    border: 1px solid #ccc;
-    border-radius: 3px;
-    background-color: #f0f0f0;
-    font-size: 0.9em;
-}
-.attachment-icon {
-    /* Adicione um ícone de clipe de papel ou algo similar */
-}
-.markdown-content p:first-child, .markdown-content-drawer p:first-child {
-    margin-top: 0;
-}
-.markdown-content p:last-child, .markdown-content-drawer p:last-child {
-    margin-bottom: 0;
-}
-/* Estilo para texto markdown no drawer para se assemelhar a outros campos */
-.markdown-content-drawer {
-  background: #E9ECEF;
-  color: #333;
-  padding: 6px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: .9em;
-  word-break: break-word;
-  margin-top: 2px;
-  min-height: 50px; /* Para dar algum espaço */
-}
+    .readonly-field a { /* Para links de anexo no drawer */
+        display: inline-block;
+        margin-right: 8px;
+        text-decoration: none;
+        padding: 2px 5px;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        background-color: #f0f0f0;
+        font-size: 0.9em;
+    }
+    .attachment-icon {
+        /* Adicione um ícone de clipe de papel ou algo similar */
+    }
+    .markdown-content p:first-child, .markdown-content-drawer p:first-child {
+        margin-top: 0;
+    }
+    .markdown-content p:last-child, .markdown-content-drawer p:last-child {
+        margin-bottom: 0;
+    }
+    /* Estilo para texto markdown no drawer para se assemelhar a outros campos */
+    .markdown-content-drawer {
+      background: #E9ECEF;
+      color: #333;
+      padding: 6px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: .9em;
+      word-break: break-word;
+      margin-top: 2px;
+      min-height: 50px; /* Para dar algum espaço */
+    }
     /* --- FIM DOS ESTILOS PARA REGRAS --- */
+
+    /* --- NEW STYLES for RefList Inline Manager --- */
+    .reflist-container {
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        background: #fdfdfd;
+        margin-top: 4px;
+        margin-bottom: 8px;
+    }
+    .reflist-container button {
+        padding: 2px 8px;
+        font-size: 0.8em;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        cursor: pointer;
+        background: #f0f0f0;
+    }
+    .reflist-container table {
+        margin-top: 8px;
+    }
+    .reflist-container table td, .reflist-container table th {
+        font-size: 0.8em;
+        padding: 4px;
+    }
+    .reflist-container table button {
+        padding: 1px 5px;
+        font-size: 0.9em;
+    }
+    /* --- END NEW STYLES --- */
 
   </style>
 </head>
@@ -943,9 +973,8 @@
   </aside>
 
   <div id="dbg" class="collapsed"><strong>API Debug</strong><br></div>
-    <div id="dbg" class="collapsed"><strong>API Debug</strong><br></div>
 
-  <script src="script.js"></script>  <!-- <<< ADICIONE ESTA LINHA AQUI -->
+  <script src="script.js"></script>
 </body>
 
 </html>
