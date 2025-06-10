@@ -560,15 +560,12 @@ async function handleRefListRecordAction(containerEl, colDef, tableB_Schema, bac
     form.id = 'reflist-add-form';
     content.appendChild(form);
 
-    // Get the field configurations for the referenced table
     const laneValue = String(safe(currentEditingCardData, WidgetConfigManager.getKanbanDefiningColumn(), ""));
     const parentConfig = WidgetConfigManager.getFieldConfigForLane(gristTableMeta.nameId, laneValue, colDef.id);
 
-    // Build form fields, respecting visibility and editability from config
     tableB_Schema.columns
       .filter(c => {
         const childConfig = parentConfig.refListFieldConfigs?.[c.id] || {};
-        // Default to visible if not configured
         return (childConfig.visible !== false) && !c.isFormula && c.id !== backRefColId && c.id !== 'id' && c.id !== 'manualSort';
       })
       .sort((a, b) => {
@@ -586,7 +583,7 @@ async function handleRefListRecordAction(containerEl, colDef, tableB_Schema, bac
         label.style.fontWeight = 'bold';
         
         let input;
-        const isEditable = childConfig.editable !== false; // Default to editable
+        const isEditable = childConfig.editable !== false;
 
         if (!isEditable) {
             input = document.createElement('div');
@@ -636,7 +633,6 @@ async function handleRefListRecordAction(containerEl, colDef, tableB_Schema, bac
 
             const fieldsToSave = {};
             form.querySelectorAll('[data-col-id]').forEach(inp => {
-                // Only include editable fields in the save payload
                 if (!inp.classList.contains('readonly-field')) {
                     fieldsToSave[inp.dataset.colId] = (inp.type === 'checkbox') ? inp.checked : inp.value;
                 }
@@ -653,14 +649,10 @@ async function handleRefListRecordAction(containerEl, colDef, tableB_Schema, bac
                 await tableB_Ops.create([{ fields: fieldsToSave }]);
             }
 
-            // *** THE KEY FIX IS HERE ***
-            // 1. Get the main table operations object.
-            const mainTableOps = grist.getTable(gristTableMeta.nameId);
-            // 2. Re-fetch the entire record for the card we are editing. This ensures we have the latest RefList data.
-            const updatedMainRecord = await mainTableOps.getRecord(currentEditingCardId);
-            // 3. Update the global variable holding the drawer's data.
+            // *** THE CORRECTED FIX IS HERE ***
+            // Use grist.docApi.getRecord(tableId, recordId)
+            const updatedMainRecord = await grist.docApi.getRecord(gristTableMeta.nameId, currentEditingCardId);
             currentEditingCardData = updatedMainRecord;
-            // 4. Re-populate the inline table using the new, fresh data.
             await populateRefListTable(containerEl, colDef, updatedMainRecord[colDef.id]);
             
             document.body.removeChild(modal);
@@ -679,9 +671,9 @@ async function handleRefListUnlink_Single(containerEl, colDef, tableB_Schema, ba
         const tableB_Ops = grist.getTable(tableB_Schema.tableId);
         await tableB_Ops.update([{ id: recordIdToUnlink, fields: { [backRefColId]: null } }]);
 
-        // *** THE KEY FIX IS HERE (IDENTICAL TO THE ADD/EDIT FIX) ***
-        const mainTableOps = grist.getTable(gristTableMeta.nameId);
-        const updatedMainRecord = await mainTableOps.getRecord(currentEditingCardId);
+        // *** THE CORRECTED FIX IS HERE ***
+        // Use grist.docApi.getRecord(tableId, recordId)
+        const updatedMainRecord = await grist.docApi.getRecord(gristTableMeta.nameId, currentEditingCardId);
         currentEditingCardData = updatedMainRecord;
         await populateRefListTable(containerEl, colDef, updatedMainRecord[colDef.id]);
         
