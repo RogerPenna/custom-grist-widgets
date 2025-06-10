@@ -634,9 +634,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
 
                 // **** CORRECTED REFRESH LOGIC ****
-                const updatedMainRecord = await grist.docApi.getRecord(gristTableMeta.nameId, currentEditingCardId);
-                currentEditingCardData = updatedMainRecord;
-                await populateRefListTable(containerEl, colDef, updatedMainRecord[colDef.id]);
+                // Fetch the main card's record again to get the updated RefList value.
+                const rawData = await grist.docApi.fetchTable(gristTableMeta.nameId, [currentEditingCardId]);
+                const updatedRecords = GristDataManager.colToRows(rawData);
+                if (updatedRecords.length > 0) {
+                    const updatedMainRecord = updatedRecords[0];
+                    // Update the local state for the card being edited
+                    currentEditingCardData = updatedMainRecord; 
+                    // Re-populate the RefList table in the drawer with the new data
+                    await populateRefListTable(containerEl, colDef, updatedMainRecord[colDef.id]);
+                }
                 
                 document.body.removeChild(modal);
             } catch (err) {
@@ -654,9 +661,16 @@ document.addEventListener('DOMContentLoaded', function () {
             await tableB_Ops.update([{ id: recordIdToUnlink, fields: { [backRefColId]: null } }]);
 
             // **** CORRECTED REFRESH LOGIC ****
-            const updatedMainRecord = await grist.docApi.getRecord(gristTableMeta.nameId, currentEditingCardId);
-            currentEditingCardData = updatedMainRecord;
-            await populateRefListTable(containerEl, colDef, updatedMainRecord[colDef.id]);
+            // Fetch the main card's record again to get the updated RefList value.
+            const rawData = await grist.docApi.fetchTable(gristTableMeta.nameId, [currentEditingCardId]);
+            const updatedRecords = GristDataManager.colToRows(rawData);
+            if (updatedRecords.length > 0) {
+                const updatedMainRecord = updatedRecords[0];
+                // Update the local state for the card being edited
+                currentEditingCardData = updatedMainRecord;
+                // Re-populate the RefList table in the drawer with the new data
+                await populateRefListTable(containerEl, colDef, updatedMainRecord[colDef.id]);
+            }
             
         } catch (err) {
             alert(`Erro ao desvincular: ${err.message}`);
