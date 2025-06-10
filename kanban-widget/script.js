@@ -82,13 +82,12 @@ document.addEventListener('DOMContentLoaded', function () {
       setCardSortCriteria: (crit) => { if (Array.isArray(crit) && crit.length === 3) currentConfig.cardSortCriteria = crit; else console.warn("setCardSortCriteria inválido"); },
       getFieldConfigForLane: (t, lv, f) => {
         const laneCfg = currentConfig.laneConfigs?.[t]?.[String(lv)]?.[f] || {};
-        // Ensure refListFieldConfigs exists and is an object
         if (!laneCfg.refListFieldConfigs || typeof laneCfg.refListFieldConfigs !== 'object') {
             laneCfg.refListFieldConfigs = {};
         }
         return { ...FIELD_DEFAULTS_INTERNAL, ...laneCfg };
       },
-      updateFieldConfigForLane: (t, lv, f, cfg) => { if (!t||lv==null||!f) return; currentConfig.laneConfigs[t] = currentConfig.laneConfigs[t] || {}; currentConfig.laneConfigs[t][String(lv)] = currentConfig.laneConfigs[t][String(lv)] || {}; currentConfig.laneConfigs[t][String(lv)][f] = { ...FIELD_DEFAULTS_INTERNAL, ...cfg }; },
+      updateFieldConfigForLane: (t, lv, f, cfg) => { if (!t||lv==null||!f) return; currentConfig.laneConfigs[t] = currentConfig.laneConfigs[t] || {}; currentConfig.laneConfigs[t][String(lv)] = currentConfig.laneConfigs[t][String(lv)] || {}; currentConfig.laneConfigs[t][String(lv)][f] = { ...FIELD_DEFAULTS_INTERNAL, ...currentConfig.laneConfigs[t][String(lv)][f], ...cfg }; },
       getDefaults: () => ({ ...FIELD_DEFAULTS_INTERNAL }),
       getKanbanDefaults: () => JSON.parse(JSON.stringify(KANBAN_DEFAULTS_INTERNAL)),
       getAllRules: () => JSON.parse(JSON.stringify(currentConfig.rules)),
@@ -453,8 +452,90 @@ document.addEventListener('DOMContentLoaded', function () {
         console.log("CUIB.handleSaveConfiguration: Chamando onSaveCallback..."); if (onSaveCallback) { onSaveCallback() .then(() => { console.log("CUIB.handleSaveConfiguration: onSaveCallback concluído com sucesso."); alert("Configurações salvas e widget recarregado!"); }) .catch(err => { console.error("CUIB.handleSaveConfiguration: ERRO no onSaveCallback:", err); alert("Erro ao salvar ou recarregar: " + err.message); }); } else { console.error("CUIB.handleSaveConfiguration: onSaveCallback não definido!"); alert("ERRO: Função de salvamento principal não encontrada!"); }
     }
     
-    function handleReplicateConfig(applyToAllLanes) { const currentLaneValue = laneSelectEl.value; if (!currentLaneValue || !currentGristTableMeta || !fieldsTableContainerEl.querySelector('tbody')) { alert("Selecione e configure uma lane antes de replicar."); return; } const allLaneOptions = Array.from(laneSelectEl.options).filter(opt => opt.value !== ""); const currentLaneIndexInAll = allLaneOptions.findIndex(opt => opt.value === currentLaneValue); if (currentLaneIndexInAll === -1) { alert("Lane atual não encontrada para replicação."); return; } const tableId = currentGristTableMeta.nameId; const sourceConfigFromUI = {}; const tableRows = fieldsTableContainerEl.querySelectorAll('tbody tr'); tableRows.forEach(row => { const fieldId = row.dataset.fieldId; if (!fieldId) return; const cfg = { useFormatting: row.cells[getColumnIndex('useFormatting') - 1].querySelector('input').checked, card: row.cells[getColumnIndex('card') - 1].querySelector('input').checked, cardPosition: parseInt(row.cells[getColumnIndex('cardPosition') - 1].querySelector('input').value, 10) || 0, showLabel: row.cells[getColumnIndex('showLabel') - 1].querySelector('input').checked, visible: row.cells[getColumnIndex('visible') - 1].querySelector('input').checked, editable: row.cells[getColumnIndex('editable') - 1].querySelector('input').checked, position: parseInt(row.cells[getColumnIndex('position') - 1].querySelector('input').value, 10) || 0, }; sourceConfigFromUI[fieldId] = cfg; }); if (applyToAllLanes) { allLaneOptions.forEach(opt => { if (opt.value !== currentLaneValue) { Object.keys(sourceConfigFromUI).forEach(fieldId => { WidgetConfigManager.updateFieldConfigForLane(tableId, opt.value, fieldId, sourceConfigFromUI[fieldId]); }); } }); alert(`Configuração da lane "${currentLaneValue}" replicada para TODAS as outras lanes. Salve para persistir.`); } else { if (currentLaneIndexInAll >= allLaneOptions.length - 1) { alert("Não há próxima lane para replicar."); return; } const nextLaneValue = allLaneOptions[currentLaneIndexInAll + 1].value; Object.keys(sourceConfigFromUI).forEach(fieldId => { WidgetConfigManager.updateFieldConfigForLane(tableId, nextLaneValue, fieldId, sourceConfigFromUI[fieldId]); }); laneSelectEl.value = nextLaneValue; handleLaneChanged(); alert(`Config da lane "${currentLaneValue}" replicada para "${nextLaneValue}". Salve para persistir.`); } }
-    function handleReplicateSelection() { const currentLane = laneSelectEl.value; if (!currentLane) { alert("Selecione primeiro a lane de origem."); return; } const sourceConfig = {}; fieldsTableContainerEl.querySelectorAll('tbody tr').forEach(row => { const fid = row.dataset.fieldId; sourceConfig[fid] = { useFormatting: row.cells[2].querySelector('input').checked, card: row.cells[3].querySelector('input').checked, cardPosition: parseInt(row.cells[4].querySelector('input').value,10)||0, showLabel: row.cells[5].querySelector('input').checked, visible: row.cells[6].querySelector('input').checked, editable: row.cells[7].querySelector('input').checked, position: parseInt(row.cells[8].querySelector('input').value,10)||0 }; }); const modal = document.createElement('div'); modal.className = 'replicate-modal'; modal.innerHTML = ` <div class="replicate-content"> <h3>Replicar configuração de CAMPOS para quais lanes?</h3> <label><input type="checkbox" id="rep-all" /> Marcar todos</label> <div id="rep-list" style="margin:8px 0; max-height: 200px; overflow-y:auto;"></div> <button id="rep-ok">OK</button> <button id="rep-cancel">Cancelar</button> </div>`; document.body.appendChild(modal); const list = modal.querySelector('#rep-list'); currentKanbanLanes.filter(l=>!l.isUnmatched).forEach(lane=>{ if (lane.value === currentLane) return; const cbDiv = document.createElement('div'); const cb = document.createElement('input'); cb.type = 'checkbox'; cb.value = lane.value; cb.id = `rep-cb-${lane.value}`; cb.className = 'rep-cb'; const lbl = document.createElement('label'); lbl.htmlFor = `rep-cb-${lane.value}`; lbl.appendChild(document.createTextNode(` ${lane.value || "[Vazio]"}`)); cbDiv.appendChild(cb); cbDiv.appendChild(lbl); list.appendChild(cbDiv); }); modal.querySelector('#rep-all').onchange = e => { list.querySelectorAll('input.rep-cb').forEach(cb=> cb.checked = e.target.checked); }; modal.querySelector('#rep-cancel').onclick = () => document.body.removeChild(modal); modal.querySelector('#rep-ok').onclick = () => { const targets = Array.from(list.querySelectorAll('input.rep-cb:checked')).map(cb=>cb.value); if (targets.length === 0) { alert("Nenhuma lane selecionada para replicar."); return; } const tableId = currentGristTableMeta.nameId; targets.forEach(lv=>{ Object.entries(sourceConfig).forEach(([fid,cfg])=>{ WidgetConfigManager.updateFieldConfigForLane(tableId, lv, fid, cfg); }); }); alert(`Configuração de CAMPOS da lane "${currentLane}" replicada para: ${targets.join(', ')}. Salve as configurações para persistir.`); document.body.removeChild(modal); }; }
+    // *** FIX: Replicar button logic is now more robust and includes RefList config ***
+    function handleReplicateSelection() {
+        try {
+            const currentLane = laneSelectEl.value;
+            if (!currentLane || !fieldsTableContainerEl.querySelector('tbody tr')) {
+                alert("Por favor, selecione uma lane de origem que tenha uma configuração de campos visível antes de replicar.");
+                return;
+            }
+
+            const sourceConfig = {};
+            fieldsTableContainerEl.querySelectorAll('tbody tr[data-field-id]').forEach(row => {
+                const fieldId = row.dataset.fieldId;
+                if (!fieldId) return;
+
+                const cfg = {
+                    useFormatting: row.cells[getColumnIndex('useFormatting') - 1].querySelector('input').checked,
+                    card: row.cells[getColumnIndex('card') - 1].querySelector('input').checked,
+                    cardPosition: parseInt(row.cells[getColumnIndex('cardPosition') - 1].querySelector('input').value, 10) || 0,
+                    showLabel: row.cells[getColumnIndex('showLabel') - 1].querySelector('input').checked,
+                    visible: row.cells[getColumnIndex('visible') - 1].querySelector('input').checked,
+                    editable: row.cells[getColumnIndex('editable') - 1].querySelector('input').checked,
+                    position: parseInt(row.cells[getColumnIndex('position') - 1].querySelector('input').value, 10) || 0,
+                    refListFieldConfigs: {}
+                };
+
+                const refConfigRow = fieldsTableContainerEl.querySelector(`tbody tr[data-ref-config-row-for="${fieldId}"]`);
+                if (refConfigRow) {
+                    refConfigRow.querySelectorAll('tbody tr[data-ref-field-id]').forEach(refRow => {
+                        const refFieldId = refRow.dataset.refFieldId;
+                        const refFieldConfig = { fieldId: refFieldId };
+                        refRow.querySelectorAll('td[data-key]').forEach(cell => {
+                            const input = cell.querySelector('input');
+                            const key = cell.dataset.key;
+                            refFieldConfig[key] = input.type === 'checkbox' ? input.checked : (parseInt(input.value, 10) || 0);
+                        });
+                        cfg.refListFieldConfigs[refFieldId] = refFieldConfig;
+                    });
+                }
+                sourceConfig[fieldId] = cfg;
+            });
+
+            const modal = document.createElement('div');
+            modal.className = 'replicate-modal';
+            modal.innerHTML = ` <div class="replicate-content"> <h3>Replicar configuração de CAMPOS para quais lanes?</h3> <label><input type="checkbox" id="rep-all" /> Marcar todos</label> <div id="rep-list" style="margin:8px 0; max-height: 200px; overflow-y:auto;"></div> <button id="rep-ok">OK</button> <button id="rep-cancel">Cancelar</button> </div>`;
+            document.body.appendChild(modal);
+
+            const list = modal.querySelector('#rep-list');
+            currentKanbanLanes.filter(l => !l.isUnmatched && l.value !== currentLane).forEach(lane => {
+                const cbDiv = document.createElement('div');
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.value = lane.value;
+                cb.id = `rep-cb-${lane.value}`;
+                cb.className = 'rep-cb';
+                const lbl = document.createElement('label');
+                lbl.htmlFor = `rep-cb-${lane.value}`;
+                lbl.appendChild(document.createTextNode(` ${lane.value || "[Vazio]"}`));
+                cbDiv.appendChild(cb);
+                cbDiv.appendChild(lbl);
+                list.appendChild(cbDiv);
+            });
+
+            modal.querySelector('#rep-all').onchange = e => { list.querySelectorAll('input.rep-cb').forEach(cb => cb.checked = e.target.checked); };
+            modal.querySelector('#rep-cancel').onclick = () => document.body.removeChild(modal);
+            modal.querySelector('#rep-ok').onclick = () => {
+                const targets = Array.from(list.querySelectorAll('input.rep-cb:checked')).map(cb => cb.value);
+                if (targets.length === 0) {
+                    alert("Nenhuma lane selecionada para replicar.");
+                    return;
+                }
+                const tableId = currentGristTableMeta.nameId;
+                targets.forEach(lv => {
+                    Object.entries(sourceConfig).forEach(([fid, cfg]) => {
+                        WidgetConfigManager.updateFieldConfigForLane(tableId, lv, fid, cfg);
+                    });
+                });
+                alert(`Configuração de CAMPOS da lane "${currentLane}" replicada para: ${targets.join(', ')}. Salve as configurações para persistir.`);
+                document.body.removeChild(modal);
+            };
+        } catch (error) {
+            console.error("Erro ao tentar replicar configuração:", error);
+            alert("Ocorreu um erro ao tentar abrir o diálogo de replicação. Verifique se uma lane de origem está selecionada e sua configuração está visível.");
+        }
+    }
     const closeDrawer = () => { if (drawerEl) drawerEl.classList.remove('visible'); };
     
     return { init, populateAndOpen, close: closeDrawer };
@@ -464,6 +545,9 @@ document.addEventListener('DOMContentLoaded', function () {
    * 2.  Lógica Kanban (Principal)
    *****************************************************************/
   (async function () {
+    // *** FIX: Flag to prevent double-rendering on initial load ***
+    let isInitialLoad = true; 
+
     const pal = ["#1E88E5", "#43A047", "#FB8C00", "#E53935", "#8E24AA", "#00838F", "#6D4C41", "#546E7A"];
     const palette = i => pal[i % pal.length];
     const dbg = document.getElementById('dbg');
@@ -512,9 +596,10 @@ document.addEventListener('DOMContentLoaded', function () {
             
             const laneValue = String(safe(currentEditingCardData, WidgetConfigManager.getKanbanDefiningColumn(), ""));
             const parentConfig = WidgetConfigManager.getFieldConfigForLane(gristTableMeta.nameId, laneValue, colDef.id);
+            
             const columnsToShow = tableB_Schema.columns
                 .filter(c => {
-                    const childConfig = parentConfig.refListFieldConfigs?.[c.id] || {};
+                    const childConfig = parentConfig.refListFieldConfigs?.[c.id] || { visible: true };
                     return childConfig.visible !== false && c.id !== backRefColId && c.id !== 'manualSort';
                 })
                 .sort((a,b) => {
@@ -568,11 +653,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const laneValue = String(safe(currentEditingCardData, WidgetConfigManager.getKanbanDefiningColumn(), ""));
         const parentConfig = WidgetConfigManager.getFieldConfigForLane(gristTableMeta.nameId, laneValue, colDef.id);
-
+        
         tableB_Schema.columns
         .filter(c => {
-            const childConfig = parentConfig.refListFieldConfigs?.[c.id] || {};
-            return (childConfig.visible !== false) && !c.isFormula && c.id !== backRefColId && c.id !== 'id' && c.id !== 'manualSort';
+            const childConfig = parentConfig.refListFieldConfigs?.[c.id] || { visible: true };
+            return childConfig.visible !== false && !c.isFormula && c.id !== backRefColId && c.id !== 'id' && c.id !== 'manualSort';
         })
         .sort((a, b) => {
             const posA = parentConfig.refListFieldConfigs?.[a.id]?.position ?? 99;
@@ -580,7 +665,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return posA - posB;
         })
         .forEach(c => {
-            const childConfig = parentConfig.refListFieldConfigs?.[c.id] || {};
+            const childConfig = parentConfig.refListFieldConfigs?.[c.id] || { editable: true };
             const fieldContainer = document.createElement('div'); fieldContainer.style.marginBottom = '10px';
             const label = document.createElement('label'); label.textContent = c.label; label.style.display = 'block'; label.style.fontWeight = 'bold';
             
@@ -590,7 +675,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!isEditable) {
                 input = document.createElement('div');
                 input.className = 'readonly-field';
-                if (isEditing) { input.textContent = recordToEdit[c.id] || ''; }
+                input.textContent = isEditing ? (recordToEdit[c.id] || '') : '[Não editável]';
             } else if (c.choices && c.choices.length > 0) {
                 input = document.createElement('select'); input.add(new Option('-- Selecione --', ''));
                 c.choices.forEach(ch => input.add(new Option(ch, ch)));
@@ -620,7 +705,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 saveBtn.disabled = true; saveBtn.textContent = 'Salvando...';
                 const fieldsToSave = {};
                 form.querySelectorAll('[data-col-id]').forEach(inp => {
-                    if (!inp.closest('.readonly-field')) { // Only save editable fields
+                    if (!inp.closest('.readonly-field')) {
                         fieldsToSave[inp.dataset.colId] = (inp.type === 'checkbox') ? inp.checked : inp.value;
                     }
                 });
@@ -633,15 +718,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     await tableB_Ops.create([{ fields: fieldsToSave }]);
                 }
 
-                // **** CORRECTED REFRESH LOGIC ****
-                // Fetch the main card's record again to get the updated RefList value.
                 const rawData = await grist.docApi.fetchTable(gristTableMeta.nameId, [currentEditingCardId]);
                 const updatedRecords = GristDataManager.colToRows(rawData);
                 if (updatedRecords.length > 0) {
                     const updatedMainRecord = updatedRecords[0];
-                    // Update the local state for the card being edited
                     currentEditingCardData = updatedMainRecord; 
-                    // Re-populate the RefList table in the drawer with the new data
                     await populateRefListTable(containerEl, colDef, updatedMainRecord[colDef.id]);
                 }
                 
@@ -660,15 +741,11 @@ document.addEventListener('DOMContentLoaded', function () {
             const tableB_Ops = grist.getTable(tableB_Schema.tableId);
             await tableB_Ops.update([{ id: recordIdToUnlink, fields: { [backRefColId]: null } }]);
 
-            // **** CORRECTED REFRESH LOGIC ****
-            // Fetch the main card's record again to get the updated RefList value.
             const rawData = await grist.docApi.fetchTable(gristTableMeta.nameId, [currentEditingCardId]);
             const updatedRecords = GristDataManager.colToRows(rawData);
             if (updatedRecords.length > 0) {
                 const updatedMainRecord = updatedRecords[0];
-                // Update the local state for the card being edited
                 currentEditingCardData = updatedMainRecord;
-                // Re-populate the RefList table in the drawer with the new data
                 await populateRefListTable(containerEl, colDef, updatedMainRecord[colDef.id]);
             }
             
@@ -691,6 +768,7 @@ document.addEventListener('DOMContentLoaded', function () {
         Object.assign(element.style, styleToApply);
     }
 
+    // *** FIX: Overhauled this function for correct RefList rendering on cards ***
     function createCardElement(cardData, cardLaneValue) {
         const cardDiv = document.createElement('div'); cardDiv.className = 'card'; cardDiv.dataset.cardId = cardData.id;
         const vis = WidgetConfigManager.getVisualConfig();
@@ -708,44 +786,76 @@ document.addEventListener('DOMContentLoaded', function () {
         cardDiv.appendChild(titleEl);
         
         fieldsOnCardRaw.forEach(item => {
-          const fieldDiv = document.createElement('div'); fieldDiv.className = 'card-field';
-          const colDef = item.colDef; let rawValueFromGrist = safe(cardData, colDef.id);
-          if (item.config.showLabel) { const lab = document.createElement('span'); lab.className = 'label'; lab.textContent = `${colDef.label}: `; if (item.config.useFormatting) applyStylesFromWidgetOptions(lab, colDef, rawValueFromGrist, true); fieldDiv.appendChild(lab); }
-          
-          let fieldEl;
-          if (colDef.type.startsWith('RefList') && item.config.useFormatting) {
-              fieldEl = document.createElement('div');
-              const linkedRecords = refListCache.data?.[colDef.referencedTableId]?.filter(r => (rawValueFromGrist || []).includes(r.id)) || [];
-              if (linkedRecords.length > 0) {
-                  const table = document.createElement('table'); table.className = 'card-reflist-table';
-                  const thead = table.createTHead(); const headerRow = thead.insertRow();
-                  const refTableSchema = refListCache.schemas[colDef.referencedTableId];
-                  const childColsToShow = Object.values(item.config.refListFieldConfigs || {}).filter(c => c.card).sort((a,b) => a.cardPosition - b.cardPosition);
-                  const childColDefs = childColsToShow.map(c => refTableSchema.columns.find(sc => sc.id === c.fieldId)).filter(Boolean);
-                  
-                  childColDefs.forEach(cc => headerRow.insertCell().textContent = cc.label);
-                  const tbody = table.createTBody();
-                  linkedRecords.forEach(rec => {
-                      const tr = tbody.insertRow();
-                      childColDefs.forEach(cc => tr.insertCell().textContent = safe(rec, cc.id, ''));
-                  });
-                  fieldEl.appendChild(table);
-              } else {
-                  fieldEl.textContent = "[Nenhum]"; fieldEl.style.fontStyle = 'italic';
-              }
-          } else {
-            let displayValue = rawValueFromGrist;
-            if (colDef.type.startsWith('Ref:') && colDef.displayColId) { displayValue = safe(cardData, colDef.displayColId, ''); if (rawValueFromGrist === 0 || String(displayValue).startsWith("E,Invalid")) { displayValue = "[Nenhum]"; } }
-            else if (colDef.type.startsWith('Ref:') && !colDef.displayColId) { displayValue = (rawValueFromGrist && rawValueFromGrist !== 0) ? `[Ref ID: ${rawValueFromGrist}]` : "[Nenhum]"; }
-            else if (colDef.type === 'Date' || colDef.type === 'DateTime') { displayValue = formatEpoch(rawValueFromGrist, colDef.type); }
-            else if (colDef.type.startsWith('RefList')) { const ids = Array.isArray(rawValueFromGrist) && rawValueFromGrist[0]==='L' ? rawValueFromGrist.slice(1) : []; displayValue = ids.length > 0 ? `${ids.length} item(ns) vinculado(s)` : '[Nenhum]';}
-            
-            if (colDef.type === 'Bool') { fieldEl = document.createElement('input'); fieldEl.type = 'checkbox'; fieldEl.disabled = true; fieldEl.checked = Boolean(rawValueFromGrist); }
-            else if (colDef.type === 'ChoiceList') { fieldEl = document.createElement('div'); const choicesSelected = Array.isArray(rawValueFromGrist) && rawValueFromGrist[0] === 'L' ? rawValueFromGrist.slice(1) : []; if (choicesSelected.length > 0) { choicesSelected.forEach(opt => { const chip = document.createElement('span'); chip.className = 'choice-chip'; chip.textContent = opt; if (item.config.useFormatting && colDef.widgetOptions?.choiceOptions?.[opt]) { const cs = colDef.widgetOptions.choiceOptions[opt]; if (cs.fillColor) chip.style.backgroundColor = cs.fillColor; if (cs.textColor) chip.style.color = cs.textColor; } fieldEl.appendChild(chip); }); } else { fieldEl.textContent = "[Nenhum]"; fieldEl.style.fontStyle = 'italic'; fieldEl.style.color = '#757575'; } }
-            else { fieldEl = document.createElement('span'); fieldEl.className = 'value'; fieldEl.textContent = displayValue ?? ''; if (displayValue === "[Nenhum]") { fieldEl.style.fontStyle = 'italic'; fieldEl.style.color = '#757575'; } }
-            if (item.config.useFormatting && colDef.type !== 'ChoiceList') { applyStylesFromWidgetOptions(fieldEl, colDef, rawValueFromGrist, false); }
-          }
-          fieldDiv.appendChild(fieldEl); cardDiv.appendChild(fieldDiv);
+            const fieldDiv = document.createElement('div'); fieldDiv.className = 'card-field';
+            const colDef = item.colDef;
+            let rawValueFromGrist = safe(cardData, colDef.id);
+            if (item.config.showLabel) {
+                const lab = document.createElement('span');
+                lab.className = 'label';
+                lab.textContent = `${colDef.label}: `;
+                if (item.config.useFormatting) {
+                    applyStylesFromWidgetOptions(lab, colDef, rawValueFromGrist, true);
+                }
+                fieldDiv.appendChild(lab);
+            }
+
+            let fieldEl;
+            if (colDef.type.startsWith('RefList')) {
+                fieldEl = document.createElement('div');
+                const linkedRecordIds = Array.isArray(rawValueFromGrist) && rawValueFromGrist[0] === 'L' ? rawValueFromGrist.slice(1) : [];
+                const refTableId = colDef.referencedTableId;
+                const linkedRecords = refListCache.data?.[refTableId]?.filter(r => linkedRecordIds.includes(r.id)) || [];
+
+                if (item.config.useFormatting && linkedRecords.length > 0 && refListCache.schemas[refTableId]) {
+                    fieldEl.className = 'card-reflist-wrapper';
+                    const table = document.createElement('table');
+                    table.className = 'card-reflist-table';
+                    const thead = table.createTHead();
+                    const headerRow = thead.insertRow();
+                    
+                    const refTableSchema = refListCache.schemas[refTableId];
+                    const childColConfigs = item.config.refListFieldConfigs || {};
+                    const childColsToShow = Object.values(childColConfigs)
+                        .filter(c => c.card)
+                        .sort((a, b) => (a.cardPosition || 99) - (b.cardPosition || 99))
+                        .map(c => refTableSchema.columns.find(sc => sc.id === c.fieldId))
+                        .filter(Boolean);
+
+                    if (childColsToShow.length > 0) {
+                        childColsToShow.forEach(cc => headerRow.insertCell().textContent = cc.label);
+                        const tbody = table.createTBody();
+                        linkedRecords.forEach(rec => {
+                            const tr = tbody.insertRow();
+                            childColsToShow.forEach(cc => tr.insertCell().textContent = safe(rec, cc.id, ''));
+                        });
+                        fieldEl.appendChild(table);
+                    } else {
+                        fieldEl.textContent = `${linkedRecords.length} item(ns) vinculado(s)`;
+                    }
+                } else {
+                    if (linkedRecords.length > 0 && refListCache.schemas[refTableId]) {
+                        const refTableSchema = refListCache.schemas[refTableId];
+                        const displayCol = refTableSchema.columns.find(c => c.id === refTableSchema.primaryColId) || refTableSchema.columns.find(c => c.type === 'Text') || refTableSchema.columns[1] || { id: 'id' };
+                        const names = linkedRecords.map(r => safe(r, displayCol.id, `ID ${r.id}`)).join(', ');
+                        fieldEl.textContent = names;
+                    } else {
+                        fieldEl.textContent = "[Nenhum]";
+                        fieldEl.style.fontStyle = 'italic';
+                    }
+                }
+            } else {
+                let displayValue = rawValueFromGrist;
+                if (colDef.type.startsWith('Ref:') && colDef.displayColId) { displayValue = safe(cardData, colDef.displayColId, ''); if (rawValueFromGrist === 0 || String(displayValue).startsWith("E,Invalid")) { displayValue = "[Nenhum]"; } }
+                else if (colDef.type.startsWith('Ref:') && !colDef.displayColId) { displayValue = (rawValueFromGrist && rawValueFromGrist !== 0) ? `[Ref ID: ${rawValueFromGrist}]` : "[Nenhum]"; }
+                else if (colDef.type === 'Date' || colDef.type === 'DateTime') { displayValue = formatEpoch(rawValueFromGrist, colDef.type); }
+                
+                if (colDef.type === 'Bool') { fieldEl = document.createElement('input'); fieldEl.type = 'checkbox'; fieldEl.disabled = true; fieldEl.checked = Boolean(rawValueFromGrist); }
+                else if (colDef.type === 'ChoiceList') { fieldEl = document.createElement('div'); const choicesSelected = Array.isArray(rawValueFromGrist) && rawValueFromGrist[0] === 'L' ? rawValueFromGrist.slice(1) : []; if (choicesSelected.length > 0) { choicesSelected.forEach(opt => { const chip = document.createElement('span'); chip.className = 'choice-chip'; chip.textContent = opt; if (item.config.useFormatting && colDef.widgetOptions?.choiceOptions?.[opt]) { const cs = colDef.widgetOptions.choiceOptions[opt]; if (cs.fillColor) chip.style.backgroundColor = cs.fillColor; if (cs.textColor) chip.style.color = cs.textColor; } fieldEl.appendChild(chip); }); } else { fieldEl.textContent = "[Nenhum]"; fieldEl.style.fontStyle = 'italic'; fieldEl.style.color = '#757575'; } }
+                else { fieldEl = document.createElement('span'); fieldEl.className = 'value'; fieldEl.textContent = displayValue ?? ''; if (displayValue === "[Nenhum]") { fieldEl.style.fontStyle = 'italic'; fieldEl.style.color = '#757575'; } }
+                if (item.config.useFormatting && colDef.type !== 'ChoiceList') { applyStylesFromWidgetOptions(fieldEl, colDef, rawValueFromGrist, false); }
+            }
+            fieldDiv.appendChild(fieldEl);
+            cardDiv.appendChild(fieldDiv);
         });
         cardDiv.onclick = () => openCardEditDrawer(cardData.id, cardLaneValue, cardData); return cardDiv;
     }
@@ -890,13 +1000,16 @@ document.addEventListener('DOMContentLoaded', function () {
             let definingColId = WidgetConfigManager.getKanbanDefiningColumn();
             const currentFullConfig = await grist.getOption(CURRENT_CONFIG_KEY_FOR_GRIST);
             if (definingColId === null && gristTableMeta?.columns && typeof currentFullConfig === 'undefined') { const guessedStatusCol = gristTableMeta.columns.find(c => (c.label.toLowerCase() === 'status' || c.label.toLowerCase() === 'estado') && (c.type === 'Choice' || c.type === 'ChoiceList')); if (guessedStatusCol) { definingColId = guessedStatusCol.id; WidgetConfigManager.setKanbanDefiningColumn(definingColId); console.log(`Coluna Kanban PRÉ-SUGERIDA (primeiro uso ou config resetada): ${definingColId}. Usuário precisa salvar na UI de Config para persistir.`); } }
+            
             kanbanLanesStructure = [];
             if (definingColId && gristTableMeta.columns.find(c => c.id === definingColId)) {
                 const definingColMeta = gristTableMeta.columns.find(c => c.id === definingColId);
                 let orderedLaneValues = definingColMeta.choices || [];
                 if (orderedLaneValues.length === 0 && gristRows.length > 0) { const uniqueValuesFromData = new Set(); gristRows.forEach(r => { const v = r[definingColId]; if (v != null && String(v).trim() !== '') uniqueValuesFromData.add(String(v)); }); orderedLaneValues = Array.from(uniqueValuesFromData).sort((a,b) => String(a).localeCompare(String(b))); if (orderedLaneValues.length > 0) { console.warn("Lanes derivadas dos VALORES DOS DADOS (coluna sem 'choices' definidos). A ordem pode não ser a ideal. Defina 'choices' na coluna Grist para controlar a ordem das lanes."); } }
                 if (orderedLaneValues.length === 0 && definingColMeta.type.startsWith("Ref")) { console.warn(`Coluna de Lane '${definingColMeta.label}' é do tipo Ref sem 'choices'. Lanes podem não aparecer corretamente sem dados ou configuração de choices explícita.`); }
-                orderedLaneValues.forEach((laneValueStr, index) => {
+                
+                const uniqueLaneValues = [...new Set(orderedLaneValues)];
+                uniqueLaneValues.forEach((laneValueStr, index) => {
                     let laneColor = palette(index); let laneTextColor = '#fff'; let fontBold = false;
                     if (definingColMeta.widgetOptions?.choiceOptions?.[laneValueStr]) { const co = definingColMeta.widgetOptions.choiceOptions[laneValueStr]; if (co.fillColor) laneColor = co.fillColor; if (co.textColor) laneTextColor = co.textColor; if (co.fontBold) fontBold = co.fontBold; }
                     kanbanLanesStructure.push({ value: String(laneValueStr), color: laneColor, textColor: laneTextColor, fontBold: fontBold, isUnmatched: false });
@@ -904,7 +1017,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (kanbanLanesStructure.length === 0 && definingColMeta) { if(errEl) errEl.textContent = `A coluna Kanban "${definingColMeta.label}" (${definingColId}) não possui 'choices' definidos nas opções da coluna no Grist, nem há dados nessa coluna para derivar as lanes. Adicione 'choices' ou preencha alguns cartões com status.`; }
             } else if (definingColId) { if (errEl) errEl.textContent = `A coluna Kanban configurada ('${definingColId}') não foi encontrada na tabela "${gristTableMeta.nameId}". Reconfigure na aba 'Geral'.`;
             } else { if (errEl) errEl.textContent = "Coluna Kanban principal não configurada. Vá em '⚙️ Config' > 'Geral' > 'Mapeamento da Coluna Principal'."; }
+            
             await renderKanbanView();
+            // *** FIX: Set the flag to false after the first successful render ***
+            isInitialLoad = false;
         } catch (error) {
             console.error("Erro CRÍTICO em loadGristDataAndSetupKanban:", error);
             if (errEl) errEl.textContent = `Erro ao carregar: ${error.message}. Verifique o console para detalhes.`;
@@ -912,13 +1028,41 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         console.log("MAIN.loadGristDataAndSetupKanban: Concluído.");
     }
+
+    // *** FIX: Prevent onRecords from firing on initial load, and remove the setTimeout hack ***
     grist.onRecords(async (newRecords, oldRecords, summaryOrTableId) => {
+        if (isInitialLoad) { 
+          console.log("grist.onRecords: Ignorando chamada inicial.");
+          return;
+        }
         console.log("grist.onRecords triggered. Reloading Kanban.");
-        setTimeout(async () => { await loadGristDataAndSetupKanban(); }, 250);
+        await loadGristDataAndSetupKanban();
     });
-    grist.onRecord(async (updatedRec, oldRec, summaryOrTableId) => { let tableId = null; if (summaryOrTableId && typeof summaryOrTableId === 'object' && summaryOrTableId.tableId) { tableId = summaryOrTableId.tableId; } else if (typeof summaryOrTableId === 'string') { tableId = summaryOrTableId; } else if (updatedRec && gristTableMeta && gristTableMeta.nameId) { tableId = gristTableMeta.nameId; } if (gristTableMeta && tableId === gristTableMeta.nameId && updatedRec) { if (currentEditingCardId === updatedRec.id && editDrawerEl.classList.contains('visible')) { const definingColId = WidgetConfigManager.getKanbanDefiningColumn(); const currentLaneValueForDrawer = String(safe(updatedRec, definingColId, "")); try { const fullCardData = await grist.docApi.getRecord(gristTableMeta.nameId, updatedRec.id); if (fullCardData) { openCardEditDrawer(fullCardData.id, currentLaneValueForDrawer, fullCardData); } } catch (fetchErr) { console.error(`GRIST.ONRECORD: Erro ao buscar dados completos para o cartão ${updatedRec.id}:`, fetchErr); } } } });
+
+    grist.onRecord(async (updatedRec, oldRec, summaryOrTableId) => {
+        let tableId = null;
+        if (summaryOrTableId && typeof summaryOrTableId === 'object' && summaryOrTableId.tableId) { tableId = summaryOrTableId.tableId; } 
+        else if (typeof summaryOrTableId === 'string') { tableId = summaryOrTableId; } 
+        else if (updatedRec && gristTableMeta && gristTableMeta.nameId) { tableId = gristTableMeta.nameId; }
+
+        if (gristTableMeta && tableId === gristTableMeta.nameId && updatedRec) {
+            if (currentEditingCardId === updatedRec.id && editDrawerEl.classList.contains('visible')) {
+                const definingColId = WidgetConfigManager.getKanbanDefiningColumn();
+                const currentLaneValueForDrawer = String(safe(updatedRec, definingColId, ""));
+                try {
+                    const rawFullData = await grist.docApi.fetchTable(gristTableMeta.nameId, [updatedRec.id]);
+                    const fullCardDataArr = GristDataManager.colToRows(rawFullData);
+                    if (fullCardDataArr.length > 0) {
+                        openCardEditDrawer(fullCardDataArr[0].id, currentLaneValueForDrawer, fullCardDataArr[0]);
+                    }
+                } catch (fetchErr) {
+                    console.error(`GRIST.ONRECORD: Erro ao buscar dados completos para o cartão ${updatedRec.id}:`, fetchErr);
+                }
+            }
+        }
+    });
     
+    // Initial load call
     loadGristDataAndSetupKanban();
   })();
 });
-
