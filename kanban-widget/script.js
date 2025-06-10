@@ -545,76 +545,151 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    async function handleRefListRecordAction(containerEl, colDef, tableB_Schema, backRefColId, recordToEdit = null) {
-        const isEditing = recordToEdit !== null;
-        const modalTitle = isEditing ? `Editar em "${tableB_Schema.tableId}"` : `Adicionar em "${tableB_Schema.tableId}"`;
-        const modal = document.createElement('div'); modal.className = 'replicate-modal';
-        const content = document.createElement('div'); content.className = 'replicate-content'; content.style.width = '500px';
-        modal.appendChild(content); content.innerHTML = `<h3>${modalTitle}</h3>`;
-        const form = document.createElement('div'); form.id = 'reflist-add-form'; content.appendChild(form);
+async function handleRefListRecordAction(containerEl, colDef, tableB_Schema, backRefColId, recordToEdit = null) {
+    const isEditing = recordToEdit !== null;
+    const modalTitle = isEditing ? `Editar em "${tableB_Schema.tableId}"` : `Adicionar em "${tableB_Schema.tableId}"`;
 
-        tableB_Schema.columns.filter(c => !c.isFormula && c.id !== backRefColId && c.id !== 'id' && c.id !== 'manualSort').forEach(c => {
-            const fieldContainer = document.createElement('div'); fieldContainer.style.marginBottom = '10px';
-            const label = document.createElement('label'); label.textContent = c.label; label.style.display = 'block'; label.style.fontWeight = 'bold';
-            let input;
-            if (c.choices && c.choices.length > 0) {
-                input = document.createElement('select'); input.add(new Option('-- Selecione --', ''));
-                c.choices.forEach(ch => input.add(new Option(ch, ch)));
-                if (isEditing) input.value = recordToEdit[c.id] || '';
-            } else if (c.type === 'Bool') {
-                input = document.createElement('input'); input.type = 'checkbox';
-                if (isEditing) input.checked = recordToEdit[c.id] || false;
-            } else {
-                input = document.createElement('input'); input.type = 'text';
-                if (isEditing) input.value = recordToEdit[c.id] || '';
+    const modal = document.createElement('div');
+    modal.className = 'replicate-modal';
+    const content = document.createElement('div');
+    content.className = 'replicate-content';
+    content.style.width = '500px';
+    modal.appendChild(content);
+    content.innerHTML = `<h3>${modalTitle}</h3>`;
+    const form = document.createElement('div');
+    form.id = 'reflist-add-form';
+    content.appendChild(form);
+
+    // Get the field configurations for the referenced table
+    const laneValue = String(safe(currentEditingCardData, WidgetConfigManager.getKanbanDefiningColumn(), ""));
+    const parentConfig = WidgetConfigManager.getFieldConfigForLane(gristTableMeta.nameId, laneValue, colDef.id);
+
+    // Build form fields, respecting visibility and editability from config
+    tableB_Schema.columns
+      .filter(c => {
+        const childConfig = parentConfig.refListFieldConfigs?.[c.id] || {};
+        // Default to visible if not configured
+        return (childConfig.visible !== false) && !c.isFormula && c.id !== backRefColId && c.id !== 'id' && c.id !== 'manualSort';
+      })
+      .sort((a, b) => {
+        const posA = parentConfig.refListFieldConfigs?.[a.id]?.position ?? 99;
+        const posB = parentConfig.refListFieldConfigs?.[b.id]?.position ?? 99;
+        return posA - posB;
+      })
+      .forEach(c => {
+        const childConfig = parentConfig.refListFieldConfigs?.[c.id] || {};
+        const fieldContainer = document.createElement('div');
+        fieldContainer.style.marginBottom = '10px';
+        const label = document.createElement('label');
+        label.textContent = c.label;
+        label.style.display = 'block';
+        label.style.fontWeight = 'bold';
+        
+        let input;
+        const isEditable = childConfig.editable !== false; // Default to editable
+
+        if (!isEditable) {
+            input = document.createElement('div');
+            input.className = 'readonly-field';
+            if (isEditing) {
+                input.textContent = recordToEdit[c.id] || '';
             }
-            input.dataset.colId = c.id; input.style.width = '100%'; input.style.padding = '4px';
-            fieldContainer.append(label, input);
-            form.appendChild(fieldContainer);
-        });
-
-        const actions = document.createElement('div'); actions.style.marginTop = '15px';
-        const saveBtn = document.createElement('button'); saveBtn.textContent = 'Salvar';
-        const cancelBtn = document.createElement('button'); cancelBtn.textContent = 'Cancelar'; cancelBtn.style.marginLeft = '8px';
-        actions.append(saveBtn, cancelBtn); content.appendChild(actions);
-        document.body.appendChild(modal);
-
-        cancelBtn.onclick = () => document.body.removeChild(modal);
-        saveBtn.onclick = async () => {
-            try {
-                saveBtn.disabled = true; saveBtn.textContent = 'Salvando...';
-                const fieldsToSave = {};
-                form.querySelectorAll('[data-col-id]').forEach(inp => { fieldsToSave[inp.dataset.colId] = (inp.type === 'checkbox') ? inp.checked : inp.value; });
-                if (!isEditing) { fieldsToSave[backRefColId] = currentEditingCardId; }
-                const tableB_Ops = grist.getTable(tableB_Schema.tableId);
-                if (isEditing) {
-                    await tableB_Ops.update([{ id: recordToEdit.id, fields: fieldsToSave }]);
-                } else {
-                    await tableB_Ops.create([{ fields: fieldsToSave }]);
-                }
-                const mainTableOps = grist.getTable(gristTableMeta.nameId);
-                // BUG FIX: The error was here. It should be grist.docApi.getRecord. But Grist's onRecords will handle the refresh.
-                // We'll let the onRecords event do its job instead of calling a non-existent function.
-                // const updatedMainRecord = await grist.docApi.getRecord(gristTableMeta.nameId, currentEditingCardId);
-                // await populateRefListTable(containerEl, colDef, updatedMainRecord[colDef.id]);
-                document.body.removeChild(modal);
-            } catch (err) {
-                alert(`Erro ao salvar: ${err.message}`);
-                saveBtn.disabled = false; saveBtn.textContent = 'Salvar';
-            }
-        };
-    }
-
-    async function handleRefListUnlink_Single(containerEl, colDef, tableB_Schema, backRefColId, recordIdToUnlink) {
-        if (!confirm(`Tem certeza que deseja desvincular este item? Ele não será excluído, apenas desassociado deste cartão.`)) { return; }
-        try {
-            const tableB_Ops = grist.getTable(tableB_Schema.tableId);
-            await tableB_Ops.update([{ id: recordIdToUnlink, fields: { [backRefColId]: null } }]);
-            // Again, onRecords will handle the refresh, so we just let it happen.
-        } catch (err) {
-            alert(`Erro ao desvincular: ${err.message}`);
+        } else if (c.choices && c.choices.length > 0) {
+            input = document.createElement('select');
+            input.add(new Option('-- Selecione --', ''));
+            c.choices.forEach(ch => input.add(new Option(ch, ch)));
+            if (isEditing) input.value = recordToEdit[c.id] || '';
+        } else if (c.type === 'Bool') {
+            input = document.createElement('input');
+            input.type = 'checkbox';
+            if (isEditing) input.checked = recordToEdit[c.id] || false;
+        } else {
+            input = document.createElement('input');
+            input.type = 'text';
+            if (isEditing) input.value = recordToEdit[c.id] || '';
         }
+        input.dataset.colId = c.id;
+        if(isEditable) {
+            input.style.width = '100%';
+            input.style.padding = '4px';
+        }
+        fieldContainer.append(label, input);
+        form.appendChild(fieldContainer);
+    });
+
+    const actions = document.createElement('div');
+    actions.style.marginTop = '15px';
+    const saveBtn = document.createElement('button');
+    saveBtn.textContent = 'Salvar';
+    const cancelBtn = document.createElement('button');
+    cancelBtn.textContent = 'Cancelar';
+    cancelBtn.style.marginLeft = '8px';
+    actions.append(saveBtn, cancelBtn);
+    content.appendChild(actions);
+    document.body.appendChild(modal);
+
+    cancelBtn.onclick = () => document.body.removeChild(modal);
+    saveBtn.onclick = async () => {
+        try {
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Salvando...';
+
+            const fieldsToSave = {};
+            form.querySelectorAll('[data-col-id]').forEach(inp => {
+                // Only include editable fields in the save payload
+                if (!inp.classList.contains('readonly-field')) {
+                    fieldsToSave[inp.dataset.colId] = (inp.type === 'checkbox') ? inp.checked : inp.value;
+                }
+            });
+            
+            if (!isEditing) {
+                fieldsToSave[backRefColId] = currentEditingCardId;
+            }
+
+            const tableB_Ops = grist.getTable(tableB_Schema.tableId);
+            if (isEditing) {
+                await tableB_Ops.update([{ id: recordToEdit.id, fields: fieldsToSave }]);
+            } else {
+                await tableB_Ops.create([{ fields: fieldsToSave }]);
+            }
+
+            // *** THE KEY FIX IS HERE ***
+            // 1. Get the main table operations object.
+            const mainTableOps = grist.getTable(gristTableMeta.nameId);
+            // 2. Re-fetch the entire record for the card we are editing. This ensures we have the latest RefList data.
+            const updatedMainRecord = await mainTableOps.getRecord(currentEditingCardId);
+            // 3. Update the global variable holding the drawer's data.
+            currentEditingCardData = updatedMainRecord;
+            // 4. Re-populate the inline table using the new, fresh data.
+            await populateRefListTable(containerEl, colDef, updatedMainRecord[colDef.id]);
+            
+            document.body.removeChild(modal);
+        } catch (err) {
+            alert(`Erro ao salvar: ${err.message}`);
+            console.error("Error saving RefList record:", err);
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Salvar';
+        }
+    };
+}
+
+async function handleRefListUnlink_Single(containerEl, colDef, tableB_Schema, backRefColId, recordIdToUnlink) {
+    if (!confirm(`Tem certeza que deseja desvincular este item? Ele não será excluído, apenas desassociado deste cartão.`)) { return; }
+    try {
+        const tableB_Ops = grist.getTable(tableB_Schema.tableId);
+        await tableB_Ops.update([{ id: recordIdToUnlink, fields: { [backRefColId]: null } }]);
+
+        // *** THE KEY FIX IS HERE (IDENTICAL TO THE ADD/EDIT FIX) ***
+        const mainTableOps = grist.getTable(gristTableMeta.nameId);
+        const updatedMainRecord = await mainTableOps.getRecord(currentEditingCardId);
+        currentEditingCardData = updatedMainRecord;
+        await populateRefListTable(containerEl, colDef, updatedMainRecord[colDef.id]);
+        
+    } catch (err) {
+        alert(`Erro ao desvincular: ${err.message}`);
+        console.error("Error unlinking RefList record:", err);
     }
+}
     
     function getFieldDisplayConfig(gristFieldId, cardLaneValue) { if (!gristTableMeta || !gristFieldId || typeof cardLaneValue === 'undefined') { return { ...WidgetConfigManager.getDefaults(), visible: false, card: false }; } return WidgetConfigManager.getFieldConfigForLane(gristTableMeta.nameId, String(cardLaneValue), gristFieldId); }
     function applyStylesFromWidgetOptions(element, fieldDef, fieldValue, isLabel = false) {
