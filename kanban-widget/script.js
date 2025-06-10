@@ -509,7 +509,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const table = document.createElement('table'); table.className = 'wip-limit-table'; containerEl.appendChild(table);
             const thead = table.createTHead(); const headerRow = thead.insertRow();
-            const columnsToShow = tableB_Schema.columns.filter(c => c.id !== backRefColId && c.id !== 'manualSort');
+            
+            const laneValue = String(safe(currentEditingCardData, WidgetConfigManager.getKanbanDefiningColumn(), ""));
+            const parentConfig = WidgetConfigManager.getFieldConfigForLane(gristTableMeta.nameId, laneValue, colDef.id);
+            const columnsToShow = tableB_Schema.columns
+                .filter(c => {
+                    const childConfig = parentConfig.refListFieldConfigs?.[c.id] || {};
+                    return childConfig.visible !== false && c.id !== backRefColId && c.id !== 'manualSort';
+                })
+                .sort((a,b) => {
+                    const posA = parentConfig.refListFieldConfigs?.[a.id]?.position ?? 99;
+                    const posB = parentConfig.refListFieldConfigs?.[b.id]?.position ?? 99;
+                    return posA - posB;
+                });
+                
             columnsToShow.forEach(c => { headerRow.insertCell().textContent = c.label; });
             headerRow.insertCell().textContent = 'Ações';
             
@@ -545,143 +558,111 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-async function handleRefListRecordAction(containerEl, colDef, tableB_Schema, backRefColId, recordToEdit = null) {
-    const isEditing = recordToEdit !== null;
-    const modalTitle = isEditing ? `Editar em "${tableB_Schema.tableId}"` : `Adicionar em "${tableB_Schema.tableId}"`;
+    async function handleRefListRecordAction(containerEl, colDef, tableB_Schema, backRefColId, recordToEdit = null) {
+        const isEditing = recordToEdit !== null;
+        const modalTitle = isEditing ? `Editar em "${tableB_Schema.tableId}"` : `Adicionar em "${tableB_Schema.tableId}"`;
+        const modal = document.createElement('div'); modal.className = 'replicate-modal';
+        const content = document.createElement('div'); content.className = 'replicate-content'; content.style.width = '500px';
+        modal.appendChild(content); content.innerHTML = `<h3>${modalTitle}</h3>`;
+        const form = document.createElement('div'); form.id = 'reflist-add-form'; content.appendChild(form);
 
-    const modal = document.createElement('div');
-    modal.className = 'replicate-modal';
-    const content = document.createElement('div');
-    content.className = 'replicate-content';
-    content.style.width = '500px';
-    modal.appendChild(content);
-    content.innerHTML = `<h3>${modalTitle}</h3>`;
-    const form = document.createElement('div');
-    form.id = 'reflist-add-form';
-    content.appendChild(form);
+        const laneValue = String(safe(currentEditingCardData, WidgetConfigManager.getKanbanDefiningColumn(), ""));
+        const parentConfig = WidgetConfigManager.getFieldConfigForLane(gristTableMeta.nameId, laneValue, colDef.id);
 
-    const laneValue = String(safe(currentEditingCardData, WidgetConfigManager.getKanbanDefiningColumn(), ""));
-    const parentConfig = WidgetConfigManager.getFieldConfigForLane(gristTableMeta.nameId, laneValue, colDef.id);
-
-    tableB_Schema.columns
-      .filter(c => {
-        const childConfig = parentConfig.refListFieldConfigs?.[c.id] || {};
-        return (childConfig.visible !== false) && !c.isFormula && c.id !== backRefColId && c.id !== 'id' && c.id !== 'manualSort';
-      })
-      .sort((a, b) => {
-        const posA = parentConfig.refListFieldConfigs?.[a.id]?.position ?? 99;
-        const posB = parentConfig.refListFieldConfigs?.[b.id]?.position ?? 99;
-        return posA - posB;
-      })
-      .forEach(c => {
-        const childConfig = parentConfig.refListFieldConfigs?.[c.id] || {};
-        const fieldContainer = document.createElement('div');
-        fieldContainer.style.marginBottom = '10px';
-        const label = document.createElement('label');
-        label.textContent = c.label;
-        label.style.display = 'block';
-        label.style.fontWeight = 'bold';
-        
-        let input;
-        const isEditable = childConfig.editable !== false;
-
-        if (!isEditable) {
-            input = document.createElement('div');
-            input.className = 'readonly-field';
-            if (isEditing) {
-                input.textContent = recordToEdit[c.id] || '';
-            }
-        } else if (c.choices && c.choices.length > 0) {
-            input = document.createElement('select');
-            input.add(new Option('-- Selecione --', ''));
-            c.choices.forEach(ch => input.add(new Option(ch, ch)));
-            if (isEditing) input.value = recordToEdit[c.id] || '';
-        } else if (c.type === 'Bool') {
-            input = document.createElement('input');
-            input.type = 'checkbox';
-            if (isEditing) input.checked = recordToEdit[c.id] || false;
-        } else {
-            input = document.createElement('input');
-            input.type = 'text';
-            if (isEditing) input.value = recordToEdit[c.id] || '';
-        }
-        input.dataset.colId = c.id;
-        if(isEditable) {
-            input.style.width = '100%';
-            input.style.padding = '4px';
-        }
-        fieldContainer.append(label, input);
-        form.appendChild(fieldContainer);
-    });
-
-    const actions = document.createElement('div');
-    actions.style.marginTop = '15px';
-    const saveBtn = document.createElement('button');
-    saveBtn.textContent = 'Salvar';
-    const cancelBtn = document.createElement('button');
-    cancelBtn.textContent = 'Cancelar';
-    cancelBtn.style.marginLeft = '8px';
-    actions.append(saveBtn, cancelBtn);
-    content.appendChild(actions);
-    document.body.appendChild(modal);
-
-    cancelBtn.onclick = () => document.body.removeChild(modal);
-    saveBtn.onclick = async () => {
-        try {
-            saveBtn.disabled = true;
-            saveBtn.textContent = 'Salvando...';
-
-            const fieldsToSave = {};
-            form.querySelectorAll('[data-col-id]').forEach(inp => {
-                if (!inp.classList.contains('readonly-field')) {
-                    fieldsToSave[inp.dataset.colId] = (inp.type === 'checkbox') ? inp.checked : inp.value;
-                }
-            });
+        tableB_Schema.columns
+        .filter(c => {
+            const childConfig = parentConfig.refListFieldConfigs?.[c.id] || {};
+            return (childConfig.visible !== false) && !c.isFormula && c.id !== backRefColId && c.id !== 'id' && c.id !== 'manualSort';
+        })
+        .sort((a, b) => {
+            const posA = parentConfig.refListFieldConfigs?.[a.id]?.position ?? 99;
+            const posB = parentConfig.refListFieldConfigs?.[b.id]?.position ?? 99;
+            return posA - posB;
+        })
+        .forEach(c => {
+            const childConfig = parentConfig.refListFieldConfigs?.[c.id] || {};
+            const fieldContainer = document.createElement('div'); fieldContainer.style.marginBottom = '10px';
+            const label = document.createElement('label'); label.textContent = c.label; label.style.display = 'block'; label.style.fontWeight = 'bold';
             
-            if (!isEditing) {
-                fieldsToSave[backRefColId] = currentEditingCardId;
-            }
+            let input;
+            const isEditable = childConfig.editable !== false;
 
-            const tableB_Ops = grist.getTable(tableB_Schema.tableId);
-            if (isEditing) {
-                await tableB_Ops.update([{ id: recordToEdit.id, fields: fieldsToSave }]);
+            if (!isEditable) {
+                input = document.createElement('div');
+                input.className = 'readonly-field';
+                if (isEditing) { input.textContent = recordToEdit[c.id] || ''; }
+            } else if (c.choices && c.choices.length > 0) {
+                input = document.createElement('select'); input.add(new Option('-- Selecione --', ''));
+                c.choices.forEach(ch => input.add(new Option(ch, ch)));
+                if (isEditing) input.value = recordToEdit[c.id] || '';
+            } else if (c.type === 'Bool') {
+                input = document.createElement('input'); input.type = 'checkbox';
+                if (isEditing) input.checked = recordToEdit[c.id] || false;
             } else {
-                await tableB_Ops.create([{ fields: fieldsToSave }]);
+                input = document.createElement('input'); input.type = 'text';
+                if (isEditing) input.value = recordToEdit[c.id] || '';
             }
+            input.dataset.colId = c.id;
+            if(isEditable) { input.style.width = '100%'; input.style.padding = '4px'; }
+            fieldContainer.append(label, input);
+            form.appendChild(fieldContainer);
+        });
 
-            // *** THE CORRECTED FIX IS HERE ***
-            // Use grist.docApi.getRecord(tableId, recordId)
+        const actions = document.createElement('div'); actions.style.marginTop = '15px';
+        const saveBtn = document.createElement('button'); saveBtn.textContent = 'Salvar';
+        const cancelBtn = document.createElement('button'); cancelBtn.textContent = 'Cancelar'; cancelBtn.style.marginLeft = '8px';
+        actions.append(saveBtn, cancelBtn); content.appendChild(actions);
+        document.body.appendChild(modal);
+
+        cancelBtn.onclick = () => document.body.removeChild(modal);
+        saveBtn.onclick = async () => {
+            try {
+                saveBtn.disabled = true; saveBtn.textContent = 'Salvando...';
+                const fieldsToSave = {};
+                form.querySelectorAll('[data-col-id]').forEach(inp => {
+                    if (!inp.closest('.readonly-field')) { // Only save editable fields
+                        fieldsToSave[inp.dataset.colId] = (inp.type === 'checkbox') ? inp.checked : inp.value;
+                    }
+                });
+                
+                if (!isEditing) { fieldsToSave[backRefColId] = currentEditingCardId; }
+                const tableB_Ops = grist.getTable(tableB_Schema.tableId);
+                if (isEditing) {
+                    await tableB_Ops.update([{ id: recordToEdit.id, fields: fieldsToSave }]);
+                } else {
+                    await tableB_Ops.create([{ fields: fieldsToSave }]);
+                }
+
+                // **** CORRECTED REFRESH LOGIC ****
+                const updatedMainRecord = await grist.docApi.getRecord(gristTableMeta.nameId, currentEditingCardId);
+                currentEditingCardData = updatedMainRecord;
+                await populateRefListTable(containerEl, colDef, updatedMainRecord[colDef.id]);
+                
+                document.body.removeChild(modal);
+            } catch (err) {
+                alert(`Erro ao salvar: ${err.message}`);
+                console.error("Error saving RefList record:", err);
+                saveBtn.disabled = false; saveBtn.textContent = 'Salvar';
+            }
+        };
+    }
+
+    async function handleRefListUnlink_Single(containerEl, colDef, tableB_Schema, backRefColId, recordIdToUnlink) {
+        if (!confirm(`Tem certeza que deseja desvincular este item? Ele não será excluído, apenas desassociado deste cartão.`)) { return; }
+        try {
+            const tableB_Ops = grist.getTable(tableB_Schema.tableId);
+            await tableB_Ops.update([{ id: recordIdToUnlink, fields: { [backRefColId]: null } }]);
+
+            // **** CORRECTED REFRESH LOGIC ****
             const updatedMainRecord = await grist.docApi.getRecord(gristTableMeta.nameId, currentEditingCardId);
             currentEditingCardData = updatedMainRecord;
             await populateRefListTable(containerEl, colDef, updatedMainRecord[colDef.id]);
             
-            document.body.removeChild(modal);
         } catch (err) {
-            alert(`Erro ao salvar: ${err.message}`);
-            console.error("Error saving RefList record:", err);
-            saveBtn.disabled = false;
-            saveBtn.textContent = 'Salvar';
+            alert(`Erro ao desvincular: ${err.message}`);
+            console.error("Error unlinking RefList record:", err);
         }
-    };
-}
-
-async function handleRefListUnlink_Single(containerEl, colDef, tableB_Schema, backRefColId, recordIdToUnlink) {
-    if (!confirm(`Tem certeza que deseja desvincular este item? Ele não será excluído, apenas desassociado deste cartão.`)) { return; }
-    try {
-        const tableB_Ops = grist.getTable(tableB_Schema.tableId);
-        await tableB_Ops.update([{ id: recordIdToUnlink, fields: { [backRefColId]: null } }]);
-
-        // *** THE CORRECTED FIX IS HERE ***
-        // Use grist.docApi.getRecord(tableId, recordId)
-        const updatedMainRecord = await grist.docApi.getRecord(gristTableMeta.nameId, currentEditingCardId);
-        currentEditingCardData = updatedMainRecord;
-        await populateRefListTable(containerEl, colDef, updatedMainRecord[colDef.id]);
-        
-    } catch (err) {
-        alert(`Erro ao desvincular: ${err.message}`);
-        console.error("Error unlinking RefList record:", err);
     }
-}
     
     function getFieldDisplayConfig(gristFieldId, cardLaneValue) { if (!gristTableMeta || !gristFieldId || typeof cardLaneValue === 'undefined') { return { ...WidgetConfigManager.getDefaults(), visible: false, card: false }; } return WidgetConfigManager.getFieldConfigForLane(gristTableMeta.nameId, String(cardLaneValue), gristFieldId); }
     function applyStylesFromWidgetOptions(element, fieldDef, fieldValue, isLabel = false) {
@@ -767,7 +748,6 @@ async function handleRefListUnlink_Single(containerEl, colDef, tableB_Schema, ba
         const promises = [];
         for (const tableId of refListsToFetch) {
             promises.push(GristDataManager.getTableSchema(tableId).then(s => refListCache.schemas[tableId] = s));
-            // **** THIS IS THE CORRECTED LINE ****
             promises.push((async () => {
                 const data = await grist.docApi.fetchTable(tableId);
                 refListCache.data[tableId] = GristDataManager.colToRows(data);
@@ -922,7 +902,7 @@ async function handleRefListUnlink_Single(containerEl, colDef, tableB_Schema, ba
         console.log("grist.onRecords triggered. Reloading Kanban.");
         setTimeout(async () => { await loadGristDataAndSetupKanban(); }, 250);
     });
-    grist.onRecord(async (updatedRec, oldRec, summaryOrTableId) => { let tableId = null; if (summaryOrTableId && typeof summaryOrTableId === 'object' && summaryOrTableId.tableId) { tableId = summaryOrTableId.tableId; } else if (typeof summaryOrTableId === 'string') { tableId = summaryOrTableId; } else if (updatedRec && gristTableMeta && gristTableMeta.nameId) { tableId = gristTableMeta.nameId; } if (gristTableMeta && tableId === gristTableMeta.nameId && updatedRec) { if (currentEditingCardId === updatedRec.id && editDrawerEl.classList.contains('visible')) { const definingColId = WidgetConfigManager.getKanbanDefiningColumn(); const currentLaneValueForDrawer = String(safe(updatedRec, definingColId, "")); try { const fullCardData = await gristTableOps.getRecord(updatedRec.id); if (fullCardData) { openCardEditDrawer(fullCardData.id, currentLaneValueForDrawer, fullCardData); } } catch (fetchErr) { console.error(`GRIST.ONRECORD: Erro ao buscar dados completos para o cartão ${updatedRec.id}:`, fetchErr); } } } });
+    grist.onRecord(async (updatedRec, oldRec, summaryOrTableId) => { let tableId = null; if (summaryOrTableId && typeof summaryOrTableId === 'object' && summaryOrTableId.tableId) { tableId = summaryOrTableId.tableId; } else if (typeof summaryOrTableId === 'string') { tableId = summaryOrTableId; } else if (updatedRec && gristTableMeta && gristTableMeta.nameId) { tableId = gristTableMeta.nameId; } if (gristTableMeta && tableId === gristTableMeta.nameId && updatedRec) { if (currentEditingCardId === updatedRec.id && editDrawerEl.classList.contains('visible')) { const definingColId = WidgetConfigManager.getKanbanDefiningColumn(); const currentLaneValueForDrawer = String(safe(updatedRec, definingColId, "")); try { const fullCardData = await grist.docApi.getRecord(gristTableMeta.nameId, updatedRec.id); if (fullCardData) { openCardEditDrawer(fullCardData.id, currentLaneValueForDrawer, fullCardData); } } catch (fetchErr) { console.error(`GRIST.ONRECORD: Erro ao buscar dados completos para o cartão ${updatedRec.id}:`, fetchErr); } } } });
     
     loadGristDataAndSetupKanban();
   })();
