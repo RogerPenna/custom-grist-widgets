@@ -153,13 +153,31 @@ const GristTableLens = function(gristInstance) {
     };
 
     // This function is already correct from our last fix. It fetches all columns.
-    this.fetchTableRecords = async function(tableId) {
-        if (!tableId) { return []; }
-        try {
-            const rawData = await _grist.docApi.fetchTable(tableId);
-            return _colDataToRows(rawData);
-        } catch (error) { console.error(`GTL.fetchTableRecords: Erro ao buscar registros para tabela '${tableId}'.`, error); return []; }
-    };
+this.fetchTableRecords = async function(tableId) {
+    if (!tableId) {
+        console.error("GTL.fetchTableRecords: tableId é obrigatório.");
+        return [];
+    }
+    try {
+        const rawData = await _grist.docApi.fetchTable(tableId);
+        const records = _colDataToRows(rawData);
+
+        // =========================================================
+        // ============= ADD THIS LOOP - IT'S CRITICAL =============
+        // =========================================================
+        // This ensures every record knows which table it came from,
+        // which is essential for fetching its related records later.
+        records.forEach(r => {
+            r.gristHelper_tableId = tableId;
+        });
+        // =========================================================
+
+        return records;
+    } catch (error) {
+        console.error(`GTL.fetchTableRecords: Erro ao buscar registros para tabela '${tableId}'.`, error);
+        return [];
+    }
+};
 
     // This now passes options down to getTableSchema
     this.getCurrentTableInfo = async function(options = {}) {
