@@ -68,6 +68,7 @@ const GristTableLens = function(gristInstance) {
             }
         }
 
+        // FIRST PASS: Gather all rule definitions for the table.
         tableEntries.forEach(entry => {
             const entryNumId = String(entry.id);
             const entryColId = String(entry.colId);
@@ -87,6 +88,7 @@ const GristTableLens = function(gristInstance) {
             }
         });
 
+        // SECOND PASS: Build clean column objects and link them to their rules.
         tableEntries.forEach(entry => {
             const isDataColumn = entry.type && entry.type.trim() !== "" && entry.colId && !String(entry.colId).startsWith("gristHelper_");
 
@@ -110,17 +112,31 @@ const GristTableLens = function(gristInstance) {
                     }
                 }
 
+                // =========================================================
+                // ========= START: THE ONLY CODE THAT WAS CHANGED =========
+                // =========================================================
+                
                 const conditionalFormattingRules = [];
+                // Get the list of rule IDs from the data column's 'rules' property.
                 const ruleIdList = entry.rules;
                 
+                // Check if it's a valid Grist list (e.g., ['L', 31, 32, 33])
                 if (Array.isArray(ruleIdList) && ruleIdList[0] === 'L') {
+                    // Iterate through the numeric IDs, skipping the 'L' marker.
                     ruleIdList.slice(1).forEach(ruleNumericId => {
+                        // Look up the full rule definition we stored in the first pass.
                         const ruleDef = rulesDefinitionsFromMeta.get(String(ruleNumericId));
                         if (ruleDef) {
+                            // If found, add it to our column's list of rules.
                             conditionalFormattingRules.push(ruleDef);
                         }
                     });
                 }
+                
+                // =========================================================
+                // ========== END: THE ONLY CODE THAT WAS CHANGED ==========
+                // =========================================================
+
 
                 columnsOutput.push({
                     id: colId,
@@ -133,7 +149,7 @@ const GristTableLens = function(gristInstance) {
                     choices,
                     referencedTableId,
                     displayColId: displayColIdForRef,
-                    conditionalFormattingRules
+                    conditionalFormattingRules // This is now correctly populated
                 });
             }
         });
