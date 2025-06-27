@@ -6,6 +6,9 @@
     <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
     <style>
         body { font-family: sans-serif; margin: 10px; font-size: 14px; }
+        #selectorContainer { margin-bottom: 15px; padding: 10px; background-color: #f7f7f7; border: 1px solid #ddd; border-radius: 4px; }
+        #selectorContainer label { font-weight: bold; margin-right: 10px; }
+        #tableSelector { padding: 5px; font-size: 14px; }
         table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
         th, td { border: 1px solid #ccc; padding: 8px; text-align: left; vertical-align: top; }
         th { background-color: #f0f0f0; position: sticky; top: 0; z-index: 1;}
@@ -21,6 +24,10 @@
     </style>
 </head>
 <body>
+    <div id="selectorContainer">
+        <label for="tableSelector">Selecionar Tabela:</label>
+        <select id="tableSelector"></select>
+    </div>
     <h1>Debug GristTableLens</h1>
     <div id="loadingMessage">Carregando dados...</div>
     <div id="tableInfoContainer" style="display:none;">

@@ -68,7 +68,6 @@ const GristTableLens = function(gristInstance) {
             }
         }
 
-        // FIRST PASS: Gather all rule definitions for the table.
         tableEntries.forEach(entry => {
             const entryNumId = String(entry.id);
             const entryColId = String(entry.colId);
@@ -88,7 +87,6 @@ const GristTableLens = function(gristInstance) {
             }
         });
 
-        // SECOND PASS: Build clean column objects and link them to their rules.
         tableEntries.forEach(entry => {
             const isDataColumn = entry.type && entry.type.trim() !== "" && entry.colId && !String(entry.colId).startsWith("gristHelper_");
 
@@ -103,7 +101,7 @@ const GristTableLens = function(gristInstance) {
                 let choices = [];
                 if (Array.isArray(wopts.choices) && wopts.choices.length) { choices = wopts.choices.slice(); }
                 else if (entry.choices) { const raw = entry.choices; if (Array.isArray(raw)) { choices = raw[0] === 'L' ? raw.slice(1) : raw; } else if (typeof raw === 'string' && raw.startsWith('L')) { choices = raw.substring(1).split(','); } }
-                
+
                 let displayColIdForRef = null;
                 if (entry.displayCol != null && entry.displayCol !== 0) {
                     const displayColEntry = tableEntries.find(e => String(e.id) === String(entry.displayCol));
@@ -112,31 +110,17 @@ const GristTableLens = function(gristInstance) {
                     }
                 }
 
-                // =========================================================
-                // ========= START: THE ONLY CODE THAT WAS CHANGED =========
-                // =========================================================
-                
                 const conditionalFormattingRules = [];
-                // Get the list of rule IDs from the data column's 'rules' property.
                 const ruleIdList = entry.rules;
-                
-                // Check if it's a valid Grist list (e.g., ['L', 31, 32, 33])
+
                 if (Array.isArray(ruleIdList) && ruleIdList[0] === 'L') {
-                    // Iterate through the numeric IDs, skipping the 'L' marker.
                     ruleIdList.slice(1).forEach(ruleNumericId => {
-                        // Look up the full rule definition we stored in the first pass.
                         const ruleDef = rulesDefinitionsFromMeta.get(String(ruleNumericId));
                         if (ruleDef) {
-                            // If found, add it to our column's list of rules.
                             conditionalFormattingRules.push(ruleDef);
                         }
                     });
                 }
-                
-                // =========================================================
-                // ========== END: THE ONLY CODE THAT WAS CHANGED ==========
-                // =========================================================
-
 
                 columnsOutput.push({
                     id: colId,
@@ -149,7 +133,7 @@ const GristTableLens = function(gristInstance) {
                     choices,
                     referencedTableId,
                     displayColId: displayColIdForRef,
-                    conditionalFormattingRules // This is now correctly populated
+                    conditionalFormattingRules
                 });
             }
         });
@@ -179,20 +163,29 @@ const GristTableLens = function(gristInstance) {
         return schema;
     };
 
-    this.fetchTableRecords = async function(tableId, keepEncodedOption = false) {
-        if (!tableId) { console.error("GTL.fetchTableRecords: tableId é obrigatório."); return [];}
+    // ========== THIS FUNCTION IS CORRECTED ==========
+    this.fetchTableRecords = async function(tableId) {
+        if (!tableId) {
+            console.error("GTL.fetchTableRecords: tableId é obrigatório.");
+            return [];
+        }
         try {
-            const rawData = await _grist.docApi.fetchTable(tableId, { keepEncoded: keepEncodedOption });
+            // Use docApi.fetchTable to get ALL columns, including helpers.
+            const rawData = await _grist.docApi.fetchTable(tableId);
+            // The _colDataToRows function correctly converts this raw data into record objects.
             return _colDataToRows(rawData);
-        } catch (error) { console.error(`GTL.fetchTableRecords: Erro ao buscar registros para tabela '${tableId}'.`, error); return []; }
+        } catch (error) {
+            console.error(`GTL.fetchTableRecords: Erro ao buscar registros para tabela '${tableId}'.`, error);
+            return [];
+        }
     };
+    // ===============================================
 
     this.getCurrentTableInfo = async function(options = {}) {
-        const { keepEncoded = false } = options;
         const tableId = await _grist.selectedTable.getTableId();
         if (!tableId) { console.warn("GTL.getCurrentTableInfo: Nenhuma tabela selecionada."); return null; }
         const schema = await this.getTableSchema(tableId);
-        const records = await this.fetchTableRecords(tableId, keepEncoded);
+        const records = await this.fetchTableRecords(tableId);
         return { tableId, schema, records };
     };
 
@@ -205,12 +198,11 @@ const GristTableLens = function(gristInstance) {
     };
 
     this.fetchRecordById = async function(tableId, recordId, options = {}) {
-        const { keepEncoded = false } = options;
         if (!tableId || recordId === undefined || recordId === null) {
              console.error("GTL.fetchRecordById: tableId e recordId são obrigatórios."); return null;
         }
         try {
-            const records = await this.fetchTableRecords(tableId, keepEncoded);
+            const records = await this.fetchTableRecords(tableId);
             return records.find(r => r.id === recordId) || null;
         } catch (error) {
             console.error(`GTL.fetchRecordById: Erro ao buscar registro ${recordId} da tabela '${tableId}'.`, error);
@@ -219,7 +211,7 @@ const GristTableLens = function(gristInstance) {
     };
 
     this.fetchRelatedRecords = async function(primaryRecord, refColumnId, options = {}) {
-        const { keepEncoded = false, columnsForRelated } = options;
+        const { columnsForRelated } = options;
 
         if (!primaryRecord || !refColumnId) {
             console.warn("GTL.fetchRelatedRecords: primaryRecord e refColumnId são obrigatórios.");
@@ -258,7 +250,7 @@ const GristTableLens = function(gristInstance) {
         if (relatedRecordIds.length === 0) return [];
 
         try {
-            const allRelatedRecordsRaw = await this.fetchTableRecords(referencedTableId, keepEncoded);
+            const allRelatedRecordsRaw = await this.fetchTableRecords(referencedTableId);
             const relatedSchema = await this.getTableSchema(referencedTableId);
 
             const filteredRecords = allRelatedRecordsRaw.filter(r => relatedRecordIds.includes(r.id));
