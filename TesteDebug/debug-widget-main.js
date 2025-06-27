@@ -17,34 +17,60 @@ document.addEventListener('DOMContentLoaded', function () {
     let isRendering = false;
     let debounceTimer;
 
-    // This function now expects the RAW schema for applying styles.
-    // It finds helperColumnId from the 'rules' property of the main column.
-    function applyGristCellStyles(cellElement, rawColumnSchema, record) {
+    // =================================================================
+    // =========== MAJOR FIX: Corrected applyGristCellStyles ===========
+    // =================================================================
+    // This function now correctly uses a pre-built map to find the right helper column.
+    function applyGristCellStyles(cellElement, rawColumnSchema, record, ruleIdToColIdMap) {
+        // Reset styles first
         cellElement.style.color = '';
         cellElement.style.backgroundColor = '';
         cellElement.style.fontWeight = '';
         cellElement.style.fontStyle = '';
+        cellElement.style.textAlign = ''; // Also reset alignment
 
+        // Set alignment from widgetOptions if present
+        if(rawColumnSchema.widgetOptions) {
+            try {
+                const wopts = JSON.parse(rawColumnSchema.widgetOptions);
+                if (wopts.alignment) {
+                    cellElement.style.textAlign = wopts.alignment;
+                }
+            } catch(e) {/* ignore invalid JSON */}
+        }
+
+
+        // Check if the column has conditional formatting rules linked to it.
         if (rawColumnSchema.rules && Array.isArray(rawColumnSchema.rules) && rawColumnSchema.rules[0] === 'L') {
+            
+            // Safely parse widgetOptions and get the styles array.
             const ruleOptions = JSON.parse(rawColumnSchema.widgetOptions || '{}').rulesOptions || [];
             
-            for (let i = 0; i < rawColumnSchema.rules.slice(1).length; i++) {
-                const ruleNumId = rawColumnSchema.rules[i + 1];
-                // This is a bit inefficient but required for raw mode. Find the helper column in the full record.
-                let helperColId = null;
-                for (const key in record) {
-                    if (key.startsWith('gristHelper_ConditionalRule') && record[key] === true) {
-                        // This is an assumption that the order is correct. A more robust way would be to map ruleNumId to colId beforehand.
-                        // Let's assume for now the presence of a 'true' value is enough.
-                        const style = ruleOptions[i];
-                        if (style) {
-                             if (style.textColor) cellElement.style.color = style.textColor;
-                             if (style.fillColor) cellElement.style.backgroundColor = style.fillColor;
-                             if (style.fontBold) cellElement.style.fontWeight = 'bold';
-                             if (style.fontItalic) cellElement.style.fontStyle = 'italic';
-                             return; // Apply first matching rule
-                        }
+            // Get the list of numeric rule IDs for this column, skipping the 'L' marker.
+            const ruleIdList = rawColumnSchema.rules.slice(1);
+            
+            // Loop through the rule IDs that belong to THIS column.
+            for (let i = 0; i < ruleIdList.length; i++) {
+                const ruleNumId = ruleIdList[i];
+                
+                // Use the map to find the string ID (e.g., 'gristHelper_ConditionalRule2') of the helper column.
+                const helperColId = ruleIdToColIdMap.get(ruleNumId);
+                
+                // If we found the helper column's ID AND its value in the current record is true...
+                if (helperColId && record[helperColId] === true) {
+                    
+                    // ...then get the style that corresponds to this rule's position in the list.
+                    const style = ruleOptions[i];
+                    
+                    if (style) {
+                         if (style.textColor) cellElement.style.color = style.textColor;
+                         if (style.fillColor) cellElement.style.backgroundColor = style.fillColor;
+                         if (style.fontBold) cellElement.style.fontWeight = 'bold';
+                         if (style.fontItalic) cellElement.style.fontStyle = 'italic';
                     }
+                    
+                    // We found the first matching rule for this cell, so we can stop.
+                    return;
                 }
             }
         }
@@ -58,11 +84,19 @@ document.addEventListener('DOMContentLoaded', function () {
         tableInfoContainerEl.style.display = 'none';
 
         try {
-            // =================================================================
-            // ============ CRITICAL CHANGE: Requesting 'raw' mode ===========
-            // =================================================================
             const schema = await tableLens.getTableSchema(tableId, { mode: 'raw' });
             const records = await tableLens.fetchTableRecords(tableId);
+
+            // =================================================================
+            // ========== NEW: Create the Rule ID to Column ID map ===========
+            // =================================================================
+            // This map is essential for linking a rule's numeric ID to its string colId.
+            const ruleIdToColIdMap = new Map();
+            schema.forEach(col => {
+                if (col.colId && col.colId.startsWith('gristHelper_ConditionalRule')) {
+                    ruleIdToColIdMap.set(col.id, col.colId);
+                }
+            });
 
             tableNameEl.textContent = `Tabela: ${tableId}`;
             tableInfoContainerEl.style.display = 'block';
@@ -73,10 +107,9 @@ document.addEventListener('DOMContentLoaded', function () {
             while (recordsTableHeadEl.firstChild) recordsTableHeadEl.removeChild(recordsTableHeadEl.firstChild);
             while (recordsTableBodyEl.firstChild) recordsTableBodyEl.removeChild(recordsTableBodyEl.firstChild);
 
-            // RENDER SCHEMA (Now in RAW mode)
+            // RENDER SCHEMA (Raw mode)
             columnCountEl.textContent = schema.length;
             if (schema.length > 0) {
-                // Create a dynamic header from all possible keys in the raw metadata
                 const allKeys = new Set();
                 schema.forEach(col => Object.keys(col).forEach(key => allKeys.add(key)));
                 const sortedKeys = Array.from(allKeys).sort();
@@ -106,7 +139,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // RENDER RECORDS (including helper columns)
             recordCountEl.textContent = records.length;
             if (records.length > 0) {
-                const recordHeaderKeys = Object.keys(records[0]);
+                const recordHeaderKeys = Object.keys(records[0]).sort(); // Sort headers for consistency
                 recordHeaderKeys.forEach(key => {
                     const th = document.createElement('th');
                     th.textContent = key;
@@ -121,10 +154,11 @@ document.addEventListener('DOMContentLoaded', function () {
                         const cellValue = record[key];
                         cell.textContent = (cellValue === null || cellValue === undefined) ? '(vazio)' : String(cellValue);
                         
-                        // Find the raw schema for this column to apply styles
+                        // Find the raw schema for this column ('key')
                         const colSchema = schema.find(c => c.colId === key);
                         if(colSchema){
-                             applyGristCellStyles(cell, colSchema, record);
+                             // Pass the map to the styling function
+                             applyGristCellStyles(cell, colSchema, record, ruleIdToColIdMap);
                         }
                     }
                 }
