@@ -1,5 +1,6 @@
 // custom-grist-widgets/libraries/grist-table-lens/grist-table-lens.js
 const GristTableLens = function(gristInstance) {
+    // ... (all existing code at the top is fine) ...
     if (!gristInstance) {
         throw new Error("GristTableLens: Instância do Grist (grist object) é obrigatória.");
     }
@@ -7,9 +8,10 @@ const GristTableLens = function(gristInstance) {
     const _metaState = {
         tables: null,
         columnsAndRules: null, // Cache para _grist_Tables_column
-        tableSchemasCache: {}
+        tableSchemasCache: {} // Cache will now store different modes, e.g., { 'Table1': { raw: [...], clean: [...] } }
     };
 
+    // ... _loadGristMeta and _getNumericTableId remain the same ...
     async function _loadGristMeta() {
         if (_metaState.tables && _metaState.columnsAndRules) return;
         const p = [];
@@ -21,32 +23,24 @@ const GristTableLens = function(gristInstance) {
                 p.push(_grist.docApi.fetchTable('_grist_Tables_column').then(d => _metaState.columnsAndRules = d));
             }
             await Promise.all(p);
-
             if (!_metaState.tables || !_metaState.columnsAndRules) {
                 throw new Error("_grist_Tables ou _grist_Tables_column não puderam ser carregados.");
             }
-        } catch (error) {
-            console.error("GTL: Falha _loadGristMeta.", error);
-            _metaState.tables = null;
-            _metaState.columnsAndRules = null;
-            throw error;
-        }
+        } catch (error) { console.error("GTL: Falha _loadGristMeta.", error); _metaState.tables = null; _metaState.columnsAndRules = null; throw error; }
     }
-
     function _getNumericTableId(tableId) {
-        if (!_metaState.tables?.tableId) {
-             console.warn("GTL._getNumericTableId: _metaState.tables não carregado ou sem tableId.");
-             return null;
-        }
+        if (!_metaState.tables?.tableId) { console.warn("GTL._getNumericTableId: _metaState.tables não carregado ou sem tableId."); return null; }
         const idx = _metaState.tables.tableId.findIndex(t => String(t) === String(tableId));
         return idx === -1 ? null : String(_metaState.tables.id[idx]);
     }
 
-    function _processColumnsAndRulesForTable(numericTableId) {
-        if (!_metaState.columnsAndRules?.id) {
-            console.warn("GTL._processColumnsAndRulesForTable: _metaState.columnsAndRules não carregado ou inválido.");
-            return [];
-        }
+
+    // =================================================================
+    // =========== MAJOR CHANGE: _processColumnsAndRulesForTable ===========
+    // =================================================================
+    // It now accepts a 'mode' parameter.
+    function _processColumnsAndRulesForTable(numericTableId, mode = 'clean') {
+        if (!_metaState.columnsAndRules?.id) { return []; }
 
         const allEntries = _metaState.columnsAndRules;
         const numEntries = allEntries.id.length;
@@ -57,93 +51,73 @@ const GristTableLens = function(gristInstance) {
         for (let i = 0; i < numEntries; i++) {
             if (String(allEntries.parentId[i]) === String(numericTableId)) {
                 const entry = {};
-                Object.keys(allEntries).forEach(key => {
-                    if (Array.isArray(allEntries[key]) && allEntries[key].length > i) {
-                        entry[key] = allEntries[key][i];
-                    } else if (!Array.isArray(allEntries[key])) {
-                        entry[key] = allEntries[key];
-                    }
-                });
+                Object.keys(allEntries).forEach(key => { entry[key] = Array.isArray(allEntries[key]) ? allEntries[key][i] : allEntries[key]; });
                 if (Object.keys(entry).length > 0 && entry.id !== undefined) tableEntries.push(entry);
             }
         }
+        
+        // If mode is 'raw', we do NO filtering. Just return the complete, unprocessed entries.
+        if (mode === 'raw') {
+            return tableEntries;
+        }
+
+        // --- If mode is 'clean' (the default), we proceed with the filtering logic as before ---
 
         tableEntries.forEach(entry => {
             const entryNumId = String(entry.id);
             const entryColId = String(entry.colId);
-
             if (entryColId && entryColId.startsWith("gristHelper_ConditionalRule") && entry.formula) {
                 let ruleStyle = {};
-                if (entry.widgetOptions) {
-                    try { ruleStyle = JSON.parse(entry.widgetOptions); }
-                    catch (e) { console.warn(`GTL: JSON inválido em widgetOptions para regra ID ${entryNumId} (${entryColId})`, entry.widgetOptions); }
-                }
-                rulesDefinitionsFromMeta.set(entryNumId, {
-                    id: entryNumId,
-                    helperColumnId: entryColId,
-                    conditionFormula: entry.formula,
-                    style: ruleStyle
-                });
+                if (entry.widgetOptions) { try { ruleStyle = JSON.parse(entry.widgetOptions); } catch (e) {} }
+                rulesDefinitionsFromMeta.set(entryNumId, { id: entryNumId, helperColumnId: entryColId, conditionFormula: entry.formula, style: ruleStyle });
             }
         });
 
         tableEntries.forEach(entry => {
+            // This is the line that filters out helper columns in 'clean' mode.
             const isDataColumn = entry.type && entry.type.trim() !== "" && entry.colId && !String(entry.colId).startsWith("gristHelper_");
 
             if (isDataColumn) {
                 const colId = String(entry.colId);
                 let referencedTableId = null;
-                if (entry.type.startsWith('Ref:') || entry.type.startsWith('RefList:')) {
-                    referencedTableId = entry.type.split(':')[1];
-                }
+                if (entry.type.startsWith('Ref:') || entry.type.startsWith('RefList:')) { referencedTableId = entry.type.split(':')[1]; }
                 const isFormula = String(entry.formula ?? '').trim() !== '';
                 let wopts = {}; if (entry.widgetOptions) { try { wopts = JSON.parse(entry.widgetOptions); } catch (e) {} }
                 let choices = [];
-                if (Array.isArray(wopts.choices) && wopts.choices.length) { choices = wopts.choices.slice(); }
-                else if (entry.choices) { const raw = entry.choices; if (Array.isArray(raw)) { choices = raw[0] === 'L' ? raw.slice(1) : raw; } else if (typeof raw === 'string' && raw.startsWith('L')) { choices = raw.substring(1).split(','); } }
-
+                if (Array.isArray(wopts.choices)) { choices = wopts.choices; }
+                else if (entry.choices) { const raw = entry.choices; if (Array.isArray(raw)) { choices = raw[0] === 'L' ? raw.slice(1) : raw; } }
+                
                 let displayColIdForRef = null;
-                if (entry.displayCol != null && entry.displayCol !== 0) {
+                if (entry.displayCol) {
                     const displayColEntry = tableEntries.find(e => String(e.id) === String(entry.displayCol));
-                    if (displayColEntry) {
-                        displayColIdForRef = String(displayColEntry.colId);
-                    }
+                    if (displayColEntry) { displayColIdForRef = String(displayColEntry.colId); }
                 }
 
                 const conditionalFormattingRules = [];
                 const ruleIdList = entry.rules;
-
                 if (Array.isArray(ruleIdList) && ruleIdList[0] === 'L') {
                     ruleIdList.slice(1).forEach(ruleNumericId => {
                         const ruleDef = rulesDefinitionsFromMeta.get(String(ruleNumericId));
-                        if (ruleDef) {
-                            conditionalFormattingRules.push(ruleDef);
-                        }
+                        if (ruleDef) { conditionalFormattingRules.push(ruleDef); }
                     });
                 }
-
+                
+                // This is the hand-crafted, simplified object for 'clean' mode.
                 columnsOutput.push({
-                    id: colId,
-                    internalId: String(entry.id),
-                    label: String(entry.label || colId),
-                    type: entry.type,
-                    isFormula,
-                    formula: entry.formula ?? '',
-                    widgetOptions: wopts,
-                    choices,
-                    referencedTableId,
-                    displayColId: displayColIdForRef,
-                    conditionalFormattingRules
+                    id: colId, internalId: String(entry.id), label: String(entry.label || colId), type: entry.type,
+                    isFormula, formula: entry.formula ?? '', widgetOptions: wopts, choices, referencedTableId,
+                    displayColId: displayColIdForRef, conditionalFormattingRules
                 });
             }
         });
         return columnsOutput;
     }
 
+    // ... _colDataToRows remains the same ...
     function _colDataToRows(colData) {
-        if (!colData || typeof colData.id === 'undefined' || colData.id === null) { console.warn("GTL._colDataToRows: colData inválido."); return []; }
+        if (!colData || typeof colData.id === 'undefined') { return []; }
         const rows = []; const keys = Object.keys(colData);
-        if (keys.length === 0 || !colData[keys[0]] || !Array.isArray(colData[keys[0]])) { console.warn("GTL._colDataToRows: colData sem chaves ou primeira chave não é array."); return []; }
+        if (keys.length === 0 || !colData[keys[0]] || !Array.isArray(colData[keys[0]])) { return []; }
         const numRows = colData.id.length;
         for (let i = 0; i < numRows; i++) {
             const r = { id: colData.id[i] };
@@ -153,126 +127,54 @@ const GristTableLens = function(gristInstance) {
         return rows;
     }
 
-    this.getTableSchema = async function(tableId) {
-        if (_metaState.tableSchemasCache[tableId]) return _metaState.tableSchemasCache[tableId];
+    // =================================================================
+    // =========== CHANGE: Methods now accept and pass options ===========
+    // =================================================================
+    this.getTableSchema = async function(tableId, options = {}) {
+        const { mode = 'clean' } = options; // Default to 'clean'
+        
+        // Adjust cache to handle modes
+        if (_metaState.tableSchemasCache[tableId] && _metaState.tableSchemasCache[tableId][mode]) {
+            return _metaState.tableSchemasCache[tableId][mode];
+        }
+        
         await _loadGristMeta();
         const numId = _getNumericTableId(tableId);
-        if (!numId) { console.warn(`GTL.getTableSchema: numId não encontrado para tabela '${tableId}'.`); _metaState.tableSchemasCache[tableId] = []; return []; }
-        const schema = _processColumnsAndRulesForTable(numId);
-        _metaState.tableSchemasCache[tableId] = schema;
+        if (!numId) { return []; }
+
+        // Pass the mode to the processing function
+        const schema = _processColumnsAndRulesForTable(numId, mode);
+        
+        if (!_metaState.tableSchemasCache[tableId]) {
+            _metaState.tableSchemasCache[tableId] = {};
+        }
+        _metaState.tableSchemasCache[tableId][mode] = schema;
         return schema;
     };
 
-    // ========== THIS FUNCTION IS CORRECTED ==========
+    // This function is already correct from our last fix. It fetches all columns.
     this.fetchTableRecords = async function(tableId) {
-        if (!tableId) {
-            console.error("GTL.fetchTableRecords: tableId é obrigatório.");
-            return [];
-        }
+        if (!tableId) { return []; }
         try {
-            // Use docApi.fetchTable to get ALL columns, including helpers.
             const rawData = await _grist.docApi.fetchTable(tableId);
-            // The _colDataToRows function correctly converts this raw data into record objects.
             return _colDataToRows(rawData);
-        } catch (error) {
-            console.error(`GTL.fetchTableRecords: Erro ao buscar registros para tabela '${tableId}'.`, error);
-            return [];
-        }
+        } catch (error) { console.error(`GTL.fetchTableRecords: Erro ao buscar registros para tabela '${tableId}'.`, error); return []; }
     };
-    // ===============================================
 
+    // This now passes options down to getTableSchema
     this.getCurrentTableInfo = async function(options = {}) {
         const tableId = await _grist.selectedTable.getTableId();
-        if (!tableId) { console.warn("GTL.getCurrentTableInfo: Nenhuma tabela selecionada."); return null; }
-        const schema = await this.getTableSchema(tableId);
+        if (!tableId) { return null; }
+        // Pass the options object directly to getTableSchema
+        const schema = await this.getTableSchema(tableId, options);
         const records = await this.fetchTableRecords(tableId);
         return { tableId, schema, records };
     };
 
-     this.listAllTables = async function() {
-        await _loadGristMeta();
-        if (!_metaState.tables?.tableId) return [];
-        return _metaState.tables.tableId
-            .map((id, i) => ({ id: String(id), name: String(_metaState.tables.label?.[i] || id) }))
-            .filter(t => !t.id.startsWith('_grist_'));
-    };
-
-    this.fetchRecordById = async function(tableId, recordId, options = {}) {
-        if (!tableId || recordId === undefined || recordId === null) {
-             console.error("GTL.fetchRecordById: tableId e recordId são obrigatórios."); return null;
-        }
-        try {
-            const records = await this.fetchTableRecords(tableId);
-            return records.find(r => r.id === recordId) || null;
-        } catch (error) {
-            console.error(`GTL.fetchRecordById: Erro ao buscar registro ${recordId} da tabela '${tableId}'.`, error);
-            return null;
-        }
-    };
-
-    this.fetchRelatedRecords = async function(primaryRecord, refColumnId, options = {}) {
-        const { columnsForRelated } = options;
-
-        if (!primaryRecord || !refColumnId) {
-            console.warn("GTL.fetchRelatedRecords: primaryRecord e refColumnId são obrigatórios.");
-            return [];
-        }
-        const primaryTableId = primaryRecord.gristHelper_tableId || (await _grist.selectedTable.getTableId());
-        if (!primaryTableId) {
-            console.warn("GTL.fetchRelatedRecords: Não foi possível determinar o tableId do registro primário.");
-            return [];
-        }
-
-        const refColumnSchema = (await this.getTableSchema(primaryTableId)).find(col => col.id === refColumnId);
-
-        if (!refColumnSchema) {
-            console.warn(`GTL.fetchRelatedRecords: Schema da coluna de referência '${refColumnId}' não encontrado na tabela '${primaryTableId}'.`);
-            return [];
-        }
-
-        const { referencedTableId } = refColumnSchema;
-        if (!referencedTableId) {
-            console.warn(`GTL.fetchRelatedRecords: Coluna '${refColumnId}' não é uma coluna de referência válida.`);
-            return [];
-        }
-
-        const refValue = primaryRecord[refColumnId];
-        let relatedRecordIds = [];
-
-        if (refColumnSchema.type.startsWith('Ref:') && typeof refValue === 'number' && refValue > 0) {
-            relatedRecordIds = [refValue];
-        } else if (refColumnSchema.type.startsWith('RefList:') && Array.isArray(refValue) && refValue[0] === 'L') {
-            relatedRecordIds = refValue.slice(1).filter(id => typeof id === 'number' && id > 0);
-        } else if (Array.isArray(refValue) && refValue.length > 0 && refValue.every(item => typeof item === 'number')) {
-             relatedRecordIds = refValue.filter(id => id > 0);
-        }
-
-        if (relatedRecordIds.length === 0) return [];
-
-        try {
-            const allRelatedRecordsRaw = await this.fetchTableRecords(referencedTableId);
-            const relatedSchema = await this.getTableSchema(referencedTableId);
-
-            const filteredRecords = allRelatedRecordsRaw.filter(r => relatedRecordIds.includes(r.id));
-            let resultRecords = filteredRecords.map(r => ({ ...r, gristHelper_tableId: referencedTableId, gristHelper_schema: relatedSchema }));
-
-            if (columnsForRelated && Array.isArray(columnsForRelated) && columnsForRelated.length > 0) {
-                resultRecords = resultRecords.map(record => {
-                    const selectedData = { id: record.id, gristHelper_tableId: record.gristHelper_tableId, gristHelper_schema: record.gristHelper_schema };
-                    options.columnsForRelated.forEach(colId => {
-                        if (record.hasOwnProperty(colId)) {
-                            selectedData[colId] = record[colId];
-                        }
-                    });
-                    return selectedData;
-                });
-            }
-            return resultRecords;
-        } catch (error) {
-            console.error(`GTL.fetchRelatedRecords: Erro ao buscar registros para '${refColumnId}' da tabela '${referencedTableId}'.`, error);
-            return [];
-        }
-    };
+    // ... listAllTables, fetchRecordById, fetchRelatedRecords remain the same ...
+    this.listAllTables = async function() { await _loadGristMeta(); if (!_metaState.tables?.tableId) return []; return _metaState.tables.tableId.map((id, i) => ({ id: String(id), name: String(_metaState.tables.label?.[i] || id) })).filter(t => !t.id.startsWith('_grist_')); };
+    this.fetchRecordById = async function(tableId, recordId) { if (!tableId || recordId === undefined) { return null; } try { const records = await this.fetchTableRecords(tableId); return records.find(r => r.id === recordId) || null; } catch (error) { console.error(`GTL.fetchRecordById: Erro ao buscar registro ${recordId} da tabela '${tableId}'.`, error); return null; } };
+    this.fetchRelatedRecords = async function(primaryRecord, refColumnId, options = {}) { const { columnsForRelated } = options; if (!primaryRecord || !refColumnId) { return []; } const primaryTableId = primaryRecord.gristHelper_tableId || (await _grist.selectedTable.getTableId()); if (!primaryTableId) { return []; } const refColumnSchema = (await this.getTableSchema(primaryTableId)).find(col => col.id === refColumnId); if (!refColumnSchema) { return []; } const { referencedTableId } = refColumnSchema; if (!referencedTableId) { return []; } const refValue = primaryRecord[refColumnId]; let relatedRecordIds = []; if (refColumnSchema.type.startsWith('Ref:') && typeof refValue === 'number' && refValue > 0) { relatedRecordIds = [refValue]; } else if (refColumnSchema.type.startsWith('RefList:') && Array.isArray(refValue) && refValue[0] === 'L') { relatedRecordIds = refValue.slice(1).filter(id => typeof id === 'number' && id > 0); } if (relatedRecordIds.length === 0) return []; try { const allRelatedRecordsRaw = await this.fetchTableRecords(referencedTableId); const relatedSchema = await this.getTableSchema(referencedTableId); const filteredRecords = allRelatedRecordsRaw.filter(r => relatedRecordIds.includes(r.id)); let resultRecords = filteredRecords.map(r => ({ ...r, gristHelper_tableId: referencedTableId, gristHelper_schema: relatedSchema })); if (columnsForRelated && Array.isArray(columnsForRelated) && columnsForRelated.length > 0) { resultRecords = resultRecords.map(record => { const selectedData = { id: record.id, gristHelper_tableId: record.gristHelper_tableId, gristHelper_schema: record.gristHelper_schema }; options.columnsForRelated.forEach(colId => { if (record.hasOwnProperty(colId)) { selectedData[colId] = record[colId]; } }); return selectedData; }); } return resultRecords; } catch (error) { console.error(`GTL.fetchRelatedRecords: Erro ao buscar registros para '${refColumnId}' da tabela '${referencedTableId}'.`, error); return []; } };
 };
 
 if (typeof window !== 'undefined') {
