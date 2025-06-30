@@ -1,5 +1,7 @@
 // custom-grist-widgets/libraries/grist-table-lens/grist-table-lens.js
-const GristTableLens = function(gristInstance) {
+
+// This 'export' keyword is the most critical change.
+export const GristTableLens = function(gristInstance) {
     if (!gristInstance) {
         throw new Error("GristTableLens: Instância do Grist (grist object) é obrigatória.");
     }
@@ -58,14 +60,12 @@ const GristTableLens = function(gristInstance) {
             }
         }
 
+        // 'raw' mode is the only one we need for the debug widget. It returns everything.
         if (mode === 'raw') {
             return tableEntries;
         }
         
-        // Custom mode and Clean mode logic would go here if we were using them.
-        // For the debug widget, we are only using 'raw' mode, so this part is less critical right now.
-        // But let's keep the 'clean' logic for future use.
-
+        // The 'clean' mode logic for other widgets.
         const rulesDefinitionsFromMeta = new Map();
         tableEntries.forEach(entry => {
             const entryNumId = String(entry.id);
@@ -115,9 +115,6 @@ const GristTableLens = function(gristInstance) {
         return schema;
     };
 
-    // =========================================================
-    // =========== THIS IS THE FULL, CORRECT FUNCTION ==========
-    // =========================================================
     this.fetchTableRecords = async function(tableId) {
         if (!tableId) {
             console.error("GTL.fetchTableRecords: tableId é obrigatório.");
@@ -128,7 +125,6 @@ const GristTableLens = function(gristInstance) {
             const records = _colDataToRows(rawData);
 
             // This loop is ESSENTIAL for the inline tables to work.
-            // It adds the tableId to every record object.
             records.forEach(r => {
                 r.gristHelper_tableId = tableId;
             });
@@ -139,7 +135,6 @@ const GristTableLens = function(gristInstance) {
             return [];
         }
     };
-    // =========================================================
 
     this.getCurrentTableInfo = async function(options = {}) {
         const tableId = await _grist.selectedTable.getTableId();
@@ -171,7 +166,6 @@ const GristTableLens = function(gristInstance) {
     this.fetchRelatedRecords = async function(primaryRecord, refColumnId) {
         if (!primaryRecord || !refColumnId) { return []; }
         
-        // The gristHelper_tableId, added by our corrected fetchTableRecords, is used here.
         const primaryTableId = primaryRecord.gristHelper_tableId;
         if (!primaryTableId) {
             console.warn("GTL.fetchRelatedRecords: Não foi possível determinar o tableId do registro primário. A correção em fetchTableRecords pode estar faltando.");
@@ -205,6 +199,4 @@ const GristTableLens = function(gristInstance) {
     };
 };
 
-if (typeof window !== 'undefined') {
-    window.GristTableLens = GristTableLens;
-}
+// The 'window' assignment is removed because `export` handles it.
