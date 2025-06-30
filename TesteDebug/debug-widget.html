@@ -35,11 +35,8 @@
         <h3>Schema da Tabela (<span id="columnCount">0</span> colunas):</h3>
         <table id="schemaTable">
             <thead>
-                <tr>
-                    <th>ID da Coluna</th><th>Label</th><th>Tipo</th><th>Fórmula?</th>
-                    <th>Choices</th><th>Widget Options</th><th>Ref. Tabela</th><th>Display Col (Ref)</th>
-                    <!-- Cabeçalho para regras será adicionado dinamicamente -->
-                </tr>
+                <!-- The header row is now empty because the JS will generate it dynamically -->
+                <tr></tr>
             </thead>
             <tbody></tbody>
         </table>
@@ -51,8 +48,19 @@
     </div>
     <div id="errorMessage" style="color:red; font-weight:bold;"></div>
 
-    <!-- Certifique-se que este caminho está correto para sua estrutura -->
-    <script src="../libraries/grist-table-lens/grist-table-lens.js"></script>
-    <script src="debug-widget-main.js"></script>
+    <!-- 
+      ======================================================
+      =========== CRITICAL CHANGE: SCRIPT LOADING ==========
+      ======================================================
+      We now use type="module" to enable import/export
+      and load all the required library components.
+    -->
+    <script type="module" src="../libraries/grist-table-lens/grist-table-lens.js"></script>
+    <script type="module" src="../libraries/grist-field-renderer/grist-field-renderer.js"></script>
+    <script type="module" src="../libraries/grist-drawer-component/drawer-component.js"></script>
+    
+    <!-- The main script for this widget must also be a module to use imports -->
+    <script type="module" src="debug-widget-main.js"></script>
+
 </body>
 </html>

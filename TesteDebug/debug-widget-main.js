@@ -159,6 +159,37 @@ document.addEventListener('DOMContentLoaded', function () {
             isRendering = false;
         }
     }
+	async function initializeDebugWidget(tableId) {
+    // ...
+    // The existing logic is mostly correct. We just need to change the onclick.
+    
+    // Inside the RENDER RECORDS section's main loop: `for (const record of records)`
+    if (records.length > 0) {
+        // ... (header rendering code) ...
+        for (const record of records) {
+            const row = recordsTableBodyEl.insertRow();
+            // =========================================================
+            // ================== CRITICAL TEST HOOK ===================
+            // =========================================================
+            // When a row in the debug table is clicked, call the drawer!
+            row.onclick = () => {
+                // Use the globally exposed drawer API
+                if (window.GristDrawer && typeof window.GristDrawer.open === 'function') {
+                    window.GristDrawer.open(tableId, record.id);
+                } else {
+                    alert("GristDrawer component not loaded.");
+                }
+            };
+            // =========================================================
+
+            for (const key of recordHeaderKeys) {
+                // ... the rest of the cell rendering logic remains exactly the same ...
+            }
+        }
+    }
+    // ...
+}
+
     
     // The setup functions at the bottom remain the same.
     async function populateTableSelectorAndRenderInitial() {

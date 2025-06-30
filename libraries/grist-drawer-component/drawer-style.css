@@ -1,0 +1,91 @@
+/* libraries/grist-drawer-component/drawer-style.css */
+
+#grist-drawer-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+#grist-drawer-panel {
+    position: fixed;
+    top: 0;
+    right: -500px; /* Start off-screen */
+    width: 500px;
+    max-width: 90%;
+    height: 100%;
+    background-color: #ffffff;
+    box-shadow: -2px 0 8px rgba(0,0,0,0.15);
+    z-index: 1001;
+    transition: right 0.3s ease;
+    display: flex;
+    flex-direction: column;
+}
+
+/* State when the drawer is open */
+#grist-drawer-overlay.is-open {
+    opacity: 1;
+    visibility: visible;
+}
+
+#grist-drawer-panel.is-open {
+    right: 0;
+}
+
+.drawer-header {
+    padding: 15px 20px;
+    border-bottom: 1px solid #e0e0e0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.drawer-header h2 {
+    margin: 0;
+    font-size: 1.2em;
+}
+
+.drawer-close-btn {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: #888;
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+.drawer-close-btn:hover {
+    color: #000;
+}
+
+.drawer-content {
+    padding: 20px;
+    overflow-y: auto;
+    flex-grow: 1;
+}
+
+.drawer-field-row {
+    margin-bottom: 18px;
+}
+
+.drawer-field-label {
+    font-weight: bold;
+    font-size: 0.9em;
+    color: #555;
+    margin-bottom: 5px;
+    display: block;
+}
+
+.drawer-field-value {
+    padding: 8px;
+    background-color: #f9f9f9;
+    border-radius: 4px;
+    border: 1px solid #eee;
+    min-height: 20px;
+}
