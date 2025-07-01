@@ -1,18 +1,21 @@
 // libraries/grist-field-renderer/grist-field-renderer.js
 
-// This file now contains comprehensive logic for rendering various Grist field types.
+// This file contains comprehensive logic for rendering various Grist field types.
 
 /**
  * Applies Grist-like styling to an HTML element based on column schema and record data.
+ * This now includes support for Choice styling.
  * @private
  */
 function _applyStyles(element, colSchema, record, ruleIdToColIdMap) {
-    // ... This function is already correct and does not need changes.
     element.style.color = ''; element.style.backgroundColor = ''; element.style.fontWeight = '';
     element.style.fontStyle = ''; element.style.textAlign = '';
+
     const wopts = JSON.parse(colSchema.widgetOptions || '{}');
     if (wopts.alignment) { element.style.textAlign = wopts.alignment; }
+
     let styleAppliedByRule = false;
+    // 1. Apply Conditional Formatting Rules first, as they have top priority.
     if (colSchema.rules && Array.isArray(colSchema.rules) && colSchema.rules[0] === 'L') {
         const ruleOptions = wopts.rulesOptions || [];
         const ruleIdList = colSchema.rules.slice(1);
@@ -32,6 +35,21 @@ function _applyStyles(element, colSchema, record, ruleIdToColIdMap) {
             }
         }
     }
+    
+    // 2. If no rule was applied, check for Choice-specific styling.
+    const cellValue = record[colSchema.colId];
+    if (!styleAppliedByRule && (colSchema.type === 'Choice' || colSchema.type === 'ChoiceList') && wopts.choiceOptions) {
+        const choiceStyle = wopts.choiceOptions[cellValue];
+        if (choiceStyle) {
+            if (choiceStyle.textColor) element.style.color = choiceStyle.textColor;
+            if (choiceStyle.fillColor) element.style.backgroundColor = choiceStyle.fillColor;
+            if (choiceStyle.fontBold) element.style.fontWeight = 'bold';
+            if (choiceStyle.fontItalic) element.style.fontStyle = 'italic';
+            styleAppliedByRule = true;
+        }
+    }
+
+    // 3. If still no style, apply default column style.
     if (!styleAppliedByRule) {
         if (wopts.textColor) element.style.color = wopts.textColor;
         if (wopts.fillColor) element.style.backgroundColor = wopts.fillColor;
@@ -45,130 +63,97 @@ function _applyStyles(element, colSchema, record, ruleIdToColIdMap) {
  * @private
  */
 async function _renderRelatedTable(container, relatedRecords, tableLens, ruleIdToColIdMap) {
-    // ... This function is also correct and does not need changes.
     if (!relatedRecords || relatedRecords.length === 0) return;
+
+    // Remove the placeholder text e.g., "[RefList] (2 items)"
+    while (container.firstChild) {
+        container.removeChild(container.firstChild);
+    }
+    
     const subTable = document.createElement('table');
     const subThead = subTable.createTHead(); const subThRow = subThead.insertRow();
+    
     const relatedTableId = relatedRecords[0].gristHelper_tableId;
     const relatedSchema = await tableLens.getTableSchema(relatedTableId, {mode: 'raw'});
-    relatedSchema.filter(c => !c.colId.startsWith('gristHelper_')).forEach(col => { const th = document.createElement('th'); th.textContent = col.label || col.colId; subThRow.appendChild(th); });
+
+    const visibleCols = relatedSchema.filter(c => c.visibleCol > 0 && !c.colId.startsWith('gristHelper_'));
+    // If no columns are "visible", show the first few as a fallback.
+    const colsToDisplay = visibleCols.length > 0 ? visibleCols : relatedSchema.filter(c => !c.colId.startsWith('gristHelper_')).slice(0, 4);
+
+    colsToDisplay.forEach(col => { const th = document.createElement('th'); th.textContent = col.label || col.colId; subThRow.appendChild(th); });
+
     const subTbody = subTable.createTBody();
     for (const relRec of relatedRecords) {
         const subTr = subTbody.insertRow();
-        relatedSchema.filter(c => !c.colId.startsWith('gristHelper_')).forEach(colSchema => {
+        colsToDisplay.forEach(colSchema => {
             const td = subTr.insertCell();
+            // Recursively call the main renderField function for sub-cells!
             renderField({ container: td, colSchema, record: relRec, tableLens, ruleIdToColIdMap });
         });
     }
     container.appendChild(subTable);
 }
 
+
 /**
  * The main exported function. Renders a single field into a container.
- * This function is now heavily upgraded.
  */
 export async function renderField(options) {
-    const { container, colSchema, record, tableLens, ruleIdToColIdMap, displayAs } = options;
+    const { container, colSchema, record, tableLens, ruleIdToColIdMap } = options;
     const cellValue = record[colSchema.colId];
-    container.innerHTML = ''; // Clear previous content
+    container.innerHTML = ''; 
 
     const content = document.createElement('div');
-    content.className = 'grist-field-content';
     const wopts = JSON.parse(colSchema.widgetOptions || '{}');
 
-    // Main logic switch based on column type
     if (cellValue === null || cellValue === undefined) {
         content.textContent = '(vazio)';
-        content.style.fontStyle = 'italic';
-        content.style.color = '#999';
     } 
-    // =========================================================
-    // =========== FEATURE: Handle RefList and ChoiceList ========
-    // =========================================================
     else if (colSchema.type.startsWith('RefList:')) {
-        let count = Array.isArray(cellValue) && cellValue[0] === 'L' ? cellValue.length - 1 : 0;
-        let displayText = document.createElement('span');
-        displayText.textContent = `[RefList] (${count} items)`;
-        content.appendChild(displayText);
+        const count = Array.isArray(cellValue) && cellValue[0] === 'L' ? cellValue.length - 1 : 0;
+        content.textContent = `[RefList] (${count} items)`;
         const relatedRecords = await tableLens.fetchRelatedRecords(record, colSchema.colId);
         if (relatedRecords.length > 0) {
             await _renderRelatedTable(content, relatedRecords, tableLens, ruleIdToColIdMap);
         }
-    } else if (colSchema.type === 'ChoiceList') {
+    }
+    else if (colSchema.type.startsWith('Ref:')) {
+        const { displayValue } = await tableLens.resolveReference(colSchema, record);
+        content.textContent = displayValue;
+    }
+    else if (colSchema.type === 'ChoiceList') {
         if (Array.isArray(cellValue) && cellValue[0] === 'L') {
-            // Render as a list of styled pills/tags
             cellValue.slice(1).forEach(val => {
                 const pill = document.createElement('span');
                 pill.className = 'choice-pill';
                 pill.textContent = val;
-                pill.style.display = 'inline-block';
-                pill.style.padding = '2px 8px';
-                pill.style.margin = '2px';
-                pill.style.borderRadius = '12px';
-                pill.style.backgroundColor = '#e0e0e0';
+                pill.style.cssText = 'display: inline-block; padding: 2px 8px; margin: 2px; border-radius: 12px; background-color: #e0e0e0;';
+                
+                // Apply specific styling for this choice value
+                const choiceStyle = wopts.choiceOptions?.[val];
+                if (choiceStyle) {
+                    if (choiceStyle.textColor) pill.style.color = choiceStyle.textColor;
+                    if (choiceStyle.fillColor) pill.style.backgroundColor = choiceStyle.fillColor;
+                }
                 content.appendChild(pill);
             });
         } else {
             content.textContent = String(cellValue);
         }
     }
-    // =========================================================
-    // ============= FEATURE: Handle Single Reference ==========
-    // =========================================================
-    else if (colSchema.type.startsWith('Ref:')) {
-        const referencedTableId = colSchema.type.split(':')[1];
-        const referencedRecord = await tableLens.fetchRecordById(referencedTableId, cellValue);
-        if (referencedRecord) {
-            // Find the display column configured in Grist. This is complex.
-            // The `displayCol` property on the Ref column contains the NUMERIC ID of the display column.
-            const referencedSchema = await tableLens.getTableSchema(referencedTableId, {mode: 'raw'});
-            const displayColSchema = referencedSchema.find(c => c.id === colSchema.displayCol);
-            
-            if (displayColSchema) {
-                content.textContent = referencedRecord[displayColSchema.colId];
-            } else {
-                content.textContent = `[Ref: ${cellValue}]`; // Fallback
-            }
-        } else {
-            content.textContent = `[Ref not found: ${cellValue}]`;
-        }
-    } 
-    // =========================================================
-    // ============= FEATURE: Handle Date and DateTime =========
-    // =========================================================
     else if (colSchema.type.startsWith('Date')) {
-        // Grist timestamps are in seconds, JavaScript Date needs milliseconds.
         const date = new Date(cellValue * 1000);
-        if (colSchema.type === 'DateTime') {
-            content.textContent = date.toLocaleString(); // e.g., "5/23/2026, 6:05:00 PM"
-        } else {
-            content.textContent = date.toLocaleDateString(); // e.g., "5/23/2026"
-        }
+        content.textContent = colSchema.type === 'DateTime' ? date.toLocaleString() : date.toLocaleDateString();
     } 
-    // =========================================================
-    // ============== FEATURE: Handle Markdown =================
-    // =========================================================
     else if (wopts.widget === 'Markdown') {
-        // WARNING: Using innerHTML directly from user content is a security risk (XSS).
-        // A real production app MUST use a sanitizing Markdown library like DOMPurify + Marked.
-        // For this trusted environment, we'll proceed with a simple placeholder.
-        console.warn("Rendering Markdown with innerHTML. Use a sanitizer in production.");
-        // A very basic Markdown->HTML
-        let html = String(cellValue)
-            .replace(/</g, '<')
-            .replace(/>/g, '>')
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\*(.*?)\*/g, '<em>$1</em>')
-            .replace(/\n/g, '<br>');
+        let html = String(cellValue).replace(/</g, '<').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\*(.*?)\*/g, '<em>$1</em>').replace(/\n/g, '<br>');
         content.innerHTML = html;
     }
     else {
-        // Default for Text, Numeric, Choice, Int, Bool, etc.
         content.textContent = String(cellValue);
     }
 
     container.appendChild(content);
 
-    // Apply all styling at the end.
     _applyStyles(container, colSchema, record, ruleIdToColIdMap);
 }
