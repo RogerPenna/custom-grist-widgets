@@ -1,16 +1,17 @@
 // libraries/grist-field-renderer/grist-field-renderer.js
 
+// This file now contains comprehensive logic for rendering various Grist field types.
+
 /**
  * Applies Grist-like styling to an HTML element based on column schema and record data.
  * @private
  */
 function _applyStyles(element, colSchema, record, ruleIdToColIdMap) {
+    // ... This function is already correct and does not need changes.
     element.style.color = ''; element.style.backgroundColor = ''; element.style.fontWeight = '';
     element.style.fontStyle = ''; element.style.textAlign = '';
-
     const wopts = JSON.parse(colSchema.widgetOptions || '{}');
     if (wopts.alignment) { element.style.textAlign = wopts.alignment; }
-
     let styleAppliedByRule = false;
     if (colSchema.rules && Array.isArray(colSchema.rules) && colSchema.rules[0] === 'L') {
         const ruleOptions = wopts.rulesOptions || [];
@@ -27,12 +28,10 @@ function _applyStyles(element, colSchema, record, ruleIdToColIdMap) {
                      if (style.fontItalic) element.style.fontStyle = 'italic';
                 }
                 styleAppliedByRule = true;
-                break; // Apply first matching rule and stop.
+                break;
             }
         }
     }
-    
-    // Apply default column style only if no conditional rule was applied.
     if (!styleAppliedByRule) {
         if (wopts.textColor) element.style.color = wopts.textColor;
         if (wopts.fillColor) element.style.backgroundColor = wopts.fillColor;
@@ -46,69 +45,47 @@ function _applyStyles(element, colSchema, record, ruleIdToColIdMap) {
  * @private
  */
 async function _renderRelatedTable(container, relatedRecords, tableLens, ruleIdToColIdMap) {
+    // ... This function is also correct and does not need changes.
     if (!relatedRecords || relatedRecords.length === 0) return;
-
     const subTable = document.createElement('table');
-    const subThead = subTable.createTHead();
-    const subThRow = subThead.insertRow();
-    
+    const subThead = subTable.createTHead(); const subThRow = subThead.insertRow();
     const relatedTableId = relatedRecords[0].gristHelper_tableId;
     const relatedSchema = await tableLens.getTableSchema(relatedTableId, {mode: 'raw'});
-
-    relatedSchema
-        .filter(c => !c.colId.startsWith('gristHelper_')) // Don't show helpers in sub-tables
-        .forEach(col => {
-            const th = document.createElement('th');
-            th.textContent = col.label || col.colId;
-            subThRow.appendChild(th);
-        });
-
+    relatedSchema.filter(c => !c.colId.startsWith('gristHelper_')).forEach(col => { const th = document.createElement('th'); th.textContent = col.label || col.colId; subThRow.appendChild(th); });
     const subTbody = subTable.createTBody();
     for (const relRec of relatedRecords) {
         const subTr = subTbody.insertRow();
-        relatedSchema
-            .filter(c => !c.colId.startsWith('gristHelper_'))
-            .forEach(colSchema => {
-                const td = subTr.insertCell();
-                // Recursively call the main renderField function for sub-cells!
-                // This allows for nested formatting and complex displays.
-                renderField({
-                    container: td,
-                    colSchema: colSchema,
-                    record: relRec,
-                    tableLens: tableLens,
-                    ruleIdToColIdMap: ruleIdToColIdMap
-                });
-            });
+        relatedSchema.filter(c => !c.colId.startsWith('gristHelper_')).forEach(colSchema => {
+            const td = subTr.insertCell();
+            renderField({ container: td, colSchema, record: relRec, tableLens, ruleIdToColIdMap });
+        });
     }
     container.appendChild(subTable);
 }
 
-
 /**
  * The main exported function. Renders a single field into a container.
- * @param {object} options - The configuration for rendering.
- * @param {HTMLElement} options.container - The HTML element to render into.
- * @param {object} options.colSchema - The RAW schema object for the column.
- * @param {object} options.record - The full data record object for the row (must include helpers).
- * @param {GristTableLens} options.tableLens - An instance of the GristTableLens library.
- * @param {Map<number, string>} options.ruleIdToColIdMap - A pre-calculated map of rule IDs to column IDs.
- * @param {string} [options.displayAs] - Optional: 'radio', 'dropdown', etc., for specific renderings.
+ * This function is now heavily upgraded.
  */
 export async function renderField(options) {
     const { container, colSchema, record, tableLens, ruleIdToColIdMap, displayAs } = options;
     const cellValue = record[colSchema.colId];
     container.innerHTML = ''; // Clear previous content
 
-    let content = document.createElement('div');
+    const content = document.createElement('div');
     content.className = 'grist-field-content';
+    const wopts = JSON.parse(colSchema.widgetOptions || '{}');
 
     // Main logic switch based on column type
     if (cellValue === null || cellValue === undefined) {
         content.textContent = '(vazio)';
         content.style.fontStyle = 'italic';
         content.style.color = '#999';
-    } else if (colSchema.type.startsWith('RefList:')) {
+    } 
+    // =========================================================
+    // =========== FEATURE: Handle RefList and ChoiceList ========
+    // =========================================================
+    else if (colSchema.type.startsWith('RefList:')) {
         let count = Array.isArray(cellValue) && cellValue[0] === 'L' ? cellValue.length - 1 : 0;
         let displayText = document.createElement('span');
         displayText.textContent = `[RefList] (${count} items)`;
@@ -117,40 +94,76 @@ export async function renderField(options) {
         if (relatedRecords.length > 0) {
             await _renderRelatedTable(content, relatedRecords, tableLens, ruleIdToColIdMap);
         }
-    } else if (colSchema.type.startsWith('Ref:')) {
-        const wopts = JSON.parse(colSchema.widgetOptions || '{}');
-        const displayColId = wopts.displayCol; // This is the numeric ID
-        // To properly render a Ref, we would need to fetch the related record and its display column value.
-        // For simplicity in this example, we'll just show the ID. A full implementation would do a fetch here.
-        content.textContent = `[Ref: ${cellValue}]`;
-    } else if (colSchema.type === 'Date' || colSchema.type === 'DateTime') {
+    } else if (colSchema.type === 'ChoiceList') {
+        if (Array.isArray(cellValue) && cellValue[0] === 'L') {
+            // Render as a list of styled pills/tags
+            cellValue.slice(1).forEach(val => {
+                const pill = document.createElement('span');
+                pill.className = 'choice-pill';
+                pill.textContent = val;
+                pill.style.display = 'inline-block';
+                pill.style.padding = '2px 8px';
+                pill.style.margin = '2px';
+                pill.style.borderRadius = '12px';
+                pill.style.backgroundColor = '#e0e0e0';
+                content.appendChild(pill);
+            });
+        } else {
+            content.textContent = String(cellValue);
+        }
+    }
+    // =========================================================
+    // ============= FEATURE: Handle Single Reference ==========
+    // =========================================================
+    else if (colSchema.type.startsWith('Ref:')) {
+        const referencedTableId = colSchema.type.split(':')[1];
+        const referencedRecord = await tableLens.fetchRecordById(referencedTableId, cellValue);
+        if (referencedRecord) {
+            // Find the display column configured in Grist. This is complex.
+            // The `displayCol` property on the Ref column contains the NUMERIC ID of the display column.
+            const referencedSchema = await tableLens.getTableSchema(referencedTableId, {mode: 'raw'});
+            const displayColSchema = referencedSchema.find(c => c.id === colSchema.displayCol);
+            
+            if (displayColSchema) {
+                content.textContent = referencedRecord[displayColSchema.colId];
+            } else {
+                content.textContent = `[Ref: ${cellValue}]`; // Fallback
+            }
+        } else {
+            content.textContent = `[Ref not found: ${cellValue}]`;
+        }
+    } 
+    // =========================================================
+    // ============= FEATURE: Handle Date and DateTime =========
+    // =========================================================
+    else if (colSchema.type.startsWith('Date')) {
+        // Grist timestamps are in seconds, JavaScript Date needs milliseconds.
         const date = new Date(cellValue * 1000);
-        const wopts = JSON.parse(colSchema.widgetOptions || '{}');
-        const dateFormat = wopts.dateFormat || 'YYYY-MM-DD';
-        // A full implementation would have a robust date formatting library here.
-        content.textContent = date.toISOString().split('T')[0]; // Simple ISO date for now.
-    } else if (colSchema.type === 'Bool') {
-        content.textContent = cellValue ? '✓' : '☐';
-        content.style.fontFamily = 'monospace';
-    } else if (colSchema.type === 'Choice' && displayAs === 'radio') {
-        // Example of the "displayAs" feature
-        const wopts = JSON.parse(colSchema.widgetOptions || '{}');
-        (wopts.choices || []).forEach(choice => {
-            const label = document.createElement('label');
-            const radio = document.createElement('input');
-            radio.type = 'radio';
-            radio.name = colSchema.colId + record.id;
-            radio.value = choice;
-            radio.checked = (cellValue === choice);
-            radio.disabled = true; // Read-only view
-            label.appendChild(radio);
-            label.appendChild(document.createTextNode(' ' + choice));
-            content.appendChild(label);
-            content.appendChild(document.createElement('br'));
-        });
+        if (colSchema.type === 'DateTime') {
+            content.textContent = date.toLocaleString(); // e.g., "5/23/2026, 6:05:00 PM"
+        } else {
+            content.textContent = date.toLocaleDateString(); // e.g., "5/23/2026"
+        }
+    } 
+    // =========================================================
+    // ============== FEATURE: Handle Markdown =================
+    // =========================================================
+    else if (wopts.widget === 'Markdown') {
+        // WARNING: Using innerHTML directly from user content is a security risk (XSS).
+        // A real production app MUST use a sanitizing Markdown library like DOMPurify + Marked.
+        // For this trusted environment, we'll proceed with a simple placeholder.
+        console.warn("Rendering Markdown with innerHTML. Use a sanitizer in production.");
+        // A very basic Markdown->HTML
+        let html = String(cellValue)
+            .replace(/</g, '<')
+            .replace(/>/g, '>')
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/\n/g, '<br>');
+        content.innerHTML = html;
     }
     else {
-        // Default for Text, Numeric, Choice, Int, etc.
+        // Default for Text, Numeric, Choice, Int, Bool, etc.
         content.textContent = String(cellValue);
     }
 
