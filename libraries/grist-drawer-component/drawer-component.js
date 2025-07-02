@@ -4,6 +4,7 @@ import { GristTableLens } from '../grist-table-lens/grist-table-lens.js';
 import { GristDataWriter } from '../grist-data-writer.js';
 import { openModal } from '../grist-modal-component/modal-component.js';
 import { renderField } from '../grist-field-renderer/grist-field-renderer.js';
+import { publish } from '../grist-event-bus.js'; // Import the new event bus publisher
 
 const tableLens = new GristTableLens(grist);
 const dataWriter = new GristDataWriter(grist);
@@ -11,6 +12,9 @@ const dataWriter = new GristDataWriter(grist);
 let drawerPanel, drawerOverlay, drawerHeader, drawerTitle;
 let currentTableId, currentRecordId;
 let isEditing = false;
+
+// The 'currentOnClose' variable is no longer needed with the event bus.
+// let currentOnClose; 
 
 function _initializeDrawerDOM() {
     if (document.getElementById('grist-drawer-panel')) return;
@@ -20,12 +24,13 @@ function _initializeDrawerDOM() {
     link.href = '../libraries/grist-drawer-component/drawer-style.css';
     document.head.appendChild(link);
 
-    // This CSS is restored from your original code
     const style = document.createElement('style');
     style.textContent = `
+        .drawer-body { display: flex; flex-direction: column; overflow: hidden; height: 100%; }
         .drawer-tabs{display:flex;border-bottom:1px solid #e0e0e0;flex-shrink:0;}
         .drawer-tab{padding:10px 15px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;}
         .drawer-tab.is-active{font-weight:bold;color:#007bff;border-bottom-color:#007bff;}
+        .drawer-tab-panels{flex-grow:1;overflow-y:auto;}
         .drawer-tab-content{display:none;padding:20px;}.drawer-tab-content.is-active{display:block;}
         .drawer-header-buttons button { margin-left: 10px; }
     `;
@@ -36,7 +41,6 @@ function _initializeDrawerDOM() {
     drawerPanel = document.createElement('div');
     drawerPanel.id = 'grist-drawer-panel';
 
-    // The full HTML structure with all buttons is restored and enhanced
     drawerPanel.innerHTML = `
         <div class="drawer-header">
             <h2 id="drawer-title"></h2>
@@ -60,7 +64,6 @@ function _initializeDrawerDOM() {
     drawerHeader = drawerPanel.querySelector('.drawer-header');
     drawerTitle = drawerPanel.querySelector('#drawer-title');
     
-    // Wire up all the buttons
     drawerPanel.querySelector('.drawer-close-btn').addEventListener('click', closeDrawer);
     drawerPanel.querySelector('#drawer-edit-btn').addEventListener('click', _handleEdit);
     drawerPanel.querySelector('#drawer-save-btn').addEventListener('click', _handleSave);
@@ -70,7 +73,6 @@ function _initializeDrawerDOM() {
     drawerOverlay.addEventListener('click', closeDrawer);
 }
 
-// Restored from your original code
 function _switchToTab(tabElement, panelElement) {
     drawerPanel.querySelectorAll('.drawer-tab.is-active').forEach(t => t.classList.remove('is-active'));
     drawerPanel.querySelectorAll('.drawer-tab-content.is-active').forEach(p => p.classList.remove('is-active'));
@@ -78,30 +80,33 @@ function _switchToTab(tabElement, panelElement) {
     panelElement.classList.add('is-active');
 }
 
-// New action handlers
 function _handleEdit() {
     isEditing = true;
-    _renderDrawerContent(); // Re-render the content in edit mode
+    _renderDrawerContent();
     _updateButtonVisibility();
 }
 
 async function _handleSave() {
     const changes = {};
-    const formElements = drawerPanel.querySelectorAll('[data-col-id]');
-    formElements.forEach(el => {
+    drawerPanel.querySelectorAll('[data-col-id]').forEach(el => {
         const colId = el.dataset.colId;
         changes[colId] = (el.type === 'checkbox') ? el.checked : el.value;
     });
     
     await dataWriter.updateRecord(currentTableId, currentRecordId, changes);
+    // =================================================================
+    // ========= PUBLISH A 'data-changed' EVENT INSTEAD OF RELOADING ===
+    // =================================================================
+    publish('data-changed', { tableId: currentTableId, recordId: currentRecordId, action: 'update' });
+    
     isEditing = false;
-    openDrawer(currentTableId, currentRecordId); // Refresh with new data
+    await _renderDrawerContent(); // Re-render self to show new data
     _updateButtonVisibility();
 }
 
 function _handleCancel() {
     isEditing = false;
-    _renderDrawerContent(); // Re-render in read-only mode
+    _renderDrawerContent();
     _updateButtonVisibility();
 }
 
@@ -110,7 +115,10 @@ async function _handleAdd() {
     openModal({
         title: `Adicionar em ${currentTableId}`, tableId: currentTableId, record: {}, schema,
         onSave: async (newRecord) => {
+            // The modal will perform the save and publish its own event.
+            // But we still need to refresh the drawer content to show the new data in RefLists.
             await dataWriter.addRecord(currentTableId, newRecord);
+            await _renderDrawerContent();
         }
     });
 }
@@ -118,7 +126,11 @@ async function _handleAdd() {
 async function _handleDelete() {
     if (confirm(`Tem certeza que deseja deletar o registro ${currentRecordId}?`)) {
         await dataWriter.deleteRecords(currentTableId, [currentRecordId]);
-        closeDrawer(); // Close the drawer as the record no longer exists
+        // =================================================================
+        // =========== PUBLISH A 'data-changed' EVENT ON DELETE ============
+        // =================================================================
+        publish('data-changed', { tableId: currentTableId, recordId: currentRecordId, action: 'delete' });
+        closeDrawer();
     }
 }
 
@@ -129,7 +141,6 @@ function _updateButtonVisibility() {
     drawerPanel.querySelector('#drawer-cancel-btn').style.display = isEditing ? 'inline-block' : 'none';
 }
 
-// A new internal function to render the content, supporting both read and edit modes
 async function _renderDrawerContent() {
     const tabsContainer = drawerPanel.querySelector('.drawer-tabs');
     const panelsContainer = drawerPanel.querySelector('.drawer-tab-panels');
@@ -143,7 +154,6 @@ async function _renderDrawerContent() {
     const ruleIdToColIdMap = new Map();
     schema.forEach(col => { if (col.colId?.startsWith('gristHelper_')) { ruleIdToColIdMap.set(col.id, col.colId); } });
 
-    // Using the tab logic from your original code
     const tabs = { "Main": schema.filter(col => !col.colId.startsWith('gristHelper_')) };
     Object.entries(tabs).forEach(([tabName, cols], index) => {
         const tabEl = document.createElement('div');
@@ -175,18 +185,23 @@ async function _renderDrawerContent() {
 
             renderField({
                 container: valueContainer, colSchema, record, tableLens, ruleIdToColIdMap,
-                isEditing: isEditing && !colSchema.isFormula // Pass edit flag, disable for formulas
+                isEditing: isEditing && !colSchema.isFormula
             });
         });
     });
 }
 
-// The main public function
-export async function openDrawer(tableId, recordId) {
+/**
+ * The main public function to open the drawer. It no longer needs the onClose callback.
+ */
+export async function openDrawer(tableId, recordId, options = {}) {
     _initializeDrawerDOM();
     currentTableId = tableId;
     currentRecordId = recordId;
-    isEditing = false; // Always open in read-only mode first
+    isEditing = options.mode === 'edit' || false; // Allow opening directly in edit mode.
+    
+    // The currentOnClose variable is removed.
+    // currentOnClose = options.onClose;
 
     document.body.classList.add('grist-drawer-is-open');
 	drawerPanel.classList.add('is-open');
@@ -207,4 +222,9 @@ export function closeDrawer() {
     document.body.classList.remove('grist-drawer-is-open');
 	drawerPanel.classList.remove('is-open');
     drawerOverlay.classList.remove('is-open');
+
+    // The onClose callback logic is removed.
+    // if (currentOnClose && typeof currentOnClose === 'function') {
+    //     currentOnClose();
+    // }
 }

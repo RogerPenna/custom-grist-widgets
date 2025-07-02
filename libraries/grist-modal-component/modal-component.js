@@ -2,12 +2,14 @@
 import { GristTableLens } from '../grist-table-lens/grist-table-lens.js';
 import { GristDataWriter } from '../grist-data-writer.js';
 import { renderField } from '../grist-field-renderer/grist-field-renderer.js';
+import { publish } from '../grist-event-bus.js'; // Import the publish function
 
 const tableLens = new GristTableLens(grist);
 const dataWriter = new GristDataWriter(grist);
 
-let modalOverlay, modalContent, modalTitle, modalBody, modalFooter;
+let modalOverlay, modalContent, modalTitle, modalBody;
 let currentOnSave, currentOnCancel;
+let currentContext = {}; // To store tableId, recordId etc.
 
 function _initializeModalDOM() {
     if (document.getElementById('grist-modal-overlay')) return;
@@ -32,7 +34,6 @@ function _initializeModalDOM() {
     modalContent = document.getElementById('grist-modal-content');
     modalTitle = document.getElementById('modal-title');
     modalBody = document.querySelector('.modal-body');
-    modalFooter = document.querySelector('.modal-footer');
     
     modalContent.addEventListener('click', e => e.stopPropagation());
     modalOverlay.addEventListener('click', () => closeModal());
@@ -42,29 +43,43 @@ function _initializeModalDOM() {
 
 async function _handleSave() {
     const changes = {};
-    const formElements = modalBody.querySelectorAll('[data-col-id]');
-    formElements.forEach(el => {
+    modalBody.querySelectorAll('[data-col-id]').forEach(el => {
         const colId = el.dataset.colId;
-        // Logic to get value from different input types
-        if (el.type === 'checkbox') {
-            changes[colId] = el.checked;
-        } else {
-            changes[colId] = el.value;
-        }
+        changes[colId] = (el.type === 'checkbox') ? el.checked : el.value;
     });
 
     if (currentOnSave) {
-        await currentOnSave(changes);
+        try {
+            // Let the caller do the writing and tell us what happened
+            const { action, tableId, recordId } = await currentOnSave(changes);
+            
+            // Publish a generic event that other components can listen to.
+            publish('data-changed', { action, tableId, recordId });
+
+        } catch (err) {
+            console.error("Modal onSave callback failed:", err);
+            // Optionally show an error message to the user
+        }
     }
     closeModal();
 }
 
+/**
+ * @param {object} options
+ * @param {string} options.title - The title of the modal.
+ * @param {string} options.tableId - The table ID for the record.
+ * @param {object} options.record - The record object. Empty {} for "add" mode.
+ * @param {object[]} options.schema - The raw schema for the table.
+ * @param {function} options.onSave - Async function that receives changes and performs the write action.
+ * @param {function} [options.onCancel] - Optional callback for cancel.
+ */
 export function openModal(options) {
-    const { title, tableId, record, schema, onSave, onCancel } = options;
     _initializeModalDOM();
+    const { title, tableId, record, schema, onSave, onCancel } = options;
     modalTitle.textContent = title;
     currentOnSave = onSave;
     currentOnCancel = onCancel;
+    currentContext = { tableId, recordId: record.id };
     modalBody.innerHTML = '';
     
     const ruleIdToColIdMap = new Map();
@@ -72,28 +87,16 @@ export function openModal(options) {
 
     schema.filter(col => !col.colId.startsWith('gristHelper_')).forEach(colSchema => {
         const isEditable = !colSchema.isFormula;
+        if (!isEditable) return; // Don't show formula fields in the add/edit modal
 
-        const row = document.createElement('div');
-        row.className = 'modal-field-row';
-        const label = document.createElement('label');
-        label.className = 'modal-field-label';
+        const row = document.createElement('div'); row.className = 'modal-field-row';
+        const label = document.createElement('label'); label.className = 'modal-field-label';
         label.textContent = colSchema.label || colSchema.colId;
-        
-        // The container that the field-renderer will populate with an input.
         const valueContainer = document.createElement('div');
-        
-        row.appendChild(label);
-        row.appendChild(valueContainer);
+        row.appendChild(label); row.appendChild(valueContainer);
         modalBody.appendChild(row);
 
-        renderField({
-            container: valueContainer,
-            colSchema,
-            record,
-            tableLens,
-            ruleIdToColIdMap,
-            isEditing // Pass the new editing flag!
-        });
+        renderField({ container: valueContainer, colSchema, record, tableLens, ruleIdToColIdMap, isEditing: true });
     });
     modalOverlay.classList.add('is-open');
 }
