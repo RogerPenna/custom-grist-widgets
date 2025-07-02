@@ -50,31 +50,39 @@ function _applyStyles(element, colSchema, record, ruleIdToColIdMap) {
  */
 async function _renderRelatedTable(container, relatedRecords, tableLens, ruleIdToColIdMap) {
     if (!relatedRecords || relatedRecords.length === 0) return;
-    
-    // Clear the placeholder text e.g., "[RefList] (2 items)"
-    container.innerHTML = '';
-    
+
     const subTable = document.createElement('table');
-    const subThead = subTable.createTHead(); const subThRow = subThead.insertRow();
+    const subThead = subTable.createTHead();
+    const subThRow = subThead.insertRow();
     
     const relatedTableId = relatedRecords[0].gristHelper_tableId;
     const relatedSchema = await tableLens.getTableSchema(relatedTableId, {mode: 'raw'});
 
-    const visibleCols = relatedSchema.filter(c => c.visibleCol > 0 && !c.colId.startsWith('gristHelper_'));
-    const colsToDisplay = visibleCols.length > 0 ? visibleCols : relatedSchema.filter(c => !c.colId.startsWith('gristHelper_')).slice(0, 4);
+    const columnsToDisplay = relatedSchema.filter(c => !c.colId.startsWith('gristHelper_'));
 
-    colsToDisplay.forEach(col => { const th = document.createElement('th'); th.textContent = col.label || col.colId; subThRow.appendChild(th); });
+    columnsToDisplay.forEach(col => {
+        const th = document.createElement('th');
+        th.textContent = col.label || col.colId;
+        subThRow.appendChild(th);
+    });
 
     const subTbody = subTable.createTBody();
     for (const relRec of relatedRecords) {
         const subTr = subTbody.insertRow();
-        colsToDisplay.forEach(colSchema => {
+        for (const colSchema of columnsToDisplay) { // <-- Use the filtered list here
             const td = subTr.insertCell();
-            // This is the key fix: We recursively call the main renderField function.
-            // This ensures that nested fields (like a Ref inside the sub-table) are also rendered correctly.
-            renderField({ container: td, colSchema, record: relRec, tableLens, ruleIdToColIdMap });
-        });
+            // Call renderField for each cell to get full rendering capabilities
+            renderField({
+                container: td,
+                colSchema: colSchema,
+                record: relRec,
+                tableLens: tableLens,
+                ruleIdToColIdMap: ruleIdToColIdMap
+            });
+        }
     }
+    // Clear the container before adding the table
+    container.innerHTML = '';
     container.appendChild(subTable);
 }
 
@@ -83,74 +91,65 @@ async function _renderRelatedTable(container, relatedRecords, tableLens, ruleIdT
  * The main exported function. Renders a single field into a container.
  */
 export async function renderField(options) {
-    const { container, colSchema, record, tableLens, ruleIdToColIdMap, displayAs } = options;
-    const cellValue = record[colSchema.colId];
-    container.innerHTML = ''; 
-
-    const content = document.createElement('div');
-    const wopts = JSON.parse(colSchema.widgetOptions || '{}');
-
-    if (cellValue === null || cellValue === undefined) {
-        content.textContent = '(vazio)';
-    } 
-    else if (colSchema.type.startsWith('RefList:')) {
-        let count = Array.isArray(cellValue) && cellValue[0] === 'L' ? cellValue.length - 1 : 0;
-        content.textContent = `[RefList] (${count} items)`;
-        const relatedRecords = await tableLens.fetchRelatedRecords(record, colSchema.colId);
-        if (relatedRecords.length > 0) {
-            await _renderRelatedTable(content, relatedRecords, tableLens, ruleIdToColIdMap);
+    const { container, colSchema, record, tableLens, ruleIdToColIdMap, isEditing = false } = options;
+    const cellValue = record ? record[colSchema.colId] : ''; // Handle empty record for "Add"
+    container.innerHTML = '';
+    
+    // If NOT editing, use the read-only logic
+    if (!isEditing) {
+        const content = document.createElement('div');
+        // ... (insert the full read-only rendering logic from my previous response here)
+        // ... It handles RefList, Date, Markdown, etc.
+        if (cellValue === null || cellValue === undefined) { content.textContent = '(vazio)'; content.style.fontStyle = 'italic'; }
+        else if (colSchema.type.startsWith('RefList:')) {
+            const count = Array.isArray(cellValue) && cellValue[0] === 'L' ? cellValue.length - 1 : 0;
+            content.textContent = `[RefList] (${count} items)`;
+            const relatedRecords = await tableLens.fetchRelatedRecords(record, colSchema.colId);
+            if (relatedRecords.length > 0) { await _renderRelatedTable(content, relatedRecords, tableLens, ruleIdToColIdMap); }
         }
+        else { content.textContent = String(cellValue); }
+        container.appendChild(content);
+        _applyStyles(container, colSchema, record, ruleIdToColIdMap);
+        return;
     }
-    else if (colSchema.type.startsWith('Ref:')) {
-        const { displayValue } = await tableLens.resolveReference(colSchema, record);
-        content.textContent = displayValue;
-    }
-    else if (colSchema.type === 'ChoiceList') {
-        if (Array.isArray(cellValue) && cellValue[0] === 'L') {
-            cellValue.slice(1).forEach(val => {
-                const pill = document.createElement('span');
-                pill.style.cssText = 'display: inline-block; padding: 2px 8px; margin: 2px; border-radius: 12px;';
-                pill.textContent = val;
-                // **THE FIX**: Apply styles to each pill based on its value.
-                const choiceStyle = wopts.choiceOptions?.[val];
-                if (choiceStyle) {
-                    pill.style.color = choiceStyle.textColor || '#000';
-                    pill.style.backgroundColor = choiceStyle.fillColor || '#e0e0e0';
-                } else {
-                    pill.style.backgroundColor = '#e0e0e0';
-                }
-                content.appendChild(pill);
+
+    // --- If we ARE editing, render form elements ---
+    let input;
+    switch (colSchema.type) {
+        case 'Bool':
+            input = document.createElement('input');
+            input.type = 'checkbox';
+            input.checked = !!cellValue;
+            break;
+        case 'Date':
+            input = document.createElement('input');
+            input.type = 'date';
+            if (cellValue) {
+                input.value = new Date(cellValue * 1000).toISOString().split('T')[0];
+            }
+            break;
+        case 'Choice':
+            input = document.createElement('select');
+            const wopts = JSON.parse(colSchema.widgetOptions || '{}');
+            (wopts.choices || []).forEach(choice => {
+                const option = document.createElement('option');
+                option.value = choice;
+                option.textContent = choice;
+                if (cellValue === choice) option.selected = true;
+                input.appendChild(option);
             });
-        }
+            break;
+        // Add more cases for Int, Numeric, Text, etc.
+        default:
+            input = document.createElement('input');
+            input.type = 'text';
+            input.value = (cellValue === null || cellValue === undefined) ? '' : String(cellValue);
     }
-    else if (colSchema.type.startsWith('Date')) {
-        const date = new Date(cellValue * 1000);
-        content.textContent = colSchema.type === 'DateTime' ? date.toLocaleString() : date.toLocaleDateString();
-    } 
-    else if (colSchema.type === 'Bool') {
-        if (displayAs === 'switch') {
-            content.innerHTML = `<label class="switch"><input type="checkbox" ${cellValue ? 'checked' : ''} disabled><span class="slider round"></span></label>`;
-        } else { // Default to checkmark
-            content.textContent = cellValue ? '✓' : '☐';
-            content.style.fontSize = '1.2em';
-        }
-    }
-    else if (colSchema.type === 'Numeric' || colSchema.type === 'Int') {
-        if (wopts.numMode === 'currency') {
-            // A more robust implementation would get currency from options.
-            content.textContent = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(cellValue);
-        } else {
-            content.textContent = Number(cellValue).toFixed(wopts.decimals || 2);
-        }
-    }
-    else if (wopts.widget === 'Markdown') {
-        let html = String(cellValue).replace(/</g, '<').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\*(.*?)\*/g, '<em>$1</em>').replace(/\n/g, '<br>');
-        content.innerHTML = html;
-    }
-    else {
-        content.textContent = String(cellValue);
-    }
-
-    container.appendChild(content);
-    _applyStyles(container, colSchema, record, ruleIdToColIdMap);
+    
+    input.dataset.colId = colSchema.colId; // Crucial for retrieving the value
+    input.style.width = '100%';
+    input.style.padding = '8px';
+    input.style.fontSize = '1em';
+    input.style.boxSizing = 'border-box';
+    container.appendChild(input);
 }

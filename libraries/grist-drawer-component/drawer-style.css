@@ -89,3 +89,7 @@
     border: 1px solid #eee;
     min-height: 20px;
 }
+/* Add this to the end of drawer-style.css */
+body.grist-drawer-is-open {
+    overflow: hidden;
+}

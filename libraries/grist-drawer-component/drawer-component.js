@@ -64,7 +64,8 @@ function _switchToTab(tabElement, panelElement) {
 
 export async function openDrawer(tableId, recordId, options = {}) {
     if (!drawerPanel) _initializeDrawerDOM();
-    drawerPanel.classList.add('is-open');
+    document.body.classList.add('grist-drawer-is-open');
+	drawerPanel.classList.add('is-open');
     drawerOverlay.classList.add('is-open');
     drawerHeader.nextElementSibling.querySelector('.drawer-tabs').innerHTML = '<div class="drawer-tab is-active">Loading...</div>';
     drawerHeader.nextElementSibling.querySelector('.drawer-tab-panels').innerHTML = '';
@@ -129,6 +130,7 @@ export async function openDrawer(tableId, recordId, options = {}) {
 
 export function closeDrawer() {
     if (!drawerPanel) return;
-    drawerPanel.classList.remove('is-open');
+    document.body.classList.remove('grist-drawer-is-open');
+	drawerPanel.classList.remove('is-open');
     drawerOverlay.classList.remove('is-open');
 }
