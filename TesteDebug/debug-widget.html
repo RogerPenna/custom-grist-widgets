@@ -9,7 +9,6 @@
         #selectorContainer { margin-bottom: 15px; padding: 10px; background-color: #f7f7f7; border: 1px solid #ddd; border-radius: 4px; display: flex; align-items: center; }
         #selectorContainer label { font-weight: bold; margin-right: 10px; }
         #tableSelector { padding: 5px; font-size: 14px; }
-        #add-new-record-btn { margin-left: 20px; padding: 5px 10px; font-size: 14px; cursor: pointer; }
         table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
         th, td { border: 1px solid #ccc; padding: 8px; text-align: left; vertical-align: top; }
         th { background-color: #f0f0f0; position: sticky; top: 0; z-index: 1;}
@@ -18,14 +17,12 @@
         .record-row:hover { background-color: #f9f9f9; }
         h2, h3 { margin-top: 20px; border-bottom: 1px solid #eee; padding-bottom: 5px;}
         #recordsTable td div > table { margin-top: 5px; border: 1px dashed #aaa !important; font-size: 0.9em; background-color: #fdfdfd; }
-        .actions-cell button { margin-right: 5px; background: none; border: none; cursor: pointer; font-size: 1.2em; }
     </style>
 </head>
 <body>
     <div id="selectorContainer">
         <label for="tableSelector">Selecionar Tabela:</label>
         <select id="tableSelector"></select>
-        <button id="add-new-record-btn">+ Adicionar Novo</button>
     </div>
     <h1>Debug GristTableLens</h1>
     <div id="loadingMessage">Carregando dados...</div>
@@ -48,14 +45,11 @@
     </div>
     <div id="errorMessage" style="color:red; font-weight:bold;"></div>
 
-    <!-- The script loading section is critical for the modular architecture -->
+    <!-- Script loading remains the same as it's needed by the components -->
     <script type="module" src="../libraries/grist-table-lens/grist-table-lens.js"></script>
     <script type="module" src="../libraries/grist-data-writer.js"></script>
     <script type="module" src="../libraries/grist-field-renderer/grist-field-renderer.js"></script>
-    <script type="module" src="../libraries/grist-modal-component/modal-component.js"></script>
-    
-    <!-- The main script for this widget must also be a module -->
+    <script type="module" src="../libraries/grist-drawer-component/drawer-component.js"></script>
     <script type="module" src="debug-widget-main.js"></script>
-
 </body>
 </html>
