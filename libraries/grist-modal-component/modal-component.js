@@ -79,16 +79,14 @@ export function openModal(options) {
     modalTitle.textContent = title;
     currentOnSave = onSave;
     currentOnCancel = onCancel;
-    currentContext = { tableId, recordId: record.id };
     modalBody.innerHTML = '';
     
     const ruleIdToColIdMap = new Map();
     schema.forEach(col => { if (col.colId?.startsWith('gristHelper_')) { ruleIdToColIdMap.set(col.id, col.colId); } });
 
-    schema.filter(col => !col.colId.startsWith('gristHelper_')).forEach(colSchema => {
-        const isEditable = !colSchema.isFormula;
-        if (!isEditable) return; // Don't show formula fields in the add/edit modal
-
+    // FIX: Show all non-formula fields, including ChoiceList
+    schema.filter(col => !col.isFormula && !col.colId.startsWith('gristHelper_'))
+        .forEach(colSchema => {
         const row = document.createElement('div'); row.className = 'modal-field-row';
         const label = document.createElement('label'); label.className = 'modal-field-label';
         label.textContent = colSchema.label || colSchema.colId;
@@ -96,10 +94,10 @@ export function openModal(options) {
         row.appendChild(label); row.appendChild(valueContainer);
         modalBody.appendChild(row);
 
+        // Call the same renderer, but always in edit mode
         renderField({ container: valueContainer, colSchema, record, tableLens, ruleIdToColIdMap, isEditing: true });
     });
     modalOverlay.classList.add('is-open');
-}
 
 export function closeModal() {
     if (currentOnCancel) currentOnCancel();

@@ -88,19 +88,34 @@ function _handleEdit() {
 
 async function _handleSave() {
     const changes = {};
-    drawerPanel.querySelectorAll('[data-col-id]').forEach(el => {
+    // This query now correctly finds elements inside the active tab panel
+    drawerPanel.querySelectorAll('.drawer-tab-content.is-active [data-col-id]').forEach(el => {
         const colId = el.dataset.colId;
-        changes[colId] = (el.type === 'checkbox') ? el.checked : el.value;
+        
+        // FIX for ChoiceList saving
+        if (el.tagName === 'SELECT' && el.multiple) {
+            const selectedValues = Array.from(el.selectedOptions).map(opt => opt.value);
+            changes[colId] = ['L', ...selectedValues];
+        } 
+        // FIX for Date saving (convert back to UTC timestamp)
+        else if (el.type === 'date' || el.type === 'datetime-local') {
+            if (el.value) {
+                changes[colId] = new Date(el.value).getTime() / 1000;
+            } else {
+                changes[colId] = null;
+            }
+        }
+        else if (el.type === 'checkbox') {
+            changes[colId] = el.checked;
+        } else {
+            changes[colId] = el.value;
+        }
     });
     
     await dataWriter.updateRecord(currentTableId, currentRecordId, changes);
-    // =================================================================
-    // ========= PUBLISH A 'data-changed' EVENT INSTEAD OF RELOADING ===
-    // =================================================================
     publish('data-changed', { tableId: currentTableId, recordId: currentRecordId, action: 'update' });
-    
     isEditing = false;
-    await _renderDrawerContent(); // Re-render self to show new data
+    await _renderDrawerContent();
     _updateButtonVisibility();
 }
 

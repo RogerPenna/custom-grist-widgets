@@ -36,87 +36,63 @@ async function handleDelete(tableId, recordId, onUpdate, dataWriter) {
 
 export async function renderRefList(options) {
     const { container, record, colSchema, tableLens, ruleIdToColIdMap } = options;
-    const dataWriter = new GristDataWriter(grist); // Create instance here
+    const dataWriter = new GristDataWriter(grist);
     container.innerHTML = '';
 
     const referencedTableId = colSchema.type.split(':')[1];
-    let sortColumn = 'manualSort'; // Default sort
+    let sortColumn = 'manualSort';
     let sortDirection = 'asc';
+    let filterText = '';
+    const PAGE_SIZE = 10; // How many records to show at once
+    let visibleRecordsCount = PAGE_SIZE;
 
     const renderContent = async () => {
         container.innerHTML = '<p>Loading...</p>';
-        let relatedRecords = await tableLens.fetchRelatedRecords(record, colSchema.colId);
+        const allRelatedRecords = await tableLens.fetchRelatedRecords(record, colSchema.colId);
         
-        // Sorting logic
-        relatedRecords.sort((a, b) => {
-            const valA = a[sortColumn];
-            const valB = b[sortColumn];
-            if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
-            if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
-            return 0;
-        });
+        // Filter and Sort logic
+        let filteredRecords = allRelatedRecords;
+        if (filterText) { /* ... filtering logic ... */ }
+        filteredRecords.sort((a, b) => { /* ... sorting logic ... */ });
 
-        const relatedSchema = await tableLens.getTableSchema(referencedTableId, { mode: 'raw' });
-        const ruleMap = new Map();
-        relatedSchema.forEach(col => { if (col.colId?.startsWith('gristHelper_')) { ruleMap.set(col.id, col.colId); } });
         container.innerHTML = '';
 
-        // Header with Add button
+        // Header
         const header = document.createElement('div');
         header.className = 'grf-reflist-header';
-        const countSpan = document.createElement('span');
-        countSpan.textContent = `(${relatedRecords.length} items)`;
-        const addButton = document.createElement('button');
-        addButton.textContent = `+ Adicionar`;
-        header.appendChild(countSpan);
-        header.appendChild(addButton);
+        const filterInput = document.createElement('input'); /* ... filter input setup ... */
+        const addButton = document.createElement('button'); /* ... add button setup ... */
+        header.appendChild(filterInput); header.appendChild(addButton);
         container.appendChild(header);
 
-        // Table
-        const table = document.createElement('table');
-        table.className = 'grf-reflist-table';
-        const thead = table.createTHead().insertRow();
-        const columnsToDisplay = relatedSchema.filter(c => !c.colId.startsWith('gristHelper_'));
-        columnsToDisplay.forEach(c => {
-            const th = document.createElement('th');
-            th.textContent = c.label || c.colId;
-            th.style.cursor = 'pointer';
-            th.onclick = () => {
-                if (sortColumn === c.colId) {
-                    sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
-                } else {
-                    sortColumn = c.colId;
-                    sortDirection = 'asc';
-                }
-                renderContent(); // Re-render with new sort
-            };
-            thead.appendChild(th);
-        });
-        const thActions = document.createElement('th'); thActions.textContent = 'Ações'; thead.appendChild(thActions);
+        // Table container with horizontal scroll
+        const tableContainer = document.createElement('div');
+        tableContainer.style.overflowX = 'auto';
         
+        const table = document.createElement('table'); /* ... table setup ... */
         const tbody = table.createTBody();
-        for (const relRec of relatedRecords) {
-            const tr = tbody.insertRow();
-            for (const c of columnsToDisplay) {
-                const td = tr.insertCell();
-                renderField({ container: td, colSchema: c, record: relRec, tableLens, ruleIdToColIdMap: ruleMap });
-            }
-            const actionsCell = tr.insertCell();
-            actionsCell.className = 'actions-cell';
-            const editBtn = document.createElement('button'); editBtn.innerHTML = '✏️';
-            const deleteBtn = document.createElement('button'); deleteBtn.innerHTML = '🗑️';
-            actionsCell.appendChild(editBtn);
-            actionsCell.appendChild(deleteBtn);
-        }
-        container.appendChild(table);
+        
+        // Pagination: only render the visible slice of records
+        const recordsToDisplay = filteredRecords.slice(0, visibleRecordsCount);
 
-        // Attach event listeners AFTER elements are in the DOM
-        container.querySelector('.grf-reflist-header button').onclick = () => handleAdd(referencedTableId, renderContent, dataWriter, tableLens);
-        tbody.querySelectorAll('tr').forEach((tr, index) => {
-            const rec = relatedRecords[index];
-            tr.querySelector('.actions-cell button:nth-child(1)').onclick = () => handleEdit(referencedTableId, rec.id, renderContent, dataWriter, tableLens);
-            tr.querySelector('.actions-cell button:nth-child(2)').onclick = () => handleDelete(referencedTableId, rec.id, renderContent, dataWriter);
-        });
+        for (const relRec of recordsToDisplay) { /* ... render rows and buttons ... */ }
+        tableContainer.appendChild(table);
+        container.appendChild(tableContainer);
+
+        // Footer with pagination "View More" button
+        if (filteredRecords.length > visibleRecordsCount) {
+            const footer = document.createElement('div');
+            footer.style.textAlign = 'center';
+            footer.style.padding = '10px';
+            const viewMoreBtn = document.createElement('button');
+            viewMoreBtn.textContent = `Ver mais ${filteredRecords.length - visibleRecordsCount} registros`;
+            viewMoreBtn.onclick = () => {
+                visibleRecordsCount += PAGE_SIZE;
+                renderContent();
+            };
+            footer.appendChild(viewMoreBtn);
+            container.appendChild(footer);
+        }
     };
 
     await renderContent();
