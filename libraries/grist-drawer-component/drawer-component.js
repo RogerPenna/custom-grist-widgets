@@ -100,18 +100,25 @@ async function _handleSave() {
                 if (!value) {
                     value = null; // Envia nulo se o campo estiver vazio
                 } else if (colSchema.type === 'Date') {
-                    // Para um input 'date', o valor é "YYYY-MM-DD".
-                    // Criamos a data como UTC para obter o timestamp correto.
-                    value = new Date(value + 'T00:00:00Z').getTime() / 1000;
+                    // =================================================================
+                    // ========= CORREÇÃO DEFINITIVA PARA O BUG DE FUSO HORÁRIO ========
+                    // =================================================================
+                    // Em vez de confiar na análise de string, construímos o timestamp UTC.
+                    // O valor do input é uma string "YYYY-MM-DD".
+                    const parts = value.split('-');
+                    const year = parseInt(parts[0], 10);
+                    const month = parseInt(parts[1], 10) - 1; // Mês em JS é 0-indexado (0-11).
+                    const day = parseInt(parts[2], 10);
+                    value = Date.UTC(year, month, day) / 1000;
                 } else { // DateTime
-                    // Para 'datetime-local', o valor já está no formato correto.
-                    // O JS criará a data no fuso local, e Grist a interpretará corretamente.
+                    // Para 'datetime-local', o valor é "YYYY-MM-DDTHH:mm".
+                    // new Date() o interpreta corretamente como hora local.
                     value = new Date(value).getTime() / 1000;
                 }
             } else if (el.type === 'checkbox') {
                 value = el.checked;
             }
-            // Outros tipos como ChoiceList, etc., podem ser adicionados aqui se necessário.
+            // Adicionar lógica para 'select-multiple' (ChoiceList) aqui no futuro.
         }
         
         changes[colId] = value;

@@ -58,13 +58,21 @@ async function _handleSave() {
                  if (!value) {
                     value = null; // Envia nulo se o campo estiver vazio
                 } else if (colSchema.type === 'Date') {
-                    value = new Date(value + 'T00:00:00Z').getTime() / 1000;
+                    // =================================================================
+                    // ========= CORREÇÃO DEFINITIVA PARA O BUG DE FUSO HORÁRIO ========
+                    // =================================================================
+                    const parts = value.split('-');
+                    const year = parseInt(parts[0], 10);
+                    const month = parseInt(parts[1], 10) - 1; // Mês em JS é 0-indexado (0-11).
+                    const day = parseInt(parts[2], 10);
+                    value = Date.UTC(year, month, day) / 1000;
                 } else { // DateTime
                     value = new Date(value).getTime() / 1000;
                 }
             } else if (el.type === 'checkbox') {
                 value = el.checked;
             }
+            // Adicionar lógica para 'select-multiple' (ChoiceList) aqui no futuro.
         }
 
         changes[colId] = value;
@@ -72,8 +80,6 @@ async function _handleSave() {
 
     if (currentOnSave) {
         try {
-            // A função onSave agora pode fazer a gravação e publicar o evento.
-            // O componente que chamou o modal é responsável pela ação.
             await currentOnSave(changes);
         } catch (err) {
             console.error("Modal onSave callback failed:", err);
