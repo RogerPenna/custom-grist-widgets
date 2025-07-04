@@ -2,7 +2,7 @@
 import { GristTableLens } from '../grist-table-lens/grist-table-lens.js';
 import { GristDataWriter } from '../grist-data-writer.js';
 import { renderField } from '../grist-field-renderer/grist-field-renderer.js';
-import { publish } from '../grist-event-bus.js'; // Import the publish function
+import { publish } from '../grist-event-bus/grist-event-bus.js';
 
 const tableLens = new GristTableLens(grist);
 const dataWriter = new GristDataWriter(grist);

@@ -4,7 +4,7 @@ import { GristTableLens } from '../grist-table-lens/grist-table-lens.js';
 import { GristDataWriter } from '../grist-data-writer.js';
 import { openModal } from '../grist-modal-component/modal-component.js';
 import { renderField } from '../grist-field-renderer/grist-field-renderer.js';
-import { publish } from '../grist-event-bus.js'; // Import the new event bus publisher
+import { publish } from '../grist-event-bus/grist-event-bus.js';
 
 const tableLens = new GristTableLens(grist);
 const dataWriter = new GristDataWriter(grist);
