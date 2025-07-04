@@ -11,11 +11,10 @@ const dataWriter = new GristDataWriter(grist);
 
 let drawerPanel, drawerOverlay, drawerHeader, drawerTitle;
 let currentTableId, currentRecordId;
+let currentSchema = []; // Guardar o schema atual aqui
 let isEditing = false;
 
-// The 'currentOnClose' variable is no longer needed with the event bus.
-// let currentOnClose; 
-
+// ... (as outras funções como _initializeDrawerDOM, _switchToTab, etc. permanecem as mesmas) ...
 function _initializeDrawerDOM() {
     if (document.getElementById('grist-drawer-panel')) return;
 
@@ -88,15 +87,37 @@ function _handleEdit() {
 
 async function _handleSave() {
     const changes = {};
-    drawerPanel.querySelectorAll('[data-col-id]').forEach(el => {
+    const formElements = drawerPanel.querySelectorAll('[data-col-id]');
+
+    formElements.forEach(el => {
         const colId = el.dataset.colId;
-        changes[colId] = (el.type === 'checkbox') ? el.checked : el.value;
+        const colSchema = currentSchema.find(c => c.colId === colId);
+        let value = el.value;
+
+        if (colSchema) {
+            // Lógica Específica por tipo de coluna
+            if (colSchema.type.startsWith('Date')) {
+                if (!value) {
+                    value = null; // Envia nulo se o campo estiver vazio
+                } else if (colSchema.type === 'Date') {
+                    // Para um input 'date', o valor é "YYYY-MM-DD".
+                    // Criamos a data como UTC para obter o timestamp correto.
+                    value = new Date(value + 'T00:00:00Z').getTime() / 1000;
+                } else { // DateTime
+                    // Para 'datetime-local', o valor já está no formato correto.
+                    // O JS criará a data no fuso local, e Grist a interpretará corretamente.
+                    value = new Date(value).getTime() / 1000;
+                }
+            } else if (el.type === 'checkbox') {
+                value = el.checked;
+            }
+            // Outros tipos como ChoiceList, etc., podem ser adicionados aqui se necessário.
+        }
+        
+        changes[colId] = value;
     });
     
     await dataWriter.updateRecord(currentTableId, currentRecordId, changes);
-    // =================================================================
-    // ========= PUBLISH A 'data-changed' EVENT INSTEAD OF RELOADING ===
-    // =================================================================
     publish('data-changed', { tableId: currentTableId, recordId: currentRecordId, action: 'update' });
     
     isEditing = false;
@@ -115,10 +136,10 @@ async function _handleAdd() {
     openModal({
         title: `Adicionar em ${currentTableId}`, tableId: currentTableId, record: {}, schema,
         onSave: async (newRecord) => {
-            // The modal will perform the save and publish its own event.
-            // But we still need to refresh the drawer content to show the new data in RefLists.
-            await dataWriter.addRecord(currentTableId, newRecord);
-            await _renderDrawerContent();
+            const result = await dataWriter.addRecord(currentTableId, newRecord);
+            // Publica o evento para que outros componentes (como o debug widget) saibam da adição.
+            publish('data-changed', { tableId: currentTableId, recordId: result.id, action: 'add' });
+            await _renderDrawerContent(); // Atualiza o drawer, especialmente se houver RefLists
         }
     });
 }
@@ -126,9 +147,6 @@ async function _handleAdd() {
 async function _handleDelete() {
     if (confirm(`Tem certeza que deseja deletar o registro ${currentRecordId}?`)) {
         await dataWriter.deleteRecords(currentTableId, [currentRecordId]);
-        // =================================================================
-        // =========== PUBLISH A 'data-changed' EVENT ON DELETE ============
-        // =================================================================
         publish('data-changed', { tableId: currentTableId, recordId: currentRecordId, action: 'delete' });
         closeDrawer();
     }
@@ -148,13 +166,18 @@ async function _renderDrawerContent() {
     tabsContainer.innerHTML = '';
     panelsContainer.innerHTML = '';
 
-    const schema = await tableLens.getTableSchema(currentTableId, { mode: 'raw' });
+    // ATUALIZAÇÃO: Armazena o schema para uso no _handleSave
+    currentSchema = await tableLens.getTableSchema(currentTableId, { mode: 'raw' });
     const record = await tableLens.fetchRecordById(currentTableId, currentRecordId);
-    if (!record) throw new Error(`Record ${currentRecordId} not found.`);
+    if (!record) {
+        console.error(`Record ${currentRecordId} not found in table ${currentTableId}.`);
+        closeDrawer();
+        return;
+    }
     const ruleIdToColIdMap = new Map();
-    schema.forEach(col => { if (col.colId?.startsWith('gristHelper_')) { ruleIdToColIdMap.set(col.id, col.colId); } });
+    currentSchema.forEach(col => { if (col.colId?.startsWith('gristHelper_')) { ruleIdToColIdMap.set(col.id, col.colId); } });
 
-    const tabs = { "Main": schema.filter(col => !col.colId.startsWith('gristHelper_')) };
+    const tabs = { "Main": currentSchema.filter(col => !col.colId.startsWith('gristHelper_')) };
     Object.entries(tabs).forEach(([tabName, cols], index) => {
         const tabEl = document.createElement('div');
         tabEl.className = 'drawer-tab';
@@ -190,18 +213,13 @@ async function _renderDrawerContent() {
         });
     });
 }
+// ... (resto do arquivo: openDrawer, closeDrawer, etc. permanecem os mesmos) ...
 
-/**
- * The main public function to open the drawer. It no longer needs the onClose callback.
- */
 export async function openDrawer(tableId, recordId, options = {}) {
     _initializeDrawerDOM();
     currentTableId = tableId;
     currentRecordId = recordId;
-    isEditing = options.mode === 'edit' || false; // Allow opening directly in edit mode.
-    
-    // The currentOnClose variable is removed.
-    // currentOnClose = options.onClose;
+    isEditing = options.mode === 'edit' || false;
 
     document.body.classList.add('grist-drawer-is-open');
 	drawerPanel.classList.add('is-open');
@@ -222,9 +240,4 @@ export function closeDrawer() {
     document.body.classList.remove('grist-drawer-is-open');
 	drawerPanel.classList.remove('is-open');
     drawerOverlay.classList.remove('is-open');
-
-    // The onClose callback logic is removed.
-    // if (currentOnClose && typeof currentOnClose === 'function') {
-    //     currentOnClose();
-    // }
 }

@@ -9,8 +9,9 @@ const dataWriter = new GristDataWriter(grist);
 
 let modalOverlay, modalContent, modalTitle, modalBody;
 let currentOnSave, currentOnCancel;
-let currentContext = {}; // To store tableId, recordId etc.
+let currentSchema = []; // Guardar o schema atual aqui
 
+// ... (função _initializeModalDOM permanece a mesma) ...
 function _initializeModalDOM() {
     if (document.getElementById('grist-modal-overlay')) return;
     const link = document.createElement('link');
@@ -41,54 +42,60 @@ function _initializeModalDOM() {
     document.getElementById('modal-save-btn').addEventListener('click', () => _handleSave());
 }
 
+
 async function _handleSave() {
     const changes = {};
-    modalBody.querySelectorAll('[data-col-id]').forEach(el => {
+    const formElements = modalBody.querySelectorAll('[data-col-id]');
+    
+    formElements.forEach(el => {
         const colId = el.dataset.colId;
-        changes[colId] = (el.type === 'checkbox') ? el.checked : el.value;
+        const colSchema = currentSchema.find(c => c.colId === colId);
+        let value = el.value;
+
+        if (colSchema) {
+            // Lógica Específica por tipo de coluna
+            if (colSchema.type.startsWith('Date')) {
+                 if (!value) {
+                    value = null; // Envia nulo se o campo estiver vazio
+                } else if (colSchema.type === 'Date') {
+                    value = new Date(value + 'T00:00:00Z').getTime() / 1000;
+                } else { // DateTime
+                    value = new Date(value).getTime() / 1000;
+                }
+            } else if (el.type === 'checkbox') {
+                value = el.checked;
+            }
+        }
+
+        changes[colId] = value;
     });
 
     if (currentOnSave) {
         try {
-            // Let the caller do the writing and tell us what happened
-            const { action, tableId, recordId } = await currentOnSave(changes);
-            
-            // Publish a generic event that other components can listen to.
-            publish('data-changed', { action, tableId, recordId });
-
+            // A função onSave agora pode fazer a gravação e publicar o evento.
+            // O componente que chamou o modal é responsável pela ação.
+            await currentOnSave(changes);
         } catch (err) {
             console.error("Modal onSave callback failed:", err);
-            // Optionally show an error message to the user
         }
     }
     closeModal();
 }
 
-/**
- * @param {object} options
- * @param {string} options.title - The title of the modal.
- * @param {string} options.tableId - The table ID for the record.
- * @param {object} options.record - The record object. Empty {} for "add" mode.
- * @param {object[]} options.schema - The raw schema for the table.
- * @param {function} options.onSave - Async function that receives changes and performs the write action.
- * @param {function} [options.onCancel] - Optional callback for cancel.
- */
 export function openModal(options) {
     _initializeModalDOM();
     const { title, tableId, record, schema, onSave, onCancel } = options;
     modalTitle.textContent = title;
     currentOnSave = onSave;
     currentOnCancel = onCancel;
-    currentContext = { tableId, recordId: record.id };
+    currentSchema = schema; // Salva o schema para uso no _handleSave
     modalBody.innerHTML = '';
     
     const ruleIdToColIdMap = new Map();
     schema.forEach(col => { if (col.colId?.startsWith('gristHelper_')) { ruleIdToColIdMap.set(col.id, col.colId); } });
 
-    schema.filter(col => !col.colId.startsWith('gristHelper_')).forEach(colSchema => {
-        const isEditable = !colSchema.isFormula;
-        if (!isEditable) return; // Don't show formula fields in the add/edit modal
-
+    // Filtra para não mostrar colunas de fórmula no formulário de edição/adição
+    schema.filter(col => !col.isFormula && !col.colId.startsWith('gristHelper_')).forEach(colSchema => {
         const row = document.createElement('div'); row.className = 'modal-field-row';
         const label = document.createElement('label'); label.className = 'modal-field-label';
         label.textContent = colSchema.label || colSchema.colId;
@@ -103,7 +110,8 @@ export function openModal(options) {
 
 export function closeModal() {
     if (currentOnCancel) currentOnCancel();
-    modalOverlay.classList.remove('is-open');
+    if (modalOverlay) modalOverlay.classList.remove('is-open');
     currentOnSave = null;
     currentOnCancel = null;
+    currentSchema = [];
 }
