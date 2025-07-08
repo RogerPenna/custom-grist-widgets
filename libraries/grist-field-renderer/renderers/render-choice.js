@@ -7,6 +7,7 @@ export function renderChoice(options) {
     const choiceOptions = wopts.choiceOptions || {};
     const isList = colSchema.type === 'ChoiceList';
 
+    // MODO VISUALIZAÇÃO (Já está correto)
     if (!isEditing) {
         if (isList) {
             const values = Array.isArray(cellValue) && cellValue[0] === 'L' ? cellValue.slice(1) : [];
@@ -39,6 +40,7 @@ export function renderChoice(options) {
     // Função auxiliar para aplicar estilo ao <select>
     const applySelectStyle = (el, value) => {
         const style = choiceOptions[value];
+        // Aplica o estilo se ele existir, senão volta ao padrão.
         el.style.backgroundColor = style?.fillColor || '';
         el.style.color = style?.textColor || '';
         el.style.fontWeight = style?.fontBold ? 'bold' : '';
@@ -53,9 +55,11 @@ export function renderChoice(options) {
     choices.forEach(choice => {
         const option = new Option(choice, choice);
         if (isList) {
+            // A lógica de pré-seleção para ChoiceList permanece a mesma
             const currentValues = (Array.isArray(cellValue) && cellValue[0] === 'L' ? cellValue.slice(1) : []).map(v => String(v));
             if (currentValues.includes(String(choice))) option.selected = true;
         } else {
+            // A lógica de pré-seleção para Choice único permanece a mesma
             if (cellValue != null && String(cellValue) === String(choice)) {
                 option.selected = true;
             }
@@ -63,7 +67,7 @@ export function renderChoice(options) {
         select.appendChild(option);
     });
 
-    // Aplica o estilo inicial para o valor já selecionado
+    // Aplica o estilo inicial para o valor já selecionado quando o drawer abre
     if (!isList && cellValue) {
         applySelectStyle(select, cellValue);
     }
