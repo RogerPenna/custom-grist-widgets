@@ -58,8 +58,10 @@ function _applyStyles(element, colSchema, record, ruleIdToColIdMap, isLabel = fa
 
     if (styleApplied) return;
 
-    // NÍVEL 2: Formatação Fixa da Coluna (NÃO se aplica a Choice/ChoiceList)
-    // O render-choice já tratou sua própria formatação (choiceOptions), que tem prioridade.
+    // =================================================================
+    // =========== CORREÇÃO: Ignora Choice e ChoiceList aqui ===========
+    // =================================================================
+    // A formatação destes tipos é tratada exclusivamente por `render-choice.js`.
     if (colSchema.type !== 'Choice' && colSchema.type !== 'ChoiceList') {
         if (wopts.fillColor) element.style.backgroundColor = wopts.fillColor;
         if (wopts.textColor) element.style.color = wopts.textColor;
