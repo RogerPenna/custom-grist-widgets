@@ -2,16 +2,14 @@
 export function renderChoice(options) {
     const { container, colSchema, cellValue, isEditing } = options;
 
-    // CORREÇÃO CRÍTICA: Analisa a string widgetOptions para um objeto JS
     const wopts = JSON.parse(colSchema.widgetOptions || '{}');
     const choices = wopts.choices || [];
-    const choiceOptions = wopts.choiceOptions || {}; // Objeto com as cores
+    const choiceOptions = wopts.choiceOptions || {};
     const isList = colSchema.type === 'ChoiceList';
 
-    // MODO VISUALIZAÇÃO
+    // MODO VISUALIZAÇÃO - A formatação é aplicada aqui
     if (!isEditing) {
         if (isList) {
-            // Lógica para renderizar pílulas de ChoiceList
             const values = Array.isArray(cellValue) && cellValue[0] === 'L' ? cellValue.slice(1) : [];
             if (values.length === 0) {
                 container.textContent = '(vazio)';
@@ -23,7 +21,6 @@ export function renderChoice(options) {
                     const pill = document.createElement('span');
                     pill.className = 'grf-choice-pill';
                     pill.textContent = val;
-                    // Aplica cores da pílula baseadas no choiceOptions
                     const style = choiceOptions[val];
                     if (style) {
                         if (style.textColor) pill.style.color = style.textColor;
@@ -34,7 +31,8 @@ export function renderChoice(options) {
                 }
             });
         } else {
-            // Lógica para formatar Choice único
+            // CORREÇÃO para Choice Único:
+            // A formatação deve vir do choiceOptions, não de _applyStyles
             container.textContent = String(cellValue ?? '(vazio)');
             const style = choiceOptions[cellValue];
             if (style) {
@@ -49,7 +47,7 @@ export function renderChoice(options) {
         return;
     }
     
-    // MODO EDIÇÃO (Esta parte já funciona, sem alterações)
+    // MODO EDIÇÃO - Sem formatação de cores nas opções
     const select = document.createElement('select');
     select.className = 'grf-form-input';
     select.multiple = isList;
@@ -60,7 +58,9 @@ export function renderChoice(options) {
     }
 
     choices.forEach(choice => {
+        // Não aplicamos estilo aqui para manter a legibilidade
         const option = new Option(choice, choice);
+        
         if (isList) {
             const currentValues = (Array.isArray(cellValue) && cellValue[0] === 'L' ? cellValue.slice(1) : [])
                 .map(v => String(v));

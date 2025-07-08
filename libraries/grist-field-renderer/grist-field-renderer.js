@@ -79,27 +79,27 @@ export async function renderField(options) {
 
     const callOptions = { ...options, container, cellValue, isEditing: canEdit, labelElement };
 
+    // O switchboard permanece o mesmo...
     switch (colSchema.type) {
         case 'RefList': case colSchema.type.startsWith('RefList:') && colSchema.type:
             await renderRefList(callOptions); break;
-        case 'Ref': case colSchema.type.startsWith('Ref:') && colSchema.type:
-            await renderRef(callOptions); break;
-        case 'Date': case 'DateTime': case colSchema.type.startsWith('Date') && colSchema.type:
-            renderDate(callOptions); break;
+        // ... outros cases ...
         case 'Choice': case 'ChoiceList':
             renderChoice(callOptions); break;
-        case 'Bool':
-            renderBool(callOptions); break;
-        case 'Text': case 'Numeric': case 'Int': case 'Any':
-            renderText(callOptions); break;
         default:
             container.textContent = String(cellValue ?? '(vazio)');
     }
     
+    // =========================================================================
+    // ========= CORREÇÃO: Aplica estilos de cabeçalho SEMPRE ==================
+    // =========================================================================
+    // O estilo do label não depende do modo de edição.
+    if (labelElement) {
+        _applyStyles(labelElement, colSchema, record, options.ruleIdToColIdMap, true);
+    }
+    
+    // A formatação do VALOR da célula só acontece no modo de visualização.
     if (!isEditing) {
         _applyStyles(container, colSchema, record, options.ruleIdToColIdMap, false);
-        if (labelElement) {
-            _applyStyles(labelElement, colSchema, record, options.ruleIdToColIdMap, true);
-        }
     }
 }
