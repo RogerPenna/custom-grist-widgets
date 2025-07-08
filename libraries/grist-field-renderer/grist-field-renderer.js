@@ -68,27 +68,46 @@ function _applyStyles(element, colSchema, record, ruleIdToColIdMap, isLabel = fa
 export async function renderField(options) {
     const { container, colSchema, record, isEditing = false, labelElement } = options;
     const cellValue = record ? record[colSchema.colId] : null;
+    
     container.innerHTML = '';
     const isDisabled = isEditing && colSchema.isFormula;
     container.classList.toggle('is-disabled', isDisabled);
     const canEdit = isEditing && !isDisabled;
-    const callOptions = { ...options, container, cellValue, isEditing: canEdit, labelElement };
 
-    switch (colSchema.type) {
-        case 'RefList': case colSchema.type.startsWith('RefList:') && colSchema.type: await renderRefList(callOptions); break;
-        case 'Ref': case colSchema.type.startsWith('Ref:') && colSchema.type: await renderRef(callOptions); break;
-        case 'Date': case 'DateTime': case colSchema.type.startsWith('Date') && colSchema.type: renderDate(callOptions); break;
-        case 'Choice': case 'ChoiceList': renderChoice(callOptions); break;
-        case 'Bool': renderBool(callOptions); break;
-        case 'Text': case 'Numeric': case 'Int': case 'Any': renderText(callOptions); break;
-        default: container.textContent = String(cellValue ?? '(vazio)');
-    }
+    // =================================================================
+    // ========= CORREÇÃO CRÍTICA: INVERTER ORDEM DE OPERAÇÕES =========
+    // =================================================================
     
-    if (!isEditing) {
-        // Aplica os estilos no final para garantir a hierarquia correta
-        _applyStyles(container, colSchema, record, options.ruleIdToColIdMap, false);
-    }
+    // 1. Aplica estilos de cabeçalho (sempre)
     if (labelElement) {
         _applyStyles(labelElement, colSchema, record, options.ruleIdToColIdMap, true);
+    }
+
+    // 2. No modo de visualização, aplica os estilos GERAIS primeiro.
+    // _applyStyles aplicará a formatação condicional (se houver) ou a formatação fixa (se não for Choice).
+    if (!isEditing) {
+        _applyStyles(container, colSchema, record, options.ruleIdToColIdMap, false);
+    }
+
+    // 3. AGORA chama o renderizador especialista.
+    // Se for um Choice, ele poderá aplicar seus próprios estilos por cima da formatação fixa,
+    // mas não por cima da formatação condicional (que já foi aplicada e fez a função retornar).
+    const callOptions = { ...options, container, cellValue, isEditing: canEdit };
+
+    switch (colSchema.type) {
+        case 'RefList': case colSchema.type.startsWith('RefList:') && colSchema.type:
+            await renderRefList(callOptions); break;
+        case 'Ref': case colSchema.type.startsWith('Ref:') && colSchema.type:
+            await renderRef(callOptions); break;
+        case 'Date': case 'DateTime': case colSchema.type.startsWith('Date') && colSchema.type:
+            renderDate(callOptions); break;
+        case 'Choice': case 'ChoiceList':
+            renderChoice(callOptions); break;
+        case 'Bool':
+            renderBool(callOptions); break;
+        case 'Text': case 'Numeric': case 'Int': case 'Any':
+            renderText(callOptions); break;
+        default:
+            container.textContent = String(cellValue ?? '(vazio)');
     }
 }
