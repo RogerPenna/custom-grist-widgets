@@ -6,12 +6,26 @@ import { renderField } from '../grist-field-renderer.js';
 // These instances are now passed down, not created here. This improves testability.
 
 // Action handlers now receive the data writer instance
-async function handleAdd(tableId, onUpdate, dataWriter, tableLens) {
+async function handleAdd(tableId, onUpdate, dataWriter, tableLens, backRefCol, parentRecId) {
     const schema = await tableLens.getTableSchema(tableId, { mode: 'raw' });
+
+    // Prepara um registro inicial com a referência ao pai já preenchida.
+    // O modal pode usar isso para pré-selecionar o campo, se aplicável.
+    const initialRecord = {};
+    if (backRefCol && parentRecId) {
+        initialRecord[backRefCol] = parentRecId;
+    }
+
     openModal({
-        title: `Adicionar em ${tableId}`, tableId, record: {}, schema,
-        onSave: async (newRecord) => {
-            await dataWriter.addRecord(tableId, newRecord);
+        title: `Adicionar em ${tableId}`, tableId, record: initialRecord, schema,
+        onSave: async (newRecordFromForm) => {
+            // Garante que a referência ao pai seja incluída antes de salvar.
+            // Isso previne que o usuário remova acidentalmente a associação no formulário.
+            const finalRecord = { ...newRecordFromForm };
+            if (backRefCol && parentRecId) {
+                finalRecord[backRefCol] = parentRecId;
+            }
+            await dataWriter.addRecord(tableId, finalRecord);
             onUpdate();
         }
     });
@@ -111,8 +125,20 @@ export async function renderRefList(options) {
         container.appendChild(table);
 
         // Attach event listeners AFTER elements are in the DOM
-        container.querySelector('.grf-reflist-header button').onclick = () => handleAdd(referencedTableId, renderContent, dataWriter, tableLens);
-        tbody.querySelectorAll('tr').forEach((tr, index) => {
+const primaryTableId = record.gristHelper_tableId;
+const backReferenceColumn = relatedSchema.find(col => col.type === `Ref:${primaryTableId}`);
+const backReferenceColId = backReferenceColumn ? backReferenceColumn.colId : null;
+
+container.querySelector('.grf-reflist-header button').onclick = () => handleAdd(
+    referencedTableId,
+    renderContent,
+    dataWriter,
+    tableLens,
+    backReferenceColId, // <-- Novo parâmetro
+    record.id           // <-- Novo parâmetro
+);
+
+tbody.querySelectorAll('tr').forEach((tr, index) => {
             const rec = relatedRecords[index];
             tr.querySelector('.actions-cell button:nth-child(1)').onclick = () => handleEdit(referencedTableId, rec.id, renderContent, dataWriter, tableLens);
             tr.querySelector('.actions-cell button:nth-child(2)').onclick = () => handleDelete(referencedTableId, rec.id, renderContent, dataWriter);
