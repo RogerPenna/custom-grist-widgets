@@ -16,6 +16,7 @@ let isEditing = false;
 
 function _initializeDrawerDOM() {
     if (document.getElementById('grist-drawer-panel')) return;
+
     const link = document.createElement('link');
     link.rel = 'stylesheet';
     link.href = '../libraries/grist-drawer-component/drawer-style.css';
@@ -37,11 +38,30 @@ function _initializeDrawerDOM() {
     drawerOverlay.id = 'grist-drawer-overlay';
     drawerPanel = document.createElement('div');
     drawerPanel.id = 'grist-drawer-panel';
-    drawerPanel.innerHTML = `<div class="drawer-header"><h2 id="drawer-title"></h2><div class="drawer-header-buttons"><button id="drawer-add-btn">+ Adicionar Novo</button><button id="drawer-delete-btn">🗑️ Deletar</button><button id="drawer-edit-btn">✏️ Editar</button><button id="drawer-save-btn" style="display:none;">✔️ Salvar</button><button id="drawer-cancel-btn" style="display:none;">❌ Cancelar</button><button class="drawer-close-btn">×</button></div></div><div class="drawer-body"><div class="drawer-tabs"></div><div class="drawer-tab-panels"></div></div>`;
+
+    drawerPanel.innerHTML = `
+        <div class="drawer-header">
+            <h2 id="drawer-title"></h2>
+            <div class="drawer-header-buttons">
+                <button id="drawer-add-btn">+ Adicionar Novo</button>
+                <button id="drawer-delete-btn">🗑️ Deletar</button>
+                <button id="drawer-edit-btn">✏️ Editar</button>
+                <button id="drawer-save-btn" style="display:none;">✔️ Salvar</button>
+                <button id="drawer-cancel-btn" style="display:none;">❌ Cancelar</button>
+                <button class="drawer-close-btn">×</button>
+            </div>
+        </div>
+        <div class="drawer-body">
+            <div class="drawer-tabs"></div>
+            <div class="drawer-tab-panels"></div>
+        </div>
+    `;
     document.body.appendChild(drawerOverlay);
     document.body.appendChild(drawerPanel);
+    
     drawerHeader = drawerPanel.querySelector('.drawer-header');
     drawerTitle = drawerPanel.querySelector('#drawer-title');
+    
     drawerPanel.querySelector('.drawer-close-btn').addEventListener('click', closeDrawer);
     drawerPanel.querySelector('#drawer-edit-btn').addEventListener('click', _handleEdit);
     drawerPanel.querySelector('#drawer-save-btn').addEventListener('click', _handleSave);
@@ -81,7 +101,7 @@ async function _handleAdd() {
             const result = await dataWriter.addRecord(currentTableId, newRecord);
             publish('data-changed', { tableId: currentTableId, recordId: result.id, action: 'add' });
             await _renderDrawerContent();
-        },
+        }
     });
 }
 
@@ -100,56 +120,17 @@ function _updateButtonVisibility() {
     drawerPanel.querySelector('#drawer-cancel-btn').style.display = isEditing ? 'inline-block' : 'none';
 }
 
-async function _handleSave() {
-    const changes = {};
-    const formElements = drawerPanel.querySelectorAll('[data-col-id]');
-    formElements.forEach(el => {
-        const colId = el.dataset.colId;
-        const colSchema = currentSchema.find(c => c.colId === colId);
-        let value;
-
-        if (colSchema) {
-            if (colSchema.type === 'ChoiceList' && el.tagName === 'SELECT' && el.multiple) {
-                const selectedOptions = Array.from(el.selectedOptions).map(opt => opt.value);
-                value = selectedOptions.length > 0 ? ['L', ...selectedOptions] : null;
-            } else if (el.type === 'checkbox') {
-                value = el.checked;
-            } else if (colSchema.type.startsWith('Date')) {
-                value = el.value;
-                if (!value) {
-                    value = null;
-                } else if (colSchema.type === 'Date') {
-                    const parts = value.split('-');
-                    value = Date.UTC(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10)) / 1000;
-                } else { // DateTime
-                    value = new Date(value).getTime() / 1000;
-                }
-            } else {
-                value = el.value;
-            }
-        } else {
-            value = el.value;
-        }
-        changes[colId] = value;
-    });
-
-    await dataWriter.updateRecord(currentTableId, currentRecordId, changes);
-    publish('data-changed', { tableId: currentTableId, recordId: currentRecordId, action: 'update' });
-
-    isEditing = false;
-    await _renderDrawerContent();
-    _updateButtonVisibility();
-}
-
 async function _renderDrawerContent() {
     const tabsContainer = drawerPanel.querySelector('.drawer-tabs');
     const panelsContainer = drawerPanel.querySelector('.drawer-tab-panels');
+    
     tabsContainer.innerHTML = '';
     panelsContainer.innerHTML = '';
+
     currentSchema = await tableLens.getTableSchema(currentTableId, { mode: 'raw' });
     const record = await tableLens.fetchRecordById(currentTableId, currentRecordId);
     if (!record) {
-        console.error(`Record ${currentRecordId} not found.`);
+        console.error(`Record ${currentRecordId} not found in table ${currentTableId}.`);
         closeDrawer();
         return;
     }
@@ -159,15 +140,22 @@ async function _renderDrawerContent() {
             ruleIdToColIdMap.set(col.id, col.colId);
         }
     });
-    const tabs = { "Main": currentSchema.filter(col => !col.colId.startsWith('gristHelper_')) };
 
+    const tabs = { "Main": currentSchema.filter(col => !col.colId.startsWith('gristHelper_')) };
     Object.entries(tabs).forEach(([tabName, cols], index) => {
+        const tabEl = document.createElement('div');
+        tabEl.className = 'drawer-tab';
+        tabEl.textContent = tabName;
         const panelEl = document.createElement('div');
-        panelEl.className = 'drawer-tab-content is-active';
+        panelEl.className = 'drawer-tab-content';
+        tabsContainer.appendChild(tabEl);
         panelsContainer.appendChild(panelEl);
 
-        // A lógica de abas foi removida para simplificar, já que só havia uma aba "Main".
-        // Se precisar de abas no futuro, a lógica pode ser restaurada.
+        if (index === 0) {
+            tabEl.classList.add('is-active');
+            panelEl.classList.add('is-active');
+        }
+        tabEl.onclick = () => _switchToTab(tabEl, panelEl);
 
         cols.forEach(colSchema => {
             const row = document.createElement('div');
@@ -181,14 +169,15 @@ async function _renderDrawerContent() {
             row.appendChild(valueContainer);
             panelEl.appendChild(row);
 
+            // CORREÇÃO: Passa o elemento 'label' para que o renderer possa formatá-lo
             renderField({
                 container: valueContainer,
-                labelElement: label,
+                labelElement: label, // <--- Propriedade adicionada
                 colSchema,
                 record,
                 tableLens,
                 ruleIdToColIdMap,
-                isEditing: isEditing
+                isEditing: isEditing && !colSchema.isFormula
             });
         });
     });
@@ -217,4 +206,39 @@ export function closeDrawer() {
     document.body.classList.remove('grist-drawer-is-open');
     drawerPanel.classList.remove('is-open');
     drawerOverlay.classList.remove('is-open');
+}
+
+async function _handleSave() {
+    const changes = {};
+    const formElements = drawerPanel.querySelectorAll('[data-col-id]');
+
+    formElements.forEach(el => {
+        const colId = el.dataset.colId;
+        const colSchema = currentSchema.find(c => c.colId === colId);
+        let value;
+
+        if (colSchema) {
+            // Lógica para ChoiceList (extraída do Kanban)
+            if (colSchema.type === 'ChoiceList' && el.tagName === 'SELECT' && el.multiple) {
+                const selectedOptions = Array.from(el.selectedOptions).map(opt => opt.value);
+                value = selectedOptions.length > 0 ? ['L', ...selectedOptions] : null;
+            }
+            // Lógica para os outros tipos
+            else if (el.type === 'checkbox') {
+                value = el.checked;
+            } else {
+                value = el.value; // Fallback para Text, Choice (único), etc.
+            }
+        } else {
+            value = el.value;
+        }
+        changes[colId] = value;
+    });
+    
+    await dataWriter.updateRecord(currentTableId, currentRecordId, changes);
+    publish('data-changed', { tableId: currentTableId, recordId: currentRecordId, action: 'update' });
+    
+    isEditing = false;
+    await _renderDrawerContent();
+    _updateButtonVisibility();
 }
