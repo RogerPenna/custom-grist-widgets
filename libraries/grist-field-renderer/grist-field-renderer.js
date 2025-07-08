@@ -18,13 +18,11 @@ import { renderBool } from './renderers/render-bool.js';
 
 function _applyStyles(element, colSchema, record, ruleIdToColIdMap, isLabel = false) {
     if (!element) return;
-
     element.style.color = ''; element.style.backgroundColor = ''; element.style.fontWeight = ''; element.style.fontStyle = '';
 
     const wopts = JSON.parse(colSchema.widgetOptions || '{}');
-    let styleApplied = false;
-
-    // Formatação do Cabeçalho
+    
+    // Formatação do Cabeçalho (sempre aplicada)
     if (isLabel) {
         if (wopts.headerFillColor) element.style.backgroundColor = wopts.headerFillColor;
         if (wopts.headerTextColor) element.style.color = wopts.headerTextColor;
@@ -35,7 +33,7 @@ function _applyStyles(element, colSchema, record, ruleIdToColIdMap, isLabel = fa
     // Alinhamento para a Célula de Valor
     if (wopts.alignment) element.style.textAlign = wopts.alignment;
     
-    // NÍVEL 1: Formatação Condicional (MAIOR PRIORIDADE)
+    // NÍVEL 1: Formatação Condicional (sempre tem prioridade)
     if (colSchema.rules && Array.isArray(colSchema.rules) && colSchema.rules[0] === 'L') {
         const ruleOptions = wopts.rulesOptions || [];
         const ruleIdList = colSchema.rules.slice(1);
@@ -50,18 +48,16 @@ function _applyStyles(element, colSchema, record, ruleIdToColIdMap, isLabel = fa
                     if (style.fontBold) element.style.fontWeight = 'bold';
                     if (style.fontItalic) element.style.fontStyle = 'italic';
                 }
-                styleApplied = true;
-                break;
+                return; // Se a regra condicional foi aplicada, TERMINA AQUI.
             }
         }
     }
 
-    if (styleApplied) return;
-
     // =================================================================
     // =========== CORREÇÃO: Ignora Choice e ChoiceList aqui ===========
     // =================================================================
-    // A formatação destes tipos é tratada exclusivamente por `render-choice.js`.
+    // Se não houver regra condicional, aplica a formatação fixa da coluna,
+    // EXCETO para Choice/ChoiceList, que cuidam de si mesmos.
     if (colSchema.type !== 'Choice' && colSchema.type !== 'ChoiceList') {
         if (wopts.fillColor) element.style.backgroundColor = wopts.fillColor;
         if (wopts.textColor) element.style.color = wopts.textColor;
@@ -72,36 +68,27 @@ function _applyStyles(element, colSchema, record, ruleIdToColIdMap, isLabel = fa
 export async function renderField(options) {
     const { container, colSchema, record, isEditing = false, labelElement } = options;
     const cellValue = record ? record[colSchema.colId] : null;
-    
     container.innerHTML = '';
-    
     const isDisabled = isEditing && colSchema.isFormula;
     container.classList.toggle('is-disabled', isDisabled);
     const canEdit = isEditing && !isDisabled;
-
     const callOptions = { ...options, container, cellValue, isEditing: canEdit, labelElement };
 
-    // O switchboard permanece o mesmo...
     switch (colSchema.type) {
-        case 'RefList': case colSchema.type.startsWith('RefList:') && colSchema.type:
-            await renderRefList(callOptions); break;
-        // ... outros cases ...
-        case 'Choice': case 'ChoiceList':
-            renderChoice(callOptions); break;
-        default:
-            container.textContent = String(cellValue ?? '(vazio)');
+        case 'RefList': case colSchema.type.startsWith('RefList:') && colSchema.type: await renderRefList(callOptions); break;
+        case 'Ref': case colSchema.type.startsWith('Ref:') && colSchema.type: await renderRef(callOptions); break;
+        case 'Date': case 'DateTime': case colSchema.type.startsWith('Date') && colSchema.type: renderDate(callOptions); break;
+        case 'Choice': case 'ChoiceList': renderChoice(callOptions); break;
+        case 'Bool': renderBool(callOptions); break;
+        case 'Text': case 'Numeric': case 'Int': case 'Any': renderText(callOptions); break;
+        default: container.textContent = String(cellValue ?? '(vazio)');
     }
     
-    // =========================================================================
-    // ========= CORREÇÃO: Aplica estilos de cabeçalho SEMPRE ==================
-    // =========================================================================
-    // O estilo do label não depende do modo de edição.
+    if (!isEditing) {
+        // Aplica os estilos no final para garantir a hierarquia correta
+        _applyStyles(container, colSchema, record, options.ruleIdToColIdMap, false);
+    }
     if (labelElement) {
         _applyStyles(labelElement, colSchema, record, options.ruleIdToColIdMap, true);
-    }
-    
-    // A formatação do VALOR da célula só acontece no modo de visualização.
-    if (!isEditing) {
-        _applyStyles(container, colSchema, record, options.ruleIdToColIdMap, false);
     }
 }
