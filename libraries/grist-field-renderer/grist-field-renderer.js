@@ -1,6 +1,5 @@
 // libraries/grist-field-renderer/grist-field-renderer.js
 
-// Todos os imports permanecem os mesmos
 import { renderText } from './renderers/render-text.js';
 import { renderDate } from './renderers/render-date.js';
 import { renderRef } from './renderers/render-ref.js';
@@ -17,32 +16,24 @@ import { renderBool } from './renderers/render-bool.js';
     document.head.appendChild(link);
 })();
 
-/**
- * Aplica estilos a um elemento (célula ou label) baseado nas opções do widget.
- * Esta é a nova função robusta que lida com toda a complexidade.
- */
 function _applyStyles(element, colSchema, record, ruleIdToColIdMap, isLabel = false) {
-    // Limpa estilos para garantir um estado inicial limpo.
-    element.style.color = '';
-    element.style.backgroundColor = '';
-    element.style.fontWeight = '';
-    element.style.fontStyle = '';
+    if (!element) return;
+
+    element.style.color = ''; element.style.backgroundColor = ''; element.style.fontWeight = ''; element.style.fontStyle = '';
 
     const wopts = JSON.parse(colSchema.widgetOptions || '{}');
     let styleApplied = false;
 
-    // Se for o label, aplicamos apenas a formatação do cabeçalho.
+    // Formatação do Cabeçalho
     if (isLabel) {
         if (wopts.headerFillColor) element.style.backgroundColor = wopts.headerFillColor;
         if (wopts.headerTextColor) element.style.color = wopts.headerTextColor;
         if (wopts.headerFontBold) element.style.fontWeight = 'bold';
-        return; // Termina aqui para labels.
+        return;
     }
 
-    // Para a célula de valor, aplicamos alinhamento primeiro.
-    if (wopts.alignment) {
-        element.style.textAlign = wopts.alignment;
-    }
+    // Alinhamento para a Célula de Valor
+    if (wopts.alignment) element.style.textAlign = wopts.alignment;
     
     // NÍVEL 1: Formatação Condicional (MAIOR PRIORIDADE)
     if (colSchema.rules && Array.isArray(colSchema.rules) && colSchema.rules[0] === 'L') {
@@ -60,24 +51,23 @@ function _applyStyles(element, colSchema, record, ruleIdToColIdMap, isLabel = fa
                     if (style.fontItalic) element.style.fontStyle = 'italic';
                 }
                 styleApplied = true;
-                break; // Primeira regra que corresponde vence.
+                break;
             }
         }
     }
 
-    // Se uma regra condicional já foi aplicada, não fazemos mais nada.
-    if (styleApplied) {
-        return;
-    }
+    if (styleApplied) return;
 
-    // NÍVEL 2: Formatação de Célula Fixa (aqui para que Choice possa sobrescrever)
-    if (wopts.fillColor) element.style.backgroundColor = wopts.fillColor;
-    if (wopts.textColor) element.style.color = wopts.textColor;
-    if (wopts.fontBold) element.style.fontWeight = 'bold';
+    // NÍVEL 2: Formatação Fixa da Coluna (NÃO se aplica a Choice/ChoiceList)
+    // O render-choice já tratou sua própria formatação (choiceOptions), que tem prioridade.
+    if (colSchema.type !== 'Choice' && colSchema.type !== 'ChoiceList') {
+        if (wopts.fillColor) element.style.backgroundColor = wopts.fillColor;
+        if (wopts.textColor) element.style.color = wopts.textColor;
+        if (wopts.fontBold) element.style.fontWeight = 'bold';
+    }
 }
 
 export async function renderField(options) {
-    // Passamos o `labelElement` para poder formatá-lo também.
     const { container, colSchema, record, isEditing = false, labelElement } = options;
     const cellValue = record ? record[colSchema.colId] : null;
     
@@ -87,7 +77,6 @@ export async function renderField(options) {
     container.classList.toggle('is-disabled', isDisabled);
     const canEdit = isEditing && !isDisabled;
 
-    // Passamos o labelElement para os filhos, caso precisem dele.
     const callOptions = { ...options, container, cellValue, isEditing: canEdit, labelElement };
 
     switch (colSchema.type) {
@@ -98,7 +87,7 @@ export async function renderField(options) {
         case 'Date': case 'DateTime': case colSchema.type.startsWith('Date') && colSchema.type:
             renderDate(callOptions); break;
         case 'Choice': case 'ChoiceList':
-            renderChoice(callOptions); break; // renderChoice agora vai lidar com sua própria formatação
+            renderChoice(callOptions); break;
         case 'Bool':
             renderBool(callOptions); break;
         case 'Text': case 'Numeric': case 'Int': case 'Any':
@@ -107,11 +96,8 @@ export async function renderField(options) {
             container.textContent = String(cellValue ?? '(vazio)');
     }
     
-    // No modo de visualização, aplicamos os estilos.
     if (!isEditing) {
-        // Aplica estilo ao VALOR da célula
         _applyStyles(container, colSchema, record, options.ruleIdToColIdMap, false);
-        // Aplica estilo ao LABEL da célula, se ele existir
         if (labelElement) {
             _applyStyles(labelElement, colSchema, record, options.ruleIdToColIdMap, true);
         }

@@ -2,16 +2,16 @@
 export function renderChoice(options) {
     const { container, colSchema, cellValue, isEditing } = options;
 
-    // =================================================================
-    // ========= CORREÇÃO: JSON.parse() é restaurado aqui também =======
-    // =================================================================
+    // CORREÇÃO CRÍTICA: Analisa a string widgetOptions para um objeto JS
     const wopts = JSON.parse(colSchema.widgetOptions || '{}');
     const choices = wopts.choices || [];
-    const choiceOptions = wopts.choiceOptions || {}; // Para as cores
+    const choiceOptions = wopts.choiceOptions || {}; // Objeto com as cores
     const isList = colSchema.type === 'ChoiceList';
 
+    // MODO VISUALIZAÇÃO
     if (!isEditing) {
         if (isList) {
+            // Lógica para renderizar pílulas de ChoiceList
             const values = Array.isArray(cellValue) && cellValue[0] === 'L' ? cellValue.slice(1) : [];
             if (values.length === 0) {
                 container.textContent = '(vazio)';
@@ -23,6 +23,7 @@ export function renderChoice(options) {
                     const pill = document.createElement('span');
                     pill.className = 'grf-choice-pill';
                     pill.textContent = val;
+                    // Aplica cores da pílula baseadas no choiceOptions
                     const style = choiceOptions[val];
                     if (style) {
                         if (style.textColor) pill.style.color = style.textColor;
@@ -33,6 +34,7 @@ export function renderChoice(options) {
                 }
             });
         } else {
+            // Lógica para formatar Choice único
             container.textContent = String(cellValue ?? '(vazio)');
             const style = choiceOptions[cellValue];
             if (style) {
@@ -47,33 +49,24 @@ export function renderChoice(options) {
         return;
     }
     
-    // O modo de edição permanece o mesmo, pois já está funcionando
+    // MODO EDIÇÃO (Esta parte já funciona, sem alterações)
     const select = document.createElement('select');
     select.className = 'grf-form-input';
     select.multiple = isList;
     select.dataset.colId = colSchema.colId;
 
     if (!isList) {
-        const blankOption = document.createElement('option');
-        blankOption.value = '';
-        blankOption.textContent = '-- Selecione --';
-        select.appendChild(blankOption);
+        select.add(new Option('-- Selecione --', ''));
     }
 
     choices.forEach(choice => {
-        const option = document.createElement('option');
-        option.value = choice;
-        option.textContent = choice;
+        const option = new Option(choice, choice);
         if (isList) {
             const currentValues = (Array.isArray(cellValue) && cellValue[0] === 'L' ? cellValue.slice(1) : [])
                 .map(v => String(v));
-            if (currentValues.includes(String(choice))) {
-                option.selected = true;
-            }
+            if (currentValues.includes(String(choice))) option.selected = true;
         } else {
-            if (cellValue != null && String(cellValue) === String(choice)) {
-                option.selected = true;
-            }
+            if (cellValue != null && String(cellValue) === String(choice)) option.selected = true;
         }
         select.appendChild(option);
     });
