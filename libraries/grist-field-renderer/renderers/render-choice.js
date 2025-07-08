@@ -7,7 +7,7 @@ export function renderChoice(options) {
     const choiceOptions = wopts.choiceOptions || {};
     const isList = colSchema.type === 'ChoiceList';
 
-    // MODO VISUALIZAÇÃO (Já está correto)
+    // MODO VISUALIZAÇÃO (Já está correto, sem alterações)
     if (!isEditing) {
         if (isList) {
             const values = Array.isArray(cellValue) && cellValue[0] === 'L' ? cellValue.slice(1) : [];
@@ -31,35 +31,43 @@ export function renderChoice(options) {
         return;
     }
     
-    // MODO EDIÇÃO
+    // MODO EDIÇÃO (LÓGICA FINAL E COMPLETA)
     const select = document.createElement('select');
     select.className = 'grf-form-input';
     select.multiple = isList;
     select.dataset.colId = colSchema.colId;
 
-    // Função auxiliar para aplicar estilo ao <select>
-    const applySelectStyle = (el, value) => {
+    // Função auxiliar para aplicar estilo ao <select> ou <option>
+    const applyStyle = (element, value) => {
         const style = choiceOptions[value];
-        // Aplica o estilo se ele existir, senão volta ao padrão.
-        el.style.backgroundColor = style?.fillColor || '';
-        el.style.color = style?.textColor || '';
-        el.style.fontWeight = style?.fontBold ? 'bold' : '';
+        if (element && style) {
+            element.style.backgroundColor = style.fillColor || '';
+            element.style.color = style.textColor || '';
+            element.style.fontWeight = style.fontBold ? 'bold' : '';
+        } else if (element) {
+            // Limpa o estilo se não houver um definido
+            element.style.backgroundColor = '';
+            element.style.color = '';
+            element.style.fontWeight = '';
+        }
     };
 
     if (!isList) {
         select.add(new Option('-- Selecione --', ''));
-        // Adiciona o evento para mudar a cor do select ao selecionar
-        select.onchange = () => applySelectStyle(select, select.value);
+        // Evento onchange para atualizar a cor do select
+        select.onchange = () => applyStyle(select, select.value);
     }
 
     choices.forEach(choice => {
         const option = new Option(choice, choice);
+        
+        // Aplica estilo a cada <option> individual (melhor prática)
+        applyStyle(option, choice);
+
         if (isList) {
-            // A lógica de pré-seleção para ChoiceList permanece a mesma
             const currentValues = (Array.isArray(cellValue) && cellValue[0] === 'L' ? cellValue.slice(1) : []).map(v => String(v));
             if (currentValues.includes(String(choice))) option.selected = true;
         } else {
-            // A lógica de pré-seleção para Choice único permanece a mesma
             if (cellValue != null && String(cellValue) === String(choice)) {
                 option.selected = true;
             }
@@ -67,9 +75,9 @@ export function renderChoice(options) {
         select.appendChild(option);
     });
 
-    // Aplica o estilo inicial para o valor já selecionado quando o drawer abre
+    // Aplica o estilo inicial ao select com base no valor atual
     if (!isList && cellValue) {
-        applySelectStyle(select, cellValue);
+        applyStyle(select, cellValue);
     }
 
     container.appendChild(select);
