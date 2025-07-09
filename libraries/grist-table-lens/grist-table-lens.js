@@ -92,16 +92,22 @@ export const GristTableLens = function(gristInstance) {
                     });
                 }
                 columnsOutput.push({
-    id: String(entry.colId),
-    label: String(entry.label || entry.colId),
-    type: entry.type,
-    widgetOptions: wopts,
-    isFormula: !!entry.formula,
-    formula: entry.formula,
-    rules: entry.rules,
-    displayCol: entry.displayCol, // Já está aqui!
-    conditionalFormattingRules,
-});
+                    // CORREÇÃO LÓGICA: O 'id' deve ser o ID numérico da coluna, não o colId.
+                    // O colId é uma string como "Sistema", o id é um número como 137.
+                    // O campo `displayCol` em uma referência armazena o `id` numérico.
+                    id: entry.id, 
+                    colId: entry.colId,
+                    label: String(entry.label || entry.colId),
+                    type: entry.type,
+                    widgetOptions: wopts,
+                    isFormula: !!entry.formula,
+                    formula: entry.formula,
+                    rules: entry.rules,
+                    displayCol: entry.displayCol,
+                    // CORREÇÃO DE SINTAXE: Usando a forma explícita para evitar erros.
+                    conditionalFormattingRules: conditionalFormattingRules
+                });
+            }
         });
         return columnsOutput;
     }
