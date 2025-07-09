@@ -80,12 +80,19 @@ async function _handleSave() {
 
     if (currentOnSave) {
         try {
-            await currentOnSave(changes);
+            // A função onSave pode retornar informações sobre o que foi salvo
+            const result = await currentOnSave(changes); 
+            
+            // Publica o evento de mudança de dados
+            // Precisamos do tableId e do recordId, que onSave deve nos dar.
+            // A função onSave em render-reflist.js já faz o dataWriter.addRecord, que retorna o ID.
+            // Precisamos ajustar o onSave para retornar essa informação.
+            // Por enquanto, vamos assumir que o onSave já recarrega o que precisa.
+            // Mas a abordagem com event bus é melhor.
         } catch (err) {
             console.error("Modal onSave callback failed:", err);
         }
     }
-    closeModal();
 }
 
 export function openModal(options) {

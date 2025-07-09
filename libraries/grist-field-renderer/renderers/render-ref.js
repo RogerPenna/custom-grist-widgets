@@ -13,33 +13,36 @@ export async function renderRef(options) {
 
     // --- LÓGICA PARA MODO DE EDIÇÃO (MODAL/DRAWER) ---
     if (isEditing) {
-        // Para um campo de referência, vamos criar um dropdown (<select>)
         const select = document.createElement('select');
         select.className = 'grf-form-input';
         select.dataset.colId = colSchema.colId;
-
-        // Adiciona uma opção padrão "vazia"
         select.add(new Option('-- Selecione --', ''));
 
-        // Busca todos os registros da tabela referenciada para popular o dropdown
         const [refSchema, allRefRecords] = await Promise.all([
             tableLens.getTableSchema(refTableId, { mode: 'raw' }),
             tableLens.fetchTableRecords(refTableId)
         ]);
         
-        // Encontra a coluna que deve ser usada para exibição (o "visibleCol")
-        const displayColInfo = refSchema.find(c => c.id === colSchema.displayCol);
-        const displayColId = displayColInfo ? displayColInfo.colId : null;
+        // CORREÇÃO: Lógica robusta para encontrar a coluna de exibição
+        let displayColId;
+        if (colSchema.displayCol) {
+            const displayColInfo = refSchema.find(c => c.id === colSchema.displayCol);
+            if (displayColInfo) displayColId = displayColInfo.colId;
+        }
+        if (!displayColId) {
+            // Fallback: se não houver displayCol, usa a primeira coluna de texto da tabela
+            const firstVisibleColumn = refSchema.find(c => !c.colId.startsWith('gristHelper_') && !c.isFormula);
+            if (firstVisibleColumn) displayColId = firstVisibleColumn.colId;
+        }
+        // Fallback final se nada for encontrado
+        if (!displayColId) displayColId = 'id';
+
 
         allRefRecords.forEach(record => {
-            // O texto da opção é o valor da "display column". Se não houver, usa o ID.
-            const optionText = displayColId ? record[displayColId] : `ID: ${record.id}`;
-            // O valor da opção é SEMPRE o ID do registro.
+            const optionText = record[displayColId] || `ID: ${record.id}`;
             const optionValue = record.id;
-            
             const option = new Option(optionText, optionValue);
             
-            // Se o ID deste registro corresponde ao valor atual do campo, seleciona-o.
             if (cellValue != null && String(cellValue) === String(optionValue)) {
                 option.selected = true;
             }
@@ -50,24 +53,32 @@ export async function renderRef(options) {
         return;
     }
 
-    // --- LÓGICA PARA MODO DE VISUALIZAÇÃO (sem alterações, mas agora confirmada) ---
+    // --- LÓGICA PARA MODO DE VISUALIZAÇÃO ---
     if (cellValue == null || cellValue <= 0) {
         container.textContent = '(vazio)';
         container.className = 'grf-readonly-empty';
         return;
     }
 
-    // Busca o registro específico para obter o texto de exibição
     const [refSchema, refRecord] = await Promise.all([
         tableLens.getTableSchema(refTableId, { mode: 'raw' }),
         tableLens.fetchRecordById(refTableId, cellValue)
     ]);
     
     if (refRecord) {
-        const displayColInfo = refSchema.find(c => c.id === colSchema.displayCol);
-        const displayColId = displayColInfo ? displayColInfo.colId : null;
-        // Mostra o texto da "display column" ou um fallback.
-        container.textContent = displayColId ? refRecord[displayColId] : `[Ref: ${cellValue}]`;
+        // CORREÇÃO: Usa a mesma lógica robusta aqui
+        let displayColId;
+        if (colSchema.displayCol) {
+            const displayColInfo = refSchema.find(c => c.id === colSchema.displayCol);
+            if (displayColInfo) displayColId = displayColInfo.colId;
+        }
+        if (!displayColId) {
+            const firstVisibleColumn = refSchema.find(c => !c.colId.startsWith('gristHelper_') && !c.isFormula);
+            if (firstVisibleColumn) displayColId = firstVisibleColumn.colId;
+        }
+        if (!displayColId) displayColId = 'id';
+
+        container.textContent = refRecord[displayColId] || `[Ref: ${cellValue}]`;
     } else {
         container.textContent = `[Ref Inválido: ${cellValue}]`;
     }

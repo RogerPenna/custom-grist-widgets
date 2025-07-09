@@ -16,19 +16,23 @@ async function handleAdd(tableId, onUpdate, dataWriter, tableLens, backRefCol, p
         initialRecord[backRefCol] = parentRecId;
     }
 
-    openModal({
-        title: `Adicionar em ${tableId}`, tableId, record: initialRecord, schema,
-        onSave: async (newRecordFromForm) => {
-            // Garante que a referência ao pai seja incluída antes de salvar.
-            // Isso previne que o usuário remova acidentalmente a associação no formulário.
-            const finalRecord = { ...newRecordFromForm };
-            if (backRefCol && parentRecId) {
-                finalRecord[backRefCol] = parentRecId;
-            }
-            await dataWriter.addRecord(tableId, finalRecord);
-            onUpdate();
+openModal({
+    title: `Adicionar em ${tableId}`, tableId, record: initialRecord, schema,
+    onSave: async (newRecordFromForm) => {
+        // Garante que a referência ao pai seja incluída antes de salvar.
+        // Isso previne que o usuário remova acidentalmente a associação no formulário.
+        const finalRecord = { ...newRecordFromForm };
+        if (backRefCol && parentRecId) {
+            finalRecord[backRefCol] = parentRecId;
         }
-    });
+        await dataWriter.addRecord(tableId, finalRecord);
+        
+        // CORREÇÃO: Adiciona um atraso para dar tempo à API do Grist de processar a mudança
+        setTimeout(() => {
+            onUpdate();
+        }, 250); // Atraso de 250 milissegundos
+    }
+});
 }
 async function handleEdit(tableId, recordId, onUpdate, dataWriter, tableLens) {
     const schema = await tableLens.getTableSchema(tableId, { mode: 'raw' });

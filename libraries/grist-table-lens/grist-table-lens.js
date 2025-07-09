@@ -92,17 +92,16 @@ export const GristTableLens = function(gristInstance) {
                     });
                 }
                 columnsOutput.push({
-                    id: String(entry.colId),
-                    label: String(entry.label || entry.colId),
-                    type: entry.type,
-                    widgetOptions: wopts,
-                    isFormula: !!entry.formula,
-                    formula: entry.formula,
-                    rules: entry.rules,
-                    displayCol: entry.displayCol,
-                    conditionalFormattingRules,
-                });
-            }
+    id: String(entry.colId),
+    label: String(entry.label || entry.colId),
+    type: entry.type,
+    widgetOptions: wopts,
+    isFormula: !!entry.formula,
+    formula: entry.formula,
+    rules: entry.rules,
+    displayCol: entry.displayCol, // Já está aqui!
+    conditionalFormattingRules,
+});
         });
         return columnsOutput;
     }
