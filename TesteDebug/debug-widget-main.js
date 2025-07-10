@@ -2,7 +2,6 @@
 
 import { GristTableLens } from '../libraries/grist-table-lens/grist-table-lens.js';
 import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js';
-// Import the event bus subscriber. This is essential for auto-refreshing.
 import { subscribe } from '../libraries/grist-event-bus/grist-event-bus.js';
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -23,11 +22,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // 2. Initialize state variables
     const tableLens = new GristTableLens(grist);
-    let currentTableId; // Keep track of the currently displayed table
+    let currentTableId; 
     let isRendering = false;
     let debounceTimer;
 
-    // 3. Define helper functions (these are only used by this widget's main table view)
+    // 3. Define helper functions
     function applyGristCellStyles(cellElement, rawColumnSchema, record, ruleIdToColIdMap) {
         cellElement.style.color = ''; cellElement.style.backgroundColor = ''; cellElement.style.fontWeight = '';
         cellElement.style.fontStyle = ''; cellElement.style.textAlign = '';
@@ -56,7 +55,7 @@ document.addEventListener('DOMContentLoaded', function () {
     async function initializeDebugWidget(tableId) {
         if (!tableId || isRendering) return;
         isRendering = true;
-        currentTableId = tableId; // Set the current table ID
+        currentTableId = tableId;
         errorMessageEl.textContent = "";
         loadingMessageEl.style.display = 'block';
         tableInfoContainerEl.style.display = 'none';
@@ -65,8 +64,11 @@ document.addEventListener('DOMContentLoaded', function () {
             // Fetch all necessary data
             const schema = await tableLens.getTableSchema(tableId, { mode: 'raw' });
             const records = await tableLens.fetchTableRecords(tableId);
+            
+            // MUDANÇA: Iterar sobre os valores do objeto schema
+            const schemaAsArray = Object.values(schema); 
             const ruleIdToColIdMap = new Map();
-            schema.forEach(col => { if (col.colId?.startsWith('gristHelper_ConditionalRule')) { ruleIdToColIdMap.set(col.id, col.colId); } });
+            schemaAsArray.forEach(col => { if (col.colId?.startsWith('gristHelper_ConditionalRule')) { ruleIdToColIdMap.set(col.id, col.colId); } });
 
             tableNameEl.textContent = `Tabela: ${tableId}`;
             tableInfoContainerEl.style.display = 'block';
@@ -78,17 +80,20 @@ document.addEventListener('DOMContentLoaded', function () {
             recordsTableBodyEl.innerHTML = '';
 
             // Render Schema Table
-            columnCountEl.textContent = schema.length;
-            if (schema.length > 0) {
+            // MUDANÇA: Usar .length do array gerado
+            columnCountEl.textContent = schemaAsArray.length;
+            if (schemaAsArray.length > 0) {
                 const allKeys = new Set();
-                schema.forEach(col => Object.keys(col).forEach(key => allKeys.add(key)));
+                // MUDANÇA: Iterar sobre o array gerado
+                schemaAsArray.forEach(col => Object.keys(col).forEach(key => allKeys.add(key)));
                 const sortedKeys = Array.from(allKeys).sort();
                 sortedKeys.forEach(key => {
                     const th = document.createElement('th');
                     th.textContent = key;
                     schemaTableHeadEl.appendChild(th);
                 });
-                schema.forEach(col => {
+                // MUDANÇA: Iterar sobre o array gerado
+                schemaAsArray.forEach(col => {
                     const row = schemaTableBodyEl.insertRow();
                     sortedKeys.forEach(key => {
                         const cell = row.insertCell();
@@ -119,15 +124,14 @@ document.addEventListener('DOMContentLoaded', function () {
                     row.className = 'record-row';
                     row.style.cursor = 'pointer';
                     
-                    // The row's only job is to open the drawer
                     row.onclick = () => openDrawer(tableId, record.id);
 
                     for (const key of recordHeaderKeys) {
                         const cell = row.insertCell();
-                        const colSchema = schema.find(c => c.colId === key);
+                        // MUDANÇA: Acessar o schema diretamente pela chave (colId)
+                        const colSchema = schema[key]; // Mais rápido e direto que .find()
                         const cellValue = record[key];
                         
-                        // Simple text rendering for the main debug table
                         cell.textContent = (cellValue === null || cellValue === undefined) ? '(vazio)' : String(cellValue);
                         
                         if (colSchema) {
@@ -169,27 +173,17 @@ document.addEventListener('DOMContentLoaded', function () {
     
     // 6. Set up all event listeners
     tableSelectorEl.addEventListener('change', (event) => initializeDebugWidget(event.target.value));
-
     grist.ready({ requiredAccess: 'full' });
-    
-    // Listen for Grist's onRecords to sync the dropdown if the user changes tables
     grist.onRecords((records, tableId) => {
         if (!tableId || isRendering || tableSelectorEl.value === tableId) return;
         tableSelectorEl.value = tableId;
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => initializeDebugWidget(tableId), 150);
     });
-    
-    // ==========================================================
-    // ===== THE CRITICAL FIX: SUBSCRIBE TO THE EVENT BUS =======
-    // ==========================================================
-    // This makes the widget "reactive" to changes made in other components.
     subscribe('data-changed', (event) => {
         console.log("Debug Widget ouviu o evento 'data-changed':", event.detail);
-        // Check if the change affected the table we are currently viewing
         if (event.detail.tableId === currentTableId || event.detail.referencedTableId === currentTableId) {
             console.log("A mudança afeta a tabela atual. Atualizando a visualização...");
-            // If so, re-render everything to show the up-to-date data.
             initializeDebugWidget(currentTableId);
         }
     });
