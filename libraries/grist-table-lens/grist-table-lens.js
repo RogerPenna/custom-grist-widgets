@@ -39,11 +39,15 @@ export const GristTableLens = function(gristInstance) {
         return idx === -1 ? null : String(_metaState.tables.id[idx]);
     }
 
+    // ====================================================================================
+    // MUDANÇA FUNDAMENTAL: A função agora retorna um OBJETO, não um ARRAY.
+    // As chaves do objeto são os `colId`s textuais.
+    // ====================================================================================
     function _processColumnsAndRulesForTable(numericTableId, mode = 'clean', query = {}) {
-        if (!_metaState.columnsAndRules?.id) { return []; }
+        if (!_metaState.columnsAndRules?.id) { return {}; } // MUDANÇA: Retorna objeto vazio.
         const allEntries = _metaState.columnsAndRules;
         const numEntries = allEntries.id.length;
-        const columnsOutput = [];
+        const columnsOutput = {}; // MUDANÇA: O output agora é um objeto/dicionário.
         const tableEntries = [];
 
         for (let i = 0; i < numEntries; i++) {
@@ -55,26 +59,39 @@ export const GristTableLens = function(gristInstance) {
         }
         
         if (mode === 'raw') {
-            return tableEntries;
+            const rawOutput = {};
+            tableEntries.forEach(entry => {
+                if(entry.colId) rawOutput[entry.colId] = entry;
+            });
+            return rawOutput;
         }
-
+        
+        // MUDANÇA: Lógica custom query adaptada para o novo formato de output (objeto).
         if (mode === 'custom' && query.columns) {
+            const customOutput = {};
             tableEntries.forEach(entry => {
                 if (query.columns.includes(entry.colId)) {
                     const newCol = {};
                     const desiredKeys = query.metadata?.[entry.colId] || ['id', 'colId', 'label', 'type'];
                     desiredKeys.forEach(key => { if (entry[key] !== undefined) { newCol[key] = entry[key]; } });
-                    columnsOutput.push(newCol);
+                    customOutput[entry.colId] = newCol;
                 }
             });
-            return columnsOutput;
+            return customOutput;
         }
 
         const rulesDefinitionsFromMeta = new Map();
         tableEntries.forEach(entry => {
             if (entry.colId?.startsWith("gristHelper_ConditionalRule") && entry.formula) {
                 let ruleStyle = {};
-                if (entry.widgetOptions) { try { ruleStyle = JSON.parse(entry.widgetOptions); } catch (e) {} }
+                // CORREÇÃO: Usar o widgetOptions da regra, não da coluna principal
+                if (entry.widgetOptions) { 
+                    try { 
+                        const ruleOpts = JSON.parse(entry.widgetOptions);
+                        // A API do Grist armazena o estilo da regra diretamente, não dentro de um objeto.
+                        ruleStyle = ruleOpts;
+                    } catch (e) {} 
+                }
                 rulesDefinitionsFromMeta.set(String(entry.id), { id: String(entry.id), helperColumnId: String(entry.colId), conditionFormula: entry.formula, style: ruleStyle });
             }
         });
@@ -86,35 +103,42 @@ export const GristTableLens = function(gristInstance) {
                 const conditionalFormattingRules = [];
                 const ruleIdList = entry.rules;
                 if (Array.isArray(ruleIdList) && ruleIdList[0] === 'L') {
-                    ruleIdList.slice(1).forEach(rId => {
+                    // MUDANÇA: O Grist armazena os estilos (rulesOptions) na coluna principal, não na regra.
+                    // A ordem dos estilos em `rulesOptions` corresponde à ordem dos IDs em `rules`.
+                    const stylesFromWidgetOptions = wopts.rulesOptions || [];
+                    ruleIdList.slice(1).forEach((rId, index) => {
                         const rd = rulesDefinitionsFromMeta.get(String(rId));
-                        if (rd) { conditionalFormattingRules.push(rd); }
+                        if (rd) {
+                            // Associa o estilo correspondente da coluna principal com a regra.
+                            rd.style = stylesFromWidgetOptions[index] || {};
+                            conditionalFormattingRules.push(rd);
+                         }
                     });
                 }
-                columnsOutput.push({
-                    // CORREÇÃO LÓGICA: O 'id' deve ser o ID numérico da coluna, não o colId.
-                    // O colId é uma string como "Sistema", o id é um número como 137.
-                    // O campo `displayCol` em uma referência armazena o `id` numérico.
-                    id: entry.id, 
+                
+                // MUDANÇA: Adiciona ao objeto usando o colId textual como chave.
+                columnsOutput[entry.colId] = {
+                    id: entry.id, // ID numérico ainda é útil para lookups (ex: displayCol)
                     colId: entry.colId,
                     label: String(entry.label || entry.colId),
                     type: entry.type,
                     widgetOptions: wopts,
-                    isFormula: !!entry.formula,
+                    isFormula: !!entry.isFormula, // Corrigido para usar o campo correto
                     formula: entry.formula,
                     rules: entry.rules,
                     displayCol: entry.displayCol,
-                    // CORREÇÃO DE SINTAXE: Usando a forma explícita para evitar erros.
                     conditionalFormattingRules: conditionalFormattingRules
-                });
+                };
             }
         });
         return columnsOutput;
     }
-
+    
+    // MUDANÇA: A função foi ajustada para iterar sobre os VALORES do objeto de schema.
     function _getDisplayColId(colSchema, referencedSchema) {
         if (!colSchema.displayCol) return null;
-        const displayColSchema = referencedSchema.find(c => c.id === colSchema.displayCol);
+        // Object.values() obtém todas as definições de coluna do nosso novo schema.
+        const displayColSchema = Object.values(referencedSchema).find(c => c.id === colSchema.displayCol);
         return displayColSchema ? displayColSchema.colId : null;
     }
     
@@ -126,7 +150,7 @@ export const GristTableLens = function(gristInstance) {
         if (_metaState.tableSchemasCache[tableId]?.[cacheKey]) { return _metaState.tableSchemasCache[tableId][cacheKey]; }
         await _loadGristMeta();
         const numId = _getNumericTableId(tableId);
-        if (!numId) { return []; }
+        if (!numId) { return {}; } // MUDANÇA: Retorna objeto vazio.
         const schema = _processColumnsAndRulesForTable(numId, mode, query);
         if (!_metaState.tableSchemasCache[tableId]) { _metaState.tableSchemasCache[tableId] = {}; }
         _metaState.tableSchemasCache[tableId][cacheKey] = schema;
@@ -164,8 +188,9 @@ export const GristTableLens = function(gristInstance) {
         const primaryTableId = primaryRecord.gristHelper_tableId;
         if (!primaryTableId) return [];
 
-        const primarySchema = await this.getTableSchema(primaryTableId, {mode: 'raw'});
-        const refColumnSchema = primarySchema.find(col => col.colId === refColumnId);
+        // MUDANÇA: O schema agora é um objeto. Acessamos a coluna diretamente.
+        const primarySchema = await this.getTableSchema(primaryTableId, { mode: 'clean' });
+        const refColumnSchema = primarySchema[refColumnId]; // Acesso direto, mais limpo e rápido!
         if (!refColumnSchema || !refColumnSchema.type.startsWith('RefList:')) return [];
 
         const referencedTableId = refColumnSchema.type.split(':')[1];
@@ -197,7 +222,8 @@ export const GristTableLens = function(gristInstance) {
 
         if (!referencedRecord) return { displayValue: `[Ref not found: ${recordId}]`, referencedRecord: null };
 
-        const referencedSchema = await this.getTableSchema(referencedTableId, { mode: 'raw' });
+        // MUDANÇA: usa o modo 'clean' que agora é um objeto também.
+        const referencedSchema = await this.getTableSchema(referencedTableId, { mode: 'clean' });
         const displayColId = _getDisplayColId(colSchema, referencedSchema);
         
         const displayValue = displayColId ? referencedRecord[displayColId] : `[Ref: ${recordId}]`;

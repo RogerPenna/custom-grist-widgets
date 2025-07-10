@@ -31,7 +31,7 @@ export async function renderRef(options) {
         }
         if (!displayColId) {
             // Fallback: se não houver displayCol, usa a primeira coluna de texto da tabela
-            const firstVisibleColumn = refSchema.find(c => !c.colId.startsWith('gristHelper_') && !c.isFormula);
+            const firstVisibleColumn = Object.values(refSchema).find(c => !c.colId.startsWith('gristHelper_') && !c.isFormula);
             if (firstVisibleColumn) displayColId = firstVisibleColumn.colId;
         }
         // Fallback final se nada for encontrado
@@ -69,7 +69,7 @@ export async function renderRef(options) {
         // CORREÇÃO: Usa a mesma lógica robusta aqui
         let displayColId;
         if (colSchema.displayCol) {
-            const displayColInfo = refSchema.find(c => c.id === colSchema.displayCol);
+            const displayColInfo = Object.values(refSchema).find(c => c.id === colSchema.displayCol);
             if (displayColInfo) displayColId = displayColInfo.colId;
         }
         if (!displayColId) {

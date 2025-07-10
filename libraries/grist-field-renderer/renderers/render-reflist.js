@@ -94,7 +94,7 @@ export async function renderRefList(options) {
         const table = document.createElement('table');
         table.className = 'grf-reflist-table';
         const thead = table.createTHead().insertRow();
-        const columnsToDisplay = relatedSchema.filter(c => !c.colId.startsWith('gristHelper_'));
+        const columnsToDisplay = Object.values(relatedSchema).filter(c => !c.colId.startsWith('gristHelper_'));
         columnsToDisplay.forEach(c => {
             const th = document.createElement('th');
             th.textContent = c.label || c.colId;
@@ -130,7 +130,7 @@ export async function renderRefList(options) {
 
         // Attach event listeners AFTER elements are in the DOM
 const primaryTableId = record.gristHelper_tableId;
-const backReferenceColumn = relatedSchema.find(col => col.type === `Ref:${primaryTableId}`);
+const backReferenceColumn = Object.values(relatedSchema).find(col => col.type === `Ref:${primaryTableId}`);
 const backReferenceColId = backReferenceColumn ? backReferenceColumn.colId : null;
 
 container.querySelector('.grf-reflist-header button').onclick = () => handleAdd(
