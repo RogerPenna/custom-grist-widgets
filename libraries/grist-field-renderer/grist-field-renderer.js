@@ -20,7 +20,19 @@ function _applyStyles(element, colSchema, record, ruleIdToColIdMap, isLabel = fa
     if (!element) return;
     element.style.color = ''; element.style.backgroundColor = ''; element.style.fontWeight = ''; element.style.fontStyle = '';
 
-    const wopts = JSON.parse(colSchema.widgetOptions || '{}');
+    // =========================================================================
+    // MUDANÇA CRÍTICA: Lidar com widgetOptions que já podem ser um objeto.
+    // =========================================================================
+    let wopts = {};
+    if (typeof colSchema.widgetOptions === 'string' && colSchema.widgetOptions) {
+        try {
+            wopts = JSON.parse(colSchema.widgetOptions);
+        } catch (e) {
+            console.warn("Could not parse widgetOptions string:", colSchema.widgetOptions, e);
+        }
+    } else if (typeof colSchema.widgetOptions === 'object' && colSchema.widgetOptions !== null) {
+        wopts = colSchema.widgetOptions; // Já é um objeto, use diretamente.
+    }
     
     // Formatação do Cabeçalho (sempre aplicada)
     if (isLabel) {
@@ -34,28 +46,25 @@ function _applyStyles(element, colSchema, record, ruleIdToColIdMap, isLabel = fa
     if (wopts.alignment) element.style.textAlign = wopts.alignment;
     
     // NÍVEL 1: Formatação Condicional (sempre tem prioridade)
-    if (colSchema.rules && Array.isArray(colSchema.rules) && colSchema.rules[0] === 'L') {
-        const ruleOptions = wopts.rulesOptions || [];
-        const ruleIdList = colSchema.rules.slice(1);
-        for (let i = 0; i < ruleIdList.length; i++) {
-            const ruleNumId = ruleIdList[i];
-            const helperColId = ruleIdToColIdMap.get(ruleNumId);
-            if (helperColId && record[helperColId] === true) {
-                const style = ruleOptions[i];
-                if (style) {
-                    if (style.textColor) element.style.color = style.textColor;
-                    if (style.fillColor) element.style.backgroundColor = style.fillColor;
-                    if (style.fontBold) element.style.fontWeight = 'bold';
-                    if (style.fontItalic) element.style.fontStyle = 'italic';
-                }
+    // MUDANÇA: Usar a propriedade correta preenchida pelo GristTableLens.
+    if (colSchema.conditionalFormattingRules && colSchema.conditionalFormattingRules.length > 0) {
+        for (const rule of colSchema.conditionalFormattingRules) {
+            if (record[rule.helperColumnId] === true) {
+                const style = rule.style || {};
+                if (style.textColor) element.style.color = style.textColor;
+                if (style.fillColor) element.style.backgroundColor = style.fillColor;
+                if (style.fontBold) element.style.fontWeight = 'bold';
+                if (style.fontItalic) element.style.fontStyle = 'italic';
                 return; // Se a regra condicional foi aplicada, TERMINA AQUI.
             }
         }
     }
 
-    // =================================================================
-    // =========== CORREÇÃO: Ignora Choice e ChoiceList aqui ===========
-    // =================================================================
+    // NÍVEL 2: Formatação por valor (Choice/ChoiceList)
+    // Essa lógica agora é tratada dentro do renderizador específico (render-choice.js)
+    // para manter a hierarquia de prioridade correta.
+
+    // NÍVEL 3: Formatação fixa da coluna (a mais baixa prioridade)
     // Se não houver regra condicional, aplica a formatação fixa da coluna,
     // EXCETO para Choice/ChoiceList, que cuidam de si mesmos.
     if (colSchema.type !== 'Choice' && colSchema.type !== 'ChoiceList') {
@@ -67,6 +76,12 @@ function _applyStyles(element, colSchema, record, ruleIdToColIdMap, isLabel = fa
 
 export async function renderField(options) {
     const { container, colSchema, record, isEditing = false, labelElement } = options;
+    // MUDANÇA: colSchema pode ser undefined se for uma coluna do Grist como 'manualSort'
+    if (!colSchema) { 
+        container.textContent = String(record[options.colId] ?? ''); // Mostra o valor de qualquer forma
+        return;
+    }
+
     const cellValue = record ? record[colSchema.colId] : null;
     
     container.innerHTML = '';
@@ -74,40 +89,34 @@ export async function renderField(options) {
     container.classList.toggle('is-disabled', isDisabled);
     const canEdit = isEditing && !isDisabled;
 
-    // =================================================================
-    // ========= CORREÇÃO CRÍTICA: INVERTER ORDEM DE OPERAÇÕES =========
-    // =================================================================
-    
     // 1. Aplica estilos de cabeçalho (sempre)
     if (labelElement) {
         _applyStyles(labelElement, colSchema, record, options.ruleIdToColIdMap, true);
     }
 
     // 2. No modo de visualização, aplica os estilos GERAIS primeiro.
-    // _applyStyles aplicará a formatação condicional (se houver) ou a formatação fixa (se não for Choice).
     if (!isEditing) {
         _applyStyles(container, colSchema, record, options.ruleIdToColIdMap, false);
     }
 
     // 3. AGORA chama o renderizador especialista.
-    // Se for um Choice, ele poderá aplicar seus próprios estilos por cima da formatação fixa,
-    // mas não por cima da formatação condicional (que já foi aplicada e fez a função retornar).
     const callOptions = { ...options, container, cellValue, isEditing: canEdit };
 
-    switch (colSchema.type) {
-        case 'RefList': case colSchema.type.startsWith('RefList:') && colSchema.type:
-            await renderRefList(callOptions); break;
-        case 'Ref': case colSchema.type.startsWith('Ref:') && colSchema.type:
-            await renderRef(callOptions); break;
-        case 'Date': case 'DateTime': case colSchema.type.startsWith('Date') && colSchema.type:
-            renderDate(callOptions); break;
-        case 'Choice': case 'ChoiceList':
-            renderChoice(callOptions); break;
-        case 'Bool':
-            renderBool(callOptions); break;
-        case 'Text': case 'Numeric': case 'Int': case 'Any':
-            renderText(callOptions); break;
-        default:
-            container.textContent = String(cellValue ?? '(vazio)');
+    // MUDANÇA: Simplificação do switch/case
+    const type = colSchema.type || '';
+    if (type.startsWith('RefList:')) {
+        await renderRefList(callOptions);
+    } else if (type.startsWith('Ref:')) {
+        await renderRef(callOptions);
+    } else if (type.startsWith('Date')) {
+        renderDate(callOptions);
+    } else if (type === 'Choice' || type === 'ChoiceList') {
+        renderChoice(callOptions);
+    } else if (type === 'Bool') {
+        renderBool(callOptions);
+    } else if (['Text', 'Numeric', 'Int', 'Any'].includes(type)) {
+        renderText(callOptions);
+    } else {
+        renderText(callOptions); // Default para texto
     }
 }
