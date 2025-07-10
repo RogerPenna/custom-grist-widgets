@@ -154,7 +154,7 @@ async function _renderDrawerContent() {
         return;
     }
     const ruleIdToColIdMap = new Map();
-    currentSchema.forEach(col => {
+    Object.values(currentSchema).forEach(col => {
         if (col.colId?.startsWith('gristHelper_')) {
             ruleIdToColIdMap.set(col.id, col.colId);
         }
