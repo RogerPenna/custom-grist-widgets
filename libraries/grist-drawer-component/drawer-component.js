@@ -11,7 +11,8 @@ const dataWriter = new GristDataWriter(grist);
 
 let drawerPanel, drawerOverlay, drawerHeader, drawerTitle;
 let currentTableId, currentRecordId;
-let currentSchema = [];
+// MUDANÇA: Inicializa como um objeto vazio, pois é isso que a API retorna agora.
+let currentSchema = {};
 let isEditing = false;
 
 function _initializeDrawerDOM() {
@@ -71,12 +72,13 @@ function _handleCancel() {
 }
 
 async function _handleAdd() {
-    const schema = await tableLens.getTableSchema(currentTableId, { mode: 'raw' });
+    // MUDANÇA: O schema já é um objeto (dicionário), que é o que o modal espera.
+    const schema = await tableLens.getTableSchema(currentTableId, { mode: 'clean' });
     openModal({
         title: `Adicionar em ${currentTableId}`,
         tableId: currentTableId,
         record: {},
-        schema,
+        schema, // Passa o objeto de schema diretamente
         onSave: async (newRecord) => {
             const result = await dataWriter.addRecord(currentTableId, newRecord);
             publish('data-changed', { tableId: currentTableId, recordId: result.id, action: 'add' });
@@ -105,7 +107,8 @@ async function _handleSave() {
     const formElements = drawerPanel.querySelectorAll('[data-col-id]');
     formElements.forEach(el => {
         const colId = el.dataset.colId;
-        const colSchema = currentSchema.find(c => c.colId === colId);
+        // MUDANÇA: Acesso direto ao schema usando o colId como chave. Mais rápido e correto.
+        const colSchema = currentSchema[colId];
         let value;
 
         if (colSchema) {
@@ -146,28 +149,35 @@ async function _renderDrawerContent() {
     const panelsContainer = drawerPanel.querySelector('.drawer-tab-panels');
     tabsContainer.innerHTML = '';
     panelsContainer.innerHTML = '';
-    currentSchema = await tableLens.getTableSchema(currentTableId, { mode: 'raw' });
+
+    // MUDANÇA: Pega o schema como objeto e o registro.
+    currentSchema = await tableLens.getTableSchema(currentTableId, { mode: 'clean' });
     const record = await tableLens.fetchRecordById(currentTableId, currentRecordId);
+
     if (!record) {
         console.error(`Record ${currentRecordId} not found.`);
         closeDrawer();
         return;
     }
     const ruleIdToColIdMap = new Map();
+    // MUDANÇA: Itera sobre os valores do objeto schema.
     Object.values(currentSchema).forEach(col => {
         if (col.colId?.startsWith('gristHelper_')) {
             ruleIdToColIdMap.set(col.id, col.colId);
         }
     });
-    const tabs = { "Main": currentSchema.filter(col => !col.colId.startsWith('gristHelper_')) };
 
+    // MUDANÇA: Converte o objeto schema em um array e filtra.
+    const columnsToRender = Object.values(currentSchema).filter(col => !col.colId.startsWith('gristHelper_'));
+    const tabs = { "Main": columnsToRender };
+
+    // MUDANÇA: Esta é a linha que estava causando o erro.
+    // A variável `cols` já é um array (resultado do .filter acima), então o forEach aqui está correto.
+    // O erro estava em como `cols` era gerado.
     Object.entries(tabs).forEach(([tabName, cols], index) => {
         const panelEl = document.createElement('div');
         panelEl.className = 'drawer-tab-content is-active';
         panelsContainer.appendChild(panelEl);
-
-        // A lógica de abas foi removida para simplificar, já que só havia uma aba "Main".
-        // Se precisar de abas no futuro, a lógica pode ser restaurada.
 
         cols.forEach(colSchema => {
             const row = document.createElement('div');
