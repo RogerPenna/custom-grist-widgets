@@ -1,7 +1,8 @@
 // libraries/grist-field-renderer/renderers/render-text.js
 export function renderText(options) {
     const { container, colSchema, cellValue, isEditing } = options;
-    const wopts = JSON.parse(colSchema.widgetOptions || '{}');
+    // MUDANÇA: Aplica o padrão correto para acessar widgetOptions, preservando sua lógica.
+    const wopts = colSchema.widgetOptions || {};
 
     if (!isEditing) {
         // Read-only mode
@@ -10,7 +11,7 @@ export function renderText(options) {
             let html = String(cellValue || '').replace(/\n/g, '<br>');
             container.innerHTML = html;
         } else {
-            container.textContent = String(cellValue);
+            container.textContent = String(cellValue ?? '(vazio)'); // Unificando a exibição de nulos.
         }
         return;
     }

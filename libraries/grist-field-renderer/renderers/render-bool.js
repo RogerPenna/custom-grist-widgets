@@ -1,9 +1,16 @@
 // libraries/grist-field-renderer/renderers/render-bool.js
 export function renderBool(options) {
-    const { container, colSchema, cellValue, isEditing, displayAs = 'checkmark' } = options;
-    
+    const { container, colSchema, cellValue, isEditing } = options;
+    // MUDANÇA: Aplica o padrão correto para acessar widgetOptions, caso seja usado no futuro.
+    const wopts = colSchema.widgetOptions || {};
+
+    // A sua lógica usa o `widget` property de wopts para decidir o display.
+    const displayAs = wopts.widget?.toLowerCase() === 'switch' ? 'switch' : 'checkmark';
+
     if (!isEditing) {
-        container.textContent = cellValue ? '✓' : '☐';
+        // MUDANÇA: Um display mais claro para o modo visualização.
+        container.textContent = cellValue ? '✓ Sim' : '☐ Não';
+        container.style.fontFamily = 'monospace'; // Melhora alinhamento
         return;
     }
     

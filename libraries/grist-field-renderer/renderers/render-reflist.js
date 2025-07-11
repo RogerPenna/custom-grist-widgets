@@ -3,39 +3,24 @@ import { openModal } from '../../grist-modal-component/modal-component.js';
 import { GristDataWriter } from '../../grist-data-writer.js';
 import { renderField } from '../grist-field-renderer.js';
 
-// These instances are now passed down, not created here. This improves testability.
-
-// Action handlers now receive the data writer instance
 async function handleAdd(tableId, onUpdate, dataWriter, tableLens, backRefCol, parentRecId) {
-    const schema = await tableLens.getTableSchema(tableId, { mode: 'raw' });
-
-    // Prepara um registro inicial com a referência ao pai já preenchida.
-    // O modal pode usar isso para pré-selecionar o campo, se aplicável.
+    // MUDANÇA: Usa 'clean' para passar para o modal.
+    const schema = await tableLens.getTableSchema(tableId, { mode: 'clean' });
     const initialRecord = {};
-    if (backRefCol && parentRecId) {
-        initialRecord[backRefCol] = parentRecId;
-    }
-
-openModal({
-    title: `Adicionar em ${tableId}`, tableId, record: initialRecord, schema,
-    onSave: async (newRecordFromForm) => {
-        // Garante que a referência ao pai seja incluída antes de salvar.
-        // Isso previne que o usuário remova acidentalmente a associação no formulário.
-        const finalRecord = { ...newRecordFromForm };
-        if (backRefCol && parentRecId) {
-            finalRecord[backRefCol] = parentRecId;
+    if (backRefCol && parentRecId) { initialRecord[backRefCol] = parentRecId; }
+    openModal({
+        title: `Adicionar em ${tableId}`, tableId, record: initialRecord, schema,
+        onSave: async (newRecordFromForm) => {
+            const finalRecord = { ...newRecordFromForm };
+            if (backRefCol && parentRecId) { finalRecord[backRefCol] = parentRecId; }
+            await dataWriter.addRecord(tableId, finalRecord);
+            setTimeout(() => onUpdate(), 250);
         }
-        await dataWriter.addRecord(tableId, finalRecord);
-        
-        // CORREÇÃO: Adiciona um atraso para dar tempo à API do Grist de processar a mudança
-        setTimeout(() => {
-            onUpdate();
-        }, 250); // Atraso de 250 milissegundos
-    }
-});
+    });
 }
 async function handleEdit(tableId, recordId, onUpdate, dataWriter, tableLens) {
-    const schema = await tableLens.getTableSchema(tableId, { mode: 'raw' });
+    // MUDANÇA: Usa 'clean' para passar para o modal.
+    const schema = await tableLens.getTableSchema(tableId, { mode: 'clean' });
     const record = await tableLens.fetchRecordById(tableId, recordId);
     openModal({
         title: `Editando Registro ${recordId}`, tableId, record, schema,
@@ -53,60 +38,54 @@ async function handleDelete(tableId, recordId, onUpdate, dataWriter) {
 }
 
 export async function renderRefList(options) {
-    const { container, record, colSchema, tableLens, ruleIdToColIdMap } = options;
-    const dataWriter = new GristDataWriter(grist); // Create instance here
+    const { container, record, colSchema, tableLens } = options;
+    const dataWriter = new GristDataWriter(grist);
     container.innerHTML = '';
 
     const referencedTableId = colSchema.type.split(':')[1];
-    let sortColumn = 'manualSort'; // Default sort
+    let sortColumn = 'manualSort';
     let sortDirection = 'asc';
 
     const renderContent = async () => {
-        container.innerHTML = '<p>Loading...</p>';
+        container.innerHTML = '<p>Carregando...</p>';
         let relatedRecords = await tableLens.fetchRelatedRecords(record, colSchema.colId);
-        
-        // Sorting logic
         relatedRecords.sort((a, b) => {
-            const valA = a[sortColumn];
-            const valB = b[sortColumn];
+            const valA = a[sortColumn]; const valB = b[sortColumn];
             if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
             if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
             return 0;
         });
 
-        const relatedSchema = await tableLens.getTableSchema(referencedTableId, { mode: 'raw' });
+        // MUDANÇA: Usa 'clean' e converte para array para iterar.
+        const relatedSchema = await tableLens.getTableSchema(referencedTableId, { mode: 'clean' });
+        const relatedSchemaAsArray = Object.values(relatedSchema);
         const ruleMap = new Map();
-        relatedSchema.forEach(col => { if (col.colId?.startsWith('gristHelper_')) { ruleMap.set(col.id, col.colId); } });
+        relatedSchemaAsArray.forEach(col => { if (col && col.colId?.startsWith('gristHelper_')) { ruleMap.set(col.id, col.colId); } });
         container.innerHTML = '';
 
-        // Header with Add button
         const header = document.createElement('div');
         header.className = 'grf-reflist-header';
         const countSpan = document.createElement('span');
-        countSpan.textContent = `(${relatedRecords.length} items)`;
+        countSpan.textContent = `(${relatedRecords.length} itens)`;
         const addButton = document.createElement('button');
         addButton.textContent = `+ Adicionar`;
         header.appendChild(countSpan);
         header.appendChild(addButton);
         container.appendChild(header);
 
-        // Table
         const table = document.createElement('table');
         table.className = 'grf-reflist-table';
         const thead = table.createTHead().insertRow();
-        const columnsToDisplay = Object.values(relatedSchema).filter(c => !c.colId.startsWith('gristHelper_'));
+        // MUDANÇA: Filtra a partir do array.
+        const columnsToDisplay = relatedSchemaAsArray.filter(c => c && !c.colId.startsWith('gristHelper_'));
         columnsToDisplay.forEach(c => {
             const th = document.createElement('th');
             th.textContent = c.label || c.colId;
             th.style.cursor = 'pointer';
             th.onclick = () => {
-                if (sortColumn === c.colId) {
-                    sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
-                } else {
-                    sortColumn = c.colId;
-                    sortDirection = 'asc';
-                }
-                renderContent(); // Re-render with new sort
+                sortColumn = c.colId;
+                sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+                renderContent();
             };
             thead.appendChild(th);
         });
@@ -123,31 +102,21 @@ export async function renderRefList(options) {
             actionsCell.className = 'actions-cell';
             const editBtn = document.createElement('button'); editBtn.innerHTML = '✏️';
             const deleteBtn = document.createElement('button'); deleteBtn.innerHTML = '🗑️';
-            actionsCell.appendChild(editBtn);
-            actionsCell.appendChild(deleteBtn);
+            actionsCell.appendChild(editBtn); actionsCell.appendChild(deleteBtn);
         }
         container.appendChild(table);
 
-        // Attach event listeners AFTER elements are in the DOM
-const primaryTableId = record.gristHelper_tableId;
-const backReferenceColumn = Object.values(relatedSchema).find(col => col.type === `Ref:${primaryTableId}`);
-const backReferenceColId = backReferenceColumn ? backReferenceColumn.colId : null;
+        const primaryTableId = record.gristHelper_tableId;
+        // MUDANÇA: Busca a coluna de referência no array.
+        const backReferenceColumn = relatedSchemaAsArray.find(col => col && col.type === `Ref:${primaryTableId}`);
+        const backReferenceColId = backReferenceColumn ? backReferenceColumn.colId : null;
 
-container.querySelector('.grf-reflist-header button').onclick = () => handleAdd(
-    referencedTableId,
-    renderContent,
-    dataWriter,
-    tableLens,
-    backReferenceColId, // <-- Novo parâmetro
-    record.id           // <-- Novo parâmetro
-);
-
-tbody.querySelectorAll('tr').forEach((tr, index) => {
+        container.querySelector('.grf-reflist-header button').onclick = () => handleAdd(referencedTableId, renderContent, dataWriter, tableLens, backReferenceColId, record.id);
+        tbody.querySelectorAll('tr').forEach((tr, index) => {
             const rec = relatedRecords[index];
             tr.querySelector('.actions-cell button:nth-child(1)').onclick = () => handleEdit(referencedTableId, rec.id, renderContent, dataWriter, tableLens);
             tr.querySelector('.actions-cell button:nth-child(2)').onclick = () => handleDelete(referencedTableId, rec.id, renderContent, dataWriter);
         });
     };
-
     await renderContent();
 }

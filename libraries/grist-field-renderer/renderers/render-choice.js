@@ -2,12 +2,13 @@
 export function renderChoice(options) {
     const { container, colSchema, cellValue, isEditing } = options;
 
-    const wopts = JSON.parse(colSchema.widgetOptions || '{}');
+    // MUDANÇA: Aplica o padrão correto para acessar widgetOptions.
+    const wopts = colSchema.widgetOptions || {};
     const choices = wopts.choices || [];
     const choiceOptions = wopts.choiceOptions || {};
     const isList = colSchema.type === 'ChoiceList';
 
-    // MODO VISUALIZAÇÃO (Já está correto, sem alterações)
+    // MODO VISUALIZAÇÃO (Sua lógica existente, preservada)
     if (!isEditing) {
         if (isList) {
             const values = Array.isArray(cellValue) && cellValue[0] === 'L' ? cellValue.slice(1) : [];
@@ -31,13 +32,12 @@ export function renderChoice(options) {
         return;
     }
     
-    // MODO EDIÇÃO (LÓGICA FINAL E COMPLETA)
+    // MODO EDIÇÃO (Sua lógica existente, preservada)
     const select = document.createElement('select');
     select.className = 'grf-form-input';
     select.multiple = isList;
     select.dataset.colId = colSchema.colId;
 
-    // Função auxiliar para aplicar estilo ao <select> ou <option>
     const applyStyle = (element, value) => {
         const style = choiceOptions[value];
         if (element && style) {
@@ -45,7 +45,6 @@ export function renderChoice(options) {
             element.style.color = style.textColor || '';
             element.style.fontWeight = style.fontBold ? 'bold' : '';
         } else if (element) {
-            // Limpa o estilo se não houver um definido
             element.style.backgroundColor = '';
             element.style.color = '';
             element.style.fontWeight = '';
@@ -54,28 +53,21 @@ export function renderChoice(options) {
 
     if (!isList) {
         select.add(new Option('-- Selecione --', ''));
-        // Evento onchange para atualizar a cor do select
         select.onchange = () => applyStyle(select, select.value);
     }
 
     choices.forEach(choice => {
         const option = new Option(choice, choice);
-        
-        // Aplica estilo a cada <option> individual (melhor prática)
         applyStyle(option, choice);
-
         if (isList) {
             const currentValues = (Array.isArray(cellValue) && cellValue[0] === 'L' ? cellValue.slice(1) : []).map(v => String(v));
             if (currentValues.includes(String(choice))) option.selected = true;
         } else {
-            if (cellValue != null && String(cellValue) === String(choice)) {
-                option.selected = true;
-            }
+            if (cellValue != null && String(cellValue) === String(choice)) option.selected = true;
         }
         select.appendChild(option);
     });
 
-    // Aplica o estilo inicial ao select com base no valor atual
     if (!isList && cellValue) {
         applyStyle(select, cellValue);
     }
