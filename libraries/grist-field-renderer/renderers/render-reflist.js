@@ -8,7 +8,7 @@ async function handleAdd(options) {
     const { 
         tableId, onUpdate, dataWriter, tableLens, backRefCol, 
         parentRecId, parentTableId, parentRefListColId, 
-        parentRecord // MUDANÇA: Passando o objeto do registro pai diretamente
+        parentRecord // O registro pai, que é a fonte da verdade local
     } = options;
 
     if (!parentRecId || typeof parentRecId !== 'number' || parentRecId <= 0) {
@@ -26,13 +26,16 @@ async function handleAdd(options) {
             const finalRecord = { ...newRecordFromForm };
             if (backRefCol && parentRecId) { finalRecord[backRefCol] = parentRecId; }
             
+            // 1. Adiciona o novo registro filho
             const result = await dataWriter.addRecord(tableId, finalRecord);
-            if (!result || !result.retValues || !result.get(0)) {
+
+            // 2. Extrai o ID do novo filho da forma CORRETA
+            if (!result || !Array.isArray(result.retValues) || !result.retValues[0]) {
                 throw new Error("Falha ao criar o registro filho. A API do Grist não retornou um ID válido.");
             }
             const newChildId = result.retValues[0];
             
-            // Lógica para pegar a lista atual de IDs do registro pai
+            // 3. Prepara a nova lista de IDs para a RefList
             const refListValue = parentRecord[parentRefListColId];
             const existingChildIds = (Array.isArray(refListValue) && refListValue[0] === 'L')
                 ? refListValue.slice(1)
@@ -40,20 +43,16 @@ async function handleAdd(options) {
             
             const updatedChildIds = ['L', ...existingChildIds, newChildId];
             
-            // Atualiza o registro pai no Grist
-            await dataWriter.updateRecord(parentTableId, parentRecId, { [parentRefListColId]: updatedChildIds });
-
-            // =========================================================================
-            // A CORREÇÃO FINAL ESTÁ AQUI: ATUALIZA O ESTADO LOCAL
-            // =========================================================================
-            // Atualizamos nossa cópia local do registro pai com a nova lista de filhos.
+            // 4. ATUALIZA O ESTADO LOCAL PRIMEIRO (A CHAVE DA SOLUÇÃO)
+            // Isso garante que o próximo render use a lista correta, sem depender do timing do Grist.
             parentRecord[parentRefListColId] = updatedChildIds;
-            
-            // Publica o evento, caso outros componentes estejam ouvindo
-            publish('data-changed', { tableId: parentTableId, recordId: parentRecId, action: 'update' });
 
-            // Agora, quando onUpdate() for chamado, ele usará o `parentRecord` atualizado
-            // e o fetchRelatedRecords funcionará instantaneamente.
+            // 5. Atualiza o registro pai no Grist (agora como uma tarefa em segundo plano)
+            // Não precisamos do 'await' aqui, pois já atualizamos nosso estado local.
+            dataWriter.updateRecord(parentTableId, parentRecId, { [parentRefListColId]: updatedChildIds });
+            
+            // 6. Publica o evento e chama o re-render
+            publish('data-changed', { tableId: parentTableId, recordId: parentRecId, action: 'update' });
             onUpdate();
         }
     });
@@ -155,7 +154,7 @@ container.querySelector('.grf-reflist-header button').onclick = () => handleAdd(
     parentRecId: record.id,
     parentTableId: primaryTableId,
     parentRefListColId: colSchema.colId,
-    parentRecord: record // <-- ADICIONE ESTA LINHA
+    parentRecord: record // <-- ESTA LINHA É ESSENCIAL
 });
         tbody.querySelectorAll('tr').forEach((tr, index) => {
             const rec = relatedRecords[index];
