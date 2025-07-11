@@ -136,6 +136,7 @@ export const GristTableLens = function(gristInstance) {
     
     // MUDANÇA: A função foi ajustada para iterar sobre os VALORES do objeto de schema.
 function _getDisplayColId(displayColIdNum, schemaToSearch) {
+    // Essa função agora só é chamada para o modo de edição, mas a mantemos correta.
     if (!displayColIdNum) return null;
 
     const displayColSchema = Object.values(schemaToSearch).find(c => c.id === displayColIdNum);
@@ -144,10 +145,10 @@ function _getDisplayColId(displayColIdNum, schemaToSearch) {
 
     if (displayColSchema.isFormula && displayColSchema.formula?.includes('.')) {
         const formulaParts = displayColSchema.formula.split('.');
-        if (formulaParts.length > 1) {
-            const finalColId = formulaParts[formulaParts.length - 1];
-            return finalColId;
-        }
+        const finalColId = formulaParts[formulaParts.length - 1];
+        // Validação de segurança
+        const finalColExistsInTarget = Object.values(schemaToSearch).some(c => c.colId === finalColId);
+        if(finalColExistsInTarget) return finalColId;
     }
 
     return displayColSchema.colId;
@@ -224,21 +225,36 @@ function _getDisplayColId(displayColIdNum, schemaToSearch) {
     };
     
 this.resolveReference = async function(colSchema, record) {
+    // Esta é a função principal que precisa da lógica correta.
     if (!colSchema.type.startsWith('Ref:') || !record) return { displayValue: `[Invalid Ref]`, referencedRecord: null };
 
-    // Pega o schema da tabela de ORIGEM (onde a coluna helper está)
-    const sourceTableId = record.gristHelper_tableId;
-    const sourceSchema = await this.getTableSchema(sourceTableId);
+    // --- INÍCIO DA LÓGICA CORRETA ---
 
-    // Pega o ID da coluna de display a partir do schema de origem
-    const finalDisplayColId = _getDisplayColId(colSchema.displayCol, sourceSchema);
+    // 1. Determinar qual coluna usar para exibição
+    let finalDisplayColId = null;
+    const displayColIdNum = colSchema.displayCol;
 
-    // Se não conseguimos determinar a coluna de display, não prossiga.
-    if (!finalDisplayColId) {
-        return { displayValue: `[Ref: ${record[colSchema.colId]}]`, referencedRecord: null };
+    if (displayColIdNum) {
+        // Busca o schema da tabela de ORIGEM, onde a coluna helper está.
+        const sourceTableId = record.gristHelper_tableId;
+        const sourceSchema = await this.getTableSchema(sourceTableId);
+        const displayColHelperSchema = Object.values(sourceSchema).find(c => c.id === displayColIdNum);
+
+        if (displayColHelperSchema) {
+            // Se a coluna helper for uma fórmula de referência, extrai o nome da coluna final.
+            if (displayColHelperSchema.isFormula && displayColHelperSchema.formula?.includes('.')) {
+                const formulaParts = displayColHelperSchema.formula.split('.');
+                finalDisplayColId = formulaParts[formulaParts.length - 1];
+            } else {
+                // Se a displayCol não for uma fórmula de ref, assume que é o colId direto
+                finalDisplayColId = displayColHelperSchema.colId;
+            }
+        }
     }
+    
+    // --- FIM DA LÓGICA DE DESCOBERTA ---
 
-    // Agora, prossiga com a lógica normal para buscar o registro de destino
+    // 2. Buscar o registro de destino
     const recordId = record[colSchema.colId];
     if (typeof recordId !== 'number' || recordId <= 0) return { displayValue: '(vazio)', referencedRecord: null };
 
@@ -246,8 +262,8 @@ this.resolveReference = async function(colSchema, record) {
     const referencedRecord = await this.fetchRecordById(referencedTableId, recordId);
     if (!referencedRecord) return { displayValue: `[Ref Inválido: ${recordId}]`, referencedRecord: null };
 
-    // Use o finalDisplayColId que descobrimos para pegar o valor do registro de destino
-    const displayValue = referencedRecord[finalDisplayColId];
+    // 3. Usar o finalDisplayColId que descobrimos
+    const displayValue = finalDisplayColId ? referencedRecord[finalDisplayColId] : `[Ref: ${recordId}]`;
 
     return { displayValue, referencedRecord };
 };
