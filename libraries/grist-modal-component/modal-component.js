@@ -83,15 +83,14 @@ async function _handleSave() {
         changes[colId] = value;
     });
 
-    if (currentOnSave) {
-        try {
-            await currentOnSave(changes); 
-            closeModal(); // Fecha o modal após o salvamento bem-sucedido
-        } catch (err) {
-            console.error("Modal onSave callback failed:", err);
-            // Opcional: mostrar um erro para o usuário no modal
-        }
+if (currentOnSave) {
+    try {
+        await currentOnSave(changes); 
+        closeModal(); // <-- GARANTA QUE ESTA LINHA ESTEJA AQUI, FORA DO TRY SE NECESSÁRIO
+    } catch (err) {
+        console.error("Modal onSave callback failed:", err);
     }
+}
 }
 
 export function openModal(options) {

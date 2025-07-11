@@ -18,21 +18,30 @@ async function handleAdd(options) {
             const finalRecord = { ...newRecordFromForm };
             if (backRefCol && parentRecId) { finalRecord[backRefCol] = parentRecId; }
             
-            // 1. Adiciona o novo registro filho
             const newChild = await dataWriter.addRecord(tableId, finalRecord);
+            if (!newChild || !newChild.id) throw new Error("Falha ao criar o registro filho.");
             const newChildId = newChild.id;
 
-            // 2. Atualiza o registro PAI para incluir o novo filho na RefList
             const parentRecord = await tableLens.fetchRecordById(parentTableId, parentRecId);
-            const existingChildIds = (parentRecord[parentRefListColId] && parentRecord[parentRefListColId][0] === 'L') 
-                ? parentRecord[parentRefListColId].slice(1) 
+            const refListValue = parentRecord[parentRefListColId];
+            const existingChildIds = (Array.isArray(refListValue) && refListValue[0] === 'L')
+                ? refListValue.slice(1)
                 : [];
             
             const updatedChildIds = ['L', ...existingChildIds, newChildId];
             
+            // =========================================================================
+            // PONTO DE DEPURAÇÃO
+            // =========================================================================
+            console.log("--- DEBUG: Antes de dataWriter.updateRecord ---");
+            console.log("Parent Table ID:", parentTableId);
+            console.log("Parent Record ID:", parentRecId);
+            console.log("Payload de atualização:", { [parentRefListColId]: updatedChildIds });
+            alert(`DEBUG: Tentando atualizar a tabela '${parentTableId}' com o registro ID '${parentRecId}'. Verifique o console.`);
+            // =========================================================================
+
             await dataWriter.updateRecord(parentTableId, parentRecId, { [parentRefListColId]: updatedChildIds });
             
-            // 3. Publica o evento e força o re-render
             publish('data-changed', { tableId: parentTableId, recordId: parentRecId, action: 'update' });
             onUpdate();
         }
