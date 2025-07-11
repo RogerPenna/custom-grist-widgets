@@ -135,12 +135,34 @@ export const GristTableLens = function(gristInstance) {
     }
     
     // MUDANÇA: A função foi ajustada para iterar sobre os VALORES do objeto de schema.
-    function _getDisplayColId(colSchema, referencedSchema) {
-        if (!colSchema.displayCol) return null;
-        // Object.values() obtém todas as definições de coluna do nosso novo schema.
-        const displayColSchema = Object.values(referencedSchema).find(c => c.id === colSchema.displayCol);
-        return displayColSchema ? displayColSchema.colId : null;
+function _getDisplayColId(colSchema, referencedSchema) {
+    if (!colSchema.displayCol) return null;
+
+    // 1. Encontra a coluna de display inicial (ex: 'gristHelper_Display2')
+    const displayColSchema = Object.values(referencedSchema).find(c => c.id === colSchema.displayCol);
+
+    if (!displayColSchema) return null;
+
+    // 2. VERIFICAÇÃO INTELIGENTE (sua lógica!)
+    // Se a coluna de display for uma fórmula de referência (ex: $Ref.Column),
+    // extraia o nome da coluna final.
+    if (displayColSchema.isFormula && displayColSchema.formula?.includes('.')) {
+        const formulaParts = displayColSchema.formula.split('.');
+        if (formulaParts.length > 1) {
+            // Pega a última parte, que deve ser o colId final. Ex: 'SIstema'
+            const finalColId = formulaParts[formulaParts.length - 1];
+            
+            // Verificação de segurança: a coluna final realmente existe no schema?
+            if (referencedSchema[finalColId]) {
+                return finalColId; // Retorna o colId da coluna de dados real!
+            }
+        }
     }
+
+    // 3. Fallback: Se não for uma fórmula de referência, retorna o colId da coluna de display.
+    // Isso cobre o caso onde a coluna de display é a própria coluna de dados.
+    return displayColSchema.colId;
+}
     
     function _colDataToRows(colData) { if (!colData?.id) { return []; } const rows = []; const keys = Object.keys(colData); if (keys.length === 0 || !Array.isArray(colData[keys[0]])) { return []; } const numRows = colData.id.length; for (let i = 0; i < numRows; i++) { const r = { id: colData.id[i] }; keys.forEach(k => { if (k !== 'id') r[k] = colData[k][i]; }); rows.push(r); } return rows; }
 
