@@ -97,7 +97,7 @@ export const GristTableLens = function(gristInstance) {
         });
 
         tableEntries.forEach(entry => {
-            const isDataColumn = entry.type && entry.colId && !String(entry.colId).startsWith("gristHelper_");
+            const isDataColumn = entry.type && entry.colId;
             if (isDataColumn) {
                 const wopts = JSON.parse(entry.widgetOptions || '{}');
                 const conditionalFormattingRules = [];
