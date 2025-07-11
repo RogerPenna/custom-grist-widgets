@@ -49,22 +49,18 @@ async function _handleSave() {
     
     formElements.forEach(el => {
         const colId = el.dataset.colId;
-        // MUDANÇA: Acesso direto ao schema usando a chave, em vez de .find().
         const colSchema = currentSchema[colId];
         let value;
 
-        // Lógica para extrair valor do elemento do formulário
         if (el.type === 'checkbox') {
             value = el.checked;
         } else if (el.tagName === 'SELECT' && el.multiple) {
             value = Array.from(el.selectedOptions).map(opt => opt.value);
-            // Formato ChoiceList do Grist: ['L', 'val1', 'val2']
             value = value.length > 0 ? ['L', ...value] : null;
         } else {
             value = el.value;
         }
 
-        // Lógica de conversão de tipo específica do Grist
         if (colSchema) {
             if (colSchema.type.startsWith('Date')) {
                 if (!value) {
@@ -72,25 +68,34 @@ async function _handleSave() {
                 } else if (colSchema.type === 'Date') {
                     const parts = value.split('-');
                     value = Date.UTC(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])) / 1000;
-                } else { // DateTime
+                } else {
                     value = new Date(value).getTime() / 1000;
                 }
             } else if (colSchema.type.startsWith('Ref')) {
-                // Converte o valor do select (string) para número
                 value = value ? parseInt(value, 10) : null;
             }
         }
         changes[colId] = value;
     });
 
-if (currentOnSave) {
-    try {
-        await currentOnSave(changes); 
-        closeModal(); // <-- GARANTA QUE ESTA LINHA ESTEJA AQUI, FORA DO TRY SE NECESSÁRIO
-    } catch (err) {
-        console.error("Modal onSave callback failed:", err);
+    // =========================================================================
+    // PONTO DE DEPURAÇÃO 3.0 - AQUI VAMOS VER OS DADOS
+    // =========================================================================
+    console.log("--- DEBUG: Antes de chamar onSave (no modal) ---");
+    console.log("Dados coletados do formulário (changes):", JSON.parse(JSON.stringify(changes)));
+    alert(`DEBUG: Modal está prestes a chamar onSave. Verifique o console para ver o objeto 'changes'.`);
+    // =========================================================================
+
+    if (currentOnSave) {
+        try {
+            await currentOnSave(changes); 
+            closeModal();
+        } catch (err) {
+            console.error("Modal onSave callback FAILED. O erro foi:", err);
+            // Adicionamos um alerta de erro aqui também
+            alert("ERRO AO SALVAR: " + err.message);
+        }
     }
-}
 }
 
 export function openModal(options) {
