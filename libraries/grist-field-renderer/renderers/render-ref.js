@@ -1,80 +1,86 @@
 // libraries/grist-field-renderer/renderers/render-ref.js
-// VERSÃO DE DEPURAÇÃO - TENTATIVA 2
+// VERSÃO FINAL E LIMPA
 
 export async function renderRef(options) {
     const { container, colSchema, cellValue, tableLens, isEditing, record } = options;
 
     if (!container) return;
     
-    if (isEditing) {
-        container.textContent = "[Modo de Edição]";
+    // Assegura que temos um colSchema antes de prosseguir
+    if (!colSchema || !colSchema.type) {
+        container.textContent = `[Schema Inválido]`;
         return;
     }
     
-    container.innerHTML = '';
-    container.style.cssText = 'border: 2px dashed blue; padding: 10px; font-family: monospace; font-size: 12px; white-space: pre-wrap; word-break: break-all; background-color: #f8f8ff;';
-
-    try {
-        const debugInfo = {
-            TIMESTAMP: new Date().toISOString(),
-            MESSAGE: "--- DADOS DE DEPURAÇÃO (TENTATIVA 2) ---",
-            INPUT_colSchema: colSchema,
-            INPUT_record: record, // Adicionado para ver a tabela de origem
-        };
-
-        if (cellValue == null || cellValue <= 0) {
-            debugInfo.RESULT = "Valor vazio ou inválido.";
-            container.textContent = JSON.stringify(debugInfo, null, 2);
-            return;
-        }
-
-        const refTableId = colSchema.type.split(':')[1];
-        debugInfo.STEP1_refTableId = refTableId;
-
-        // ================== NOVA LÓGICA DE DEPURAÇÃO ==================
-
-        // Passo A: Pegar o schema da tabela de ORIGEM
-        const sourceTableId = record.gristHelper_tableId;
-        debugInfo.STEP_A_sourceTableId = sourceTableId;
-        const sourceSchema = await tableLens.getTableSchema(sourceTableId);
-        debugInfo.STEP_A_sourceSchema_All = sourceSchema;
-
-        // Passo B: Procurar a coluna de display helper DENTRO do schema de origem
-        const displayColIdNum = colSchema.displayCol;
-        debugInfo.STEP_B_lookup_displayCol_ID = displayColIdNum;
-        const displayColHelperSchema = Object.values(sourceSchema).find(c => c.id === displayColIdNum);
-        debugInfo.STEP_B_found_displayColHelperInfo = displayColHelperSchema || "FALHA: Não encontrou a coluna helper no schema de ORIGEM!";
-        
-        // Passo C: Extrair o nome da coluna final da fórmula
-        let finalColIdToUse = null;
-        if (displayColHelperSchema) {
-            if (displayColHelperSchema.isFormula && displayColHelperSchema.formula?.includes('.')) {
-                const formulaParts = displayColHelperSchema.formula.split('.');
-                finalColIdToUse = formulaParts[formulaParts.length - 1];
-                debugInfo.STEP_C_extracted_finalColId = finalColIdToUse;
-            } else {
-                 debugInfo.STEP_C_extraction_result = "A coluna helper encontrada não é uma fórmula de referência.";
-            }
-        } else {
-            debugInfo.STEP_C_extraction_result = "N/A - Não foi possível encontrar a coluna helper.";
-        }
-        
-        debugInfo.FINAL_COL_ID_TO_USE = finalColIdToUse;
-
-        // ================== LÓGICA DE BUSCA DE DADOS ==================
-        
-        const referencedRecord = await tableLens.fetchRecordById(refTableId, cellValue);
-        debugInfo.DATA_referencedRecord = referencedRecord || "ERRO: Registro de destino não encontrado!";
-
-        if (finalColIdToUse && referencedRecord) {
-            debugInfo.FINAL_VALUE = referencedRecord[finalColIdToUse] !== undefined ? referencedRecord[finalColIdToUse] : `AVISO: a coluna '${finalColIdToUse}' não tem valor no registro de destino.`;
-        } else {
-            debugInfo.FINAL_VALUE = "ERRO: Não foi possível determinar o valor final.";
-        }
-
-        container.textContent = JSON.stringify(debugInfo, null, 2);
-
-    } catch (error) {
-        container.textContent = `ERRO DURANTE A DEPURAÇÃO:\n${error.stack}`;
+    const refTableId = colSchema.type.split(':')[1];
+    if (!refTableId) {
+        container.textContent = `[Tipo Ref inválido: ${colSchema.type}]`;
+        return;
     }
+
+    // --- MODO DE EDIÇÃO ---
+    if (isEditing) {
+        const select = document.createElement('select');
+        select.className = 'grf-form-input';
+        select.dataset.colId = colSchema.colId;
+        select.add(new Option('-- Selecione --', ''));
+
+        // Busca o schema e os registros da tabela de destino
+        const [refSchema, allRefRecords] = await Promise.all([
+            tableLens.getTableSchema(refTableId),
+            tableLens.fetchTableRecords(refTableId)
+        ]);
+        
+        let displayColId = null;
+
+        // Lógica para encontrar a coluna de exibição para o dropdown
+        const displayColIdNum = colSchema.displayCol;
+        if (displayColIdNum) {
+            // A lógica correta é procurar a coluna de exibição na tabela de destino
+            const displayColInfo = Object.values(refSchema).find(c => c.id === displayColIdNum);
+            
+            if(displayColInfo) {
+                // Se a coluna de display for uma fórmula de referência, precisamos da lógica
+                // que acabamos de colocar no TableLens. Para evitar duplicação, vamos fazer
+                // uma chamada simples aqui para descobrir o nome da coluna final.
+                // Esta é uma simplificação, mas eficaz para o dropdown.
+                const sourceTableId = record.gristHelper_tableId;
+                const sourceSchema = await tableLens.getTableSchema(sourceTableId);
+                const helperCol = Object.values(sourceSchema).find(c => c.id === displayColIdNum);
+                if (helperCol && helperCol.formula?.includes('.')) {
+                    displayColId = helperCol.formula.split('.').pop();
+                } else {
+                    displayColId = displayColInfo.colId;
+                }
+            }
+        }
+        
+        // Fallback se a lógica acima falhar
+        if (!displayColId) {
+            const firstSensibleColumn = Object.values(refSchema).find(c => c && c.type === 'Text' && !c.isFormula);
+            displayColId = firstSensibleColumn ? firstSensibleColumn.colId : 'id';
+        }
+
+        // Preenche o dropdown
+        allRefRecords.forEach(rec => {
+            const optionText = rec[displayColId] || `ID: ${rec.id}`;
+            const optionValue = rec.id;
+            const option = new Option(optionText, optionValue);
+            option.selected = cellValue != null && String(cellValue) === String(optionValue);
+            select.add(option);
+        });
+        container.appendChild(select);
+        return;
+    }
+
+    // --- MODO DE VISUALIZAÇÃO ---
+    if (cellValue == null || cellValue <= 0) {
+        container.textContent = '(vazio)';
+        container.className = 'grf-readonly-empty';
+        return;
+    }
+    
+    // Confia na função do TableLens, que agora está corrigida.
+    const { displayValue } = await tableLens.resolveReference(colSchema, record);
+    container.textContent = displayValue;
 }

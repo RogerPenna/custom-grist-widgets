@@ -225,44 +225,50 @@ function _getDisplayColId(displayColIdNum, schemaToSearch) {
     };
     
 this.resolveReference = async function(colSchema, record) {
-    // Esta é a função principal que precisa da lógica correta.
-    if (!colSchema.type.startsWith('Ref:') || !record) return { displayValue: `[Invalid Ref]`, referencedRecord: null };
+    if (!colSchema.type.startsWith('Ref:') || !record) {
+        return { displayValue: `[Invalid Ref]`, referencedRecord: null };
+    }
 
-    // --- INÍCIO DA LÓGICA CORRETA ---
+    // Pega o ID do registro de destino (ex: 1)
+    const recordId = record[colSchema.colId];
+    if (typeof recordId !== 'number' || recordId <= 0) {
+        return { displayValue: '(vazio)', referencedRecord: null };
+    }
 
-    // 1. Determinar qual coluna usar para exibição
+    // 1. DETERMINA A COLUNA DE DISPLAY FINAL
     let finalDisplayColId = null;
     const displayColIdNum = colSchema.displayCol;
 
     if (displayColIdNum) {
-        // Busca o schema da tabela de ORIGEM, onde a coluna helper está.
+        // Busca o schema da tabela de ORIGEM (onde a coluna helper está).
         const sourceTableId = record.gristHelper_tableId;
-        const sourceSchema = await this.getTableSchema(sourceTableId);
-        const displayColHelperSchema = Object.values(sourceSchema).find(c => c.id === displayColIdNum);
+        if (sourceTableId) {
+            const sourceSchema = await this.getTableSchema(sourceTableId);
+            const displayColHelperSchema = Object.values(sourceSchema).find(c => c.id === displayColIdNum);
 
-        if (displayColHelperSchema) {
-            // Se a coluna helper for uma fórmula de referência, extrai o nome da coluna final.
-            if (displayColHelperSchema.isFormula && displayColHelperSchema.formula?.includes('.')) {
-                const formulaParts = displayColHelperSchema.formula.split('.');
-                finalDisplayColId = formulaParts[formulaParts.length - 1];
-            } else {
-                // Se a displayCol não for uma fórmula de ref, assume que é o colId direto
-                finalDisplayColId = displayColHelperSchema.colId;
+            if (displayColHelperSchema) {
+                // Se for uma fórmula de referência, extrai o nome da coluna final.
+                if (displayColHelperSchema.isFormula && displayColHelperSchema.formula?.includes('.')) {
+                    const formulaParts = displayColHelperSchema.formula.split('.');
+                    finalDisplayColId = formulaParts[formulaParts.length - 1];
+                } else {
+                    // Se a displayCol não for uma fórmula de ref, assume que é o colId direto.
+                    finalDisplayColId = displayColHelperSchema.colId;
+                }
             }
         }
     }
-    
-    // --- FIM DA LÓGICA DE DESCOBERTA ---
 
-    // 2. Buscar o registro de destino
-    const recordId = record[colSchema.colId];
-    if (typeof recordId !== 'number' || recordId <= 0) return { displayValue: '(vazio)', referencedRecord: null };
-
+    // 2. BUSCA O REGISTRO DE DESTINO
     const referencedTableId = colSchema.type.split(':')[1];
     const referencedRecord = await this.fetchRecordById(referencedTableId, recordId);
-    if (!referencedRecord) return { displayValue: `[Ref Inválido: ${recordId}]`, referencedRecord: null };
 
-    // 3. Usar o finalDisplayColId que descobrimos
+    if (!referencedRecord) {
+        return { displayValue: `[Ref Inválido: ${recordId}]`, referencedRecord: null };
+    }
+
+    // 3. RETORNA O VALOR CORRETO
+    // Se encontramos a coluna de display, usamos. Senão, fallback para o ID da referência.
     const displayValue = finalDisplayColId ? referencedRecord[finalDisplayColId] : `[Ref: ${recordId}]`;
 
     return { displayValue, referencedRecord };
