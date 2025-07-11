@@ -16,30 +16,35 @@ async function handleAdd(options) {
         title: `Adicionar em ${tableId}`, tableId, record: initialRecord, schema,
         onSave: async (newRecordFromForm) => {
             const finalRecord = { ...newRecordFromForm };
-            if (backRefCol && parentRecId) { finalRecord[backRefCol] = parentRecId; }
-            
+            if (backRefCol && parentRecId) {
+                finalRecord[backRefCol] = parentRecId;
+            }
+
+            // =========================================================================
+            // PONTO DE DEPURAÇÃO 2.0
+            // =========================================================================
+            console.log("--- DEBUG: Antes de dataWriter.addRecord ---");
+            console.log("Tabela de Destino (tableId):", tableId);
+            console.log("Payload a ser salvo (finalRecord):", JSON.parse(JSON.stringify(finalRecord))); // Clona para evitar logs reativos
+            alert(`DEBUG: Tentando criar registro na tabela '${tableId}'. Verifique o console para ver o payload.`);
+            // =========================================================================
+
+            // A chamada que está falhando:
             const newChild = await dataWriter.addRecord(tableId, finalRecord);
-            if (!newChild || !newChild.id) throw new Error("Falha ao criar o registro filho.");
+            
+            if (!newChild || !newChild.id) {
+                // Se a linha acima falhar, este erro será lançado
+                throw new Error("Falha ao criar o registro filho. O resultado foi: " + JSON.stringify(newChild));
+            }
             const newChildId = newChild.id;
 
+            // ... resto da lógica de atualização do pai ...
             const parentRecord = await tableLens.fetchRecordById(parentTableId, parentRecId);
             const refListValue = parentRecord[parentRefListColId];
             const existingChildIds = (Array.isArray(refListValue) && refListValue[0] === 'L')
                 ? refListValue.slice(1)
                 : [];
-            
             const updatedChildIds = ['L', ...existingChildIds, newChildId];
-            
-            // =========================================================================
-            // PONTO DE DEPURAÇÃO
-            // =========================================================================
-            console.log("--- DEBUG: Antes de dataWriter.updateRecord ---");
-            console.log("Parent Table ID:", parentTableId);
-            console.log("Parent Record ID:", parentRecId);
-            console.log("Payload de atualização:", { [parentRefListColId]: updatedChildIds });
-            alert(`DEBUG: Tentando atualizar a tabela '${parentTableId}' com o registro ID '${parentRecId}'. Verifique o console.`);
-            // =========================================================================
-
             await dataWriter.updateRecord(parentTableId, parentRecId, { [parentRefListColId]: updatedChildIds });
             
             publish('data-changed', { tableId: parentTableId, recordId: parentRecId, action: 'update' });
