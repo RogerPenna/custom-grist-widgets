@@ -1,13 +1,10 @@
 // libraries/grist-field-renderer/renderers/render-ref.js
-// VERSÃO FINAL E LIMPA
+// VERSÃO FINAL E CORRIGIDA (MODO DE EDIÇÃO CONSERTADO)
 
 export async function renderRef(options) {
     const { container, colSchema, cellValue, tableLens, isEditing, record } = options;
 
-    if (!container) return;
-    
-    // Assegura que temos um colSchema antes de prosseguir
-    if (!colSchema || !colSchema.type) {
+    if (!container || !colSchema || !colSchema.type) {
         container.textContent = `[Schema Inválido]`;
         return;
     }
@@ -18,7 +15,7 @@ export async function renderRef(options) {
         return;
     }
 
-    // --- MODO DE EDIÇÃO ---
+    // --- MODO DE EDIÇÃO (LÓGICA CORRIGIDA) ---
     if (isEditing) {
         const select = document.createElement('select');
         select.className = 'grf-form-input';
@@ -31,39 +28,39 @@ export async function renderRef(options) {
             tableLens.fetchTableRecords(refTableId)
         ]);
         
-        let displayColId = null;
-
-        // Lógica para encontrar a coluna de exibição para o dropdown
+        // --- INÍCIO DA LÓGICA DE DESCOBERTA (AGORA CORRETA) ---
+        let finalDisplayColId = null;
         const displayColIdNum = colSchema.displayCol;
+
         if (displayColIdNum) {
-            // A lógica correta é procurar a coluna de exibição na tabela de destino
-            const displayColInfo = Object.values(refSchema).find(c => c.id === displayColIdNum);
-            
-            if(displayColInfo) {
-                // Se a coluna de display for uma fórmula de referência, precisamos da lógica
-                // que acabamos de colocar no TableLens. Para evitar duplicação, vamos fazer
-                // uma chamada simples aqui para descobrir o nome da coluna final.
-                // Esta é uma simplificação, mas eficaz para o dropdown.
-                const sourceTableId = record.gristHelper_tableId;
+            // Busca o schema da tabela de ORIGEM (onde a coluna helper está).
+            const sourceTableId = record.gristHelper_tableId;
+            if (sourceTableId) {
                 const sourceSchema = await tableLens.getTableSchema(sourceTableId);
-                const helperCol = Object.values(sourceSchema).find(c => c.id === displayColIdNum);
-                if (helperCol && helperCol.formula?.includes('.')) {
-                    displayColId = helperCol.formula.split('.').pop();
-                } else {
-                    displayColId = displayColInfo.colId;
+                const displayColHelperSchema = Object.values(sourceSchema).find(c => c.id === displayColIdNum);
+
+                if (displayColHelperSchema) {
+                    // Se for uma fórmula de referência, extrai o nome da coluna final.
+                    if (displayColHelperSchema.isFormula && displayColHelperSchema.formula?.includes('.')) {
+                        finalDisplayColId = displayColHelperSchema.formula.split('.').pop();
+                    } else {
+                        // Se a displayCol não for uma fórmula de ref, assume que é o colId direto.
+                        finalDisplayColId = displayColHelperSchema.colId;
+                    }
                 }
             }
         }
+        // --- FIM DA LÓGICA DE DESCOBERTA ---
         
         // Fallback se a lógica acima falhar
-        if (!displayColId) {
+        if (!finalDisplayColId) {
             const firstSensibleColumn = Object.values(refSchema).find(c => c && c.type === 'Text' && !c.isFormula);
-            displayColId = firstSensibleColumn ? firstSensibleColumn.colId : 'id';
+            finalDisplayColId = firstSensibleColumn ? firstSensibleColumn.colId : 'id';
         }
 
-        // Preenche o dropdown
+        // Preenche o dropdown usando o finalDisplayColId correto
         allRefRecords.forEach(rec => {
-            const optionText = rec[displayColId] || `ID: ${rec.id}`;
+            const optionText = rec[finalDisplayColId] || `ID: ${rec.id}`;
             const optionValue = rec.id;
             const option = new Option(optionText, optionValue);
             option.selected = cellValue != null && String(cellValue) === String(optionValue);
@@ -73,14 +70,13 @@ export async function renderRef(options) {
         return;
     }
 
-    // --- MODO DE VISUALIZAÇÃO ---
+    // --- MODO DE VISUALIZAÇÃO (JÁ FUNCIONANDO) ---
     if (cellValue == null || cellValue <= 0) {
         container.textContent = '(vazio)';
         container.className = 'grf-readonly-empty';
         return;
     }
     
-    // Confia na função do TableLens, que agora está corrigida.
     const { displayValue } = await tableLens.resolveReference(colSchema, record);
     container.textContent = displayValue;
 }
