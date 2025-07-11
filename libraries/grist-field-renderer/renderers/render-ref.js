@@ -1,31 +1,29 @@
 // libraries/grist-field-renderer/renderers/render-ref.js
-// VERSÃO DE DEPURAÇÃO
+// VERSÃO DE DEPURAÇÃO - TENTATIVA 2
 
 export async function renderRef(options) {
     const { container, colSchema, cellValue, tableLens, isEditing, record } = options;
 
     if (!container) return;
     
-    // O modo de edição não é nosso foco, então o deixamos como está.
     if (isEditing) {
         container.textContent = "[Modo de Edição]";
         return;
     }
     
-    // Limpa o container para nosso output de depuração.
     container.innerHTML = '';
-    container.style.cssText = 'border: 2px dashed red; padding: 10px; font-family: monospace; font-size: 12px; white-space: pre-wrap; word-break: break-all; background-color: #fff8f8;';
+    container.style.cssText = 'border: 2px dashed blue; padding: 10px; font-family: monospace; font-size: 12px; white-space: pre-wrap; word-break: break-all; background-color: #f8f8ff;';
 
     try {
         const debugInfo = {
             TIMESTAMP: new Date().toISOString(),
-            MESSAGE: "--- DADOS DE DEPURAÇÃO PARA RENDER-REF ---",
+            MESSAGE: "--- DADOS DE DEPURAÇÃO (TENTATIVA 2) ---",
             INPUT_colSchema: colSchema,
-            INPUT_cellValue: cellValue,
+            INPUT_record: record, // Adicionado para ver a tabela de origem
         };
 
         if (cellValue == null || cellValue <= 0) {
-            debugInfo.RESULT = "Valor vazio ou inválido, renderização interrompida.";
+            debugInfo.RESULT = "Valor vazio ou inválido.";
             container.textContent = JSON.stringify(debugInfo, null, 2);
             return;
         }
@@ -33,52 +31,43 @@ export async function renderRef(options) {
         const refTableId = colSchema.type.split(':')[1];
         debugInfo.STEP1_refTableId = refTableId;
 
-        // Buscando os dados necessários
-        const [referencedRecord, referencedSchema] = await Promise.all([
-            tableLens.fetchRecordById(refTableId, cellValue),
-            tableLens.getTableSchema(refTableId)
-        ]);
+        // ================== NOVA LÓGICA DE DEPURAÇÃO ==================
 
-        debugInfo.STEP2_referencedRecord = referencedRecord || "ERRO: Registro não encontrado!";
-        debugInfo.STEP3_referencedSchema_All = referencedSchema; // Schema completo
+        // Passo A: Pegar o schema da tabela de ORIGEM
+        const sourceTableId = record.gristHelper_tableId;
+        debugInfo.STEP_A_sourceTableId = sourceTableId;
+        const sourceSchema = await tableLens.getTableSchema(sourceTableId);
+        debugInfo.STEP_A_sourceSchema_All = sourceSchema;
 
-        // Simulando a lógica de _getDisplayColId manualmente para ver cada passo
-        debugInfo.STEP4_lookup_displayCol_ID = colSchema.displayCol;
+        // Passo B: Procurar a coluna de display helper DENTRO do schema de origem
+        const displayColIdNum = colSchema.displayCol;
+        debugInfo.STEP_B_lookup_displayCol_ID = displayColIdNum;
+        const displayColHelperSchema = Object.values(sourceSchema).find(c => c.id === displayColIdNum);
+        debugInfo.STEP_B_found_displayColHelperInfo = displayColHelperSchema || "FALHA: Não encontrou a coluna helper no schema de ORIGEM!";
         
-        const schemaAsArray = Object.values(referencedSchema);
-        const displayColInfo = schemaAsArray.find(c => c && c.id === colSchema.displayCol);
-        
-        debugInfo.STEP5_found_displayColInfo = displayColInfo || "FALHA: Não encontrou a coluna de display no schema!";
-
+        // Passo C: Extrair o nome da coluna final da fórmula
         let finalColIdToUse = null;
-        if (displayColInfo) {
-            // Tentando a lógica de "desembrulhar" a fórmula
-            if (displayColInfo.isFormula && displayColInfo.formula?.includes('.')) {
-                const formulaParts = displayColInfo.formula.split('.');
-                const extracted = formulaParts[formulaParts.length - 1];
-                debugInfo.STEP6_formula_extraction = `Extraído '${extracted}' da fórmula '${displayColInfo.formula}'.`;
-                
-                // Verificação de segurança
-                if (referencedSchema[extracted]) {
-                    finalColIdToUse = extracted;
-                    debugInfo.STEP7_finalColId_from_Formula = finalColIdToUse;
-                } else {
-                    debugInfo.STEP7_finalColId_from_Formula = `ERRO: A coluna extraída '${extracted}' não existe no schema!`;
-                    finalColIdToUse = displayColInfo.colId; // Fallback para a própria coluna helper
-                }
+        if (displayColHelperSchema) {
+            if (displayColHelperSchema.isFormula && displayColHelperSchema.formula?.includes('.')) {
+                const formulaParts = displayColHelperSchema.formula.split('.');
+                finalColIdToUse = formulaParts[formulaParts.length - 1];
+                debugInfo.STEP_C_extracted_finalColId = finalColIdToUse;
             } else {
-                finalColIdToUse = displayColInfo.colId;
-                debugInfo.STEP6_formula_extraction = "Não é uma fórmula de referência, usando o colId direto.";
-                debugInfo.STEP7_finalColId_direct = finalColIdToUse;
+                 debugInfo.STEP_C_extraction_result = "A coluna helper encontrada não é uma fórmula de referência.";
             }
         } else {
-             debugInfo.STEP6_formula_extraction = "N/A - Não foi possível encontrar a coluna de display.";
+            debugInfo.STEP_C_extraction_result = "N/A - Não foi possível encontrar a coluna helper.";
         }
         
         debugInfo.FINAL_COL_ID_TO_USE = finalColIdToUse;
 
+        // ================== LÓGICA DE BUSCA DE DADOS ==================
+        
+        const referencedRecord = await tableLens.fetchRecordById(refTableId, cellValue);
+        debugInfo.DATA_referencedRecord = referencedRecord || "ERRO: Registro de destino não encontrado!";
+
         if (finalColIdToUse && referencedRecord) {
-            debugInfo.FINAL_VALUE = referencedRecord[finalColIdToUse] || `AVISO: a coluna '${finalColIdToUse}' não tem valor no registro.`;
+            debugInfo.FINAL_VALUE = referencedRecord[finalColIdToUse] !== undefined ? referencedRecord[finalColIdToUse] : `AVISO: a coluna '${finalColIdToUse}' não tem valor no registro de destino.`;
         } else {
             debugInfo.FINAL_VALUE = "ERRO: Não foi possível determinar o valor final.";
         }
