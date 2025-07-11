@@ -146,16 +146,17 @@ export async function renderRefList(options) {
         const primaryTableId = record.gristHelper_tableId;
         const backReferenceColumn = relatedSchemaAsArray.find(col => col && col.type === `Ref:${primaryTableId}`);
         const backReferenceColId = backReferenceColumn ? backReferenceColumn.colId : null;
-        container.querySelector('.grf-reflist-header button').onclick = () => handleAdd({
-            tableId: referencedTableId,
-            onUpdate: renderContent,
-            dataWriter,
-            tableLens,
-            backRefCol: backReferenceColId,
-            parentRecId: record.id,
-            parentTableId: primaryTableId,
-            parentRefListColId: colSchema.colId,
-        });
+container.querySelector('.grf-reflist-header button').onclick = () => handleAdd({
+    tableId: referencedTableId,
+    onUpdate: renderContent,
+    dataWriter,
+    tableLens,
+    backRefCol: backReferenceColId,
+    parentRecId: record.id,
+    parentTableId: primaryTableId,
+    parentRefListColId: colSchema.colId,
+    parentRecord: record // <-- ADICIONE ESTA LINHA
+});
         tbody.querySelectorAll('tr').forEach((tr, index) => {
             const rec = relatedRecords[index];
             const cell = tr.querySelector('.actions-cell');
