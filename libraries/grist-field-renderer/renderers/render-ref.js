@@ -11,32 +11,30 @@ export async function renderRef(options) {
         return;
     }
 
-    // --- MODO DE EDIÇÃO (CORRIGIDO) ---
+    // --- MODO DE EDIÇÃO (já corrigido e deve funcionar) ---
     if (isEditing) {
+        // (Vou colar o código de edição corrigido da resposta anterior para garantir)
         const select = document.createElement('select');
         select.className = 'grf-form-input';
         select.dataset.colId = colSchema.colId;
         select.add(new Option('-- Selecione --', ''));
 
-        // Pede o schema no modo 'clean' que é otimizado e o correto para UI
         const [refSchema, allRefRecords] = await Promise.all([
-            tableLens.getTableSchema(refTableId), // Não precisa de modo, o padrão já é o 'clean' completo
+            tableLens.getTableSchema(refTableId),
             tableLens.fetchTableRecords(refTableId)
         ]);
         
-        // CORREÇÃO: Usa Object.values() para iterar sobre o objeto de schema
         const refSchemaAsArray = Object.values(refSchema);
         let displayColId;
         if (colSchema.displayCol) {
             const displayColInfo = refSchemaAsArray.find(c => c.id === colSchema.displayCol);
             if (displayColInfo) displayColId = displayColInfo.colId;
         }
-        // Fallback robusto
         if (!displayColId) {
             const firstVisibleColumn = refSchemaAsArray.find(c => c && !c.isFormula && c.type !== 'Attachments');
             if (firstVisibleColumn) displayColId = firstVisibleColumn.colId;
         }
-        if (!displayColId) displayColId = 'id'; // Último recurso
+        if (!displayColId) displayColId = 'id';
 
         allRefRecords.forEach(rec => {
             const optionText = rec[displayColId] || `ID: ${rec.id}`;
@@ -52,23 +50,47 @@ export async function renderRef(options) {
         return;
     }
 
-    // --- MODO DE VISUALIZAÇÃO (SIMPLIFICADO E CORRIGIDO) ---
+    // --- MODO DE VISUALIZAÇÃO (LÓGICA MANUAL E EXPLÍCITA) ---
     if (cellValue == null || cellValue <= 0) {
         container.textContent = '(vazio)';
         container.className = 'grf-readonly-empty';
         return;
     }
     
-    // Usa a função do tableLens que encapsula toda a lógica de resolução.
-    // É mais eficiente e garante consistência.
-    // Passamos o 'record' do options, que é o registro da tabela principal (ex: Integracao_Funcionarios)
-    const { displayValue, referencedRecord } = await tableLens.resolveReference(colSchema, record);
+    // Passo 1: Buscar tudo o que precisamos, de forma explícita.
+    const [referencedRecord, referencedSchema] = await Promise.all([
+        tableLens.fetchRecordById(refTableId, cellValue),
+        tableLens.getTableSchema(refTableId) // Pede o schema completo da tabela de destino
+    ]);
     
-    if (referencedRecord) {
-        // A função resolveReference já nos deu o valor correto a ser exibido.
-        container.textContent = displayValue;
+    if (!referencedRecord) {
+        container.textContent = `[Ref não encontrado: ${cellValue}]`;
+        return;
+    }
+
+    // Passo 2: Fazer a lógica de busca do displayColId manualmente AQUI.
+    let displayColId = null;
+    if (colSchema.displayCol) {
+        // Procuramos no schema da tabela de destino (referencedSchema)
+        const displayColInfo = Object.values(referencedSchema).find(c => c.id === colSchema.displayCol);
+        if (displayColInfo) {
+            displayColId = displayColInfo.colId;
+        }
+    }
+    
+    // Passo 3: Se encontrarmos o displayColId, pegamos o valor.
+    if (displayColId) {
+        // Se a coluna de display for uma fórmula, Grist já a calculou no registro.
+        container.textContent = referencedRecord[displayColId];
     } else {
-        // Se o registro de referência não foi encontrado.
-        container.textContent = displayValue; // Ex: "[Ref not found: 1]"
+        // Se, por algum motivo, não encontramos o displayColId, usamos um fallback.
+        // Tente encontrar a primeira coluna "sensata" para exibir.
+        const fallbackColumn = Object.values(referencedSchema).find(c => c && c.type === 'Text' && !c.isFormula);
+        if (fallbackColumn) {
+            container.textContent = referencedRecord[fallbackColumn.colId];
+        } else {
+            // Último recurso
+            container.textContent = `[Ref: ${cellValue}]`;
+        }
     }
 }
