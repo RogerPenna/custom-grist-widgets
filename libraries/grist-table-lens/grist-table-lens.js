@@ -135,32 +135,21 @@ export const GristTableLens = function(gristInstance) {
     }
     
     // MUDANÇA: A função foi ajustada para iterar sobre os VALORES do objeto de schema.
-function _getDisplayColId(colSchema, referencedSchema) {
-    if (!colSchema.displayCol) return null;
+function _getDisplayColId(displayColIdNum, schemaToSearch) {
+    if (!displayColIdNum) return null;
 
-    // 1. Encontra a coluna de display inicial (ex: 'gristHelper_Display2')
-    const displayColSchema = Object.values(referencedSchema).find(c => c.id === colSchema.displayCol);
+    const displayColSchema = Object.values(schemaToSearch).find(c => c.id === displayColIdNum);
 
     if (!displayColSchema) return null;
 
-    // 2. VERIFICAÇÃO INTELIGENTE (sua lógica!)
-    // Se a coluna de display for uma fórmula de referência (ex: $Ref.Column),
-    // extraia o nome da coluna final.
     if (displayColSchema.isFormula && displayColSchema.formula?.includes('.')) {
         const formulaParts = displayColSchema.formula.split('.');
         if (formulaParts.length > 1) {
-            // Pega a última parte, que deve ser o colId final. Ex: 'SIstema'
             const finalColId = formulaParts[formulaParts.length - 1];
-            
-            // Verificação de segurança: a coluna final realmente existe no schema?
-            if (referencedSchema[finalColId]) {
-                return finalColId; // Retorna o colId da coluna de dados real!
-            }
+            return finalColId;
         }
     }
 
-    // 3. Fallback: Se não for uma fórmula de referência, retorna o colId da coluna de display.
-    // Isso cobre o caso onde a coluna de display é a própria coluna de dados.
     return displayColSchema.colId;
 }
     
@@ -234,22 +223,32 @@ function _getDisplayColId(colSchema, referencedSchema) {
         }
     };
     
-    this.resolveReference = async function(colSchema, record) {
-        if (!colSchema.type.startsWith('Ref:') || !record) return { displayValue: `[Invalid Ref]`, referencedRecord: null };
-        const recordId = record[colSchema.colId];
-        if (typeof recordId !== 'number' || recordId <= 0) return { displayValue: '(empty)', referencedRecord: null };
+this.resolveReference = async function(colSchema, record) {
+    if (!colSchema.type.startsWith('Ref:') || !record) return { displayValue: `[Invalid Ref]`, referencedRecord: null };
 
-        const referencedTableId = colSchema.type.split(':')[1];
-        const referencedRecord = await this.fetchRecordById(referencedTableId, recordId);
+    // Pega o schema da tabela de ORIGEM (onde a coluna helper está)
+    const sourceTableId = record.gristHelper_tableId;
+    const sourceSchema = await this.getTableSchema(sourceTableId);
 
-        if (!referencedRecord) return { displayValue: `[Ref not found: ${recordId}]`, referencedRecord: null };
+    // Pega o ID da coluna de display a partir do schema de origem
+    const finalDisplayColId = _getDisplayColId(colSchema.displayCol, sourceSchema);
 
-        // MUDANÇA: usa o modo 'clean' que agora é um objeto também.
-        const referencedSchema = await this.getTableSchema(referencedTableId, { mode: 'clean' });
-        const displayColId = _getDisplayColId(colSchema, referencedSchema);
-        
-        const displayValue = displayColId ? referencedRecord[displayColId] : `[Ref: ${recordId}]`;
+    // Se não conseguimos determinar a coluna de display, não prossiga.
+    if (!finalDisplayColId) {
+        return { displayValue: `[Ref: ${record[colSchema.colId]}]`, referencedRecord: null };
+    }
 
-        return { displayValue, referencedRecord };
-    };
+    // Agora, prossiga com a lógica normal para buscar o registro de destino
+    const recordId = record[colSchema.colId];
+    if (typeof recordId !== 'number' || recordId <= 0) return { displayValue: '(vazio)', referencedRecord: null };
+
+    const referencedTableId = colSchema.type.split(':')[1];
+    const referencedRecord = await this.fetchRecordById(referencedTableId, recordId);
+    if (!referencedRecord) return { displayValue: `[Ref Inválido: ${recordId}]`, referencedRecord: null };
+
+    // Use o finalDisplayColId que descobrimos para pegar o valor do registro de destino
+    const displayValue = referencedRecord[finalDisplayColId];
+
+    return { displayValue, referencedRecord };
+};
 };
