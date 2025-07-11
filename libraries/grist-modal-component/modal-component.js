@@ -9,9 +9,9 @@ const dataWriter = new GristDataWriter(grist);
 
 let modalOverlay, modalContent, modalTitle, modalBody;
 let currentOnSave, currentOnCancel;
-let currentSchema = []; // Guardar o schema atual aqui
+// MUDANÇA: O schema agora é um objeto. Inicializamos como tal.
+let currentSchema = {}; 
 
-// ... (função _initializeModalDOM permanece a mesma) ...
 function _initializeModalDOM() {
     if (document.getElementById('grist-modal-overlay')) return;
     const link = document.createElement('link');
@@ -39,7 +39,7 @@ function _initializeModalDOM() {
     modalContent.addEventListener('click', e => e.stopPropagation());
     modalOverlay.addEventListener('click', () => closeModal());
     document.getElementById('modal-cancel-btn').addEventListener('click', () => closeModal());
-    document.getElementById('modal-save-btn').addEventListener('click', () => _handleSave());
+    document.getElementById('modal-save-btn').addEventListener('click', _handleSave);
 }
 
 
@@ -49,66 +49,67 @@ async function _handleSave() {
     
     formElements.forEach(el => {
         const colId = el.dataset.colId;
-        const colSchema = currentSchema.find(c => c.colId === colId);
-        let value = el.value;
+        // MUDANÇA: Acesso direto ao schema usando a chave, em vez de .find().
+        const colSchema = currentSchema[colId];
+        let value;
 
+        // Lógica para extrair valor do elemento do formulário
+        if (el.type === 'checkbox') {
+            value = el.checked;
+        } else if (el.tagName === 'SELECT' && el.multiple) {
+            value = Array.from(el.selectedOptions).map(opt => opt.value);
+            // Formato ChoiceList do Grist: ['L', 'val1', 'val2']
+            value = value.length > 0 ? ['L', ...value] : null;
+        } else {
+            value = el.value;
+        }
+
+        // Lógica de conversão de tipo específica do Grist
         if (colSchema) {
-            // Lógica Específica por tipo de coluna
             if (colSchema.type.startsWith('Date')) {
-                 if (!value) {
-                    value = null; // Envia nulo se o campo estiver vazio
+                if (!value) {
+                    value = null;
                 } else if (colSchema.type === 'Date') {
-                    // =================================================================
-                    // ========= CORREÇÃO DEFINITIVA PARA O BUG DE FUSO HORÁRIO ========
-                    // =================================================================
                     const parts = value.split('-');
-                    const year = parseInt(parts[0], 10);
-                    const month = parseInt(parts[1], 10) - 1; // Mês em JS é 0-indexado (0-11).
-                    const day = parseInt(parts[2], 10);
-                    value = Date.UTC(year, month, day) / 1000;
+                    value = Date.UTC(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])) / 1000;
                 } else { // DateTime
                     value = new Date(value).getTime() / 1000;
                 }
-            } else if (el.type === 'checkbox') {
-                value = el.checked;
+            } else if (colSchema.type.startsWith('Ref')) {
+                // Converte o valor do select (string) para número
+                value = value ? parseInt(value, 10) : null;
             }
-            // Adicionar lógica para 'select-multiple' (ChoiceList) aqui no futuro.
         }
-
         changes[colId] = value;
     });
 
     if (currentOnSave) {
         try {
-            // A função onSave pode retornar informações sobre o que foi salvo
-            const result = await currentOnSave(changes); 
-            
-            // Publica o evento de mudança de dados
-            // Precisamos do tableId e do recordId, que onSave deve nos dar.
-            // A função onSave em render-reflist.js já faz o dataWriter.addRecord, que retorna o ID.
-            // Precisamos ajustar o onSave para retornar essa informação.
-            // Por enquanto, vamos assumir que o onSave já recarrega o que precisa.
-            // Mas a abordagem com event bus é melhor.
+            await currentOnSave(changes); 
+            closeModal(); // Fecha o modal após o salvamento bem-sucedido
         } catch (err) {
             console.error("Modal onSave callback failed:", err);
+            // Opcional: mostrar um erro para o usuário no modal
         }
     }
 }
 
 export function openModal(options) {
     _initializeModalDOM();
-    const { title, tableId, record, schema, onSave, onCancel } = options;
+    const { title, record, schema, onSave, onCancel } = options;
     modalTitle.textContent = title;
     currentOnSave = onSave;
     currentOnCancel = onCancel;
-    currentSchema = schema; // Salva o schema para uso no _handleSave
+    currentSchema = schema; // Salva o schema (objeto) para uso no _handleSave
     modalBody.innerHTML = '';
     
+    // MUDANÇA: Como o schema agora é um objeto, usamos Object.values() para iterar.
+    const schemaAsArray = Object.values(schema);
     const ruleIdToColIdMap = new Map();
-    schema.forEach(col => { if (col.colId?.startsWith('gristHelper_')) { ruleIdToColIdMap.set(col.id, col.colId); } });
+    schemaAsArray.forEach(col => { if (col.colId?.startsWith('gristHelper_')) { ruleIdToColIdMap.set(col.id, col.colId); } });
 
-    // Filtra para não mostrar colunas de fórmula no formulário de edição/adição
-    schema.filter(col => !col.isFormula && !col.colId.startsWith('gristHelper_')).forEach(colSchema => {
+    // Filtra para não mostrar colunas de fórmula ou helpers no formulário.
+    schemaAsArray.filter(col => col && !col.isFormula && !col.colId.startsWith('gristHelper_')).forEach(colSchema => {
         const row = document.createElement('div'); row.className = 'modal-field-row';
         const label = document.createElement('label'); label.className = 'modal-field-label';
         label.textContent = colSchema.label || colSchema.colId;
@@ -116,6 +117,7 @@ export function openModal(options) {
         row.appendChild(label); row.appendChild(valueContainer);
         modalBody.appendChild(row);
 
+        // Passa o record original, que pode ter valores pré-preenchidos (como a ref ao pai).
         renderField({ container: valueContainer, colSchema, record, tableLens, ruleIdToColIdMap, isEditing: true });
     });
     modalOverlay.classList.add('is-open');
@@ -124,7 +126,8 @@ export function openModal(options) {
 export function closeModal() {
     if (currentOnCancel) currentOnCancel();
     if (modalOverlay) modalOverlay.classList.remove('is-open');
+    // Limpa o estado para evitar vazamentos de memória ou dados antigos
     currentOnSave = null;
     currentOnCancel = null;
-    currentSchema = [];
+    currentSchema = {};
 }
