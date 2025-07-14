@@ -78,13 +78,6 @@ async function _handleSave() {
         changes[colId] = value;
     });
 
-    // =========================================================================
-    // PONTO DE DEPURAÇÃO 3.0 - AQUI VAMOS VER OS DADOS
-    // =========================================================================
-    console.log("--- DEBUG: Antes de chamar onSave (no modal) ---");
-    console.log("Dados coletados do formulário (changes):", JSON.parse(JSON.stringify(changes)));
-    alert(`DEBUG: Modal está prestes a chamar onSave. Verifique o console para ver o objeto 'changes'.`);
-    // =========================================================================
 
     if (currentOnSave) {
         try {

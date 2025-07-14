@@ -150,36 +150,53 @@ async function _renderDrawerContent() {
     tabsContainer.innerHTML = '';
     panelsContainer.innerHTML = '';
 
-    // MUDANÇA: Pega o schema como objeto e o registro.
-    currentSchema = await tableLens.getTableSchema(currentTableId, { mode: 'clean' });
+    currentSchema = await tableLens.getTableSchema(currentTableId);
     const record = await tableLens.fetchRecordById(currentTableId, currentRecordId);
-
     if (!record) {
         console.error(`Record ${currentRecordId} not found.`);
         closeDrawer();
         return;
     }
     const ruleIdToColIdMap = new Map();
-    // MUDANÇA: Itera sobre os valores do objeto schema.
     Object.values(currentSchema).forEach(col => {
-        if (col.colId?.startsWith('gristHelper_')) {
+        if (col && col.colId?.startsWith('gristHelper_')) {
             ruleIdToColIdMap.set(col.id, col.colId);
         }
     });
 
-    // MUDANÇA: Converte o objeto schema em um array e filtra.
-    const columnsToRender = Object.values(currentSchema).filter(col => !col.colId.startsWith('gristHelper_'));
-    const tabs = { "Main": columnsToRender };
+    // ==========================================================
+    // LÓGICA DE ABAS REATIVADA E APRIMORADA
+    // ==========================================================
+    const mainCols = Object.values(currentSchema).filter(c => c && !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos');
+    const helperCols = Object.values(currentSchema).filter(c => c && (c.colId.startsWith('gristHelper_') || c.type === 'ManualSortPos'));
 
-    // MUDANÇA: Esta é a linha que estava causando o erro.
-    // A variável `cols` já é um array (resultado do .filter acima), então o forEach aqui está correto.
-    // O erro estava em como `cols` era gerado.
+    const tabs = { "Principal": mainCols };
+    if (helperCols.length > 0) {
+        tabs["Dados do Sistema"] = helperCols;
+    }
+
     Object.entries(tabs).forEach(([tabName, cols], index) => {
+        // Cria o botão da aba
+        const tabEl = document.createElement('div');
+        tabEl.className = 'drawer-tab';
+        tabEl.textContent = tabName;
+        tabsContainer.appendChild(tabEl);
+        
+        // Cria o painel de conteúdo da aba
         const panelEl = document.createElement('div');
-        panelEl.className = 'drawer-tab-content is-active';
+        panelEl.className = 'drawer-tab-content';
         panelsContainer.appendChild(panelEl);
 
-        cols.forEach(colSchema => {
+        // Lógica de clique para alternar abas
+        tabEl.addEventListener('click', () => _switchToTab(tabEl, panelEl));
+
+        // Ativa a primeira aba por padrão
+        if (index === 0) {
+            _switchToTab(tabEl, panelEl);
+        }
+
+        // Renderiza os campos dentro do painel
+        cols.sort((a,b) => (a.parentPos || 0) - (b.parentPos || 0)).forEach(colSchema => {
             const row = document.createElement('div');
             row.className = 'drawer-field-row';
             const label = document.createElement('label');
