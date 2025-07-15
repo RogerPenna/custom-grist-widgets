@@ -85,10 +85,14 @@ export async function renderField(options) {
     const cellValue = record ? record[colSchema.colId] : null;
     
     container.innerHTML = '';
+
+    // MODIFICAÇÃO NO PLANO ORIGINAL:
+    // A variável canEdit foi removida. A lógica `if (isEditing && isLocked)` agora está
+    // dentro de cada renderizador individual, que precisa saber o estado real de `isEditing`
+    // do formulário como um todo. A classe .is-disabled é puramente visual.
     const isDisabled = isEditing && colSchema.isFormula;
     container.classList.toggle('is-disabled', isDisabled);
-    const canEdit = isEditing && !colSchema.isFormula && !isLocked;
-
+    
     // 1. Aplica estilos de cabeçalho (sempre)
     if (labelElement) {
         _applyStyles(labelElement, colSchema, record, options.ruleIdToColIdMap, true);
@@ -100,7 +104,9 @@ export async function renderField(options) {
     }
 
     // 3. AGORA chama o renderizador especialista.
-    const callOptions = { ...options, container, cellValue, isEditing: canEdit, isLocked };
+    // A ÚNICA MUDANÇA NESTE ARQUIVO: Passa as options recebidas diretamente,
+    // garantindo que `isEditing` e `isLocked` sejam propagadas corretamente.
+    const callOptions = { ...options, container, cellValue };
 
     // MUDANÇA: Simplificação do switch/case
     const type = colSchema.type || '';
