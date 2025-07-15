@@ -31,13 +31,27 @@
     font-size: 0.9em;
 }
 
-/* --- Estilos para Boolean Switch --- */
+/* ================================================== */
+/* --- ESTILOS CORRIGIDOS PARA BOOLEAN SWITCH --- */
+/* ================================================== */
+
+/* NOVO: Regra para o contêiner que segura o switch. */
+/* Isso impede que o contêiner estique o switch para 100% da largura. */
+.grf-contains-switch {
+    display: 50px;
+    align-items: center;
+    /* Garante que o contêiner tenha a mesma altura de outros inputs para alinhamento vertical */
+    min-height: 38px; 
+}
 
 .grf-switch {
     position: relative;
     display: inline-block;
-    width: 34px;
-    height: 20px;
+    /* Tamanho mais padrão para um switch */
+    width: 40px; 
+    height: 22px;
+    /* Impede que o switch se estique */
+    flex-shrink: 0;
 }
 
 .grf-switch input {
@@ -60,24 +74,28 @@
 .grf-slider:before {
     position: absolute;
     content: "";
-    height: 12px;
-    width: 12px;
-    left: 4px;
-    bottom: 4px;
+    /* Tamanho do "pino" */
+    height: 16px;
+    width: 16px;
+    /* Posição inicial do pino */
+    left: 3px;
+    bottom: 3px;
     background-color: white;
     transition: .4s;
 }
 
 input:checked + .grf-slider {
-    background-color: #2196F3;
+    background-color: #28a745; /* Verde sucesso, mais comum para 'ligado' */
 }
 
 input:checked + .grf-slider:before {
-    transform: translateX(14px);
+    /* Deslocamento corrigido para o pino ir até o final */
+    transform: translateX(18px); 
 }
 
+/* Bordas arredondadas para o trilho e o pino */
 .grf-slider.round {
-    border-radius: 20px;
+    border-radius: 22px;
 }
 
 .grf-slider.round:before {
@@ -86,7 +104,7 @@ input:checked + .grf-slider:before {
 
 
 /* ========================================================== */
-/* ==== NOVOS ESTILOS PARA REFLIST (Adicionados Agora) ==== */
+/* ==== ESTILOS EXISTENTES PARA REFLIST (Inalterados) ==== */
 /* ========================================================== */
 
 .grf-reflist-header {
@@ -108,10 +126,9 @@ input:checked + .grf-slider:before {
     cursor: pointer;
 }
 
-/* Container que controla a barra de rolagem da tabela */
 .grf-reflist-table-container {
-    overflow-x: auto; /* Cria a barra de rolagem horizontal somente quando necessário */
-    max-width: 100%;    /* Garante que o container não ultrapasse a largura do drawer */
+    overflow-x: auto; 
+    max-width: 100%;    
     border: 1px solid #ddd;
     border-radius: 4px;
 }
@@ -121,10 +138,9 @@ input:checked + .grf-slider:before {
     border-collapse: collapse;
 }
 
-/* Estilos para as células e cabeçalhos da tabela aninhada */
 .grf-reflist-table th,
 .grf-reflist-table td {
-    white-space: nowrap; /* Impede que o texto quebre linha, forçando a rolagem */
+    white-space: nowrap; 
     padding: 8px 10px;
     border-bottom: 1px solid #ddd;
     text-align: left;
@@ -140,9 +156,8 @@ input:checked + .grf-slider:before {
     border-bottom: none;
 }
 
-/* Coluna de ações com botões */
 .grf-reflist-table .actions-cell {
-    width: 80px; /* Dá um tamanho fixo para a coluna de ações */
+    width: 80px; 
     text-align: center;
 }
 

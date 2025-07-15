@@ -114,20 +114,36 @@ async function _handleSave() {
         let value;
 
         if (colSchema) {
-            if (colSchema.type === 'ChoiceList' && el.tagName === 'SELECT' && el.multiple) {
+            // CORREÇÃO: Lógica para converter os valores do dropdown booleano
+            if (colSchema.type === 'Bool' && el.tagName === 'SELECT') {
+                if (el.value === 'true') {
+                    value = true;
+                } else if (el.value === 'false') {
+                    value = false;
+                } else {
+                    value = null; // Caso "-- Selecione --"
+                }
+            } else if (colSchema.type === 'ChoiceList' && el.tagName === 'SELECT' && el.multiple) {
                 const selectedOptions = Array.from(el.selectedOptions).map(opt => opt.value);
                 value = selectedOptions.length > 0 ? ['L', ...selectedOptions] : null;
             } else if (el.type === 'checkbox') {
                 value = el.checked;
             } else if (colSchema.type.startsWith('Date')) {
                 value = el.value;
-                if (!value) { value = null; } 
-                else if (colSchema.type === 'Date') {
+                if (!value) {
+                    value = null;
+                } else if (colSchema.type === 'Date') {
                     const parts = value.split('-');
                     value = Date.UTC(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10)) / 1000;
-                } else { value = new Date(value).getTime() / 1000; }
-            } else { value = el.value; }
-        } else { value = el.value; }
+                } else { // DateTime
+                    value = new Date(value).getTime() / 1000;
+                }
+            } else {
+                value = el.value;
+            }
+        } else {
+            value = el.value;
+        }
         changes[colId] = value;
     });
 
@@ -138,6 +154,7 @@ async function _handleSave() {
     await _renderDrawerContent();
     _updateButtonVisibility();
 }
+
 
 async function _renderDrawerContent() {
     const tabsContainer = drawerPanel.querySelector('.drawer-tabs');
@@ -206,11 +223,27 @@ async function _renderDrawerContent() {
                 let newSchema = { ...restOfSchema };
 
                 if (overrideOptions.ignoreField) {
+                    // Remove estilos de campo de nível superior
                     delete newWidgetOptions.fillColor;
                     delete newWidgetOptions.textColor;
                     delete newWidgetOptions.fontBold;
-                    // conditionalFormattingRules não é copiado para newSchema
+
+                    // CORREÇÃO: Limpa também o objeto aninhado 'choiceOptions'.
+                    if (newWidgetOptions.choiceOptions) {
+                        const cleanedChoiceOptions = {};
+                        // Itera sobre cada opção (ex: "SIGER") e seu objeto de estilo.
+                        Object.entries(newWidgetOptions.choiceOptions).forEach(([choice, style]) => {
+                            // Cria uma cópia do objeto de estilo, mas sem as propriedades visuais.
+                            const { fillColor, textColor, fontBold, ...restOfStyle } = style;
+                            cleanedChoiceOptions[choice] = restOfStyle;
+                        });
+                        // Substitui o objeto antigo pelo novo objeto "limpo".
+                        newWidgetOptions.choiceOptions = cleanedChoiceOptions;
+                    }
+                    
+                    // conditionalFormattingRules não é copiado para newSchema, efetivamente removendo-o.
                 } else {
+                    // Se não ignorarmos o campo, mantemos a formatação condicional.
                     newSchema.conditionalFormattingRules = conditionalFormattingRules;
                 }
                 

@@ -4,46 +4,71 @@ import { GristDataWriter } from '../../grist-data-writer.js';
 import { renderField } from '../grist-field-renderer.js';
 import { publish } from '../../grist-event-bus/grist-event-bus.js';
 
+// Injeta os estilos para o menu de ações uma única vez.
+(function() {
+    if (document.getElementById('grf-reflist-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'grf-reflist-styles';
+    style.textContent = `
+        .grf-reflist-table .actions-cell {
+            position: relative; /* Essencial para o posicionamento do dropdown */
+            text-align: center;
+            width: 50px;
+        }
+        .reflist-action-menu-btn {
+            background: none; border: none; cursor: pointer;
+            font-size: 1.2em; padding: 2px 8px; border-radius: 4px;
+            font-weight: bold; /* Deixa o ícone mais visível */
+        }
+        .reflist-action-menu-btn:hover { background-color: #f0f0f0; }
+        .reflist-action-menu-dropdown {
+            display: none; 
+            position: absolute; 
+            /* CORREÇÃO: Posiciona à direita do contêiner da célula */
+            left: 100%; 
+            top: 0;
+            background-color: white; border: 1px solid #ccc;
+            border-radius: 4px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 100; /* Z-index alto para flutuar acima de outras células */
+            min-width: 120px;
+        }
+        .reflist-action-menu-dropdown.is-open { display: block; }
+        .reflist-action-menu-item {
+            padding: 8px 12px; cursor: pointer; font-size: 0.9em;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .reflist-action-menu-item:hover { background-color: #007bff; color: white; }
+    `;
+    document.head.appendChild(style);
+})();
+
 async function handleAdd(options) {
     const { 
         tableId, onUpdate, dataWriter, tableLens, backRefCol, 
-        parentRecId, parentTableId, parentRefListColId, 
-        parentRecord // O registro pai, que é a fonte da verdade local
+        parentRecId, parentTableId, parentRefListColId, parentRecord
     } = options;
-
     if (!parentRecId || typeof parentRecId !== 'number' || parentRecId <= 0) {
         alert("Ação 'Adicionar' bloqueada: O registro pai não tem um ID válido.");
         return;
     }
-
     const schema = await tableLens.getTableSchema(tableId);
     const initialRecord = {};
     if (backRefCol && parentRecId) { initialRecord[backRefCol] = parentRecId; }
-
     openModal({
         title: `Adicionar em ${tableId}`, tableId, record: initialRecord, schema,
         onSave: async (newRecordFromForm) => {
             const finalRecord = { ...newRecordFromForm };
             if (backRefCol && parentRecId) { finalRecord[backRefCol] = parentRecId; }
-            
             const result = await dataWriter.addRecord(tableId, finalRecord);
-
             if (!result || !Array.isArray(result.retValues) || !result.retValues[0]) {
                 throw new Error("Falha ao criar o registro filho. A API do Grist não retornou um ID válido.");
             }
             const newChildId = result.retValues[0];
-            
             const refListValue = parentRecord[parentRefListColId];
-            const existingChildIds = (Array.isArray(refListValue) && refListValue[0] === 'L')
-                ? refListValue.slice(1)
-                : [];
-            
+            const existingChildIds = (Array.isArray(refListValue) && refListValue[0] === 'L') ? refListValue.slice(1) : [];
             const updatedChildIds = ['L', ...existingChildIds, newChildId];
-            
             parentRecord[parentRefListColId] = updatedChildIds;
-
             dataWriter.updateRecord(parentTableId, parentRecId, { [parentRefListColId]: updatedChildIds });
-            
             publish('data-changed', { tableId: parentTableId, recordId: parentRecId, action: 'update' });
             onUpdate();
         }
@@ -70,14 +95,10 @@ async function handleDelete(tableId, recordId, onUpdate, dataWriter) {
 }
 
 export async function renderRefList(options) {
-    // NOVO: Adiciona isLocked às opções.
     const { container, record, colSchema, tableLens, isLocked } = options;
     const dataWriter = new GristDataWriter(grist);
     container.innerHTML = '';
-
-    // NOVO: Adiciona estilo se o campo estiver travado
     if (isLocked) {
-        // Aplica ao contêiner principal do campo, não apenas ao valor
         container.closest('.drawer-field')?.classList.add('is-locked-style');
     }
     
@@ -85,19 +106,28 @@ export async function renderRefList(options) {
     let sortColumn = 'manualSort';
     let sortDirection = 'asc';
     
+    const closeAllMenus = () => {
+        document.querySelectorAll('.reflist-action-menu-dropdown.is-open').forEach(d => {
+            d.classList.remove('is-open');
+        });
+    };
+
     const renderContent = async () => {
         container.innerHTML = '<p>Carregando...</p>';
         let relatedRecords = await tableLens.fetchRelatedRecords(record, colSchema.colId);
+        
         relatedRecords.sort((a, b) => {
             const valA = a[sortColumn]; const valB = b[sortColumn];
             if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
             if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
             return 0;
         });
+
         const relatedSchema = await tableLens.getTableSchema(referencedTableId);
         const relatedSchemaAsArray = Object.values(relatedSchema);
         const ruleMap = new Map();
         relatedSchemaAsArray.forEach(col => { if (col && col.colId?.startsWith('gristHelper_')) { ruleMap.set(col.id, col.colId); } });
+        
         container.innerHTML = '';
         const header = document.createElement('div');
         header.className = 'grf-reflist-header';
@@ -105,23 +135,23 @@ export async function renderRefList(options) {
         countSpan.textContent = `(${relatedRecords.length} itens)`;
         const addButton = document.createElement('button');
         addButton.textContent = `+ Adicionar`;
-
-        // NOVO: Desabilita o botão "Adicionar" se o campo estiver travado.
         if (isLocked) {
             addButton.disabled = true;
             addButton.title = "Este campo está travado e não pode ser modificado.";
         }
-
         header.appendChild(countSpan);
         header.appendChild(addButton);
         container.appendChild(header);
+
         const tableContainer = document.createElement('div');
         tableContainer.className = 'grf-reflist-table-container';
         const table = document.createElement('table');
         table.className = 'grf-reflist-table';
         const thead = table.createTHead().insertRow();
         const columnsToDisplay = relatedSchemaAsArray.filter(c => c && !c.colId.startsWith('gristHelper_'));
+        
         const thActions = document.createElement('th'); thActions.textContent = 'Ações'; thead.appendChild(thActions);
+        
         columnsToDisplay.forEach(c => {
             const th = document.createElement('th');
             th.textContent = c.label || c.colId;
@@ -133,22 +163,29 @@ export async function renderRefList(options) {
             };
             thead.appendChild(th);
         });
+        
         const tbody = table.createTBody();
         for (const relRec of relatedRecords) {
             const tr = tbody.insertRow();
             const actionsCell = tr.insertCell();
             actionsCell.className = 'actions-cell';
-            const editBtn = document.createElement('button'); editBtn.innerHTML = '✏️'; editBtn.title = 'Editar';
-            const deleteBtn = document.createElement('button'); deleteBtn.innerHTML = '🗑️'; deleteBtn.title = 'Deletar';
+            
+            const menuBtn = document.createElement('button');
+            menuBtn.className = 'reflist-action-menu-btn';
+            // MUDANÇA 1: Ícone para menu burger
+            menuBtn.innerHTML = '☰'; 
+            menuBtn.disabled = isLocked;
+            
+            const dropdown = document.createElement('div');
+            dropdown.className = 'reflist-action-menu-dropdown';
+            dropdown.innerHTML = `
+                <div class="reflist-action-menu-item" data-action="edit">✏️ Editar</div>
+                <div class="reflist-action-menu-item" data-action="delete">🗑️ Deletar</div>
+            `;
+            
+            actionsCell.appendChild(menuBtn);
+            actionsCell.appendChild(dropdown);
 
-            // NOVO: Desabilita os botões de ação se o campo estiver travado.
-            if (isLocked) {
-                editBtn.disabled = true;
-                deleteBtn.disabled = true;
-            }
-
-            actionsCell.appendChild(editBtn);
-            actionsCell.appendChild(deleteBtn);
             for (const c of columnsToDisplay) {
                 const td = tr.insertCell();
                 renderField({ container: td, colSchema: c, record: relRec, tableLens, ruleIdToColIdMap: ruleMap });
@@ -156,28 +193,49 @@ export async function renderRefList(options) {
         }
         tableContainer.appendChild(table);
         container.appendChild(tableContainer);
+
         const primaryTableId = record.gristHelper_tableId;
         const backReferenceColumn = relatedSchemaAsArray.find(col => col && col.type === `Ref:${primaryTableId}`);
         const backReferenceColId = backReferenceColumn ? backReferenceColumn.colId : null;
 
-        // Anexa o evento ao botão (mesmo que desabilitado, não causa erro).
         container.querySelector('.grf-reflist-header button').onclick = () => handleAdd({
-            tableId: referencedTableId,
-            onUpdate: renderContent,
-            dataWriter,
-            tableLens,
-            backRefCol: backReferenceColId,
-            parentRecId: record.id,
-            parentTableId: primaryTableId,
-            parentRefListColId: colSchema.colId,
-            parentRecord: record
+            tableId: referencedTableId, onUpdate: renderContent, dataWriter, tableLens,
+            backRefCol: backReferenceColId, parentRecId: record.id, parentTableId: primaryTableId,
+            parentRefListColId: colSchema.colId, parentRecord: record
         });
+
         tbody.querySelectorAll('tr').forEach((tr, index) => {
             const rec = relatedRecords[index];
-            const cell = tr.querySelector('.actions-cell');
-            cell.querySelector('button:nth-child(1)').onclick = () => handleEdit(referencedTableId, rec.id, renderContent, dataWriter, tableLens);
-            cell.querySelector('button:nth-child(2)').onclick = () => handleDelete(referencedTableId, rec.id, renderContent, dataWriter);
+            const menuBtn = tr.querySelector('.reflist-action-menu-btn');
+            const dropdown = tr.querySelector('.reflist-action-menu-dropdown');
+            
+            menuBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isAlreadyOpen = dropdown.classList.contains('is-open');
+                closeAllMenus();
+                if (!isAlreadyOpen) {
+                    dropdown.classList.add('is-open');
+                }
+            });
+
+            dropdown.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const action = e.target.closest('.reflist-action-menu-item')?.dataset.action;
+                if (action === 'edit') {
+                    handleEdit(referencedTableId, rec.id, renderContent, dataWriter, tableLens);
+                } else if (action === 'delete') {
+                    handleDelete(referencedTableId, rec.id, renderContent, dataWriter);
+                }
+                closeAllMenus();
+            });
         });
     };
+
+    document.addEventListener('click', closeAllMenus);
+    
+    container.addEventListener('remove', () => {
+        document.removeEventListener('click', closeAllMenus);
+    });
+
     await renderContent();
 }
