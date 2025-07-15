@@ -12,7 +12,6 @@ const dataWriter = new GristDataWriter(grist);
 let drawerPanel, drawerOverlay, drawerHeader, drawerTitle;
 let currentTableId, currentRecordId;
 let currentSchema = {};
-// NOVO: Armazena as opções passadas para o drawer (isHidden, isLocked).
 let currentDrawerOptions = {};
 let isEditing = false;
 
@@ -32,6 +31,10 @@ function _initializeDrawerDOM() {
         .drawer-tab-panels{flex-grow:1;overflow-y:auto;}
         .drawer-tab-content{display:none;padding:20px;}.drawer-tab-content.is-active{display:block;}
         .drawer-header-buttons button { margin-left: 10px; }
+        .is-locked-style {
+            background-color: #f1f3f5; cursor: not-allowed; opacity: 0.8;
+            padding: 6px 8px; border-radius: 4px; border: 1px solid #ced4da; min-height: 20px;
+        }
     `;
     document.head.appendChild(style);
 
@@ -118,20 +121,13 @@ async function _handleSave() {
                 value = el.checked;
             } else if (colSchema.type.startsWith('Date')) {
                 value = el.value;
-                if (!value) {
-                    value = null;
-                } else if (colSchema.type === 'Date') {
+                if (!value) { value = null; } 
+                else if (colSchema.type === 'Date') {
                     const parts = value.split('-');
                     value = Date.UTC(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10)) / 1000;
-                } else { // DateTime
-                    value = new Date(value).getTime() / 1000;
-                }
-            } else {
-                value = el.value;
-            }
-        } else {
-            value = el.value;
-        }
+                } else { value = new Date(value).getTime() / 1000; }
+            } else { value = el.value; }
+        } else { value = el.value; }
         changes[colId] = value;
     });
 
@@ -149,9 +145,9 @@ async function _renderDrawerContent() {
     tabsContainer.innerHTML = '';
     panelsContainer.innerHTML = '';
 
-    // NOVO: Lê as configurações de visibilidade/travamento das opções atuais.
     const hiddenFields = currentDrawerOptions.hiddenFields || [];
     const lockedFields = currentDrawerOptions.lockedFields || [];
+    const styleOverrides = currentDrawerOptions.styleOverrides || {};
 
     currentSchema = await tableLens.getTableSchema(currentTableId);
     const record = await tableLens.fetchRecordById(currentTableId, currentRecordId);
@@ -167,7 +163,6 @@ async function _renderDrawerContent() {
         }
     });
 
-    // MODIFICADO: Filtra as colunas usando a lista `hiddenFields`.
     const allCols = Object.values(currentSchema);
     const mainCols = allCols.filter(c => c && !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos' && !hiddenFields.includes(c.colId));
     const helperCols = allCols.filter(c => c && (c.colId.startsWith('gristHelper_') || c.type === 'ManualSortPos') && !hiddenFields.includes(c.colId));
@@ -188,10 +183,7 @@ async function _renderDrawerContent() {
         panelsContainer.appendChild(panelEl);
 
         tabEl.addEventListener('click', () => _switchToTab(tabEl, panelEl));
-
-        if (index === 0) {
-            _switchToTab(tabEl, panelEl);
-        }
+        if (index === 0) { _switchToTab(tabEl, panelEl); }
 
         cols.sort((a,b) => (a.parentPos || 0) - (b.parentPos || 0)).forEach(colSchema => {
             const row = document.createElement('div');
@@ -205,19 +197,43 @@ async function _renderDrawerContent() {
             row.appendChild(valueContainer);
             panelEl.appendChild(row);
 
-            // NOVO: Determina se este campo específico deve ser travado.
+            let schemaForRenderer = colSchema;
+            const overrideOptions = styleOverrides[colSchema.colId];
+
+            if (overrideOptions) {
+                const { widgetOptions, conditionalFormattingRules, ...restOfSchema } = colSchema;
+                let newWidgetOptions = { ...widgetOptions };
+                let newSchema = { ...restOfSchema };
+
+                if (overrideOptions.ignoreField) {
+                    delete newWidgetOptions.fillColor;
+                    delete newWidgetOptions.textColor;
+                    delete newWidgetOptions.fontBold;
+                    // conditionalFormattingRules não é copiado para newSchema
+                } else {
+                    newSchema.conditionalFormattingRules = conditionalFormattingRules;
+                }
+                
+                if (overrideOptions.ignoreHeader) {
+                    delete newWidgetOptions.headerFillColor;
+                    delete newWidgetOptions.headerTextColor;
+                    delete newWidgetOptions.headerFontBold;
+                }
+                newSchema.widgetOptions = newWidgetOptions;
+                schemaForRenderer = newSchema;
+            }
+
             const isFieldLocked = lockedFields.includes(colSchema.colId);
 
-            // MODIFICADO: Passa a propriedade `isLocked` para o renderField.
             renderField({
                 container: valueContainer,
                 labelElement: label,
-                colSchema,
+                colSchema: schemaForRenderer,
                 record,
                 tableLens,
                 ruleIdToColIdMap,
                 isEditing: isEditing,
-                isLocked: isFieldLocked // Passa o estado de travamento calculado.
+                isLocked: isFieldLocked
             });
         });
     });
@@ -228,7 +244,6 @@ export async function openDrawer(tableId, recordId, options = {}) {
     currentTableId = tableId;
     currentRecordId = recordId;
     isEditing = options.mode === 'edit' || false;
-    // NOVO: Armazena o objeto de opções completo.
     currentDrawerOptions = options; 
 
     document.body.classList.add('grist-drawer-is-open');
