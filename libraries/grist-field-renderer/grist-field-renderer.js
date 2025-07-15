@@ -75,7 +75,7 @@ function _applyStyles(element, colSchema, record, ruleIdToColIdMap, isLabel = fa
 }
 
 export async function renderField(options) {
-    const { container, colSchema, record, isEditing = false, labelElement } = options;
+    const { container, colSchema, record, isEditing = false, isLocked = false, labelElement } = options;
     // MUDANÇA: colSchema pode ser undefined se for uma coluna do Grist como 'manualSort'
     if (!colSchema) { 
         container.textContent = String(record[options.colId] ?? ''); // Mostra o valor de qualquer forma
@@ -87,7 +87,7 @@ export async function renderField(options) {
     container.innerHTML = '';
     const isDisabled = isEditing && colSchema.isFormula;
     container.classList.toggle('is-disabled', isDisabled);
-    const canEdit = isEditing && !isDisabled;
+    const canEdit = isEditing && !colSchema.isFormula && !isLocked;
 
     // 1. Aplica estilos de cabeçalho (sempre)
     if (labelElement) {
@@ -100,7 +100,7 @@ export async function renderField(options) {
     }
 
     // 3. AGORA chama o renderizador especialista.
-    const callOptions = { ...options, container, cellValue, isEditing: canEdit };
+    const callOptions = { ...options, container, cellValue, isEditing: canEdit, isLocked };
 
     // MUDANÇA: Simplificação do switch/case
     const type = colSchema.type || '';

@@ -1,8 +1,21 @@
 // libraries/grist-field-renderer/renderers/render-text.js
 export function renderText(options) {
-    const { container, colSchema, cellValue, isEditing } = options;
+    const { container, colSchema, cellValue, isEditing, isLocked } = options;
     // MUDANÇA: Aplica o padrão correto para acessar widgetOptions, preservando sua lógica.
     const wopts = colSchema.widgetOptions || {};
+
+    // NOVO: Lógica para campos travados no modo de edição.
+    // Se estiver em modo de edição e o campo estiver travado, renderiza como texto simples e para a execução.
+    if (isEditing && isLocked) {
+        if (wopts.widget === 'Markdown') {
+            let html = String(cellValue || '').replace(/\n/g, '<br>');
+            container.innerHTML = html; // Assume-se que o conteúdo já foi sanitizado anteriormente.
+        } else {
+            container.textContent = String(cellValue ?? '(vazio)');
+        }
+        container.closest('.drawer-field-value')?.classList.add('is-locked-style');
+        return;
+    }
 
     if (!isEditing) {
         // Read-only mode

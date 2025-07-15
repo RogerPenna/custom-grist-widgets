@@ -11,8 +11,9 @@ const dataWriter = new GristDataWriter(grist);
 
 let drawerPanel, drawerOverlay, drawerHeader, drawerTitle;
 let currentTableId, currentRecordId;
-// MUDANÇA: Inicializa como um objeto vazio, pois é isso que a API retorna agora.
 let currentSchema = {};
+// NOVO: Armazena as opções passadas para o drawer (isHidden, isLocked).
+let currentDrawerOptions = {};
 let isEditing = false;
 
 function _initializeDrawerDOM() {
@@ -72,13 +73,12 @@ function _handleCancel() {
 }
 
 async function _handleAdd() {
-    // MUDANÇA: O schema já é um objeto (dicionário), que é o que o modal espera.
     const schema = await tableLens.getTableSchema(currentTableId, { mode: 'clean' });
     openModal({
         title: `Adicionar em ${currentTableId}`,
         tableId: currentTableId,
         record: {},
-        schema, // Passa o objeto de schema diretamente
+        schema,
         onSave: async (newRecord) => {
             const result = await dataWriter.addRecord(currentTableId, newRecord);
             publish('data-changed', { tableId: currentTableId, recordId: result.id, action: 'add' });
@@ -107,7 +107,6 @@ async function _handleSave() {
     const formElements = drawerPanel.querySelectorAll('[data-col-id]');
     formElements.forEach(el => {
         const colId = el.dataset.colId;
-        // MUDANÇA: Acesso direto ao schema usando o colId como chave. Mais rápido e correto.
         const colSchema = currentSchema[colId];
         let value;
 
@@ -150,6 +149,10 @@ async function _renderDrawerContent() {
     tabsContainer.innerHTML = '';
     panelsContainer.innerHTML = '';
 
+    // NOVO: Lê as configurações de visibilidade/travamento das opções atuais.
+    const hiddenFields = currentDrawerOptions.hiddenFields || [];
+    const lockedFields = currentDrawerOptions.lockedFields || [];
+
     currentSchema = await tableLens.getTableSchema(currentTableId);
     const record = await tableLens.fetchRecordById(currentTableId, currentRecordId);
     if (!record) {
@@ -164,11 +167,10 @@ async function _renderDrawerContent() {
         }
     });
 
-    // ==========================================================
-    // LÓGICA DE ABAS REATIVADA E APRIMORADA
-    // ==========================================================
-    const mainCols = Object.values(currentSchema).filter(c => c && !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos');
-    const helperCols = Object.values(currentSchema).filter(c => c && (c.colId.startsWith('gristHelper_') || c.type === 'ManualSortPos'));
+    // MODIFICADO: Filtra as colunas usando a lista `hiddenFields`.
+    const allCols = Object.values(currentSchema);
+    const mainCols = allCols.filter(c => c && !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos' && !hiddenFields.includes(c.colId));
+    const helperCols = allCols.filter(c => c && (c.colId.startsWith('gristHelper_') || c.type === 'ManualSortPos') && !hiddenFields.includes(c.colId));
 
     const tabs = { "Principal": mainCols };
     if (helperCols.length > 0) {
@@ -176,26 +178,21 @@ async function _renderDrawerContent() {
     }
 
     Object.entries(tabs).forEach(([tabName, cols], index) => {
-        // Cria o botão da aba
         const tabEl = document.createElement('div');
         tabEl.className = 'drawer-tab';
         tabEl.textContent = tabName;
         tabsContainer.appendChild(tabEl);
         
-        // Cria o painel de conteúdo da aba
         const panelEl = document.createElement('div');
         panelEl.className = 'drawer-tab-content';
         panelsContainer.appendChild(panelEl);
 
-        // Lógica de clique para alternar abas
         tabEl.addEventListener('click', () => _switchToTab(tabEl, panelEl));
 
-        // Ativa a primeira aba por padrão
         if (index === 0) {
             _switchToTab(tabEl, panelEl);
         }
 
-        // Renderiza os campos dentro do painel
         cols.sort((a,b) => (a.parentPos || 0) - (b.parentPos || 0)).forEach(colSchema => {
             const row = document.createElement('div');
             row.className = 'drawer-field-row';
@@ -208,6 +205,10 @@ async function _renderDrawerContent() {
             row.appendChild(valueContainer);
             panelEl.appendChild(row);
 
+            // NOVO: Determina se este campo específico deve ser travado.
+            const isFieldLocked = lockedFields.includes(colSchema.colId);
+
+            // MODIFICADO: Passa a propriedade `isLocked` para o renderField.
             renderField({
                 container: valueContainer,
                 labelElement: label,
@@ -215,7 +216,8 @@ async function _renderDrawerContent() {
                 record,
                 tableLens,
                 ruleIdToColIdMap,
-                isEditing: isEditing
+                isEditing: isEditing,
+                isLocked: isFieldLocked // Passa o estado de travamento calculado.
             });
         });
     });
@@ -226,6 +228,9 @@ export async function openDrawer(tableId, recordId, options = {}) {
     currentTableId = tableId;
     currentRecordId = recordId;
     isEditing = options.mode === 'edit' || false;
+    // NOVO: Armazena o objeto de opções completo.
+    currentDrawerOptions = options; 
+
     document.body.classList.add('grist-drawer-is-open');
     drawerPanel.classList.add('is-open');
     drawerOverlay.classList.add('is-open');

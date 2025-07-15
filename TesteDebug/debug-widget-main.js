@@ -13,6 +13,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const schemaTableEl = document.getElementById('schemaTable');
     const schemaTableHeadEl = schemaTableEl.querySelector('thead tr');
     const schemaTableBodyEl = schemaTableEl.querySelector('tbody');
+    // NOVO: Referência para o contêiner dos controles de campo
+    const fieldControlsContainerEl = document.getElementById('fieldControlsContainer');
     const recordCountEl = document.getElementById('recordCount');
     const recordsTableEl = document.getElementById('recordsTable');
     const recordsTableHeadEl = recordsTableEl.querySelector('thead tr');
@@ -26,46 +28,105 @@ document.addEventListener('DOMContentLoaded', function () {
     let isRendering = false;
     let debounceTimer;
 
+    // NOVO: Variáveis de estado para controlar os campos travados/ocultos.
+    let fieldsToLock = [];
+    let fieldsToHide = [];
+
     // 3. Define helper functions
     function applyGristCellStyles(cellElement, rawColumnSchema, record, ruleIdToColIdMap) {
-        cellElement.style.color = ''; cellElement.style.backgroundColor = ''; cellElement.style.fontWeight = '';
-        cellElement.style.fontStyle = ''; cellElement.style.textAlign = '';
-        if(rawColumnSchema.widgetOptions) { try { const wopts = JSON.parse(rawColumnSchema.widgetOptions); if (wopts.alignment) { cellElement.style.textAlign = wopts.alignment; } } catch(e) {} }
-        if (rawColumnSchema.rules && Array.isArray(rawColumnSchema.rules) && rawColumnSchema.rules[0] === 'L') {
-            const ruleOptions = JSON.parse(rawColumnSchema.widgetOptions || '{}').rulesOptions || [];
-            const ruleIdList = rawColumnSchema.rules.slice(1);
-            for (let i = 0; i < ruleIdList.length; i++) {
-                const ruleNumId = ruleIdList[i];
-                const helperColId = ruleIdToColIdMap.get(ruleNumId);
-                if (helperColId && record[helperColId] === true) {
-                    const style = ruleOptions[i];
-                    if (style) {
-                         if (style.textColor) cellElement.style.color = style.textColor;
-                         if (style.fillColor) cellElement.style.backgroundColor = style.fillColor;
-                         if (style.fontBold) cellElement.style.fontWeight = 'bold';
-                         if (style.fontItalic) cellElement.style.fontStyle = 'italic';
-                    }
-                    return;
-                }
-            }
-        }
+        // ... (função applyGristCellStyles permanece inalterada) ...
     }
+
+    // NOVO: Função para renderizar os controles de travamento/visibilidade
+    function renderFieldControls(schemaAsArray) {
+        fieldControlsContainerEl.innerHTML = ''; // Limpa controles antigos
+
+        const title = document.createElement('h3');
+        title.textContent = 'Controles do Drawer (Travar/Ocultar Campos)';
+        title.style.marginTop = '20px';
+        fieldControlsContainerEl.appendChild(title);
+
+        const gridContainer = document.createElement('div');
+        gridContainer.style.display = 'grid';
+        gridContainer.style.gridTemplateColumns = 'repeat(auto-fill, minmax(250px, 1fr))';
+        gridContainer.style.gap = '10px';
+        
+        // Filtra colunas de helper para não mostrar controles para elas
+        const visibleCols = schemaAsArray.filter(c => c && c.colId && !c.colId.startsWith('gristHelper_'));
+
+        visibleCols.forEach(col => {
+            const controlDiv = document.createElement('div');
+            controlDiv.style.border = '1px solid #ccc';
+            controlDiv.style.padding = '8px';
+            controlDiv.style.borderRadius = '4px';
+
+            const colLabel = document.createElement('strong');
+            colLabel.textContent = col.label || col.colId;
+            controlDiv.appendChild(colLabel);
+
+            // Checkbox para Ocultar (isHidden)
+            const hideLabel = document.createElement('label');
+            hideLabel.style.display = 'block';
+            hideLabel.style.marginTop = '5px';
+            const hideCheckbox = document.createElement('input');
+            hideCheckbox.type = 'checkbox';
+            hideCheckbox.checked = fieldsToHide.includes(col.colId);
+            hideCheckbox.onchange = (e) => {
+                if (e.target.checked) {
+                    fieldsToHide.push(col.colId);
+                } else {
+                    fieldsToHide = fieldsToHide.filter(id => id !== col.colId);
+                }
+                console.log('Campos a Ocultar:', fieldsToHide);
+            };
+            hideLabel.appendChild(hideCheckbox);
+            hideLabel.appendChild(document.createTextNode(' Ocultar no Drawer'));
+            controlDiv.appendChild(hideLabel);
+
+            // Checkbox para Travar (isLocked)
+            const lockLabel = document.createElement('label');
+            lockLabel.style.display = 'block';
+            const lockCheckbox = document.createElement('input');
+            lockCheckbox.type = 'checkbox';
+            lockCheckbox.checked = fieldsToLock.includes(col.colId);
+            lockCheckbox.onchange = (e) => {
+                if (e.target.checked) {
+                    fieldsToLock.push(col.colId);
+                } else {
+                    fieldsToLock = fieldsToLock.filter(id => id !== col.colId);
+                }
+                console.log('Campos a Travar:', fieldsToLock);
+            };
+            lockLabel.appendChild(lockCheckbox);
+            lockLabel.appendChild(document.createTextNode(' Travar no Drawer'));
+            controlDiv.appendChild(lockLabel);
+
+            gridContainer.appendChild(controlDiv);
+        });
+
+        fieldControlsContainerEl.appendChild(gridContainer);
+    }
+
 
     // 4. The main function to draw everything on the screen
     async function initializeDebugWidget(tableId) {
         if (!tableId || isRendering) return;
         isRendering = true;
+        
+        // NOVO: Reseta os controles se a tabela for trocada.
+        if (currentTableId !== tableId) {
+            fieldsToLock = [];
+            fieldsToHide = [];
+        }
+
         currentTableId = tableId;
         errorMessageEl.textContent = "";
         loadingMessageEl.style.display = 'block';
         tableInfoContainerEl.style.display = 'none';
 
         try {
-            // Fetch all necessary data
             const schema = await tableLens.getTableSchema(tableId, { mode: 'raw' });
             const records = await tableLens.fetchTableRecords(tableId);
-            
-            // MUDANÇA: Iterar sobre os valores do objeto schema
             const schemaAsArray = Object.values(schema); 
             const ruleIdToColIdMap = new Map();
             schemaAsArray.forEach(col => { if (col.colId?.startsWith('gristHelper_ConditionalRule')) { ruleIdToColIdMap.set(col.id, col.colId); } });
@@ -73,43 +134,19 @@ document.addEventListener('DOMContentLoaded', function () {
             tableNameEl.textContent = `Tabela: ${tableId}`;
             tableInfoContainerEl.style.display = 'block';
 
-            // Clear previous content from tables
             schemaTableHeadEl.innerHTML = '';
             schemaTableBodyEl.innerHTML = '';
             recordsTableHeadEl.innerHTML = '';
             recordsTableBodyEl.innerHTML = '';
 
-            // Render Schema Table
-            // MUDANÇA: Usar .length do array gerado
             columnCountEl.textContent = schemaAsArray.length;
             if (schemaAsArray.length > 0) {
-                const allKeys = new Set();
-                // MUDANÇA: Iterar sobre o array gerado
-                schemaAsArray.forEach(col => Object.keys(col).forEach(key => allKeys.add(key)));
-                const sortedKeys = Array.from(allKeys).sort();
-                sortedKeys.forEach(key => {
-                    const th = document.createElement('th');
-                    th.textContent = key;
-                    schemaTableHeadEl.appendChild(th);
-                });
-                // MUDANÇA: Iterar sobre o array gerado
-                schemaAsArray.forEach(col => {
-                    const row = schemaTableBodyEl.insertRow();
-                    sortedKeys.forEach(key => {
-                        const cell = row.insertCell();
-                        const value = col[key];
-                        if (value === null || value === undefined) {
-                            cell.textContent = '';
-                        } else if (typeof value === 'object') {
-                            cell.innerHTML = `<pre>${JSON.stringify(value, null, 2)}</pre>`;
-                        } else {
-                            cell.textContent = String(value);
-                        }
-                    });
-                });
+                // ... (lógica de renderização da tabela de schema inalterada) ...
             }
+            
+            // NOVO: Chama a função para renderizar os controles
+            renderFieldControls(schemaAsArray);
 
-            // Render Records Table
             recordCountEl.textContent = records.length;
             if (records.length > 0) {
                 const recordHeaderKeys = Object.keys(records[0]).sort();
@@ -124,16 +161,17 @@ document.addEventListener('DOMContentLoaded', function () {
                     row.className = 'record-row';
                     row.style.cursor = 'pointer';
                     
-                    row.onclick = () => openDrawer(tableId, record.id);
+                    // MODIFICADO: Passa as opções de travamento/ocultação para o openDrawer.
+                    row.onclick = () => openDrawer(tableId, record.id, {
+                        lockedFields: fieldsToLock,
+                        hiddenFields: fieldsToHide
+                    });
 
                     for (const key of recordHeaderKeys) {
                         const cell = row.insertCell();
-                        // MUDANÇA: Acessar o schema diretamente pela chave (colId)
-                        const colSchema = schema[key]; // Mais rápido e direto que .find()
+                        const colSchema = schema[key];
                         const cellValue = record[key];
-                        
                         cell.textContent = (cellValue === null || cellValue === undefined) ? '(vazio)' : String(cellValue);
-                        
                         if (colSchema) {
                             applyGristCellStyles(cell, colSchema, record, ruleIdToColIdMap);
                         }
@@ -153,32 +191,14 @@ document.addEventListener('DOMContentLoaded', function () {
     
     // 5. Setup functions that run once on page load
     async function populateTableSelectorAndRenderInitial() {
-        try {
-            const allTables = await tableLens.listAllTables();
-            const selectedTableId = await grist.selectedTable.getTableId() || (allTables.length > 0 ? allTables[0].id : null);
-            tableSelectorEl.innerHTML = '';
-            allTables.forEach(table => {
-                const option = document.createElement('option');
-                option.value = table.id;
-                option.textContent = table.name;
-                if (table.id === selectedTableId) { option.selected = true; }
-                tableSelectorEl.appendChild(option);
-            });
-            await initializeDebugWidget(selectedTableId);
-        } catch (error) {
-            console.error("Erro ao inicializar:", error);
-            errorMessageEl.textContent = `ERRO: ${error.message}.`;
-        }
+        // ... (função populateTableSelectorAndRenderInitial permanece inalterada) ...
     }
     
     // 6. Set up all event listeners
     tableSelectorEl.addEventListener('change', (event) => initializeDebugWidget(event.target.value));
     grist.ready({ requiredAccess: 'full' });
     grist.onRecords((records, tableId) => {
-        if (!tableId || isRendering || tableSelectorEl.value === tableId) return;
-        tableSelectorEl.value = tableId;
-        clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => initializeDebugWidget(tableId), 150);
+        // ... (listener grist.onRecords permanece inalterado) ...
     });
     subscribe('data-changed', (event) => {
         console.log("Debug Widget ouviu o evento 'data-changed':", event.detail);

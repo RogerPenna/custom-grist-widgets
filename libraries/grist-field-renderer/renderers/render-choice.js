@@ -1,14 +1,42 @@
 // libraries/grist-field-renderer/renderers/render-choice.js
 export function renderChoice(options) {
-    const { container, colSchema, cellValue, isEditing } = options;
+    const { container, colSchema, cellValue, isEditing, isLocked } = options;
 
-    // MUDANÇA: Aplica o padrão correto para acessar widgetOptions.
     const wopts = colSchema.widgetOptions || {};
     const choices = wopts.choices || [];
     const choiceOptions = wopts.choiceOptions || {};
     const isList = colSchema.type === 'ChoiceList';
 
-    // MODO VISUALIZAÇÃO (Sua lógica existente, preservada)
+    // NOVO: Lógica para campos travados no modo de edição.
+    // Simplesmente reutiliza a lógica do modo de visualização.
+    if (isEditing && isLocked) {
+        if (isList) {
+            const values = Array.isArray(cellValue) && cellValue[0] === 'L' ? cellValue.slice(1) : [];
+            if (values.length === 0) { container.textContent = '(vazio)'; container.className = 'grf-readonly-empty'; }
+            else {
+                values.forEach(val => {
+                    if (val) {
+                        const pill = document.createElement('span'); pill.className = 'grf-choice-pill'; pill.textContent = val;
+                        const style = choiceOptions[val];
+                        if (style) { if (style.textColor) pill.style.color = style.textColor; if (style.fillColor) pill.style.backgroundColor = style.fillColor; if (style.fontBold) pill.style.fontWeight = 'bold'; }
+                        container.appendChild(pill);
+                    }
+                });
+            }
+        } else {
+            container.textContent = String(cellValue ?? '(vazio)');
+            const style = choiceOptions[cellValue];
+            if (style) {
+                if (style.textColor) container.style.color = style.textColor; if (style.fillColor) container.style.backgroundColor = style.fillColor; if (style.fontBold) container.style.fontWeight = 'bold';
+                container.style.padding = style.fillColor ? '2px 8px' : ''; container.style.borderRadius = style.fillColor ? '12px' : ''; container.style.display = 'inline-block';
+            }
+        }
+        container.closest('.drawer-field-value')?.classList.add('is-locked-style');
+        return;
+    }
+
+
+    // MODO VISUALIZAÇÃO
     if (!isEditing) {
         if (isList) {
             const values = Array.isArray(cellValue) && cellValue[0] === 'L' ? cellValue.slice(1) : [];
@@ -32,7 +60,7 @@ export function renderChoice(options) {
         return;
     }
     
-    // MODO EDIÇÃO (Sua lógica existente, preservada)
+    // MODO EDIÇÃO
     const select = document.createElement('select');
     select.className = 'grf-form-input';
     select.multiple = isList;

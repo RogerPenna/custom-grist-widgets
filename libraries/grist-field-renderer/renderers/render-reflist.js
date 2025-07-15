@@ -26,16 +26,13 @@ async function handleAdd(options) {
             const finalRecord = { ...newRecordFromForm };
             if (backRefCol && parentRecId) { finalRecord[backRefCol] = parentRecId; }
             
-            // 1. Adiciona o novo registro filho
             const result = await dataWriter.addRecord(tableId, finalRecord);
 
-            // 2. Extrai o ID do novo filho da forma CORRETA
             if (!result || !Array.isArray(result.retValues) || !result.retValues[0]) {
                 throw new Error("Falha ao criar o registro filho. A API do Grist não retornou um ID válido.");
             }
             const newChildId = result.retValues[0];
             
-            // 3. Prepara a nova lista de IDs para a RefList
             const refListValue = parentRecord[parentRefListColId];
             const existingChildIds = (Array.isArray(refListValue) && refListValue[0] === 'L')
                 ? refListValue.slice(1)
@@ -43,23 +40,16 @@ async function handleAdd(options) {
             
             const updatedChildIds = ['L', ...existingChildIds, newChildId];
             
-            // 4. ATUALIZA O ESTADO LOCAL PRIMEIRO (A CHAVE DA SOLUÇÃO)
-            // Isso garante que o próximo render use a lista correta, sem depender do timing do Grist.
             parentRecord[parentRefListColId] = updatedChildIds;
 
-            // 5. Atualiza o registro pai no Grist (agora como uma tarefa em segundo plano)
-            // Não precisamos do 'await' aqui, pois já atualizamos nosso estado local.
             dataWriter.updateRecord(parentTableId, parentRecId, { [parentRefListColId]: updatedChildIds });
             
-            // 6. Publica o evento e chama o re-render
             publish('data-changed', { tableId: parentTableId, recordId: parentRecId, action: 'update' });
             onUpdate();
         }
     });
 }
 
-// O resto do arquivo (handleEdit, handleDelete, renderRefList) permanece o mesmo.
-// Se precisar do código completo, eu posso fornecer, mas a única mudança necessária é na função handleAdd.
 async function handleEdit(tableId, recordId, onUpdate, dataWriter, tableLens) {
     const schema = await tableLens.getTableSchema(tableId);
     const record = await tableLens.fetchRecordById(tableId, recordId);
@@ -71,6 +61,7 @@ async function handleEdit(tableId, recordId, onUpdate, dataWriter, tableLens) {
         }
     });
 }
+
 async function handleDelete(tableId, recordId, onUpdate, dataWriter) {
     if (confirm(`Tem certeza?`)) {
         await dataWriter.deleteRecords(tableId, [recordId]);
@@ -79,12 +70,21 @@ async function handleDelete(tableId, recordId, onUpdate, dataWriter) {
 }
 
 export async function renderRefList(options) {
-    const { container, record, colSchema, tableLens } = options;
+    // NOVO: Adiciona isLocked às opções.
+    const { container, record, colSchema, tableLens, isLocked } = options;
     const dataWriter = new GristDataWriter(grist);
     container.innerHTML = '';
+
+    // NOVO: Adiciona estilo se o campo estiver travado
+    if (isLocked) {
+        // Aplica ao contêiner principal do campo, não apenas ao valor
+        container.closest('.drawer-field')?.classList.add('is-locked-style');
+    }
+    
     const referencedTableId = colSchema.type.split(':')[1];
     let sortColumn = 'manualSort';
     let sortDirection = 'asc';
+    
     const renderContent = async () => {
         container.innerHTML = '<p>Carregando...</p>';
         let relatedRecords = await tableLens.fetchRelatedRecords(record, colSchema.colId);
@@ -105,6 +105,13 @@ export async function renderRefList(options) {
         countSpan.textContent = `(${relatedRecords.length} itens)`;
         const addButton = document.createElement('button');
         addButton.textContent = `+ Adicionar`;
+
+        // NOVO: Desabilita o botão "Adicionar" se o campo estiver travado.
+        if (isLocked) {
+            addButton.disabled = true;
+            addButton.title = "Este campo está travado e não pode ser modificado.";
+        }
+
         header.appendChild(countSpan);
         header.appendChild(addButton);
         container.appendChild(header);
@@ -133,6 +140,13 @@ export async function renderRefList(options) {
             actionsCell.className = 'actions-cell';
             const editBtn = document.createElement('button'); editBtn.innerHTML = '✏️'; editBtn.title = 'Editar';
             const deleteBtn = document.createElement('button'); deleteBtn.innerHTML = '🗑️'; deleteBtn.title = 'Deletar';
+
+            // NOVO: Desabilita os botões de ação se o campo estiver travado.
+            if (isLocked) {
+                editBtn.disabled = true;
+                deleteBtn.disabled = true;
+            }
+
             actionsCell.appendChild(editBtn);
             actionsCell.appendChild(deleteBtn);
             for (const c of columnsToDisplay) {
@@ -145,17 +159,19 @@ export async function renderRefList(options) {
         const primaryTableId = record.gristHelper_tableId;
         const backReferenceColumn = relatedSchemaAsArray.find(col => col && col.type === `Ref:${primaryTableId}`);
         const backReferenceColId = backReferenceColumn ? backReferenceColumn.colId : null;
-container.querySelector('.grf-reflist-header button').onclick = () => handleAdd({
-    tableId: referencedTableId,
-    onUpdate: renderContent,
-    dataWriter,
-    tableLens,
-    backRefCol: backReferenceColId,
-    parentRecId: record.id,
-    parentTableId: primaryTableId,
-    parentRefListColId: colSchema.colId,
-    parentRecord: record // <-- ESTA LINHA É ESSENCIAL
-});
+
+        // Anexa o evento ao botão (mesmo que desabilitado, não causa erro).
+        container.querySelector('.grf-reflist-header button').onclick = () => handleAdd({
+            tableId: referencedTableId,
+            onUpdate: renderContent,
+            dataWriter,
+            tableLens,
+            backRefCol: backReferenceColId,
+            parentRecId: record.id,
+            parentTableId: primaryTableId,
+            parentRefListColId: colSchema.colId,
+            parentRecord: record
+        });
         tbody.querySelectorAll('tr').forEach((tr, index) => {
             const rec = relatedRecords[index];
             const cell = tr.querySelector('.actions-cell');
