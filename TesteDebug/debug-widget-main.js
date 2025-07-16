@@ -20,6 +20,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const recordsTableBodyEl = recordsTableEl.querySelector('tbody');
     const errorMessageEl = document.getElementById('errorMessage');
     const tableSelectorEl = document.getElementById('tableSelector');
+    // NOVO: Referência para o novo contêiner de controles globais
+    const globalControlsContainerEl = document.getElementById('globalControlsContainer');
+
 
     // 2. Initialize state variables
     const tableLens = new GristTableLens(grist);
@@ -30,7 +33,8 @@ document.addEventListener('DOMContentLoaded', function () {
     // Estados para as opções do drawer
     let fieldsToLock = [];
     let fieldsToHide = [];
-    let styleOverrides = {}; // Objeto para controlar os estilos
+    let styleOverrides = {};
+    let selectedDrawerWidth = '50%'; // NOVO: Estado para a largura do drawer
 
     // 3. Define helper functions
     function applyGristCellStyles(cellElement, rawColumnSchema, record, ruleIdToColIdMap) {
@@ -57,11 +61,48 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
     
+    // NOVO: Função para renderizar controles globais (como a largura do drawer)
+    function renderGlobalControls() {
+        if (!globalControlsContainerEl) return;
+        globalControlsContainerEl.innerHTML = ''; // Limpa para evitar duplicatas
+        const widthContainer = document.createElement('div');
+        widthContainer.style.marginBottom = '15px';
+        widthContainer.style.padding = '10px';
+        widthContainer.style.backgroundColor = '#f0f8ff';
+        widthContainer.style.border = '1px solid #cce5ff';
+        widthContainer.style.borderRadius = '4px';
+
+        const label = document.createElement('label');
+        label.htmlFor = 'drawerWidthSelector';
+        label.textContent = 'Largura do Drawer:';
+        label.style.fontWeight = 'bold';
+        label.style.marginRight = '10px';
+
+        const select = document.createElement('select');
+        select.id = 'drawerWidthSelector';
+        select.style.padding = '5px';
+
+        const widths = ['25%', '40%', '50%', '60%', '75%'];
+        widths.forEach(width => {
+            const option = new Option(width, width);
+            option.selected = (width === selectedDrawerWidth);
+            select.add(option);
+        });
+
+        select.addEventListener('change', (e) => {
+            selectedDrawerWidth = e.target.value;
+        });
+
+        widthContainer.appendChild(label);
+        widthContainer.appendChild(select);
+        globalControlsContainerEl.appendChild(widthContainer);
+    }
+    
     function renderFieldControls(schemaAsArray) {
         fieldControlsContainerEl.innerHTML = '';
 
         const title = document.createElement('h3');
-        title.textContent = 'Controles do Drawer';
+        title.textContent = 'Controles de Campo do Drawer';
         title.style.marginTop = '20px';
         fieldControlsContainerEl.appendChild(title);
 
@@ -196,7 +237,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     row.onclick = () => openDrawer(tableId, record.id, {
                         lockedFields: fieldsToLock,
                         hiddenFields: fieldsToHide,
-                        styleOverrides: styleOverrides
+                        styleOverrides: styleOverrides,
+                        width: selectedDrawerWidth
                     });
 
                     for (const key of recordHeaderKeys) {
@@ -224,13 +266,13 @@ document.addEventListener('DOMContentLoaded', function () {
     // 5. Setup functions that run once on page load
     async function populateTableSelectorAndRenderInitial() {
         try {
+            renderGlobalControls();
+            
             const allTables = await tableLens.listAllTables();
             const selectedTableId = await grist.selectedTable.getTableId() || (allTables.length > 0 ? allTables[0].id : null);
             tableSelectorEl.innerHTML = '';
             allTables.forEach(table => {
-                const option = document.createElement('option');
-                option.value = table.id;
-                option.textContent = table.name;
+                const option = new Option(table.id, table.name);
                 if (table.id === selectedTableId) { option.selected = true; }
                 tableSelectorEl.appendChild(option);
             });
