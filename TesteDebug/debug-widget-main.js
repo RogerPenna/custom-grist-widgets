@@ -13,28 +13,20 @@ document.addEventListener('DOMContentLoaded', function () {
     const schemaTableEl = document.getElementById('schemaTable');
     const schemaTableHeadEl = schemaTableEl.querySelector('thead tr');
     const schemaTableBodyEl = schemaTableEl.querySelector('tbody');
-    const fieldControlsContainerEl = document.getElementById('fieldControlsContainer');
+    const configSelectorContainerEl = document.getElementById('configSelectorContainer'); 
     const recordCountEl = document.getElementById('recordCount');
     const recordsTableEl = document.getElementById('recordsTable');
     const recordsTableHeadEl = recordsTableEl.querySelector('thead tr');
     const recordsTableBodyEl = recordsTableEl.querySelector('tbody');
     const errorMessageEl = document.getElementById('errorMessage');
     const tableSelectorEl = document.getElementById('tableSelector');
-    // NOVO: Referência para o novo contêiner de controles globais
-    const globalControlsContainerEl = document.getElementById('globalControlsContainer');
-
 
     // 2. Initialize state variables
     const tableLens = new GristTableLens(grist);
     let currentTableId;
     let isRendering = false;
     let debounceTimer;
-
-    // Estados para as opções do drawer
-    let fieldsToLock = [];
-    let fieldsToHide = [];
-    let styleOverrides = {};
-    let selectedDrawerWidth = '50%'; // NOVO: Estado para a largura do drawer
+    let testConfigId = 'test_drawer_com_ordem'; // Valor padrão
 
     // 3. Define helper functions
     function applyGristCellStyles(cellElement, rawColumnSchema, record, ruleIdToColIdMap) {
@@ -61,106 +53,36 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
     
-    // NOVO: Função para renderizar controles globais (como a largura do drawer)
-    function renderGlobalControls() {
-        if (!globalControlsContainerEl) return;
-        globalControlsContainerEl.innerHTML = ''; // Limpa para evitar duplicatas
-        const widthContainer = document.createElement('div');
-        widthContainer.style.marginBottom = '15px';
-        widthContainer.style.padding = '10px';
-        widthContainer.style.backgroundColor = '#f0f8ff';
-        widthContainer.style.border = '1px solid #cce5ff';
-        widthContainer.style.borderRadius = '4px';
+    function renderConfigSelector() {
+        if (!configSelectorContainerEl) return;
+        configSelectorContainerEl.innerHTML = '';
+        const container = document.createElement('div');
+        container.style.marginBottom = '15px';
+        container.style.padding = '10px';
+        container.style.backgroundColor = '#fffbe6';
+        container.style.border = '1px solid #ffe58f';
+        container.style.borderRadius = '4px';
 
         const label = document.createElement('label');
-        label.htmlFor = 'drawerWidthSelector';
-        label.textContent = 'Largura do Drawer:';
+        label.htmlFor = 'configIdInput';
+        label.textContent = 'ID da Configuração a ser Testada:';
         label.style.fontWeight = 'bold';
         label.style.marginRight = '10px';
 
-        const select = document.createElement('select');
-        select.id = 'drawerWidthSelector';
-        select.style.padding = '5px';
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.id = 'configIdInput';
+        input.value = testConfigId;
+        input.style.padding = '5px';
+        input.style.width = '300px';
 
-        const widths = ['25%', '40%', '50%', '60%', '75%'];
-        widths.forEach(width => {
-            const option = new Option(width, width);
-            option.selected = (width === selectedDrawerWidth);
-            select.add(option);
+        input.addEventListener('change', (e) => {
+            testConfigId = e.target.value.trim();
         });
 
-        select.addEventListener('change', (e) => {
-            selectedDrawerWidth = e.target.value;
-        });
-
-        widthContainer.appendChild(label);
-        widthContainer.appendChild(select);
-        globalControlsContainerEl.appendChild(widthContainer);
-    }
-    
-    function renderFieldControls(schemaAsArray) {
-        fieldControlsContainerEl.innerHTML = '';
-
-        const title = document.createElement('h3');
-        title.textContent = 'Controles de Campo do Drawer';
-        title.style.marginTop = '20px';
-        fieldControlsContainerEl.appendChild(title);
-
-        const gridContainer = document.createElement('div');
-        gridContainer.style.display = 'grid';
-        gridContainer.style.gridTemplateColumns = 'repeat(auto-fill, minmax(280px, 1fr))';
-        gridContainer.style.gap = '12px';
-        
-        const visibleCols = schemaAsArray.filter(c => c && c.colId && !c.colId.startsWith('gristHelper_'));
-
-        visibleCols.forEach(col => {
-            const controlDiv = document.createElement('div');
-            controlDiv.style.border = '1px solid #ccc';
-            controlDiv.style.padding = '8px 12px';
-            controlDiv.style.borderRadius = '4px';
-
-            const colLabel = document.createElement('strong');
-            colLabel.textContent = col.label || col.colId;
-            controlDiv.appendChild(colLabel);
-            
-            const createCheckbox = (label, checked, onChange) => {
-                const lbl = document.createElement('label');
-                lbl.style.display = 'block'; lbl.style.marginTop = '6px'; lbl.style.fontWeight = 'normal';
-                const cb = document.createElement('input');
-                cb.type = 'checkbox'; cb.checked = checked; cb.onchange = onChange;
-                lbl.appendChild(cb);
-                lbl.appendChild(document.createTextNode(` ${label}`));
-                return lbl;
-            };
-
-            controlDiv.appendChild(createCheckbox('Ocultar no Drawer', fieldsToHide.includes(col.colId), (e) => {
-                if (e.target.checked) fieldsToHide.push(col.colId); else fieldsToHide = fieldsToHide.filter(id => id !== col.colId);
-            }));
-
-            controlDiv.appendChild(createCheckbox('Travar no Drawer', fieldsToLock.includes(col.colId), (e) => {
-                if (e.target.checked) fieldsToLock.push(col.colId); else fieldsToLock = fieldsToLock.filter(id => id !== col.colId);
-            }));
-
-            const separator = document.createElement('hr');
-            separator.style.margin = '8px 0'; separator.style.border = 'none'; separator.style.borderTop = '1px solid #eee';
-            controlDiv.appendChild(separator);
-
-            const currentOverrides = styleOverrides[col.colId] || {};
-            const updateStyleOverride = (key, isChecked) => {
-                if (!styleOverrides[col.colId]) styleOverrides[col.colId] = {};
-                styleOverrides[col.colId][key] = isChecked;
-                if (!styleOverrides[col.colId].ignoreField && !styleOverrides[col.colId].ignoreHeader) {
-                    delete styleOverrides[col.colId];
-                }
-            };
-
-            controlDiv.appendChild(createCheckbox('Ignorar Estilo do Campo', currentOverrides.ignoreField || false, (e) => updateStyleOverride('ignoreField', e.target.checked)));
-            controlDiv.appendChild(createCheckbox('Ignorar Estilo do Cabeçalho', currentOverrides.ignoreHeader || false, (e) => updateStyleOverride('ignoreHeader', e.target.checked)));
-            
-            gridContainer.appendChild(controlDiv);
-        });
-
-        fieldControlsContainerEl.appendChild(gridContainer);
+        container.appendChild(label);
+        container.appendChild(input);
+        configSelectorContainerEl.appendChild(container);
     }
 
     // 4. The main function to draw everything on the screen
@@ -168,12 +90,6 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!tableId || isRendering) return;
         isRendering = true;
         
-        if (currentTableId !== tableId) {
-            fieldsToLock = [];
-            fieldsToHide = [];
-            styleOverrides = {};
-        }
-
         currentTableId = tableId;
         errorMessageEl.textContent = "";
         loadingMessageEl.style.display = 'block';
@@ -194,11 +110,10 @@ document.addEventListener('DOMContentLoaded', function () {
             recordsTableHeadEl.innerHTML = '';
             recordsTableBodyEl.innerHTML = '';
 
-            // Render Schema Table
+            // Render Schema Table (para debug)
             columnCountEl.textContent = schemaAsArray.length;
             if (schemaAsArray.length > 0) {
-                const allKeys = new Set();
-                schemaAsArray.forEach(col => Object.keys(col).forEach(key => allKeys.add(key)));
+                const allKeys = new Set(['colId', 'label', 'type', 'isFormula', 'widgetOptions']);
                 const sortedKeys = Array.from(allKeys).sort();
                 sortedKeys.forEach(key => {
                     const th = document.createElement('th');
@@ -217,12 +132,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
             }
 
-            renderFieldControls(schemaAsArray);
-
             // Render Records Table
             recordCountEl.textContent = records.length;
             if (records.length > 0) {
-                const recordHeaderKeys = Object.keys(records[0]).sort();
+                const recordHeaderKeys = Object.keys(records[0]).sort((a, b) => a.localeCompare(b)).filter(k => k !== 'gristHelper_tableId');
+                recordHeaderKeys.unshift('id'); 
+
                 recordHeaderKeys.forEach(key => {
                     const th = document.createElement('th');
                     th.textContent = key;
@@ -234,12 +149,20 @@ document.addEventListener('DOMContentLoaded', function () {
                     row.className = 'record-row';
                     row.style.cursor = 'pointer';
                     
-                    row.onclick = () => openDrawer(tableId, record.id, {
-                        lockedFields: fieldsToLock,
-                        hiddenFields: fieldsToHide,
-                        styleOverrides: styleOverrides,
-                        width: selectedDrawerWidth
-                    });
+                    row.onclick = async () => {
+                        if (!testConfigId) {
+                            alert("Por favor, insira um ID de configuração para testar.");
+                            return;
+                        }
+                        try {
+                            const drawerOptions = await tableLens.fetchConfig(testConfigId);
+                            console.log(`Abrindo drawer para o registro ${record.id} com a configuração:`, drawerOptions);
+                            openDrawer(tableId, record.id, drawerOptions);
+                        } catch (error) {
+                            console.error(`Falha ao abrir o drawer para a configuração '${testConfigId}':`, error);
+                            errorMessageEl.textContent = `ERRO: Não foi possível carregar a configuração '${testConfigId}'. Verifique o console.`;
+                        }
+                    };
 
                     for (const key of recordHeaderKeys) {
                         const cell = row.insertCell();
@@ -266,13 +189,13 @@ document.addEventListener('DOMContentLoaded', function () {
     // 5. Setup functions that run once on page load
     async function populateTableSelectorAndRenderInitial() {
         try {
-            renderGlobalControls();
+            renderConfigSelector();
             
             const allTables = await tableLens.listAllTables();
             const selectedTableId = await grist.selectedTable.getTableId() || (allTables.length > 0 ? allTables[0].id : null);
             tableSelectorEl.innerHTML = '';
             allTables.forEach(table => {
-                const option = new Option(table.id, table.name);
+                const option = new Option(table.id, table.id);
                 if (table.id === selectedTableId) { option.selected = true; }
                 tableSelectorEl.appendChild(option);
             });
@@ -293,7 +216,7 @@ document.addEventListener('DOMContentLoaded', function () {
         debounceTimer = setTimeout(() => initializeDebugWidget(tableId), 150);
     });
     subscribe('data-changed', (event) => {
-        if (event.detail.tableId === currentTableId || event.detail.referencedTableId === currentTableId) {
+        if (event.detail.tableId === currentTableId || event.detail.tableId === 'Grf_config') {
             initializeDebugWidget(currentTableId);
         }
     });

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GRF - Gerenciador de Configurações</title>
+    <link rel="stylesheet" href="config-manager-style.css">
+    <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+</head>
+<body>
+    <h1>Gerenciador de Configurações do Framework</h1>
+    <div id="loadingMessage">Carregando configurações...</div>
+    <div id="errorMessage" class="error-message"></div>
+
+    <div class="main-container">
+        <!-- Painel Esquerdo: Lista de Configurações -->
+        <div class="sidebar">
+            <h2>Configurações</h2>
+            <button id="newConfigBtn" class="btn btn-primary">+ Nova Configuração</button>
+            <ul id="configList">
+                <!-- A lista de configIds será preenchida pelo JavaScript -->
+            </ul>
+        </div>
+
+        <!-- Painel Direito: Editor da Configuração Selecionada -->
+        <div class="editor-panel">
+            <form id="configForm">
+                <input type="hidden" id="recordIdInput"> <!-- Para guardar o ID do registro Grist -->
+
+                <div class="form-group">
+                    <label for="configIdInput">ID da Configuração (configId)</label>
+                    <input type="text" id="configIdInput" required placeholder="Ex: drawer_riscos, kanban_tarefas">
+                </div>
+
+                <div class="form-group">
+                    <label for="descriptionInput">Descrição</label>
+                    <input type="text" id="descriptionInput" placeholder="Ex: Configuração do drawer para a Matriz de Riscos">
+                </div>
+
+                <div class="form-group">
+                    <label for="configJsonTextarea">JSON da Configuração (configJson)</label>
+                    <textarea id="configJsonTextarea" rows="20" placeholder="Cole ou edite o JSON da sua configuração aqui..."></textarea>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" id="saveBtn" class="btn btn-success">Salvar Alterações</button>
+                    <button type="button" id="deleteBtn" class="btn btn-danger">Deletar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Nossas bibliotecas do framework -->
+    <script type="module" src="config-manager-widget.js"></script>
+</body>
+</html>

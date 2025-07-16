@@ -5,11 +5,12 @@ export const GristTableLens = function(gristInstance) {
         throw new Error("GristTableLens: Instância do Grist (grist object) é obrigatória.");
     }
     const _grist = gristInstance;
-    const _metaState = {
-        tables: null,
-        columnsAndRules: null,
-        tableSchemasCache: {}
-    };
+const _metaState = {
+    tables: null,
+    columnsAndRules: null,
+    tableSchemasCache: {}, // <-- VÍRGULA ADICIONADA
+    configCache: {}
+};
 
     async function _loadGristMeta() {
         if (_metaState.tables && _metaState.columnsAndRules) return;
@@ -273,4 +274,51 @@ this.resolveReference = async function(colSchema, record) {
 
     return { displayValue, referencedRecord };
 };
+    this.fetchConfig = async function(configId) {
+        if (!configId) {
+            console.error("GTL.fetchConfig: configId não foi fornecido.");
+            return null;
+        }
+
+        // 1. Verifica o cache primeiro
+        if (_metaState.configCache[configId]) {
+            return _metaState.configCache[configId];
+        }
+
+        const configTableName = 'Grf_config';
+
+        try {
+            // 2. Busca todos os registros da tabela de configuração
+            const configTableData = await _grist.docApi.fetchTable(configTableName);
+            const configs = _colDataToRows(configTableData);
+
+            // 3. Encontra a configuração específica pelo configId
+            const targetConfig = configs.find(c => c.configId === configId);
+
+            if (!targetConfig) {
+                throw new Error(`Configuração com id "${configId}" não encontrada na tabela "${configTableName}".`);
+            }
+
+            if (!targetConfig.configJson || typeof targetConfig.configJson !== 'string') {
+                throw new Error(`A coluna 'configJson' para o configId "${configId}" está vazia ou não é texto.`);
+            }
+
+            // 4. Faz o parse do JSON para um objeto JavaScript
+            const parsedConfig = JSON.parse(targetConfig.configJson);
+
+            // 5. Armazena o resultado no cache
+            _metaState.configCache[configId] = parsedConfig;
+
+            return parsedConfig;
+
+        } catch (error) {
+            console.error(`GTL.fetchConfig: Erro ao buscar ou processar a configuração "${configId}".`, error);
+            // Se o erro foi de JSON.parse, é útil logar o conteúdo problemático
+            if (error instanceof SyntaxError) {
+                const configRecord = (await _colDataToRows(await _grist.docApi.fetchTable(configTableName))).find(c => c.configId === configId);
+                console.error("Conteúdo do JSON inválido:", configRecord?.configJson);
+            }
+            throw error; // Re-lança o erro para que o chamador saiba que algo deu errado
+        }
+    };
 };
