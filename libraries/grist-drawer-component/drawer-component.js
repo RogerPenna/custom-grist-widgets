@@ -108,21 +108,19 @@ function _updateButtonVisibility() {
 async function _handleSave() {
     const changes = {};
     const formElements = drawerPanel.querySelectorAll('[data-col-id]');
+    
     formElements.forEach(el => {
         const colId = el.dataset.colId;
         const colSchema = currentSchema[colId];
-        let value;
-
-        if (colSchema) {
-            // CORREÇÃO: Lógica para converter os valores do dropdown booleano
+        
+        // DUPLA GARANTIA: Ignora o campo se for uma fórmula, mesmo que o elemento exista.
+        if (colSchema && !colSchema.isFormula) {
+            let value;
+            
             if (colSchema.type === 'Bool' && el.tagName === 'SELECT') {
-                if (el.value === 'true') {
-                    value = true;
-                } else if (el.value === 'false') {
-                    value = false;
-                } else {
-                    value = null; // Caso "-- Selecione --"
-                }
+                if (el.value === 'true') value = true;
+                else if (el.value === 'false') value = false;
+                else value = null;
             } else if (colSchema.type === 'ChoiceList' && el.tagName === 'SELECT' && el.multiple) {
                 const selectedOptions = Array.from(el.selectedOptions).map(opt => opt.value);
                 value = selectedOptions.length > 0 ? ['L', ...selectedOptions] : null;
@@ -141,13 +139,16 @@ async function _handleSave() {
             } else {
                 value = el.value;
             }
-        } else {
-            value = el.value;
+            
+            changes[colId] = value;
         }
-        changes[colId] = value;
     });
 
-    await dataWriter.updateRecord(currentTableId, currentRecordId, changes);
+    // Só tenta salvar se houver mudanças a serem feitas.
+    if (Object.keys(changes).length > 0) {
+        await dataWriter.updateRecord(currentTableId, currentRecordId, changes);
+    }
+    
     publish('data-changed', { tableId: currentTableId, recordId: currentRecordId, action: 'update' });
 
     isEditing = false;

@@ -1,176 +1,91 @@
 /* libraries/grist-field-renderer/styles/renderer-styles.css */
 
 /* --- Estilos Gerais --- */
-
-.grf-readonly-empty {
-    font-style: italic;
-    color: #999;
-}
-
-.grf-field-container.is-disabled {
-    opacity: 0.65;
-    background-color: #e9ecef;
-}
-
+.grf-readonly-empty { font-style: italic; color: #999; }
+.grf-field-container.is-disabled { opacity: 0.65; background-color: #e9ecef; }
 .grf-form-input {
-    width: 100%;
-    padding: 8px;
-    box-sizing: border-box;
-    border: 1px solid #ccc;
-    border-radius: 4px;
+    width: 100%; padding: 8px; box-sizing: border-box;
+    border: 1px solid #ccc; border-radius: 4px;
 }
 
 /* --- Estilos para Choice / ChoiceList --- */
-
 .grf-choice-pill {
-    display: inline-block;
-    padding: 2px 8px;
-    margin: 2px 4px 2px 0;
-    border-radius: 12px;
-    background-color: #e0e0e0;
-    font-size: 0.9em;
+    display: inline-block; padding: 2px 8px; margin: 2px 4px 2px 0;
+    border-radius: 12px; background-color: #e0e0e0; font-size: 0.9em;
 }
 
-/* ================================================== */
-/* --- ESTILOS CORRIGIDOS PARA BOOLEAN SWITCH --- */
-/* ================================================== */
-
-/* NOVO: Regra para o contêiner que segura o switch. */
-/* Isso impede que o contêiner estique o switch para 100% da largura. */
+/* --- Estilos para Boolean Switch --- */
 .grf-contains-switch {
-    display: 50px;
+    display: flex;
     align-items: center;
-    /* Garante que o contêiner tenha a mesma altura de outros inputs para alinhamento vertical */
-    min-height: 38px; 
+    min-height: 38px;
 }
-
 .grf-switch {
     position: relative;
     display: inline-block;
-    /* Tamanho mais padrão para um switch */
-    width: 40px; 
+    width: 40px !important; /* Força a largura correta */
     height: 22px;
-    /* Impede que o switch se estique */
     flex-shrink: 0;
 }
-
-.grf-switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-
+.grf-switch input { opacity: 0; width: 0; height: 0; }
 .grf-slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: #ccc;
-    transition: .4s;
+    position: absolute; cursor: pointer; top: 0; left: 0;
+    right: 0; bottom: 0; background-color: #ccc; transition: .4s;
 }
-
 .grf-slider:before {
-    position: absolute;
-    content: "";
-    /* Tamanho do "pino" */
-    height: 16px;
-    width: 16px;
-    /* Posição inicial do pino */
-    left: 3px;
-    bottom: 3px;
-    background-color: white;
-    transition: .4s;
+    position: absolute; content: ""; height: 16px; width: 16px;
+    left: 3px; bottom: 3px; background-color: white; transition: .4s;
 }
+input:checked + .grf-slider { background-color: #28a745; }
+input:checked + .grf-slider:before { transform: translateX(18px); }
+.grf-slider.round { border-radius: 22px; }
+.grf-slider.round:before { border-radius: 50%; }
 
-input:checked + .grf-slider {
-    background-color: #28a745; /* Verde sucesso, mais comum para 'ligado' */
-}
-
-input:checked + .grf-slider:before {
-    /* Deslocamento corrigido para o pino ir até o final */
-    transform: translateX(18px); 
-}
-
-/* Bordas arredondadas para o trilho e o pino */
-.grf-slider.round {
-    border-radius: 22px;
-}
-
-.grf-slider.round:before {
-    border-radius: 50%;
-}
-
-
-/* ========================================================== */
-/* ==== ESTILOS EXISTENTES PARA REFLIST (Inalterados) ==== */
-/* ========================================================== */
-
+/* --- Estilos para RefList (COM A CORREÇÃO DO MENU) --- */
 .grf-reflist-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 4px 0;
-    margin-bottom: 8px;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 4px 0; margin-bottom: 8px;
 }
-
-.grf-reflist-header span {
-    font-size: 0.9em;
-    color: #666;
-}
-
-.grf-reflist-header button {
-    padding: 4px 8px;
-    font-size: 0.9em;
-    cursor: pointer;
-}
-
+.grf-reflist-header span { font-size: 0.9em; color: #666; }
+.grf-reflist-header button { padding: 4px 8px; font-size: 0.9em; cursor: pointer; }
 .grf-reflist-table-container {
-    overflow-x: auto; 
-    max-width: 100%;    
-    border: 1px solid #ddd;
-    border-radius: 4px;
+    overflow-x: auto; max-width: 100%; border: 1px solid #ddd; border-radius: 4px;
 }
-
-.grf-reflist-table {
-    width: 100%;
-    border-collapse: collapse;
+.grf-reflist-table { width: 100%; border-collapse: collapse; }
+.grf-reflist-table th, .grf-reflist-table td {
+    white-space: nowrap; padding: 8px 10px; border-bottom: 1px solid #ddd;
+    text-align: left; font-size: 0.95em;
 }
+.grf-reflist-table th { background-color: #f8f8f8; font-weight: bold; }
+.grf-reflist-table tr:last-child td { border-bottom: none; }
 
-.grf-reflist-table th,
-.grf-reflist-table td {
-    white-space: nowrap; 
-    padding: 8px 10px;
-    border-bottom: 1px solid #ddd;
-    text-align: left;
-    font-size: 0.95em;
+/* ESTILOS CORRIGIDOS PARA O MENU DE AÇÕES */
+.grf-reflist-table .actions-cell {
+    position: relative; /* Essencial para o posicionamento do dropdown */
+    text-align: center;
+    width: 50px;
 }
-
-.grf-reflist-table th {
-    background-color: #f8f8f8;
+.reflist-action-menu-btn {
+    background: none; border: none; cursor: pointer;
+    font-size: 1.2em; padding: 2px 8px; border-radius: 4px;
     font-weight: bold;
 }
-
-.grf-reflist-table tr:last-child td {
-    border-bottom: none;
+.reflist-action-menu-btn:hover { background-color: #f0f0f0; }
+.reflist-action-menu-dropdown {
+    display: none; 
+    position: absolute; 
+    /* Posiciona à direita do contêiner da célula */
+    left: 100%; 
+    top: 0;
+    background-color: white; border: 1px solid #ccc;
+    border-radius: 4px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    z-index: 100; /* Garante que flutue acima de outras células */
+    min-width: 120px;
+    text-align: left; /* Alinha o texto dentro do menu à esquerda */
 }
-
-.grf-reflist-table .actions-cell {
-    width: 80px; 
-    text-align: center;
+.reflist-action-menu-dropdown.is-open { display: block; }
+.reflist-action-menu-item {
+    padding: 8px 12px; cursor: pointer; font-size: 0.9em;
+    display: flex; align-items: center; gap: 8px;
 }
-
-.grf-reflist-table .actions-cell button {
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: 1.2em;
-    padding: 2px 6px;
-    margin: 0 2px;
-    border-radius: 4px;
-}
-
-.grf-reflist-table .actions-cell button:hover {
-    background-color: #eee;
-}
+.reflist-action-menu-item:hover { background-color: #007bff; color: white; }
