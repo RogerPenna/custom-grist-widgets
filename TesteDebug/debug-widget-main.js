@@ -206,6 +206,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
     
+// ...
     // 6. Set up all event listeners
     tableSelectorEl.addEventListener('change', (event) => initializeDebugWidget(event.target.value));
     grist.ready({ requiredAccess: 'full' });
@@ -215,10 +216,24 @@ document.addEventListener('DOMContentLoaded', function () {
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => initializeDebugWidget(tableId), 150);
     });
+
+    // LOG DE DEBUG 3: Confirma que o ouvinte está sendo configurado
+    console.log("[DebugWidget] Configurando listeners de eventos...");
+
     subscribe('data-changed', (event) => {
         if (event.detail.tableId === currentTableId || event.detail.tableId === 'Grf_config') {
             initializeDebugWidget(currentTableId);
         }
+    });
+
+    // Modificado para ouvir TUDO que chega pelo EventBus
+    subscribe('config-changed', (event) => {
+        // LOG DE DEBUG 4: Loga o evento bruto que foi recebido
+        console.log("[DebugWidget] Evento 'config-changed' recebido!", event);
+
+        const changedConfigId = event.detail.configId;
+        console.log(`[DebugWidget] Extraído configId: ${changedConfigId}. Limpando o cache.`);
+        tableLens.clearConfigCache(changedConfigId);
     });
 
     // 7. Start the application

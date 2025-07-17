@@ -4,6 +4,7 @@
 // Estes caminhos estão corrigidos para corresponder à sua estrutura de arquivos.
 import { GristTableLens } from '/libraries/grist-table-lens/grist-table-lens.js';
 import { GristDataWriter } from '/libraries/grist-data-writer.js';
+import { publish } from '/libraries/grist-event-bus/grist-event-bus.js';
 
 document.addEventListener('DOMContentLoaded', function () {
     // 1. Referências aos Elementos do DOM
@@ -123,21 +124,18 @@ document.addEventListener('DOMContentLoaded', function () {
     /**
      * Lida com o evento de salvar (adicionar ou atualizar).
      */
-    async function handleSave() {
+        async function handleSave() {
         showError('');
         const recordId = selectedRecordId;
         const configId = configIdInputEl.value.trim();
 
-        // Validação 1: O ID da configuração não pode ser vazio.
         if (!configId) {
             showError("O 'ID da Configuração' é obrigatório.");
             return;
         }
 
-        // Validação 2: O JSON deve ser válido.
         let configJson;
         try {
-            // Verifica se o JSON é válido fazendo o parse.
             JSON.parse(configJsonTextareaEl.value);
             configJson = configJsonTextareaEl.value;
         } catch (error) {
@@ -154,22 +152,28 @@ document.addEventListener('DOMContentLoaded', function () {
         showLoading(true);
         try {
             if (recordId) {
-                // Modo de ATUALIZAÇÃO
                 await dataWriter.updateRecord(CONFIG_TABLE_ID, recordId, recordData);
             } else {
-                // Modo de ADIÇÃO
-                // Validação 3: Não permite adicionar um configId que já existe.
                 if (allConfigs.some(c => c.configId === configId)) {
                     throw new Error(`O ID de configuração '${configId}' já existe. Use um nome diferente.`);
                 }
                 const newRecord = await dataWriter.addRecord(CONFIG_TABLE_ID, recordData);
-                selectedRecordId = newRecord.id; // Seleciona o novo item após a recarga
+                selectedRecordId = newRecord.id;
             }
+
+            // --- DEBATE AQUI ---
+            const eventData = { configId: configId, action: 'save' };
+            console.log(`[ConfigManager] Publicando 'config-changed' com os dados:`, eventData);
+            
+            tableLens.clearConfigCache(configId);
+            publish('config-changed', eventData); 
+            // --- FIM DO DEBATE ---
+            
             alert("Configuração salva com sucesso!");
+
         } catch (error) {
             showError(`Erro ao salvar: ${error.message}`);
         } finally {
-            // Recarrega a lista para refletir as mudanças
             await loadAndRenderConfigs();
             showLoading(false);
         }
@@ -178,19 +182,34 @@ document.addEventListener('DOMContentLoaded', function () {
     /**
      * Lida com o evento de deletar.
      */
-    async function handleDelete() {
+async function handleDelete() {
         if (!selectedRecordId) {
             alert("Nenhuma configuração selecionada para deletar.");
             return;
         }
 
         const configToDelete = allConfigs.find(c => c.id === selectedRecordId);
+        if (!configToDelete) return; // Segurança extra
+
         if (confirm(`Tem certeza que deseja deletar a configuração '${configToDelete.configId}'?`)) {
             showLoading(true);
             try {
+                // Guarda o ID ANTES de deletar
+                const configIdToDelete = configToDelete.configId; 
+                
                 await dataWriter.deleteRecords(CONFIG_TABLE_ID, [selectedRecordId]);
+
+                // --- DEBATE AQUI ---
+                const eventData = { configId: configIdToDelete, action: 'delete' };
+                console.log(`[ConfigManager] Publicando 'config-changed' com os dados:`, eventData);
+                
+                tableLens.clearConfigCache(configIdToDelete);
+                publish('config-changed', eventData);
+                // --- FIM DO DEBATE ---
+
                 alert("Configuração deletada com sucesso!");
-                selectedRecordId = null; // Garante que o item deletado não será pré-selecionado
+                selectedRecordId = null; 
+
             } catch (error) {
                 showError(`Erro ao deletar: ${error.message}`);
             } finally {

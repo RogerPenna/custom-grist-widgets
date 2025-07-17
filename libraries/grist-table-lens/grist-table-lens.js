@@ -321,4 +321,19 @@ this.resolveReference = async function(colSchema, record) {
             throw error; // Re-lança o erro para que o chamador saiba que algo deu errado
         }
     };
+	/**
+     * Limpa o cache de configurações.
+     * @param {string} [configId] - Se fornecido, limpa apenas a entrada para este ID. Senão, limpa todo o cache.
+     */
+    this.clearConfigCache = function(configId) {
+        if (configId) {
+            if (_metaState.configCache[configId]) {
+                delete _metaState.configCache[configId];
+                console.log(`GTL: Cache para '${configId}' foi limpo.`);
+            }
+        } else {
+            _metaState.configCache = {};
+            console.log("GTL: Todo o cache de configurações foi limpo.");
+        }
+    };
 };
