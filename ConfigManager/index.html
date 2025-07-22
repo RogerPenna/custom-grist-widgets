@@ -37,10 +37,23 @@
                     <input type="text" id="descriptionInput" placeholder="Ex: Configuração do drawer para a Matriz de Riscos">
                 </div>
 
-                <div class="form-group">
-                    <label for="configJsonTextarea">JSON da Configuração (configJson)</label>
-                    <textarea id="configJsonTextarea" rows="20" placeholder="Cole ou edite o JSON da sua configuração aqui..."></textarea>
-                </div>
+<!-- This container will be shown/hidden dynamically for non-Drawer configs -->
+<div id="genericJsonEditor" class="form-group">
+    <label for="configJsonTextarea">JSON da Configuração (configJson)</label>
+    <textarea id="configJsonTextarea" rows="20" placeholder="Cole ou edite o JSON da sua configuração aqui..."></textarea>
+</div>
+
+<!-- This is the container for our new Drawer UI, which starts hidden -->
+<div id="drawerEditor" style="display: none;">
+    <hr>
+    <h3>Configurações do Drawer</h3>
+    
+    <!-- Table selector (temporary for development) -->
+    <div id="tableSelectorContainer" class="form-group"></div>
+    
+    <!-- Drawer-specific controls will be rendered here -->
+    <div id="drawerControlsContainer" class="form-group"></div>
+</div>
 
                 <div class="form-actions">
                     <button type="submit" id="saveBtn" class="btn btn-success">Salvar Alterações</button>

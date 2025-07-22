@@ -99,3 +99,48 @@ textarea {
 .btn-primary { background-color: #0d6efd; color: white; width: 100%; }
 .btn-success { background-color: #198754; color: white; }
 .btn-danger { background-color: #dc3545; color: white; margin-left: 10px; }
+/* --- NEW STYLES FOR DRAWER UI --- */
+.drawer-config-section {
+    margin-top: 20px;
+    padding: 15px;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+}
+.drawer-config-section h4 {
+    margin-top: 0;
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: 8px;
+}
+
+.field-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 10px;
+}
+
+.field-order-list {
+    list-style: none;
+    padding: 0;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    min-height: 100px;
+    padding: 8px;
+}
+
+.field-order-item {
+    padding: 8px 12px;
+    margin-bottom: 4px;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    cursor: grab;
+    user-select: none;
+}
+
+.field-order-item:active {
+    cursor: grabbing;
+}
+
+.field-order-item.dragging {
+    opacity: 0.5;
+}
