@@ -274,7 +274,32 @@ async function _renderDrawerContent() {
         tabEl.addEventListener('click', () => _switchToTab(tabEl, panelEl));
         if (index === 0) { _switchToTab(tabEl, panelEl); }
 
-        cols.sort((a,b) => (a.parentPos || 0) - (b.parentPos || 0)).forEach(colSchema => {
+ // --- INÍCIO DA NOVA LÓGICA DE ORDENAÇÃO ---
+    const fieldOrder = currentDrawerOptions.fieldOrder || [];
+
+    if (fieldOrder.length > 0) {
+        const orderMap = new Map(fieldOrder.map((id, index) => [id, index]));
+        
+        cols.sort((a, b) => {
+            const aInOrder = orderMap.has(a.colId);
+            const bInOrder = orderMap.has(b.colId);
+
+            if (aInOrder && bInOrder) {
+                return orderMap.get(a.colId) - orderMap.get(b.colId);
+            }
+            if (aInOrder) return -1;
+            if (bInOrder) return 1;
+            
+            // Fallback para campos não ordenados: usa a posição original do Grist
+            return (a.parentPos || 0) - (b.parentPos || 0); 
+        });
+    } else {
+        // Comportamento padrão se nenhuma ordem for fornecida
+        cols.sort((a,b) => (a.parentPos || 0) - (b.parentPos || 0));
+    }
+    // --- FIM DA NOVA LÓGICA DE ORDENAÇÃO ---
+
+    cols.forEach(colSchema => { // <-- O
             const row = document.createElement('div');
             row.className = 'drawer-field-row';
             const label = document.createElement('label');

@@ -94,8 +94,6 @@ document.addEventListener('DOMContentLoaded', function () {
         if (componentType === 'Drawer') {
             genericJsonEditorEl.classList.add('hidden'); // Esconde com CSS
             drawerEditorEl.style.display = 'block';
-            // A UI será renderizada quando a tabela for selecionada
-            // Se já houver uma tabela selecionada, renderiza a UI agora.
             if (document.getElementById('tableSelector').value) {
                 await renderDrawerConfigUI();
             }
@@ -114,17 +112,21 @@ document.addEventListener('DOMContentLoaded', function () {
         configFormEl.reset();
         recordIdInputEl.value = '';
         configIdInputEl.readOnly = false;
-        genericJsonEditorEl.style.display = 'block';
+        genericJsonEditorEl.classList.remove('hidden');
         drawerEditorEl.style.display = 'none';
         drawerControlsContainerEl.innerHTML = '';
         currentTableSchema = null;
-        document.getElementById('tableSelector').value = '';
+        const tableSelector = document.getElementById('tableSelector');
+        if (tableSelector) {
+            tableSelector.value = '';
+        }
         document.querySelectorAll('.config-list-item.is-active').forEach(item => {
             item.classList.remove('is-active');
         });
     }
 
-async function handleSave() {
+    async function handleSave() {
+        console.log("--- handleSave INICIADO ---");
         showError('');
         const recordId = selectedRecordId;
         const configId = configIdInputEl.value.trim();
@@ -133,9 +135,12 @@ async function handleSave() {
         // A fonte da verdade é sempre o <textarea>
         let configJson;
         try {
-            JSON.parse(configJsonTextareaEl.value);
-            configJson = configJsonTextareaEl.value;
+            const rawJson = configJsonTextareaEl.value;
+            console.log("1. JSON lido do textarea:", rawJson);
+            JSON.parse(rawJson);
+            configJson = rawJson;
         } catch (error) {
+            console.error("ERRO: O JSON do textarea é inválido.", error);
             return showError(`O JSON da Configuração é inválido: ${error.message}`);
         }
         
@@ -143,39 +148,36 @@ async function handleSave() {
         const recordData = {
             configId,
             description: descriptionInputEl.value.trim(),
-            configJson, // Salva o conteúdo do textarea
+            configJson,
             componentType: existingConfig?.componentType || 'Drawer',
-            pageId: existing_config?.pageId || 0,
+            pageId: existingConfig?.pageId || 0,
             widgetTitle: existingConfig?.widgetTitle || '',
         };
-        
-        showLoading(true);
-        try {
-            // ... (resto da lógica de salvar/adicionar que você já tem) ...
-            // ... e a lógica de publicar o evento ...
-        } catch (error) {
-            showError(`Erro ao salvar: ${error.message}`);
-        } finally {
-            await loadAndRenderConfigs();
-        }
-    }
+
+        console.log("2. Objeto 'recordData' a ser salvo:", recordData);
         
         showLoading(true);
         try {
             if (recordId) {
+                console.log(`3. Chamando dataWriter.updateRecord para o recordId: ${recordId}`);
                 await dataWriter.updateRecord(CONFIG_TABLE_ID, recordId, recordData);
+                console.log("4. dataWriter.updateRecord concluído com sucesso.");
             } else {
                 if (allConfigs.some(c => c.configId === configId)) throw new Error(`O ID '${configId}' já existe.`);
+                console.log("3. Chamando dataWriter.addRecord...");
                 const newRecord = await dataWriter.addRecord(CONFIG_TABLE_ID, recordData);
                 selectedRecordId = newRecord.id;
+                console.log("4. dataWriter.addRecord concluído com sucesso. Novo ID:", newRecord.id);
             }
             const eventData = { configId, action: 'save' };
             tableLens.clearConfigCache(configId);
             publish('config-changed', eventData);
             alert("Configuração salva com sucesso!");
         } catch (error) {
+            console.error("ERRO CRÍTICO no bloco try/catch:", error);
             showError(`Erro ao salvar: ${error.message}`);
         } finally {
+            console.log("5. Bloco 'finally' alcançado. Recarregando configs...");
             await loadAndRenderConfigs();
         }
     }
@@ -217,20 +219,21 @@ async function handleSave() {
         tableSelectorContainerEl.innerHTML = html;
         document.getElementById('tableSelector').addEventListener('change', async (e) => {
             const tableId = e.target.value;
-            const currentConfig = allConfigs.find(c => c.id === selectedRecordId);
-            const configData = JSON.parse(currentConfig?.configJson || '{}');
-
             if (tableId) {
                 currentTableSchema = await tableLens.getTableSchema(tableId);
-                await renderDrawerConfigUI(configData);
+                await renderDrawerConfigUI();
             } else {
                 currentTableSchema = null;
                 drawerControlsContainerEl.innerHTML = '<p>Selecione uma tabela para começar a configurar os campos.</p>';
             }
         });
     }
-    function updateJsonFromUI() {
+
+function updateJsonFromUI() {
         if (!currentTableSchema || drawerEditorEl.style.display === 'none') return;
+        
+        // --- NOSSO ESPIÃO ---
+        console.log("Sincronizando UI -> JSON...");
 
         const drawerConfig = {};
         drawerConfig.width = document.getElementById('drawerWidthSelector').value;
@@ -242,25 +245,19 @@ async function handleSave() {
         configJsonTextareaEl.value = JSON.stringify(drawerConfig, null, 2);
     }
 
-    /**
-     * Adiciona os event listeners aos controles da UI do Drawer para que atualizem o JSON em tempo real.
-     */
     function addDrawerUIListeners() {
-        drawerControlsContainerEl.addEventListener('change', updateJsonFromUI); // Para selects e checkboxes
+        drawerControlsContainerEl.addEventListener('change', updateJsonFromUI);
         
         const fieldOrderList = document.getElementById('fieldOrderList');
         if (fieldOrderList) {
-            // Atualiza após o drag and drop ser concluído
             fieldOrderList.addEventListener('drop', () => {
-                // Pequeno delay para garantir que o DOM foi atualizado antes de ler a nova ordem
                 setTimeout(updateJsonFromUI, 0);
             });
         }
     }	
 
-async function renderDrawerConfigUI() {
-        // A fonte da verdade é sempre o textarea
-        const configData = JSON.parse(document.getElementById('configJsonTextarea').value || '{}');
+    async function renderDrawerConfigUI() {
+        const configData = JSON.parse(configJsonTextareaEl.value || '{}');
 
         if (!currentTableSchema) {
             drawerControlsContainerEl.innerHTML = '<p>Selecione uma tabela para começar a configurar os campos.</p>';
@@ -318,7 +315,7 @@ async function renderDrawerConfigUI() {
         });
         
         enableDragAndDrop();
-        addDrawerUIListeners(); // Conecta a UI ao textarea
+        addDrawerUIListeners();
     }
     
     function enableDragAndDrop() {
