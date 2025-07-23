@@ -144,3 +144,6 @@ textarea {
 .field-order-item.dragging {
     opacity: 0.5;
 }
+#genericJsonEditor.hidden {
+    display: none;
+}
