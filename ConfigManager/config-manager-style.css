@@ -99,12 +99,9 @@ textarea {
 .btn-primary { background-color: #0d6efd; color: white; width: 100%; }
 .btn-success { background-color: #198754; color: white; }
 .btn-danger { background-color: #dc3545; color: white; margin-left: 10px; }
-/* --- NEW STYLES FOR DRAWER UI --- */
+/* --- NOVOS ESTILOS PARA A UI UNIFICADA DO DRAWER --- */
 .drawer-config-section {
     margin-top: 20px;
-    padding: 15px;
-    border: 1px solid #e9ecef;
-    border-radius: 4px;
 }
 .drawer-config-section h4 {
     margin-top: 0;
@@ -112,24 +109,16 @@ textarea {
     padding-bottom: 8px;
 }
 
-.field-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 10px;
-}
-
-.field-order-list {
+#unifiedFieldList {
     list-style: none;
     padding: 0;
-    border: 1px solid #ced4da;
-    border-radius: 4px;
-    min-height: 100px;
-    padding: 8px;
 }
 
-.field-order-item {
+.field-card {
+    display: flex;
+    align-items: center;
     padding: 8px 12px;
-    margin-bottom: 4px;
+    margin-bottom: 5px;
     background-color: #f8f9fa;
     border: 1px solid #dee2e6;
     border-radius: 4px;
@@ -137,12 +126,32 @@ textarea {
     user-select: none;
 }
 
-.field-order-item:active {
+.field-card:active {
     cursor: grabbing;
 }
 
-.field-order-item.dragging {
+.field-card.dragging {
     opacity: 0.5;
+}
+
+.field-card-label {
+    flex-grow: 1; /* Faz o nome do campo ocupar o espaço disponível */
+    font-weight: 500;
+}
+
+.field-card-controls {
+    display: flex;
+    align-items: center;
+    gap: 20px; /* Espaço entre os controles */
+    font-size: 12px;
+}
+
+.field-card-controls label {
+    display: flex;
+    align-items: center;
+    gap: 5px; /* Espaço entre o checkbox e o texto */
+    cursor: pointer;
+    font-weight: normal;
 }
 /*
 #genericJsonEditor.hidden {

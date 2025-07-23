@@ -229,19 +229,26 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-function updateJsonFromUI() {
+    function updateJsonFromUI() {
         if (!currentTableSchema || drawerEditorEl.style.display === 'none') return;
         
-        // --- NOSSO ESPIÃO ---
-        console.log("Sincronizando UI -> JSON...");
+        console.log("Sincronizando UI Unificada -> JSON...");
 
         const drawerConfig = {};
         drawerConfig.width = document.getElementById('drawerWidthSelector').value;
-        drawerConfig.fieldOrder = Array.from(document.querySelectorAll('#fieldOrderList .field-order-item')).map(el => el.dataset.colId);
-        drawerConfig.hiddenFields = Array.from(document.querySelectorAll('#hiddenFieldsList input:checked')).map(el => el.dataset.colId);
-        drawerConfig.lockedFields = Array.from(document.querySelectorAll('#lockedFieldsList input:checked')).map(el => el.dataset.colId);
+
+        const allFieldCards = document.querySelectorAll('#unifiedFieldList .field-card');
         
-        // Atualiza o <textarea> com o JSON formatado
+        drawerConfig.fieldOrder = Array.from(allFieldCards).map(card => card.dataset.colId);
+        
+        drawerConfig.hiddenFields = Array.from(allFieldCards)
+            .filter(card => card.querySelector('.is-hidden-checkbox').checked)
+            .map(card => card.dataset.colId);
+
+        drawerConfig.lockedFields = Array.from(allFieldCards)
+            .filter(card => card.querySelector('.is-locked-checkbox').checked)
+            .map(card => card.dataset.colId);
+        
         configJsonTextareaEl.value = JSON.stringify(drawerConfig, null, 2);
     }
 
@@ -257,6 +264,7 @@ function updateJsonFromUI() {
     }	
 
     async function renderDrawerConfigUI() {
+        // A fonte da verdade é sempre o textarea
         const configData = JSON.parse(configJsonTextareaEl.value || '{}');
 
         if (!currentTableSchema) {
@@ -269,6 +277,7 @@ function updateJsonFromUI() {
         configData.hiddenFields = configData.hiddenFields || [];
         configData.lockedFields = configData.lockedFields || [];
 
+        // --- INÍCIO DA CORREÇÃO: Constrói todo o HTML primeiro ---
         let html = `
             <div class="drawer-config-section">
                 <label for="drawerWidthSelector">Largura do Drawer:</label>
@@ -277,41 +286,39 @@ function updateJsonFromUI() {
                 </select>
             </div>
             <div class="drawer-config-section">
-                <h4>Ordem dos Campos (Arraste para reordenar)</h4>
-                <ul id="fieldOrderList" class="field-order-list"></ul>
-            </div>
-            <div class="drawer-config-section">
-                <h4>Campos Ocultos</h4>
-                <div id="hiddenFieldsList" class="field-grid"></div>
-            </div>
-            <div class="drawer-config-section">
-                <h4>Campos Travados</h4>
-                <div id="lockedFieldsList" class="field-grid"></div>
+                <h4>Campos do Drawer (Arraste para reordenar)</h4>
+                <ul id="unifiedFieldList" class="field-order-list"></ul>
             </div>
         `;
         drawerControlsContainerEl.innerHTML = html;
-        
+        // --- FIM DA CORREÇÃO ---
+
+        const unifiedListEl = document.getElementById('unifiedFieldList');
         const orderedCols = [...configData.fieldOrder.map(id => allCols.find(c => c.colId === id)), ...allCols.filter(c => !configData.fieldOrder.includes(c.colId))].filter(Boolean);
-        const fieldOrderListEl = document.getElementById('fieldOrderList');
-        const hiddenFieldsListEl = document.getElementById('hiddenFieldsList');
-        const lockedFieldsListEl = document.getElementById('lockedFieldsList');
 
         orderedCols.forEach(col => {
-            const item = document.createElement('li');
-            item.className = 'field-order-item';
-            item.textContent = col.label;
-            item.dataset.colId = col.colId;
-            item.draggable = true;
-            fieldOrderListEl.appendChild(item);
-        });
+            const isHidden = configData.hiddenFields.includes(col.colId);
+            const isLocked = configData.lockedFields.includes(col.colId);
 
-        allCols.forEach(col => {
-            hiddenFieldsListEl.innerHTML += `
-                <label><input type="checkbox" data-col-id="${col.colId}" ${configData.hiddenFields.includes(col.colId) ? 'checked' : ''}> ${col.label}</label>
+            const card = document.createElement('li');
+            card.className = 'field-card';
+            card.dataset.colId = col.colId;
+            card.draggable = true;
+
+            card.innerHTML = `
+                <span class="field-card-label">${col.label}</span>
+                <div class="field-card-controls">
+                    <label>
+                        <input type="checkbox" class="is-hidden-checkbox" data-col-id="${col.colId}" ${isHidden ? 'checked' : ''}>
+                        Oculto
+                    </label>
+                    <label>
+                        <input type="checkbox" class="is-locked-checkbox" data-col-id="${col.colId}" ${isLocked ? 'checked' : ''}>
+                        Travado
+                    </label>
+                </div>
             `;
-            lockedFieldsListEl.innerHTML += `
-                <label><input type="checkbox" data-col-id="${col.colId}" ${configData.lockedFields.includes(col.colId) ? 'checked' : ''}> ${col.label}</label>
-            `;
+            unifiedListEl.appendChild(card);
         });
         
         enableDragAndDrop();
@@ -319,7 +326,7 @@ function updateJsonFromUI() {
     }
     
     function enableDragAndDrop() {
-        const list = document.getElementById('fieldOrderList');
+        const list = document.getElementById('unifiedFieldList'); // <-- Mudou para unifiedFieldList
         if (!list) return;
         let draggedItem = null;
         list.addEventListener('dragstart', e => {
@@ -340,8 +347,8 @@ function updateJsonFromUI() {
         });
     }
 
-    function getDragAfterElement(container, y) {
-        const draggableElements = [...container.querySelectorAll('.field-order-item:not(.dragging)')];
+function getDragAfterElement(container, y) {
+        const draggableElements = [...container.querySelectorAll('.field-card:not(.dragging)')]; // <-- Mudou para .field-card
         return draggableElements.reduce((closest, child) => {
             const box = child.getBoundingClientRect();
             const offset = y - box.top - box.height / 2;
