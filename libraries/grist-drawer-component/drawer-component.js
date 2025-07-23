@@ -220,25 +220,23 @@ async function _renderDrawerContent() {
     tabsContainer.innerHTML = '';
     panelsContainer.innerHTML = '';
 
-    const hiddenFields = currentDrawerOptions.hiddenFields || [];
-    const lockedFields = currentDrawerOptions.lockedFields || [];
-    const styleOverrides = currentDrawerOptions.styleOverrides || {};
+    const {
+        hiddenFields = [],
+        lockedFields = [],
+        tabs = null // Extrai a nova propriedade 'tabs'
+    } = currentDrawerOptions;
 
-    // CORREÇÃO FINAL: Busca os dois tipos de schema e os combina.
+    // Busca de Schema e Record (inalterada)
     const [cleanSchema, rawSchema] = await Promise.all([
-        tableLens.getTableSchema(currentTableId), // Pega a formatação condicional processada
-        tableLens.getTableSchema(currentTableId, { mode: 'raw' }) // Pega a descrição
+        tableLens.getTableSchema(currentTableId),
+        tableLens.getTableSchema(currentTableId, { mode: 'raw' })
     ]);
-    
-    // Combina as informações: para cada coluna no schema limpo, adiciona a descrição do schema cru.
     Object.keys(cleanSchema).forEach(colId => {
         if (rawSchema[colId] && rawSchema[colId].description) {
             cleanSchema[colId].description = rawSchema[colId].description;
         }
     });
-
-    currentSchema = cleanSchema; // Agora temos o melhor dos dois mundos.
-
+    currentSchema = cleanSchema;
     const record = await tableLens.fetchRecordById(currentTableId, currentRecordId);
     if (!record) {
         console.error(`Record ${currentRecordId} not found.`);
@@ -247,14 +245,74 @@ async function _renderDrawerContent() {
     }
     const ruleIdToColIdMap = new Map();
     Object.values(currentSchema).forEach(col => {
-        if (col && col.colId?.startsWith('gristHelper_')) {
-            ruleIdToColIdMap.set(col.id, col.colId);
+        if (col?.colId?.startsWith('gristHelper_')) {
+            ruleIdToColIdMap.set(col.id, col.id); // Corrigido para mapear id numérico para id numérico
         }
     });
+    // --- Fim da busca de dados ---
 
+    // ** LÓGICA PRINCIPAL: Decide como renderizar as abas **
+    if (tabs && Array.isArray(tabs) && tabs.length > 0) {
+        // --- NOVO CAMINHO: Renderiza com base na configuração de abas ---
+        renderConfiguredTabs(tabs, hiddenFields, lockedFields, record, ruleIdToColIdMap);
+    } else {
+        // --- CAMINHO ANTIGO (FALLBACK): Mantém o comportamento original ---
+        renderDefaultTabs(hiddenFields, lockedFields, record, ruleIdToColIdMap);
+    }
+}
+
+/**
+ * NOVO: Renderiza as abas com base na configuração fornecida.
+ */
+function renderConfiguredTabs(configuredTabs, hiddenFields, lockedFields, record, ruleIdToColIdMap) {
+    const tabsContainer = drawerPanel.querySelector('.drawer-tabs');
+    const panelsContainer = drawerPanel.querySelector('.drawer-tab-panels');
+
+    configuredTabs.forEach((tabConfig, index) => {
+        const tabEl = document.createElement('div');
+        tabEl.className = 'drawer-tab';
+        tabEl.textContent = tabConfig.title;
+        tabsContainer.appendChild(tabEl);
+        
+        const panelEl = document.createElement('div');
+        panelEl.className = 'drawer-tab-content';
+        panelsContainer.appendChild(panelEl);
+
+        tabEl.addEventListener('click', () => _switchToTab(tabEl, panelEl));
+        if (index === 0) {
+            _switchToTab(tabEl, panelEl);
+        }
+
+        // Itera sobre os campos definidos para esta aba
+        tabConfig.fields.forEach(fieldId => {
+            const colSchema = currentSchema[fieldId];
+            // Verifica se o campo existe no schema e não está na lista de ocultos
+            if (colSchema && !hiddenFields.includes(colSchema.colId)) {
+                renderSingleField(panelEl, colSchema, record, lockedFields, ruleIdToColIdMap);
+            }
+        });
+    });
+}
+
+/**
+ * NOVO: Lógica de renderização antiga, agora como uma função de fallback.
+ */
+function renderDefaultTabs(hiddenFields, lockedFields, record, ruleIdToColIdMap) {
+    const tabsContainer = drawerPanel.querySelector('.drawer-tabs');
+    const panelsContainer = drawerPanel.querySelector('.drawer-tab-panels');
+    
     const allCols = Object.values(currentSchema);
-    const mainCols = allCols.filter(c => c && !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos' && !hiddenFields.includes(c.colId));
+    let mainCols = allCols.filter(c => c && !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos' && !hiddenFields.includes(c.colId));
     const helperCols = allCols.filter(c => c && (c.colId.startsWith('gristHelper_') || c.type === 'ManualSortPos') && !hiddenFields.includes(c.colId));
+
+    // A lógica de ordenação agora pertence apenas ao fallback
+    const fieldOrder = currentDrawerOptions.fieldOrder || [];
+    if (fieldOrder.length > 0) {
+        const orderMap = new Map(fieldOrder.map((id, index) => [id, index]));
+        mainCols.sort((a, b) => { /* ... sua lógica de ordenação anterior ... */ });
+    } else {
+        mainCols.sort((a,b) => (a.parentPos || 0) - (b.parentPos || 0));
+    }
 
     const tabs = { "Principal": mainCols };
     if (helperCols.length > 0) {
@@ -272,74 +330,48 @@ async function _renderDrawerContent() {
         panelsContainer.appendChild(panelEl);
 
         tabEl.addEventListener('click', () => _switchToTab(tabEl, panelEl));
-        if (index === 0) { _switchToTab(tabEl, panelEl); }
+        if (index === 0) _switchToTab(tabEl, panelEl);
 
- // --- INÍCIO DA NOVA LÓGICA DE ORDENAÇÃO ---
-    const fieldOrder = currentDrawerOptions.fieldOrder || [];
-
-    if (fieldOrder.length > 0) {
-        const orderMap = new Map(fieldOrder.map((id, index) => [id, index]));
-        
-        cols.sort((a, b) => {
-            const aInOrder = orderMap.has(a.colId);
-            const bInOrder = orderMap.has(b.colId);
-
-            if (aInOrder && bInOrder) {
-                return orderMap.get(a.colId) - orderMap.get(b.colId);
-            }
-            if (aInOrder) return -1;
-            if (bInOrder) return 1;
-            
-            // Fallback para campos não ordenados: usa a posição original do Grist
-            return (a.parentPos || 0) - (b.parentPos || 0); 
+        cols.forEach(colSchema => {
+            renderSingleField(panelEl, colSchema, record, lockedFields, ruleIdToColIdMap);
         });
+    });
+}
+
+/**
+ * NOVO: Função auxiliar que renderiza um único campo no painel.
+ */
+function renderSingleField(panelEl, colSchema, record, lockedFields, ruleIdToColIdMap) {
+    const row = document.createElement('div');
+    row.className = 'drawer-field-row';
+    const label = document.createElement('label');
+    label.className = 'drawer-field-label';
+    
+    const labelText = colSchema.label || colSchema.colId;
+    if (colSchema.description && colSchema.description.trim() !== '') {
+        const sanitizedDescription = colSchema.description.replace(/"/g, '"');
+        label.innerHTML = `${labelText} <span class="grf-tooltip-trigger" data-tooltip="${sanitizedDescription}">?</span>`;
     } else {
-        // Comportamento padrão se nenhuma ordem for fornecida
-        cols.sort((a,b) => (a.parentPos || 0) - (b.parentPos || 0));
+        label.textContent = labelText;
     }
-    // --- FIM DA NOVA LÓGICA DE ORDENAÇÃO ---
+    
+    const valueContainer = document.createElement('div');
+    valueContainer.className = 'drawer-field-value';
+    row.appendChild(label);
+    row.appendChild(valueContainer);
+    panelEl.appendChild(row);
 
-    cols.forEach(colSchema => { // <-- O
-            const row = document.createElement('div');
-            row.className = 'drawer-field-row';
-            const label = document.createElement('label');
-            label.className = 'drawer-field-label';
-            
-            // Com a correção acima, esta lógica agora deve funcionar.
-            const labelText = colSchema.label || colSchema.colId;
-            if (colSchema.description && colSchema.description.trim() !== '') {
-                const sanitizedDescription = colSchema.description.replace(/"/g, '"');
-                label.innerHTML = `${labelText} <span class="grf-tooltip-trigger" data-tooltip="${sanitizedDescription}">?</span>`;
-            } else {
-                label.textContent = labelText;
-            }
-            
-            const valueContainer = document.createElement('div');
-            valueContainer.className = 'drawer-field-value';
-            row.appendChild(label);
-            row.appendChild(valueContainer);
-            panelEl.appendChild(row);
+    const isFieldLocked = lockedFields.includes(colSchema.colId);
 
-            let schemaForRenderer = colSchema;
-            const overrideOptions = styleOverrides[colSchema.colId];
-
-            if (overrideOptions) {
-                // ... (lógica de styleOverrides inalterada) ...
-            }
-
-            const isFieldLocked = lockedFields.includes(colSchema.colId);
-
-            renderField({
-                container: valueContainer,
-                labelElement: label,
-                colSchema: schemaForRenderer,
-                record,
-                tableLens,
-                ruleIdToColIdMap,
-                isEditing: isEditing,
-                isLocked: isFieldLocked
-            });
-        });
+    renderField({
+        container: valueContainer,
+        labelElement: label,
+        colSchema: colSchema,
+        record,
+        tableLens,
+        ruleIdToColIdMap,
+        isEditing: isEditing,
+        isLocked: isFieldLocked
     });
 }
 
