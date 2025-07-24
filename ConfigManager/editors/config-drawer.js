@@ -1,6 +1,7 @@
 // ConfigManager/editors/config-drawer.js
 
 let currentSchema = null;
+let currentAllSchemas = null; // Armazena o schema de todas as tabelas
 const configJsonTextareaEl = document.getElementById('configJsonTextarea');
 
 function updateJsonFromUI() {
@@ -9,44 +10,51 @@ function updateJsonFromUI() {
 
     const container = document.getElementById('specializedUiContainer');
     const drawerConfig = {
+        displayMode: container.querySelector('#displayModeSelector').value,
         width: container.querySelector('#drawerWidthSelector').value,
         tabs: [],
         hiddenFields: [],
-        lockedFields: []
+        lockedFields: [],
+        refListColumns: {} // Novo: objeto para armazenar a config das colunas de RefLists
     };
 
     let currentTab = null;
 
     container.querySelectorAll('#unifiedFieldList > li').forEach(item => {
         if (item.classList.contains('tab-card')) {
-            // Se já tínhamos uma aba sendo construída, salva ela
             if (currentTab) {
                 drawerConfig.tabs.push(currentTab);
             }
-            // Inicia uma nova aba
             currentTab = {
                 title: item.querySelector('.tab-card-input').value,
                 fields: []
             };
         } else if (item.classList.contains('field-card')) {
-            // Se encontrarmos um campo antes de uma aba, cria uma aba padrão
             if (!currentTab) {
                 currentTab = { title: 'Principal', fields: [] };
             }
             const colId = item.dataset.colId;
             currentTab.fields.push(colId);
 
-            // Coleta os estados de hidden/locked
             if (item.querySelector('.is-hidden-checkbox').checked) {
                 drawerConfig.hiddenFields.push(colId);
             }
             if (item.querySelector('.is-locked-checkbox').checked) {
                 drawerConfig.lockedFields.push(colId);
             }
+
+            // NOVO: Coleta a configuração das colunas da RefList
+            const refListConfigPanel = item.querySelector('.reflist-config-panel');
+            if (refListConfigPanel) {
+                const selectedCols = Array.from(refListConfigPanel.querySelectorAll('input[type="checkbox"]:checked'))
+                                          .map(cb => cb.dataset.refColId);
+                if (selectedCols.length > 0) {
+                    drawerConfig.refListColumns[colId] = selectedCols;
+                }
+            }
         }
     });
 
-    // Garante que a última aba seja salva
     if (currentTab) {
         drawerConfig.tabs.push(currentTab);
     }
@@ -55,29 +63,39 @@ function updateJsonFromUI() {
 }
 
 function addEventListeners(container) {
-    container.addEventListener('change', updateJsonFromUI); // Para selects, checkboxes e inputs de texto da aba
+    container.addEventListener('change', updateJsonFromUI);
     const fieldOrderList = container.querySelector('#unifiedFieldList');
     if (fieldOrderList) {
         fieldOrderList.addEventListener('drop', () => setTimeout(updateJsonFromUI, 0));
     }
 }
 
-export function render(container, configData, tableSchema) {
+// Assinatura alterada para receber o schema de todas as tabelas
+export function render(container, configData, tableSchema, allTablesSchema) {
     currentSchema = tableSchema;
+    currentAllSchemas = allTablesSchema; // Armazena o schema completo
     if (!currentSchema) {
         container.innerHTML = '<p>Selecione uma tabela acima para começar a configurar os campos.</p>';
         return;
     }
     
     const allCols = Object.values(currentSchema).filter(c => !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos');
-    // Normaliza os dados de entrada
     configData.tabs = configData.tabs || [{ title: 'Principal', fields: configData.fieldOrder || allCols.map(c => c.colId) }];
     configData.hiddenFields = configData.hiddenFields || [];
     configData.lockedFields = configData.lockedFields || [];
+    configData.refListColumns = configData.refListColumns || {}; // Inicializa o novo objeto
+	configData.displayMode = configData.displayMode || 'drawer';
 
     let html = `
         <div class="drawer-config-section">
-            <label for="drawerWidthSelector">Largura do Drawer:</label>
+            <label for="displayModeSelector">Modo de Exibição:</label>
+            <select id="displayModeSelector">
+                <option value="drawer" ${configData.displayMode === 'drawer' ? 'selected' : ''}>Painel Lateral (Drawer)</option>
+                <option value="modal" ${configData.displayMode === 'modal' ? 'selected' : ''}>Janela Flutuante (Modal)</option>
+            </select>
+        </div>
+        <div class="drawer-config-section">
+            <label for="drawerWidthSelector">Largura:</label>
             <select id="drawerWidthSelector">
                 ${['25%', '40%', '50%', '60%', '75%'].map(w => `<option value="${w}" ${configData.width === w ? 'selected' : ''}>${w}</option>`).join('')}
             </select>
@@ -92,63 +110,102 @@ export function render(container, configData, tableSchema) {
     const unifiedListEl = container.querySelector('#unifiedFieldList');
     const usedFields = new Set();
 
-    // Renderiza abas e campos existentes
     configData.tabs.forEach(tab => {
         unifiedListEl.appendChild(createTabCard(tab.title));
         tab.fields.forEach(fieldId => {
             const col = allCols.find(c => c.colId === fieldId);
             if (col) {
-                unifiedListEl.appendChild(createFieldCard(col, configData));
+                // Passa o schema de todas as tabelas para o criador do card
+                unifiedListEl.appendChild(createFieldCard(col, configData, currentAllSchemas));
                 usedFields.add(fieldId);
             }
         });
     });
 
-    // Renderiza campos novos que não estão em nenhuma aba
     allCols.forEach(col => {
         if (!usedFields.has(col.colId)) {
-            unifiedListEl.appendChild(createFieldCard(col, configData));
+            unifiedListEl.appendChild(createFieldCard(col, configData, currentAllSchemas));
         }
     });
     
-    // Adiciona o listener para o novo botão
     document.getElementById('addTabBtn').addEventListener('click', () => {
         const newTabCard = createTabCard('Nova Aba');
-        unifiedListEl.prepend(newTabCard); // Adiciona no topo por padrão
+        unifiedListEl.prepend(newTabCard);
         updateJsonFromUI();
     });
 
     enableDragAndDrop(unifiedListEl);
     addEventListeners(container);
-    // Sincroniza uma vez no carregamento
     updateJsonFromUI();
 }
 
 export function read(container) {
-    // A fonte da verdade agora é o que `updateJsonFromUI` escreve no textarea.
-    // Esta função apenas precisa garantir que a última versão seja construída e retornada.
     updateJsonFromUI();
     return JSON.parse(configJsonTextareaEl.value || '{}');
 }
 
 // --- Funções Criadoras de Elementos ---
 
-function createFieldCard(col, configData) {
+// Assinatura alterada para receber o schema de todas as tabelas
+function createFieldCard(col, configData, allTablesSchema) {
     const isHidden = configData.hiddenFields.includes(col.colId);
     const isLocked = configData.lockedFields.includes(col.colId);
     const card = document.createElement('li');
     card.className = 'field-card';
     card.dataset.colId = col.colId;
     card.draggable = true;
+
+    // NOVO: Lógica para campos RefList
+    let refListConfigHtml = '';
+    if (col.type.startsWith('RefList:')) {
+        const referencedTableId = col.type.split(':')[1];
+        const referencedSchema = allTablesSchema ? allTablesSchema[referencedTableId]?.columns : null;
+        
+        let columnCheckboxes = '<p>Schema da tabela referenciada não encontrado.</p>';
+        if (referencedSchema) {
+            const configuredCols = configData.refListColumns[col.colId] || [];
+            columnCheckboxes = Object.values(referencedSchema)
+                .filter(c => !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos')
+                .map(refCol => `
+                    <label class="reflist-config-item">
+                        <input type="checkbox" data-ref-col-id="${refCol.colId}" ${configuredCols.includes(refCol.colId) ? 'checked' : ''}>
+                        ${refCol.label}
+                    </label>
+                `).join('');
+        }
+        
+        refListConfigHtml = `
+            <div class="field-card-extra-actions">
+                <button class="btn btn-secondary btn-sm toggle-reflist-config">Configurar Colunas</button>
+            </div>
+            <div class="reflist-config-panel" style="display: none;">
+                <h5>Colunas a Exibir de ${referencedTableId}</h5>
+                <div class="reflist-config-list">${columnCheckboxes}</div>
+            </div>
+        `;
+    }
+
     card.innerHTML = `
-        <span class="field-card-label">${col.label}</span>
+        <span class="field-card-label">${col.label} <span class="field-card-type">(${col.type})</span></span>
         <div class="field-card-controls">
             <label><input type="checkbox" class="is-hidden-checkbox" ${isHidden ? 'checked' : ''}> Oculto</label>
             <label><input type="checkbox" class="is-locked-checkbox" ${isLocked ? 'checked' : ''}> Travado</label>
         </div>
+        ${refListConfigHtml}
     `;
+
+    // NOVO: Adiciona o event listener para o botão de toggle
+    const toggleBtn = card.querySelector('.toggle-reflist-config');
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', () => {
+            const panel = card.querySelector('.reflist-config-panel');
+            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        });
+    }
+
     return card;
 }
+
 
 function createTabCard(title) {
     const card = document.createElement('li');
@@ -164,10 +221,6 @@ function createTabCard(title) {
     card.querySelector('.delete-tab-btn').addEventListener('click', () => {
         const tabTitle = card.querySelector('.tab-card-input').value;
         if (confirm(`Tem certeza que deseja deletar a aba "${tabTitle}"?`)) {
-            
-            // --- INÍCIO DA NOVA LÓGICA DE DELEÇÃO ---
-
-            // 1. Coleta todos os campos que pertencem a esta aba
             const fieldsToMove = [];
             let nextSibling = card.nextElementSibling;
             while (nextSibling && nextSibling.classList.contains('field-card')) {
@@ -175,7 +228,6 @@ function createTabCard(title) {
                 nextSibling = nextSibling.nextElementSibling;
             }
 
-            // 2. Encontra o ponto de inserção (a aba anterior ou o início da lista)
             let insertionPoint = null;
             let previousSibling = card.previousElementSibling;
             while (previousSibling) {
@@ -186,36 +238,30 @@ function createTabCard(title) {
                 previousSibling = previousSibling.previousElementSibling;
             }
 
-            // 3. Move os campos para a nova posição
-            // Nós iteramos ao contrário para manter a ordem original ao inserir
             for (let i = fieldsToMove.length - 1; i >= 0; i--) {
                 const field = fieldsToMove[i];
                 if (insertionPoint) {
-                    // Insere após o card da aba anterior
                     insertionPoint.insertAdjacentElement('afterend', field);
                 } else {
-                    // Se não há aba anterior, move para o topo da lista
                     card.parentElement.prepend(field);
                 }
             }
 
-            // 4. Remove o card da aba
             card.remove();
-            updateJsonFromUI(); // Atualiza o JSON
-            // --- FIM DA NOVA LÓGICA DE DELEÇÃO ---
+            updateJsonFromUI();
         }
     });
 
     return card;
 }
 
-// --- Funções de Drag and Drop ---
+// --- Funções de Drag and Drop (sem alterações) ---
 
 function enableDragAndDrop(listElement) {
     if (!listElement) return;
     let draggedItem = null;
     listElement.addEventListener('dragstart', e => {
-        draggedItem = e.target.closest('li'); // Garante que pegamos o <li>
+        draggedItem = e.target.closest('li');
         setTimeout(() => draggedItem.classList.add('dragging'), 0);
     });
     listElement.addEventListener('dragend', () => {

@@ -382,15 +382,28 @@ export async function openDrawer(tableId, recordId, options = {}) {
     isEditing = options.mode === 'edit' || false;
     currentDrawerOptions = options; 
 
-    // NOVO: Aplica a largura configurável se ela for fornecida
+    // --- INÍCIO DA NOVA LÓGICA ---
+    // Remove classes antigas para garantir um estado limpo
+    if (drawerPanel) {
+        drawerPanel.classList.remove('is-modal');
+    }
+    if (drawerOverlay) {
+        drawerOverlay.classList.remove('is-modal-overlay');
+    }
+
+    if (options.displayMode === 'modal') {
+        drawerPanel.classList.add('is-modal');
+        drawerOverlay.classList.add('is-modal-overlay');
+    }
+    // --- FIM DA NOVA LÓGICA ---
+
     if (options.width && drawerPanel) {
-        // Validação simples para garantir que a largura seja um valor CSS válido
         const validWidths = ['25%', '33%', '40%', '50%', '60%', '75%', '90%'];
         if (validWidths.includes(options.width)) {
             drawerPanel.style.width = options.width;
         } else {
             console.warn(`Largura do drawer inválida: "${options.width}". Usando o padrão.`);
-            drawerPanel.style.width = ''; // Reseta para o padrão do CSS
+            drawerPanel.style.width = '';
         }
     }
 
@@ -413,7 +426,9 @@ export function closeDrawer() {
     drawerPanel.classList.remove('is-open');
     drawerOverlay.classList.remove('is-open');
     
-    // NOVO: Reseta a largura do painel ao fechar.
-    // Isso garante que ele não mantenha uma largura customizada na próxima vez que for aberto.
+    // --- LÓGICA ATUALIZADA ---
     drawerPanel.style.width = '';
+    // Garante que as classes de modo sejam removidas ao fechar
+    drawerPanel.classList.remove('is-modal');
+    drawerOverlay.classList.remove('is-modal-overlay');
 }

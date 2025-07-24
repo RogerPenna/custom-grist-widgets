@@ -104,3 +104,43 @@
     opacity: 0.8;
     cursor: not-allowed;
 }
+/* ========================================================== */
+/* ==== NOVOS ESTILOS PARA O MODO MODAL ===================== */
+/* ========================================================== */
+
+/* Quando o overlay está no modo modal, ele SEMPRE cobre a tela */
+#grist-drawer-overlay.is-modal-overlay {
+    background-color: rgba(0, 0, 0, 0.65);
+}
+
+/* Transforma o painel em um modal centralizado */
+#grist-drawer-panel.is-modal {
+    /* Cancela as transformações do modo drawer */
+    transform: scale(0.95) translateY(-10px);
+    transition: transform 0.2s ease-in-out, opacity 0.2s;
+    opacity: 0;
+
+    /* Posicionamento central */
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    /* Começa um pouco menor e centralizado. O scale(1) virá na classe .is-open */
+    transform: translate(-50%, -50%) scale(0.95);
+
+    /* Dimensões */
+    height: 90vh; /* Ocupa 90% da altura da tela */
+    max-height: 800px; /* Mas não mais que 800px */
+    width: 60%; /* Usa a largura configurada na opção 'width' */
+    max-width: 900px; /* Mas não mais que 900px */
+
+    /* Estilo */
+    border-radius: 8px;
+    border-left: none; /* Remove a borda lateral do modo drawer */
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+/* Animação de entrada para o modal */
+#grist-drawer-panel.is-modal.is-open {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+}
