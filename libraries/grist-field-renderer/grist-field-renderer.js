@@ -20,9 +20,6 @@ function _applyStyles(element, colSchema, record, ruleIdToColIdMap, isLabel = fa
     if (!element) return;
     element.style.color = ''; element.style.backgroundColor = ''; element.style.fontWeight = ''; element.style.fontStyle = '';
 
-    // =========================================================================
-    // MUDANÇA CRÍTICA: Lidar com widgetOptions que já podem ser um objeto.
-    // =========================================================================
     let wopts = {};
     if (typeof colSchema.widgetOptions === 'string' && colSchema.widgetOptions) {
         try {
@@ -46,7 +43,6 @@ function _applyStyles(element, colSchema, record, ruleIdToColIdMap, isLabel = fa
     if (wopts.alignment) element.style.textAlign = wopts.alignment;
     
     // NÍVEL 1: Formatação Condicional (sempre tem prioridade)
-    // MUDANÇA: Usar a propriedade correta preenchida pelo GristTableLens.
     if (colSchema.conditionalFormattingRules && colSchema.conditionalFormattingRules.length > 0) {
         for (const rule of colSchema.conditionalFormattingRules) {
             if (record[rule.helperColumnId] === true) {
@@ -60,13 +56,7 @@ function _applyStyles(element, colSchema, record, ruleIdToColIdMap, isLabel = fa
         }
     }
 
-    // NÍVEL 2: Formatação por valor (Choice/ChoiceList)
-    // Essa lógica agora é tratada dentro do renderizador específico (render-choice.js)
-    // para manter a hierarquia de prioridade correta.
-
     // NÍVEL 3: Formatação fixa da coluna (a mais baixa prioridade)
-    // Se não houver regra condicional, aplica a formatação fixa da coluna,
-    // EXCETO para Choice/ChoiceList, que cuidam de si mesmos.
     if (colSchema.type !== 'Choice' && colSchema.type !== 'ChoiceList') {
         if (wopts.fillColor) element.style.backgroundColor = wopts.fillColor;
         if (wopts.textColor) element.style.color = wopts.textColor;
@@ -76,9 +66,9 @@ function _applyStyles(element, colSchema, record, ruleIdToColIdMap, isLabel = fa
 
 export async function renderField(options) {
     const { container, colSchema, record, isEditing = false, isLocked = false, labelElement } = options;
-    // MUDANÇA: colSchema pode ser undefined se for uma coluna do Grist como 'manualSort'
+    
     if (!colSchema) { 
-        container.textContent = String(record[options.colId] ?? ''); // Mostra o valor de qualquer forma
+        container.textContent = String(record[options.colId] ?? '');
         return;
     }
 
@@ -86,29 +76,21 @@ export async function renderField(options) {
     
     container.innerHTML = '';
 
-    // MODIFICAÇÃO NO PLANO ORIGINAL:
-    // A variável canEdit foi removida. A lógica `if (isEditing && isLocked)` agora está
-    // dentro de cada renderizador individual, que precisa saber o estado real de `isEditing`
-    // do formulário como um todo. A classe .is-disabled é puramente visual.
     const isDisabled = isEditing && colSchema.isFormula;
     container.classList.toggle('is-disabled', isDisabled);
     
-    // 1. Aplica estilos de cabeçalho (sempre)
     if (labelElement) {
         _applyStyles(labelElement, colSchema, record, options.ruleIdToColIdMap, true);
     }
 
-    // 2. No modo de visualização, aplica os estilos GERAIS primeiro.
     if (!isEditing) {
         _applyStyles(container, colSchema, record, options.ruleIdToColIdMap, false);
     }
 
-    // 3. AGORA chama o renderizador especialista.
-    // A ÚNICA MUDANÇA NESTE ARQUIVO: Passa as options recebidas diretamente,
-    // garantindo que `isEditing` e `isLocked` sejam propagadas corretamente.
+    // A passagem de `...options` garante que qualquer configuração extra, como `fieldConfig`,
+    // seja propagada para o renderizador especialista correto.
     const callOptions = { ...options, container, cellValue };
 
-    // MUDANÇA: Simplificação do switch/case
     const type = colSchema.type || '';
     if (type.startsWith('RefList:')) {
         await renderRefList(callOptions);

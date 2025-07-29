@@ -209,6 +209,45 @@ textarea {
     opacity: 1;
     color: #dc3545;
 }
+/* Adicionar estas regras no final de ConfigManager/config-manager-style.css */
+
+.field-card {
+    flex-wrap: wrap; /* Permite que os itens quebrem para a próxima linha */
+}
+
+.field-card-extra-actions {
+    flex-basis: 100%; /* Ocupa a linha inteira */
+    margin-top: 8px;
+}
+
+.reflist-config-panel {
+    flex-basis: 100%; /* Ocupa a linha inteira, forçando a quebra */
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 12px;
+    margin-top: 8px;
+}
+
+.reflist-config-panel h5 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 0.9em;
+    color: #495057;
+}
+
+.reflist-config-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.reflist-config-item {
+    font-size: 0.9em;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
 /*
 #genericJsonEditor.hidden {
     display: none;

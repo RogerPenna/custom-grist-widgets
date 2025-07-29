@@ -31,67 +31,13 @@ function _initializeDrawerDOM() {
         .drawer-tab-panels{flex-grow:1;overflow-y:auto;}
         .drawer-tab-content{display:none;padding:20px;}.drawer-tab-content.is-active{display:block;}
         .drawer-header-buttons button { margin-left: 10px; }
-        .is-locked-style {
-            background-color: #f1f3f5; cursor: not-allowed; opacity: 0.8;
-            padding: 6px 8px; border-radius: 4px; border: 1px solid #ced4da; min-height: 20px;
-        }
-
-        /* --- NOVO: Estilos para o Tooltip de Descrição --- */
-        .drawer-field-label {
-            display: flex; /* Permite alinhar o ícone facilmente */
-            align-items: center;
-        }
-        .grf-tooltip-trigger {
-            position: relative; /* Contexto para o posicionamento do tooltip */
-            display: inline-block;
-            margin-left: 8px;
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            background-color: #adb5bd;
-            color: white;
-            font-size: 11px;
-            font-weight: bold;
-            text-align: center;
-            line-height: 16px;
-            cursor: help;
-        }
-        .grf-tooltip-trigger:before,
-        .grf-tooltip-trigger:after {
-            position: absolute;
-            left: 50%;
-            transform: translateX(-50%);
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.2s ease, visibility 0.2s ease;
-            z-index: 10;
-        }
-        .grf-tooltip-trigger:after { /* O balão do tooltip */
-            content: attr(data-tooltip);
-            bottom: 150%; /* Posiciona acima do ícone */
-            background-color: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 8px 12px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: normal;
-            line-height: 1.4;
-            white-space: pre-wrap; /* Respeita as quebras de linha na descrição */
-            width: 250px; /* Largura máxima do tooltip */
-        }
-        .grf-tooltip-trigger:before { /* A seta do tooltip */
-            content: '';
-            bottom: 150%;
-            margin-bottom: -5px;
-            border-style: solid;
-            border-width: 5px 5px 0 5px;
-            border-color: rgba(0, 0, 0, 0.8) transparent transparent transparent;
-        }
-        .grf-tooltip-trigger:hover:before,
-        .grf-tooltip-trigger:hover:after {
-            opacity: 1;
-            visibility: visible;
-        }
+        .is-locked-style { background-color: #f1f3f5; cursor: not-allowed; opacity: 0.8; padding: 6px 8px; border-radius: 4px; border: 1px solid #ced4da; min-height: 20px; }
+        .drawer-field-label { display: flex; align-items: center; }
+        .grf-tooltip-trigger { position: relative; display: inline-block; margin-left: 8px; width: 16px; height: 16px; border-radius: 50%; background-color: #adb5bd; color: white; font-size: 11px; font-weight: bold; text-align: center; line-height: 16px; cursor: help; }
+        .grf-tooltip-trigger:before, .grf-tooltip-trigger:after { position: absolute; left: 50%; transform: translateX(-50%); opacity: 0; visibility: hidden; transition: opacity 0.2s ease, visibility 0.2s ease; z-index: 10; }
+        .grf-tooltip-trigger:after { content: attr(data-tooltip); bottom: 150%; background-color: rgba(0, 0, 0, 0.8); color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; font-weight: normal; line-height: 1.4; white-space: pre-wrap; width: 250px; }
+        .grf-tooltip-trigger:before { content: ''; bottom: 150%; margin-bottom: -5px; border-style: solid; border-width: 5px 5px 0 5px; border-color: rgba(0, 0, 0, 0.8) transparent transparent transparent; }
+        .grf-tooltip-trigger:hover:before, .grf-tooltip-trigger:hover:after { opacity: 1; visibility: visible; }
     `;
     document.head.appendChild(style);
 
@@ -170,7 +116,6 @@ async function _handleSave() {
         const colId = el.dataset.colId;
         const colSchema = currentSchema[colId];
         
-        // DUPLA GARANTIA: Ignora o campo se for uma fórmula, mesmo que o elemento exista.
         if (colSchema && !colSchema.isFormula) {
             let value;
             
@@ -201,7 +146,6 @@ async function _handleSave() {
         }
     });
 
-    // Só tenta salvar se houver mudanças a serem feitas.
     if (Object.keys(changes).length > 0) {
         await dataWriter.updateRecord(currentTableId, currentRecordId, changes);
     }
@@ -213,7 +157,6 @@ async function _handleSave() {
     _updateButtonVisibility();
 }
 
-
 async function _renderDrawerContent() {
     const tabsContainer = drawerPanel.querySelector('.drawer-tabs');
     const panelsContainer = drawerPanel.querySelector('.drawer-tab-panels');
@@ -223,10 +166,10 @@ async function _renderDrawerContent() {
     const {
         hiddenFields = [],
         lockedFields = [],
-        tabs = null // Extrai a nova propriedade 'tabs'
+        tabs = null,
+        refListColumns = {} // ** ADICIONADO: Extrai a nova configuração **
     } = currentDrawerOptions;
 
-    // Busca de Schema e Record (inalterada)
     const [cleanSchema, rawSchema] = await Promise.all([
         tableLens.getTableSchema(currentTableId),
         tableLens.getTableSchema(currentTableId, { mode: 'raw' })
@@ -238,33 +181,23 @@ async function _renderDrawerContent() {
     });
     currentSchema = cleanSchema;
     const record = await tableLens.fetchRecordById(currentTableId, currentRecordId);
-    if (!record) {
-        console.error(`Record ${currentRecordId} not found.`);
-        closeDrawer();
-        return;
-    }
+    if (!record) { closeDrawer(); return; }
+    
     const ruleIdToColIdMap = new Map();
     Object.values(currentSchema).forEach(col => {
-        if (col?.colId?.startsWith('gristHelper_')) {
-            ruleIdToColIdMap.set(col.id, col.id); // Corrigido para mapear id numérico para id numérico
-        }
+        if (col?.colId?.startsWith('gristHelper_')) ruleIdToColIdMap.set(col.id, col.id);
     });
-    // --- Fim da busca de dados ---
 
-    // ** LÓGICA PRINCIPAL: Decide como renderizar as abas **
     if (tabs && Array.isArray(tabs) && tabs.length > 0) {
-        // --- NOVO CAMINHO: Renderiza com base na configuração de abas ---
-        renderConfiguredTabs(tabs, hiddenFields, lockedFields, record, ruleIdToColIdMap);
+        // ** MODIFICADO: Passa a nova configuração adiante **
+        renderConfiguredTabs(tabs, hiddenFields, lockedFields, record, ruleIdToColIdMap, refListColumns);
     } else {
-        // --- CAMINHO ANTIGO (FALLBACK): Mantém o comportamento original ---
-        renderDefaultTabs(hiddenFields, lockedFields, record, ruleIdToColIdMap);
+        // ** MODIFICADO: Passa a nova configuração adiante **
+        renderDefaultTabs(hiddenFields, lockedFields, record, ruleIdToColIdMap, refListColumns);
     }
 }
 
-/**
- * NOVO: Renderiza as abas com base na configuração fornecida.
- */
-function renderConfiguredTabs(configuredTabs, hiddenFields, lockedFields, record, ruleIdToColIdMap) {
+function renderConfiguredTabs(configuredTabs, hiddenFields, lockedFields, record, ruleIdToColIdMap, refListColumns) {
     const tabsContainer = drawerPanel.querySelector('.drawer-tabs');
     const panelsContainer = drawerPanel.querySelector('.drawer-tab-panels');
 
@@ -279,25 +212,20 @@ function renderConfiguredTabs(configuredTabs, hiddenFields, lockedFields, record
         panelsContainer.appendChild(panelEl);
 
         tabEl.addEventListener('click', () => _switchToTab(tabEl, panelEl));
-        if (index === 0) {
-            _switchToTab(tabEl, panelEl);
-        }
+        if (index === 0) _switchToTab(tabEl, panelEl);
 
-        // Itera sobre os campos definidos para esta aba
         tabConfig.fields.forEach(fieldId => {
             const colSchema = currentSchema[fieldId];
-            // Verifica se o campo existe no schema e não está na lista de ocultos
             if (colSchema && !hiddenFields.includes(colSchema.colId)) {
-                renderSingleField(panelEl, colSchema, record, lockedFields, ruleIdToColIdMap);
+                // ** MODIFICADO: Passa a nova configuração para a função de renderização individual **
+                renderSingleField(panelEl, colSchema, record, lockedFields, ruleIdToColIdMap, refListColumns);
             }
         });
     });
 }
 
-/**
- * NOVO: Lógica de renderização antiga, agora como uma função de fallback.
- */
-function renderDefaultTabs(hiddenFields, lockedFields, record, ruleIdToColIdMap) {
+// ** RESTAURADO: Funcionalidade completa da renderização de abas padrão **
+function renderDefaultTabs(hiddenFields, lockedFields, record, ruleIdToColIdMap, refListColumns) {
     const tabsContainer = drawerPanel.querySelector('.drawer-tabs');
     const panelsContainer = drawerPanel.querySelector('.drawer-tab-panels');
     
@@ -305,11 +233,17 @@ function renderDefaultTabs(hiddenFields, lockedFields, record, ruleIdToColIdMap)
     let mainCols = allCols.filter(c => c && !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos' && !hiddenFields.includes(c.colId));
     const helperCols = allCols.filter(c => c && (c.colId.startsWith('gristHelper_') || c.type === 'ManualSortPos') && !hiddenFields.includes(c.colId));
 
-    // A lógica de ordenação agora pertence apenas ao fallback
     const fieldOrder = currentDrawerOptions.fieldOrder || [];
     if (fieldOrder.length > 0) {
         const orderMap = new Map(fieldOrder.map((id, index) => [id, index]));
-        mainCols.sort((a, b) => { /* ... sua lógica de ordenação anterior ... */ });
+        mainCols.sort((a, b) => {
+            const indexA = orderMap.get(a.colId);
+            const indexB = orderMap.get(b.colId);
+            if (indexA !== undefined && indexB !== undefined) return indexA - indexB;
+            if (indexA !== undefined) return -1;
+            if (indexB !== undefined) return 1;
+            return (a.parentPos || 0) - (b.parentPos || 0);
+        });
     } else {
         mainCols.sort((a,b) => (a.parentPos || 0) - (b.parentPos || 0));
     }
@@ -333,15 +267,14 @@ function renderDefaultTabs(hiddenFields, lockedFields, record, ruleIdToColIdMap)
         if (index === 0) _switchToTab(tabEl, panelEl);
 
         cols.forEach(colSchema => {
-            renderSingleField(panelEl, colSchema, record, lockedFields, ruleIdToColIdMap);
+             // ** MODIFICADO: Passa a nova configuração para a função de renderização individual **
+            renderSingleField(panelEl, colSchema, record, lockedFields, ruleIdToColIdMap, refListColumns);
         });
     });
 }
 
-/**
- * NOVO: Função auxiliar que renderiza um único campo no painel.
- */
-function renderSingleField(panelEl, colSchema, record, lockedFields, ruleIdToColIdMap) {
+// ** MODIFICADO: Função central que aplica a nova lógica **
+function renderSingleField(panelEl, colSchema, record, lockedFields, ruleIdToColIdMap, refListColumns = {}) {
     const row = document.createElement('div');
     row.className = 'drawer-field-row';
     const label = document.createElement('label');
@@ -363,7 +296,7 @@ function renderSingleField(panelEl, colSchema, record, lockedFields, ruleIdToCol
 
     const isFieldLocked = lockedFields.includes(colSchema.colId);
 
-    renderField({
+    const renderOptions = {
         container: valueContainer,
         labelElement: label,
         colSchema: colSchema,
@@ -372,7 +305,15 @@ function renderSingleField(panelEl, colSchema, record, lockedFields, ruleIdToCol
         ruleIdToColIdMap,
         isEditing: isEditing,
         isLocked: isFieldLocked
-    });
+    };
+    
+    // **A ÚNICA NOVA LÓGICA É AQUI:**
+    // Verifica se existe uma config de coluna para esta RefList e a adiciona.
+    if (colSchema.type.startsWith('RefList:') && refListColumns[colSchema.colId]) {
+        renderOptions.fieldConfig = refListColumns[colSchema.colId];
+    }
+
+    renderField(renderOptions);
 }
 
 export async function openDrawer(tableId, recordId, options = {}) {
@@ -382,29 +323,16 @@ export async function openDrawer(tableId, recordId, options = {}) {
     isEditing = options.mode === 'edit' || false;
     currentDrawerOptions = options; 
 
-    // --- INÍCIO DA NOVA LÓGICA ---
-    // Remove classes antigas para garantir um estado limpo
-    if (drawerPanel) {
-        drawerPanel.classList.remove('is-modal');
-    }
-    if (drawerOverlay) {
-        drawerOverlay.classList.remove('is-modal-overlay');
-    }
+    if (drawerPanel) drawerPanel.classList.remove('is-modal');
+    if (drawerOverlay) drawerOverlay.classList.remove('is-modal-overlay');
 
     if (options.displayMode === 'modal') {
         drawerPanel.classList.add('is-modal');
         drawerOverlay.classList.add('is-modal-overlay');
     }
-    // --- FIM DA NOVA LÓGICA ---
 
     if (options.width && drawerPanel) {
-        const validWidths = ['25%', '33%', '40%', '50%', '60%', '75%', '90%'];
-        if (validWidths.includes(options.width)) {
-            drawerPanel.style.width = options.width;
-        } else {
-            console.warn(`Largura do drawer inválida: "${options.width}". Usando o padrão.`);
-            drawerPanel.style.width = '';
-        }
+        drawerPanel.style.width = options.width || '';
     }
 
     document.body.classList.add('grist-drawer-is-open');
@@ -426,9 +354,7 @@ export function closeDrawer() {
     drawerPanel.classList.remove('is-open');
     drawerOverlay.classList.remove('is-open');
     
-    // --- LÓGICA ATUALIZADA ---
     drawerPanel.style.width = '';
-    // Garante que as classes de modo sejam removidas ao fechar
     drawerPanel.classList.remove('is-modal');
     drawerOverlay.classList.remove('is-modal-overlay');
 }
