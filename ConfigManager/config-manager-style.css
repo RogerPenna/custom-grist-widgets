@@ -248,6 +248,55 @@ textarea {
     align-items: center;
     gap: 6px;
 }
+.field-card {
+    flex-wrap: wrap; 
+}
+
+.field-card-extra-actions {
+    flex-basis: 100%;
+    margin-top: 8px;
+}
+
+.reflist-config-panel {
+    flex-basis: 100%;
+    background-color: #fdfdfd;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 0; /* Removido para a tabela ocupar todo o espaço */
+    margin-top: 8px;
+    overflow-x: auto; /* Permite rolagem horizontal se a tabela for muito larga */
+}
+
+.reflist-config-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9em;
+}
+
+.reflist-config-table th,
+.reflist-config-table td {
+    padding: 8px 10px;
+    border: 1px solid #e9ecef;
+    text-align: left;
+    vertical-align: middle;
+}
+
+.reflist-config-table thead th {
+    background-color: #f1f3f5;
+    font-weight: 600;
+    position: sticky; /* Mantém o cabeçalho visível ao rolar */
+    top: 0;
+}
+
+.reflist-config-table td:not(:first-child) {
+    text-align: center;
+}
+
+.reflist-config-table input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
 /*
 #genericJsonEditor.hidden {
     display: none;
