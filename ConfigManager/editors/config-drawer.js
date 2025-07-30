@@ -14,7 +14,7 @@ function updateJsonFromUI() {
         tabs: [],
         hiddenFields: [],
         lockedFields: [],
-        // NOVO: A estrutura de dados para a configuração da RefList
+        requiredFields: [], // NOVO: Array para campos obrigatórios
         refListFieldConfig: {} 
     };
     
@@ -30,23 +30,26 @@ function updateJsonFromUI() {
 
             if (item.querySelector('.is-hidden-checkbox').checked) drawerConfig.hiddenFields.push(colId);
             if (item.querySelector('.is-locked-checkbox').checked) drawerConfig.lockedFields.push(colId);
+            // NOVO: Lê o estado do checkbox de obrigatório
+            if (item.querySelector('.is-required-checkbox').checked) drawerConfig.requiredFields.push(colId);
 
-            // --- INÍCIO DA NOVA LÓGICA DE LEITURA DA TABELA ---
             const configTable = item.querySelector('.reflist-config-table');
             if (configTable) {
                 const fieldConfig = {};
+                fieldConfig._options = {
+                    zebra: item.querySelector('.reflist-zebra-checkbox')?.checked || false
+                };
+                
                 configTable.querySelectorAll('tbody tr').forEach(row => {
                     const refColId = row.dataset.refColId;
                     const rowConfig = {};
                     row.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
-                        const key = checkbox.dataset.configKey;
-                        rowConfig[key] = checkbox.checked;
+                        rowConfig[checkbox.dataset.configKey] = checkbox.checked;
                     });
                     fieldConfig[refColId] = rowConfig;
                 });
                 drawerConfig.refListFieldConfig[colId] = fieldConfig;
             }
-            // --- FIM DA NOVA LÓGICA DE LEITURA DA TABELA ---
         }
     });
 
@@ -66,7 +69,7 @@ export async function render(container, configData, tableSchema) {
     configData.tabs = configData.tabs || [{ title: 'Principal', fields: allCols.map(c => c.colId) }];
     configData.hiddenFields = configData.hiddenFields || [];
     configData.lockedFields = configData.lockedFields || [];
-    // NOVO: Inicializa a nova estrutura de configuração
+    configData.requiredFields = configData.requiredFields || []; // NOVO: Inicializa o array de campos obrigatórios
     configData.refListFieldConfig = configData.refListFieldConfig || {};
 	configData.displayMode = configData.displayMode || 'drawer';
 
@@ -117,6 +120,7 @@ export async function render(container, configData, tableSchema) {
 async function createFieldCard(col, configData) {
     const isHidden = configData.hiddenFields.includes(col.colId);
     const isLocked = configData.lockedFields.includes(col.colId);
+    const isRequired = configData.requiredFields.includes(col.colId); // NOVO: Verifica se o campo é obrigatório
     const card = document.createElement('li');
     card.className = 'field-card';
     card.dataset.colId = col.colId;
@@ -126,18 +130,15 @@ async function createFieldCard(col, configData) {
     if (col.type.startsWith('RefList:')) {
         const referencedTableId = col.type.split(':')[1];
         const referencedSchema = await tableLens.getTableSchema(referencedTableId);
+        const fieldConfig = configData.refListFieldConfig?.[col.colId] || {};
+        const isZebra = fieldConfig?._options?.zebra === true;
         
         let tableRowsHtml = `<tr><td colspan="5">Schema da tabela '${referencedTableId}' não encontrado.</td></tr>`;
         if (referencedSchema) {
-            // Pega a configuração específica para este campo RefList
-            const fieldConfig = configData.refListFieldConfig?.[col.colId] || {};
-
             tableRowsHtml = Object.values(referencedSchema)
                 .filter(c => !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos')
                 .map(refCol => {
-                    // Pega a configuração específica para esta coluna referenciada
-                    const colConfig = fieldConfig[refCol.colId] || { showInTable: true }; // Padrão é mostrar na tabela
-
+                    const colConfig = fieldConfig[refCol.colId] || { showInTable: true };
                     return `
                         <tr data-ref-col-id="${refCol.colId}">
                             <td>${refCol.label}</td>
@@ -152,17 +153,20 @@ async function createFieldCard(col, configData) {
         
         refListConfigHtml = `
             <div class="field-card-extra-actions">
-                <button type="button" class="btn btn-secondary btn-sm toggle-reflist-config">Configurar Colunas da Lista</button>
+                 <label class="reflist-option-label">
+                    <input type="checkbox" class="reflist-zebra-checkbox" ${isZebra ? 'checked' : ''}> Tabela Zebrada
+                </label>
+                <button type="button" class="btn btn-secondary btn-sm toggle-reflist-config">Configurar Colunas</button>
             </div>
             <div class="reflist-config-panel" style="display: none;">
                 <table class="reflist-config-table">
                     <thead>
                         <tr>
                             <th>Campo</th>
-                            <th>Exibir na Lista</th>
-                            <th>Oculto no Modal</th>
-                            <th>Travado no Modal</th>
-                            <th>Obrigatório no Modal</th>
+                            <th>Exibir</th>
+                            <th>Oculto</th>
+                            <th>Travado</th>
+                            <th>Obrig.</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -178,6 +182,7 @@ async function createFieldCard(col, configData) {
         <div class="field-card-controls">
             <label><input type="checkbox" class="is-hidden-checkbox" ${isHidden ? 'checked' : ''}> Oculto</label>
             <label><input type="checkbox" class="is-locked-checkbox" ${isLocked ? 'checked' : ''}> Travado</label>
+            <label><input type="checkbox" class="is-required-checkbox" ${isRequired ? 'checked' : ''}> Obrigatório</label>
         </div>
         ${refListConfigHtml}
     `;
