@@ -13,6 +13,9 @@ let currentTableId, currentRecordId;
 let currentSchema = {};
 let currentDrawerOptions = {};
 let isEditing = false;
+let currentRecord = null;
+
+// --- FUNÇÕES AUXILIARES DECLARADAS NO TOPO ---
 
 function _initializeDrawerDOM() {
     if (document.getElementById('grist-drawer-panel')) return;
@@ -20,6 +23,71 @@ function _initializeDrawerDOM() {
     const style = document.createElement('style'); style.textContent = ` .drawer-body { display: flex; flex-direction: column; overflow: hidden; height: 100%; } .drawer-tabs{display:flex;border-bottom:1px solid #e0e0e0;flex-shrink:0;} .drawer-tab{padding:10px 15px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;} .drawer-tab.is-active{font-weight:bold;color:#007bff;border-bottom-color:#007bff;} .drawer-tab-panels{flex-grow:1;overflow-y:auto;} .drawer-tab-content{display:none;padding:20px;}.drawer-tab-content.is-active{display:block;} .drawer-header-buttons button { margin-left: 10px; } .is-locked-style { background-color: #f1f3f5; cursor: not-allowed; opacity: 0.8; padding: 6px 8px; border-radius: 4px; border: 1px solid #ced4da; min-height: 20px; } .drawer-field-label { display: flex; align-items: center; } .grf-tooltip-trigger { position: relative; display: inline-block; margin-left: 8px; width: 16px; height: 16px; border-radius: 50%; background-color: #adb5bd; color: white; font-size: 11px; font-weight: bold; text-align: center; line-height: 16px; cursor: help; } .grf-tooltip-trigger:before, .grf-tooltip-trigger:after { position: absolute; left: 50%; transform: translateX(-50%); opacity: 0; visibility: hidden; transition: opacity 0.2s ease, visibility 0.2s ease; z-index: 10; } .grf-tooltip-trigger:after { content: attr(data-tooltip); bottom: 150%; background-color: rgba(0, 0, 0, 0.8); color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; font-weight: normal; line-height: 1.4; white-space: pre-wrap; width: 250px; } .grf-tooltip-trigger:before { content: ''; bottom: 150%; margin-bottom: -5px; border-style: solid; border-width: 5px 5px 0 5px; border-color: rgba(0, 0, 0, 0.8) transparent transparent transparent; } .grf-tooltip-trigger:hover:before, .grf-tooltip-trigger:hover:after { opacity: 1; visibility: visible; } .required-indicator { color: #dc3545; font-weight: bold; margin-left: 4px; } `; document.head.appendChild(style);
     drawerOverlay = document.createElement('div'); drawerOverlay.id = 'grist-drawer-overlay'; drawerPanel = document.createElement('div'); drawerPanel.id = 'grist-drawer-panel'; drawerPanel.innerHTML = `<div class="drawer-header"><h2 id="drawer-title"></h2><div class="drawer-header-buttons"><button id="drawer-add-btn">+ Adicionar Novo</button><button id="drawer-delete-btn">🗑️ Deletar</button><button id="drawer-edit-btn">✏️ Editar</button><button id="drawer-save-btn" style="display:none;">✔️ Salvar</button><button id="drawer-cancel-btn" style="display:none;">❌ Cancelar</button><button class="drawer-close-btn">×</button></div></div><div class="drawer-body"><div class="drawer-tabs"></div><div class="drawer-tab-panels"></div></div>`; document.body.appendChild(drawerOverlay); document.body.appendChild(drawerPanel); drawerHeader = drawerPanel.querySelector('.drawer-header'); drawerTitle = drawerPanel.querySelector('#drawer-title');
     drawerPanel.querySelector('.drawer-close-btn').addEventListener('click', closeDrawer); drawerPanel.querySelector('#drawer-edit-btn').addEventListener('click', _handleEdit); drawerPanel.querySelector('#drawer-save-btn').addEventListener('click', _handleSave); drawerPanel.querySelector('#drawer-cancel-btn').addEventListener('click', _handleCancel); drawerPanel.querySelector('#drawer-add-btn').addEventListener('click', _handleAdd); drawerPanel.querySelector('#drawer-delete-btn').addEventListener('click', _handleDelete); drawerOverlay.addEventListener('click', closeDrawer);
+}
+
+function _switchToTab(tabElement, panelElement) {
+    drawerPanel.querySelectorAll('.drawer-tab.is-active').forEach(t => t.classList.remove('is-active'));
+    drawerPanel.querySelectorAll('.drawer-tab-content.is-active').forEach(p => p.classList.remove('is-active'));
+    tabElement.classList.add('is-active');
+    panelElement.classList.add('is-active');
+}
+
+// --- LÓGICA DE WORKFLOW E VALIDAÇÃO (CORRIGIDA) ---
+
+function _getCombinedRules(record) {
+    const { hiddenFields = [], lockedFields = [], requiredFields = [], workflow = {} } = currentDrawerOptions;
+    
+    // CORREÇÃO: A lógica agora usa as regras de estágio como a base, e as regras globais como fallback.
+    let finalHidden = hiddenFields;
+    let finalLocked = lockedFields;
+    let finalRequired = requiredFields;
+
+    if (workflow.enabled && workflow.stageField && record) {
+        const stageValue = record[workflow.stageField];
+        if (stageValue && workflow.stages && workflow.stages[stageValue]) {
+            const stageRules = workflow.stages[stageValue];
+            // hasOwnProperty verifica se a regra foi definida para o estágio (mesmo que seja um array vazio).
+            if (stageRules.hasOwnProperty('hiddenFields'))   finalHidden   = stageRules.hiddenFields;
+            if (stageRules.hasOwnProperty('lockedFields'))   finalLocked   = stageRules.lockedFields;
+            if (stageRules.hasOwnProperty('requiredFields')) finalRequired = stageRules.requiredFields;
+        }
+    }
+    
+    return {
+        hidden: [...new Set(finalHidden)],
+        locked: [...new Set(finalLocked)],
+        required: [...new Set(finalRequired)]
+    };
+}
+
+function _handleStageChange(event) {
+    const stageFieldId = currentDrawerOptions.workflow.stageField;
+    currentRecord[stageFieldId] = event.target.value;
+    const newRules = _getCombinedRules(currentRecord);
+
+    drawerPanel.querySelectorAll('.drawer-field-row').forEach(row => {
+        const colId = row.dataset.colId;
+        if (!colId || colId === stageFieldId) return;
+        const shouldBeHidden = newRules.hidden.includes(colId);
+        row.style.display = shouldBeHidden ? 'none' : '';
+        const input = row.querySelector(`[data-col-id="${colId}"]`);
+        if (input) {
+            const shouldBeLocked = newRules.locked.includes(colId);
+            input.disabled = shouldBeLocked;
+            input.closest('.drawer-field-value').classList.toggle('is-locked-style', shouldBeLocked);
+        }
+        const label = row.querySelector('.drawer-field-label');
+        if (label) {
+            let indicator = label.querySelector('.required-indicator');
+            const shouldBeRequired = newRules.required.includes(colId);
+            if (shouldBeRequired && !indicator) {
+                indicator = document.createElement('span'); indicator.className = 'required-indicator'; indicator.textContent = '*'; label.appendChild(indicator);
+            } else if (!shouldBeRequired && indicator) {
+                indicator.remove();
+            }
+        }
+    });
+    _validateForm();
 }
 
 function _isFieldEmpty(element, colSchema) {
@@ -36,14 +104,12 @@ function _isFieldEmpty(element, colSchema) {
 
 function _validateForm() {
     if (!isEditing) return;
-    const { requiredFields = [] } = currentDrawerOptions;
+    const rules = _getCombinedRules(currentRecord);
     const saveButton = drawerPanel.querySelector('#drawer-save-btn');
-    if (requiredFields.length === 0) {
-        saveButton.disabled = false;
-        return;
-    }
     let isFormValid = true;
-    for (const colId of requiredFields) {
+
+    for (const colId of rules.required) {
+        if (rules.hidden.includes(colId)) continue;
         const fieldElement = drawerPanel.querySelector(`[data-col-id="${colId}"]`);
         const colSchema = currentSchema[colId];
         if (colSchema && _isFieldEmpty(fieldElement, colSchema)) {
@@ -62,21 +128,20 @@ function _addFormListeners() {
         el.addEventListener('keyup', _validateForm);
         el.addEventListener('input', _validateForm);
     });
+    const { workflow = {} } = currentDrawerOptions;
+    if (isEditing && workflow.enabled && workflow.stageField) {
+        const stageFieldElement = drawerPanel.querySelector(`[data-col-id="${workflow.stageField}"]`);
+        if (stageFieldElement) {
+            stageFieldElement.addEventListener('change', _handleStageChange);
+        }
+    }
 }
 
-function _switchToTab(tabElement, panelElement) {
-    drawerPanel.querySelectorAll('.drawer-tab.is-active').forEach(t => t.classList.remove('is-active'));
-    drawerPanel.querySelectorAll('.drawer-tab-content.is-active').forEach(p => p.classList.remove('is-active'));
-    tabElement.classList.add('is-active');
-    panelElement.classList.add('is-active');
-}
+// --- FUNÇÕES DE CONTROLE PRINCIPAL ---
 
 function _handleEdit() {
     isEditing = true;
-    _renderDrawerContent().then(() => {
-        _addFormListeners();
-        _validateForm();
-    });
+    _renderDrawerContent();
     _updateButtonVisibility();
 }
 
@@ -86,77 +151,35 @@ function _handleCancel() {
     _updateButtonVisibility();
 }
 
-async function _handleAdd() {
-    const schema = await tableLens.getTableSchema(currentTableId, { mode: 'clean' });
-    openModal({
-        title: `Adicionar em ${currentTableId}`, tableId: currentTableId, record: {}, schema,
-        onSave: async (newRecord) => {
-            await dataWriter.addRecord(currentTableId, newRecord);
-            publish('data-changed', { tableId: currentTableId, action: 'add' });
-            await _renderDrawerContent();
-        },
-    });
-}
+async function _handleAdd() { /* Lógica inalterada */ }
+async function _handleDelete() { /* Lógica inalterada */ }
+function _updateButtonVisibility() { /* Lógica inalterada */ }
+async function _handleSave() { /* Lógica inalterada */ }
 
-async function _handleDelete() {
-    if (confirm(`Tem certeza que deseja deletar o registro ${currentRecordId}?`)) {
-        await dataWriter.deleteRecords(currentTableId, [currentRecordId]);
-        publish('data-changed', { tableId: currentTableId, recordId: currentRecordId, action: 'delete' });
-        closeDrawer();
-    }
-}
-
-function _updateButtonVisibility() {
-    drawerPanel.querySelector('#drawer-edit-btn').style.display = isEditing ? 'none' : 'inline-block';
-    drawerPanel.querySelector('#drawer-delete-btn').style.display = isEditing ? 'none' : 'inline-block';
-    const saveBtn = drawerPanel.querySelector('#drawer-save-btn');
-    saveBtn.style.display = isEditing ? 'inline-block' : 'none';
-    if (!isEditing) saveBtn.disabled = false;
-    drawerPanel.querySelector('#drawer-cancel-btn').style.display = isEditing ? 'inline-block' : 'none';
-}
-
-async function _handleSave() {
-    const changes = {};
-    const formElements = drawerPanel.querySelectorAll('[data-col-id]');
-    formElements.forEach(el => {
-        const colId = el.dataset.colId;
-        const colSchema = currentSchema[colId];
-        if (colSchema && !colSchema.isFormula) {
-            let value;
-            if (colSchema.type === 'Bool' && el.tagName === 'SELECT') { if (el.value === 'true') value = true; else if (el.value === 'false') value = false; else value = null; } 
-            else if (colSchema.type === 'ChoiceList' && el.tagName === 'SELECT' && el.multiple) { const selectedOptions = Array.from(el.selectedOptions).map(opt => opt.value); value = selectedOptions.length > 0 ? ['L', ...selectedOptions] : null; } 
-            else if (el.type === 'checkbox') { value = el.checked; } 
-            else if (colSchema.type.startsWith('Date')) { value = el.value; if (!value) { value = null; } else if (colSchema.type === 'Date') { const parts = value.split('-'); value = Date.UTC(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10)) / 1000; } else { value = new Date(value).getTime() / 1000; } } 
-            else { value = el.value; }
-            changes[colId] = value;
-        }
-    });
-    if (Object.keys(changes).length > 0) {
-        await dataWriter.updateRecord(currentTableId, currentRecordId, changes);
-    }
-    publish('data-changed', { tableId: currentTableId, recordId: currentRecordId, action: 'update' });
-    isEditing = false;
-    await _renderDrawerContent();
-    _updateButtonVisibility();
-}
+// --- FUNÇÕES DE RENDERIZAÇÃO ---
 
 async function _renderDrawerContent() {
     const tabsContainer = drawerPanel.querySelector('.drawer-tabs');
     const panelsContainer = drawerPanel.querySelector('.drawer-tab-panels');
     tabsContainer.innerHTML = ''; panelsContainer.innerHTML = '';
-    const { hiddenFields = [], lockedFields = [], requiredFields = [], tabs = null, refListFieldConfig = {} } = currentDrawerOptions;
+    
     const [cleanSchema, rawSchema] = await Promise.all([tableLens.getTableSchema(currentTableId), tableLens.getTableSchema(currentTableId, { mode: 'raw' })]);
     Object.keys(cleanSchema).forEach(colId => { if (rawSchema[colId] && rawSchema[colId].description) cleanSchema[colId].description = rawSchema[colId].description; });
     currentSchema = cleanSchema;
-    const record = await tableLens.fetchRecordById(currentTableId, currentRecordId);
-    if (!record) { closeDrawer(); return; }
+    
+    currentRecord = await tableLens.fetchRecordById(currentTableId, currentRecordId);
+    if (!currentRecord) { closeDrawer(); return; }
+
+    const { tabs = null, refListFieldConfig = {} } = currentDrawerOptions;
+    const rules = _getCombinedRules(currentRecord);
+    
     const ruleIdToColIdMap = new Map();
     Object.values(currentSchema).forEach(col => { if (col?.colId?.startsWith('gristHelper_')) ruleIdToColIdMap.set(col.id, col.id); });
 
     if (tabs && Array.isArray(tabs) && tabs.length > 0) {
-        renderConfiguredTabs(tabs, hiddenFields, lockedFields, requiredFields, record, ruleIdToColIdMap, refListFieldConfig);
+        renderConfiguredTabs(tabs, rules.hidden, rules.locked, rules.required, currentRecord, ruleIdToColIdMap, refListFieldConfig);
     } else {
-        renderDefaultTabs(hiddenFields, lockedFields, requiredFields, record, ruleIdToColIdMap, refListFieldConfig);
+        renderDefaultTabs(rules.hidden, rules.locked, rules.required, currentRecord, ruleIdToColIdMap, refListFieldConfig);
     }
     
     if (isEditing) {
@@ -194,12 +217,7 @@ function renderDefaultTabs(hiddenFields, lockedFields, requiredFields, record, r
     const fieldOrder = currentDrawerOptions.fieldOrder || [];
     if (fieldOrder.length > 0) {
         const orderMap = new Map(fieldOrder.map((id, index) => [id, index]));
-        mainCols.sort((a, b) => {
-            const indexA = orderMap.get(a.colId); const indexB = orderMap.get(b.colId);
-            if (indexA !== undefined && indexB !== undefined) return indexA - indexB;
-            if (indexA !== undefined) return -1; if (indexB !== undefined) return 1;
-            return (a.parentPos || 0) - (b.parentPos || 0);
-        });
+        mainCols.sort((a, b) => { const indexA = orderMap.get(a.colId); const indexB = orderMap.get(b.colId); if (indexA !== undefined && indexB !== undefined) return indexA - indexB; if (indexA !== undefined) return -1; if (indexB !== undefined) return 1; return (a.parentPos || 0) - (b.parentPos || 0); });
     } else { mainCols.sort((a,b) => (a.parentPos || 0) - (b.parentPos || 0)); }
     const tabs = { "Principal": mainCols };
     if (helperCols.length > 0) { tabs["Dados do Sistema"] = helperCols; }
@@ -215,7 +233,8 @@ function renderDefaultTabs(hiddenFields, lockedFields, requiredFields, record, r
 }
 
 function renderSingleField(panelEl, colSchema, record, lockedFields, requiredFields, ruleIdToColIdMap, refListFieldConfig = {}) {
-    const row = document.createElement('div'); row.className = 'drawer-field-row';
+    const row = document.createElement('div');
+    row.className = 'drawer-field-row'; row.dataset.colId = colSchema.colId;
     const label = document.createElement('label'); label.className = 'drawer-field-label';
     const labelText = colSchema.label || colSchema.colId;
     const isFieldRequired = requiredFields.includes(colSchema.colId);
@@ -229,12 +248,12 @@ function renderSingleField(panelEl, colSchema, record, lockedFields, requiredFie
     const valueContainer = document.createElement('div'); valueContainer.className = 'drawer-field-value';
     row.appendChild(label); row.appendChild(valueContainer); panelEl.appendChild(row);
     const isFieldLocked = lockedFields.includes(colSchema.colId);
-    const renderOptions = { container: valueContainer, labelElement: label, colSchema: colSchema, record, tableLens, ruleIdToColIdMap, isEditing: isEditing, isLocked: isFieldLocked };
+    const renderOptions = { container: valueContainer, labelElement: label, colSchema, record, tableLens, ruleIdToColIdMap, isEditing, isLocked: isFieldLocked };
     if (colSchema.type.startsWith('RefList:') && refListFieldConfig[colSchema.colId]) { renderOptions.fieldConfig = refListFieldConfig[colSchema.colId]; }
     renderField(renderOptions);
 }
 
-async function openDrawer(tableId, recordId, options = {}) {
+export async function openDrawer(tableId, recordId, options = {}) {
     _initializeDrawerDOM();
     currentTableId = tableId;
     currentRecordId = recordId;
@@ -260,7 +279,7 @@ async function openDrawer(tableId, recordId, options = {}) {
     }
 }
 
-function closeDrawer() {
+export function closeDrawer() {
     if (!drawerPanel) return;
     document.body.classList.remove('grist-drawer-is-open');
     drawerPanel.classList.remove('is-open');
@@ -270,4 +289,8 @@ function closeDrawer() {
     drawerOverlay.classList.remove('is-modal-overlay');
 }
 
-export { openDrawer, closeDrawer };
+// Lógica inalterada para completude
+_handleAdd = async function() { const schema = await tableLens.getTableSchema(currentTableId, { mode: 'clean' }); openModal({ title: `Adicionar em ${currentTableId}`, tableId: currentTableId, record: {}, schema, onSave: async (newRecord) => { await dataWriter.addRecord(currentTableId, newRecord); publish('data-changed', { tableId: currentTableId, action: 'add' }); await _renderDrawerContent(); }, }); };
+_handleDelete = async function() { if (confirm(`Tem certeza que deseja deletar o registro ${currentRecordId}?`)) { await dataWriter.deleteRecords(currentTableId, [currentRecordId]); publish('data-changed', { tableId: currentTableId, recordId: currentRecordId, action: 'delete' }); closeDrawer(); } };
+_updateButtonVisibility = function() { drawerPanel.querySelector('#drawer-edit-btn').style.display = isEditing ? 'none' : 'inline-block'; drawerPanel.querySelector('#drawer-delete-btn').style.display = isEditing ? 'none' : 'inline-block'; const saveBtn = drawerPanel.querySelector('#drawer-save-btn'); saveBtn.style.display = isEditing ? 'inline-block' : 'none'; if (!isEditing) saveBtn.disabled = false; drawerPanel.querySelector('#drawer-cancel-btn').style.display = isEditing ? 'inline-block' : 'none'; };
+_handleSave = async function() { const changes = {}; const formElements = drawerPanel.querySelectorAll('[data-col-id]'); formElements.forEach(el => { const colId = el.dataset.colId; const colSchema = currentSchema[colId]; if (colSchema && !colSchema.isFormula) { let value; if (colSchema.type === 'Bool' && el.tagName === 'SELECT') { if (el.value === 'true') value = true; else if (el.value === 'false') value = false; else value = null; } else if (colSchema.type === 'ChoiceList' && el.tagName === 'SELECT' && el.multiple) { const selectedOptions = Array.from(el.selectedOptions).map(opt => opt.value); value = selectedOptions.length > 0 ? ['L', ...selectedOptions] : null; } else if (el.type === 'checkbox') { value = el.checked; } else if (colSchema.type.startsWith('Date')) { value = el.value; if (!value) { value = null; } else if (colSchema.type === 'Date') { const parts = value.split('-'); value = Date.UTC(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10)) / 1000; } else { value = new Date(value).getTime() / 1000; } } else { value = el.value; } changes[colId] = value; } }); if (Object.keys(changes).length > 0) { await dataWriter.updateRecord(currentTableId, currentRecordId, changes); } publish('data-changed', { tableId: currentTableId, recordId: currentRecordId, action: 'update' }); isEditing = false; await _renderDrawerContent(); _updateButtonVisibility(); };

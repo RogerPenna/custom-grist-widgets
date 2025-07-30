@@ -297,6 +297,96 @@ textarea {
     height: 16px;
     cursor: pointer;
 }
+.workflow-section {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+.config-toggle {
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+#workflowControls {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #e9ecef;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+#workflowControls label {
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+#workflowControls select {
+    flex-grow: 1;
+}
+
+#stageSelectorContainer {
+    background-color: #e9ecef;
+    padding: 10px 15px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+#stageSelectorContainer label {
+    font-weight: 600;
+}
+
+#stageSelector {
+    font-weight: bold;
+}
+.copy-stage-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.copy-stage-content {
+  background: white;
+  padding: 20px;
+  border-radius: 5px;
+  min-width: 350px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+.copy-stage-content h3 {
+  margin-top: 0;
+}
+
+.copy-stage-list {
+  margin: 15px 0;
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid #ccc;
+  padding: 10px;
+}
+.copy-stage-list div {
+  margin-bottom: 5px;
+}
+
+.copy-stage-actions {
+  text-align: right;
+  margin-top: 15px;
+}
 /*
 #genericJsonEditor.hidden {
     display: none;
