@@ -29,7 +29,6 @@ function _applyStageUI(stageName) {
         card.querySelector('.is-locked-checkbox').checked = stageData.lockedFields.includes(colId);
         card.querySelector('.is-required-checkbox').checked = stageData.requiredFields.includes(colId);
     });
-    // Habilita/desabilita o botão de cópia
     const copyBtn = document.getElementById('copyStageConfigBtn');
     if (copyBtn) {
         copyBtn.disabled = (stageName === '_global');
@@ -47,7 +46,8 @@ function updateJsonFromUI() {
         displayMode: container.querySelector('#displayModeSelector').value,
         width: container.querySelector('#drawerWidthSelector').value,
         tabs: [],
-        refListFieldConfig: {} 
+        refListFieldConfig: {},
+        styleOverrides: {}
     };
     
     let currentTab = null;
@@ -57,7 +57,20 @@ function updateJsonFromUI() {
             currentTab = { title: item.querySelector('.tab-card-input').value, fields: [] };
         } else if (item.classList.contains('field-card')) {
             if (!currentTab) currentTab = { title: 'Principal', fields: [] };
-            currentTab.fields.push(item.dataset.colId);
+            const colId = item.dataset.colId;
+            currentTab.fields.push(colId);
+
+            const styleConfigPanel = item.querySelector('.style-config-panel');
+            if (styleConfigPanel) {
+                const overrides = {
+                    ignoreConditional: styleConfigPanel.querySelector('[data-style-key="ignoreConditional"]')?.checked || false,
+                    ignoreHeader: styleConfigPanel.querySelector('[data-style-key="ignoreHeader"]')?.checked || false,
+                    ignoreCell: styleConfigPanel.querySelector('[data-style-key="ignoreCell"]')?.checked || false,
+                };
+                if (overrides.ignoreConditional || overrides.ignoreHeader || overrides.ignoreCell) {
+                    drawerConfig.styleOverrides[colId] = overrides;
+                }
+            }
         }
     });
     if (currentTab) drawerConfig.tabs.push(currentTab);
@@ -96,7 +109,7 @@ export async function render(container, configData, tableSchema) {
         },
         ...(configData.workflow?.stages || {})
     };
-    currentEditingStage = '_global'; // Reseta para o padrão ao renderizar
+    currentEditingStage = '_global';
 
     let html = `
         <div class="drawer-config-section">
@@ -107,9 +120,7 @@ export async function render(container, configData, tableSchema) {
             <label for="drawerWidthSelector">Largura:</label>
             <select id="drawerWidthSelector">${['25%', '40%', '50%', '60%', '75%'].map(w => `<option value="${w}" ${configData.width === w ? 'selected' : ''}>${w}</option>`).join('')}</select>
         </div>
-        
         <div id="workflowConfigContainer"></div>
-        
         <div class="config-section-title">Layout e Regras de Campos</div>
         <div id="stageSelectorContainer" class="drawer-config-section" style="display: none;">
              <label for="stageSelector">Editando Regras Para:</label>
@@ -129,7 +140,6 @@ export async function render(container, configData, tableSchema) {
     const unifiedListEl = container.querySelector('#unifiedFieldList');
     const tabs = configData.tabs || [{ title: 'Principal', fields: allCols.map(c => c.colId) }];
 
-    // A renderização de cards agora é síncrona, pois não precisa saber o estado dos checkboxes.
     const usedFields = new Set();
     for (const tab of tabs) {
         unifiedListEl.appendChild(createTabCard(tab.title));
@@ -150,139 +160,109 @@ export async function render(container, configData, tableSchema) {
     }
     
     _applyStageUI(currentEditingStage);
-    
     addEventListeners(container);
     enableDragAndDrop(unifiedListEl);
     updateJsonFromUI();
 }
 
-function _handleCopyStageConfig() {
-    const sourceStage = currentEditingStage;
-    if (!sourceStage || sourceStage === '_global') {
-        alert("Selecione um estágio válido para copiar as regras.");
-        return;
-    }
-    _persistCurrentStageUI(sourceStage); // Garante que estamos copiando o estado atual da UI
-    const sourceConfig = stageConfigs[sourceStage];
-    if (!sourceConfig) {
-        alert("Não foi possível encontrar a configuração para o estágio de origem.");
-        return;
-    }
+export function read(container) {
+    updateJsonFromUI();
+    return JSON.parse(configJsonTextareaEl.value || '{}');
+}
 
-    const stageSelector = document.getElementById('stageSelector');
-    const otherStages = Array.from(stageSelector.options)
-        .map(opt => opt.value)
-        .filter(val => val !== '_global' && val !== sourceStage);
+function _handleCopyStageConfig() { /* ...código inalterado... */ }
+function _renderWorkflowUI(workflowConfig, tableSchema) { /* ...código inalterado... */ }
+function addEventListeners(container) { /* ...código inalterado... */ }
+function createTabCard(title) { /* ...código inalterado... */ }
+function enableDragAndDrop(listElement) { /* ...código inalterado... */ }
+function getDragAfterElement(container, y) { /* ...código inalterado... */ }
 
-    if (otherStages.length === 0) {
-        alert("Não há outros estágios para os quais copiar as regras.");
-        return;
-    }
-
-    const modal = document.createElement('div');
-    modal.className = 'copy-stage-modal';
-    modal.innerHTML = `
-        <div class="copy-stage-content">
-            <h3>Copiar regras de "${sourceStage}" para:</h3>
-            <div class="copy-stage-list">
-                <label><input type="checkbox" id="rep-all" /> Marcar todos</label>
-                <div id="rep-list"></div>
-            </div>
-            <div class="copy-stage-actions">
-                <button id="rep-ok" class="btn btn-primary">OK</button>
-                <button id="rep-cancel" class="btn btn-secondary">Cancelar</button>
+function createFieldCard(col, configData) {
+    const card = document.createElement('li');
+    card.className = 'field-card';
+    card.dataset.colId = col.colId;
+    card.draggable = true;
+    
+    const styleOverrides = configData.styleOverrides?.[col.colId] || {};
+    const styleConfigHtml = `
+        <div class="field-card-extra-actions">
+            <button type="button" class="btn btn-secondary btn-sm toggle-style-config">Configurar Estilos</button>
+        </div>
+        <div class="style-config-panel" style="display: none;">
+            <h5>Opções de Estilo para "${col.label}"</h5>
+            <div class="style-config-list">
+                <label><input type="checkbox" data-style-key="ignoreConditional" ${styleOverrides.ignoreConditional ? 'checked' : ''}> Ignorar Formatação Condicional</label>
+                <label><input type="checkbox" data-style-key="ignoreHeader" ${styleOverrides.ignoreHeader ? 'checked' : ''}> Ignorar Estilo do Cabeçalho</label>
+                <label><input type="checkbox" data-style-key="ignoreCell" ${styleOverrides.ignoreCell ? 'checked' : ''}> Ignorar Estilo da Célula</label>
             </div>
         </div>
     `;
-    document.body.appendChild(modal);
 
-    const list = modal.querySelector('#rep-list');
-    otherStages.forEach(stage => {
-        list.innerHTML += `<div><label><input type="checkbox" class="rep-cb" value="${stage}"> ${stage}</label></div>`;
-    });
-
-    modal.querySelector('#rep-all').onchange = e => { list.querySelectorAll('.rep-cb').forEach(cb => cb.checked = e.target.checked); };
-    modal.querySelector('#rep-cancel').onclick = () => document.body.removeChild(modal);
-    modal.querySelector('#rep-ok').onclick = () => {
-        const targets = Array.from(list.querySelectorAll('.rep-cb:checked')).map(cb => cb.value);
-        if (targets.length > 0) {
-            targets.forEach(targetStage => {
-                stageConfigs[targetStage] = JSON.parse(JSON.stringify(sourceConfig)); // Cópia profunda
-            });
-            alert(`Regras copiadas para: ${targets.join(', ')}.\nAs mudanças serão aplicadas ao salvar.`);
-            updateJsonFromUI();
-        }
-        document.body.removeChild(modal);
-    };
-}
-
-
-function _renderWorkflowUI(workflowConfig, tableSchema) {
-    const container = document.getElementById('workflowConfigContainer');
-    const choiceColumns = Object.values(tableSchema).filter(col => col.type === 'Choice');
-    container.innerHTML = `<div class="workflow-section"><label class="config-toggle"><input type="checkbox" id="workflowEnabledCheckbox" ${workflowConfig?.enabled ? 'checked' : ''}> Habilitar Workflow Condicional</label><div id="workflowControls" style="display: ${workflowConfig?.enabled ? 'flex' : 'none'};"><label for="stageFieldSelector">Campo de Estágio:</label><select id="stageFieldSelector"><option value="">Selecione...</option>${choiceColumns.map(col => `<option value="${col.colId}" ${workflowConfig?.stageField === col.colId ? 'selected' : ''}>${col.label}</option>`).join('')}</select></div></div>`;
-
-    const enabledCheckbox = container.querySelector('#workflowEnabledCheckbox');
-    const controlsContainer = container.querySelector('#workflowControls');
-    const stageFieldSelector = container.querySelector('#stageFieldSelector');
-    const stageSelectorContainer = document.getElementById('stageSelectorContainer');
-    const stageSelector = document.getElementById('stageSelector');
-    document.getElementById('copyStageConfigBtn').addEventListener('click', _handleCopyStageConfig);
-
-    function updateStageDropdown() {
-        const stageFieldId = stageFieldSelector.value;
-        const workflowEnabled = enabledCheckbox.checked;
-
-        if (workflowEnabled && stageFieldId) {
-            stageSelectorContainer.style.display = 'flex';
-            const stageColumn = tableSchema[stageFieldId];
-            const choices = stageColumn?.widgetOptions?.choices || [];
-            stageSelector.innerHTML = `<option value="_global">Padrão (Global)</option>`;
-            choices.forEach(choice => {
-                stageSelector.innerHTML += `<option value="${choice}">${choice}</option>`;
-            });
-            stageSelector.value = '_global';
-            _applyStageUI('_global');
-        } else {
-            stageSelectorContainer.style.display = 'none';
-            _applyStageUI('_global');
-        }
+    let refListConfigHtml = '';
+    if (col.type.startsWith('RefList:')) {
+        const fieldConfig = configData.refListFieldConfig?.[col.colId] || {};
+        const isZebra = fieldConfig?._options?.zebra === true;
+        refListConfigHtml = `
+            <div class="field-card-extra-actions">
+                <label class="reflist-option-label"><input type="checkbox" class="reflist-zebra-checkbox" ${isZebra ? 'checked' : ''}> Tabela Zebrada</label>
+                <button type="button" class="btn btn-secondary btn-sm toggle-reflist-config">Configurar Colunas</button>
+            </div>
+            <div class="reflist-config-panel" style="display: none;"><p>Carregando...</p></div>`;
     }
 
-    enabledCheckbox.addEventListener('change', () => {
-        controlsContainer.style.display = enabledCheckbox.checked ? 'flex' : 'none';
-        updateStageDropdown();
-        updateJsonFromUI();
-    });
-    stageFieldSelector.addEventListener('change', () => {
-        updateStageDropdown();
-        updateJsonFromUI();
-    });
-    stageSelector.addEventListener('change', () => {
-        _persistCurrentStageUI(currentEditingStage);
-        _applyStageUI(stageSelector.value);
-    });
+    card.innerHTML = `
+        <span class="field-card-label">${col.label} <span class="field-card-type">(${col.type})</span></span>
+        <div class="field-card-controls">
+            <label><input type="checkbox" class="is-hidden-checkbox"> Oculto</label>
+            <label><input type="checkbox" class="is-locked-checkbox"> Travado</label>
+            <label><input type="checkbox" class="is-required-checkbox"> Obrigatório</label>
+        </div>
+        ${styleConfigHtml}
+        ${refListConfigHtml}
+    `;
 
-    if (workflowConfig?.enabled) {
-        updateStageDropdown();
-        // Se já houver estágios, seleciona o primeiro para uma melhor UX
-        if (stageSelector.options.length > 1) {
-            stageSelector.value = workflowConfig.stageField ? '_global' : stageSelector.options[1].value;
-            _applyStageUI(stageSelector.value);
-        }
+    const toggleStyleBtn = card.querySelector('.toggle-style-config');
+    if (toggleStyleBtn) {
+        toggleStyleBtn.addEventListener('click', (event) => {
+            event.preventDefault();
+            const panel = card.querySelector('.style-config-panel');
+            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        });
     }
+
+    const toggleRefListBtn = card.querySelector('.toggle-reflist-config');
+    if (toggleRefListBtn) {
+        toggleRefListBtn.addEventListener('click', async (event) => {
+            event.preventDefault();
+            const panel = card.querySelector('.reflist-config-panel');
+            if (panel.style.display === 'none') {
+                const referencedTableId = col.type.split(':')[1];
+                const referencedSchema = await tableLens.getTableSchema(referencedTableId);
+                const fieldConfig = configData.refListFieldConfig?.[col.colId] || {};
+                let tableRowsHtml = `<tr><td colspan="5">Schema não encontrado.</td></tr>`;
+                if (referencedSchema) {
+                    tableRowsHtml = Object.values(referencedSchema)
+                        .filter(c => !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos')
+                        .map(refCol => {
+                            const colConfig = fieldConfig[refCol.colId] || { showInTable: true };
+                            return `<tr data-ref-col-id="${refCol.colId}"><td>${refCol.label}</td><td><input type="checkbox" data-config-key="showInTable" ${colConfig.showInTable ? 'checked' : ''}></td><td><input type="checkbox" data-config-key="hideInModal" ${colConfig.hideInModal ? 'checked' : ''}></td><td><input type="checkbox" data-config-key="lockInModal" ${colConfig.lockInModal ? 'checked' : ''}></td><td><input type="checkbox" data-config-key="requireInModal" ${colConfig.requireInModal ? 'checked' : ''}></td></tr>`;
+                        }).join('');
+                }
+                panel.innerHTML = `<table class="reflist-config-table"><thead><tr><th>Campo</th><th>Exibir</th><th>Oculto</th><th>Travado</th><th>Obrig.</th></tr></thead><tbody>${tableRowsHtml}</tbody></table>`;
+                panel.style.display = 'block';
+            } else {
+                panel.style.display = 'none';
+            }
+        });
+    }
+    return card;
 }
 
-function createFieldCard(col, configData) { /* Restante do código inalterado */ }
-export function read(container) { /* Inalterado */ }
-function addEventListeners(container) { /* Inalterado */ }
-function createTabCard(title) { /* Inalterado */ }
-function enableDragAndDrop(listElement) { /* Inalterado */ }
-function getDragAfterElement(container, y) { /* Inalterado */ }
-
-// Bloco de funções inalteradas para garantir a completude
-createFieldCard = function(col, configData) { const card = document.createElement('li'); card.className = 'field-card'; card.dataset.colId = col.colId; card.draggable = true; let refListConfigHtml = ''; if (col.type.startsWith('RefList:')) { const referencedTableId = col.type.split(':')[1]; const fieldConfig = configData.refListFieldConfig?.[col.colId] || {}; const isZebra = fieldConfig?._options?.zebra === true; refListConfigHtml = `<div class="field-card-extra-actions"><label class="reflist-option-label"><input type="checkbox" class="reflist-zebra-checkbox" ${isZebra ? 'checked' : ''}> Tabela Zebrada</label><button type="button" class="btn btn-secondary btn-sm toggle-reflist-config">Configurar Colunas</button></div><div class="reflist-config-panel" style="display: none;"><!-- Conteúdo preenchido dinamicamente --><p>Carregando...</p></div>`; } card.innerHTML = ` <span class="field-card-label">${col.label} <span class="field-card-type">(${col.type})</span></span> <div class="field-card-controls"> <label><input type="checkbox" class="is-hidden-checkbox"> Oculto</label> <label><input type="checkbox" class="is-locked-checkbox"> Travado</label> <label><input type="checkbox" class="is-required-checkbox"> Obrigatório</label> </div> ${refListConfigHtml} `; const toggleBtn = card.querySelector('.toggle-reflist-config'); if (toggleBtn) { toggleBtn.addEventListener('click', async (event) => { event.preventDefault(); const panel = card.querySelector('.reflist-config-panel'); if (panel.style.display === 'none') { const referencedTableId = col.type.split(':')[1]; const referencedSchema = await tableLens.getTableSchema(referencedTableId); const fieldConfig = configData.refListFieldConfig?.[col.colId] || {}; let tableRowsHtml = `<tr><td colspan="5">Schema não encontrado.</td></tr>`; if (referencedSchema) { tableRowsHtml = Object.values(referencedSchema).filter(c => !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos').map(refCol => { const colConfig = fieldConfig[refCol.colId] || { showInTable: true }; return `<tr data-ref-col-id="${refCol.colId}"><td>${refCol.label}</td><td><input type="checkbox" data-config-key="showInTable" ${colConfig.showInTable ? 'checked' : ''}></td><td><input type="checkbox" data-config-key="hideInModal" ${colConfig.hideInModal ? 'checked' : ''}></td><td><input type="checkbox" data-config-key="lockInModal" ${colConfig.lockInModal ? 'checked' : ''}></td><td><input type="checkbox" data-config-key="requireInModal" ${colConfig.requireInModal ? 'checked' : ''}></td></tr>`; }).join(''); } panel.innerHTML = `<table class="reflist-config-table"><thead><tr><th>Campo</th><th>Exibir</th><th>Oculto</th><th>Travado</th><th>Obrig.</th></tr></thead><tbody>${tableRowsHtml}</tbody></table>`; panel.style.display = 'block'; } else { panel.style.display = 'none'; } }); } return card; };
-read = function(container) { updateJsonFromUI(); return JSON.parse(configJsonTextareaEl.value || '{}'); };
+// ==========================================================
+// FUNÇÕES DE APOIO QUE ESTAVAM DUPLICADAS (AGORA ÚNICAS)
+// ==========================================================
+_handleCopyStageConfig = function() { const sourceStage = currentEditingStage; if (!sourceStage || sourceStage === '_global') { alert("Selecione um estágio válido para copiar as regras."); return; } _persistCurrentStageUI(sourceStage); const sourceConfig = stageConfigs[sourceStage]; if (!sourceConfig) { alert("Não foi possível encontrar a configuração para o estágio de origem."); return; } const stageSelector = document.getElementById('stageSelector'); const otherStages = Array.from(stageSelector.options).map(opt => opt.value).filter(val => val !== '_global' && val !== sourceStage); if (otherStages.length === 0) { alert("Não há outros estágios para os quais copiar as regras."); return; } const modal = document.createElement('div'); modal.className = 'copy-stage-modal'; modal.innerHTML = ` <div class="copy-stage-content"> <h3>Copiar regras de "${sourceStage}" para:</h3> <div class="copy-stage-list"> <label><input type="checkbox" id="rep-all" /> Marcar todos</label> <div id="rep-list"></div> </div> <div class="copy-stage-actions"> <button id="rep-ok" class="btn btn-primary">OK</button> <button id="rep-cancel" class="btn btn-secondary">Cancelar</button> </div> </div> `; document.body.appendChild(modal); const list = modal.querySelector('#rep-list'); otherStages.forEach(stage => { list.innerHTML += `<div><label><input type="checkbox" class="rep-cb" value="${stage}"> ${stage}</label></div>`; }); modal.querySelector('#rep-all').onchange = e => { list.querySelectorAll('.rep-cb').forEach(cb => cb.checked = e.target.checked); }; modal.querySelector('#rep-cancel').onclick = () => document.body.removeChild(modal); modal.querySelector('#rep-ok').onclick = () => { const targets = Array.from(list.querySelectorAll('.rep-cb:checked')).map(cb => cb.value); if (targets.length > 0) { targets.forEach(targetStage => { stageConfigs[targetStage] = JSON.parse(JSON.stringify(sourceConfig)); }); alert(`Regras copiadas para: ${targets.join(', ')}.\nAs mudanças serão aplicadas ao salvar.`); updateJsonFromUI(); } document.body.removeChild(modal); }; };
+_renderWorkflowUI = function(workflowConfig, tableSchema) { const container = document.getElementById('workflowConfigContainer'); const choiceColumns = Object.values(tableSchema).filter(col => col.type === 'Choice'); container.innerHTML = `<div class="workflow-section"><label class="config-toggle"><input type="checkbox" id="workflowEnabledCheckbox" ${workflowConfig?.enabled ? 'checked' : ''}> Habilitar Workflow Condicional</label><div id="workflowControls" style="display: ${workflowConfig?.enabled ? 'flex' : 'none'};"><label for="stageFieldSelector">Campo de Estágio:</label><select id="stageFieldSelector"><option value="">Selecione...</option>${choiceColumns.map(col => `<option value="${col.colId}" ${workflowConfig?.stageField === col.colId ? 'selected' : ''}>${col.label}</option>`).join('')}</select></div></div>`; const enabledCheckbox = container.querySelector('#workflowEnabledCheckbox'); const controlsContainer = container.querySelector('#workflowControls'); const stageFieldSelector = container.querySelector('#stageFieldSelector'); const stageSelectorContainer = document.getElementById('stageSelectorContainer'); const stageSelector = document.getElementById('stageSelector'); document.getElementById('copyStageConfigBtn').addEventListener('click', _handleCopyStageConfig); function updateStageDropdown() { const stageFieldId = stageFieldSelector.value; const workflowEnabled = enabledCheckbox.checked; if (workflowEnabled && stageFieldId) { stageSelectorContainer.style.display = 'flex'; const stageColumn = tableSchema[stageFieldId]; const choices = stageColumn?.widgetOptions?.choices || []; stageSelector.innerHTML = `<option value="_global">Padrão (Global)</option>`; choices.forEach(choice => { stageSelector.innerHTML += `<option value="${choice}">${choice}</option>`; }); stageSelector.value = '_global'; _applyStageUI('_global'); } else { stageSelectorContainer.style.display = 'none'; _applyStageUI('_global'); } } enabledCheckbox.addEventListener('change', () => { controlsContainer.style.display = enabledCheckbox.checked ? 'flex' : 'none'; updateStageDropdown(); updateJsonFromUI(); }); stageFieldSelector.addEventListener('change', () => { updateStageDropdown(); updateJsonFromUI(); }); stageSelector.addEventListener('change', () => { _persistCurrentStageUI(currentEditingStage); _applyStageUI(stageSelector.value); }); if (workflowConfig?.enabled) { updateStageDropdown(); if (stageSelector.options.length > 1) { stageSelector.value = workflowConfig.stageField ? '_global' : stageSelector.options[1].value; _applyStageUI(stageSelector.value); } } };
 addEventListeners = function(container) { container.addEventListener('change', updateJsonFromUI); const fieldOrderList = container.querySelector('#unifiedFieldList'); if (fieldOrderList) fieldOrderList.addEventListener('drop', () => setTimeout(updateJsonFromUI, 0)); };
 createTabCard = function(title) { const card = document.createElement('li'); card.className = 'tab-card'; card.draggable = true; card.innerHTML = ` <span class="tab-card-icon">📑</span> <input type="text" class="tab-card-input" value="${title}"> <button type="button" class="delete-tab-btn" title="Deletar Aba">🗑️</button> `; card.querySelector('.delete-tab-btn').addEventListener('click', (e) => { e.preventDefault(); const tabTitle = card.querySelector('.tab-card-input').value; if (confirm(`Tem certeza que deseja deletar a aba "${tabTitle}"?`)) { const fieldsToMove = []; let nextSibling = card.nextElementSibling; while (nextSibling && nextSibling.classList.contains('field-card')) { fieldsToMove.push(nextSibling); nextSibling = nextSibling.nextElementSibling; } let insertionPoint = null; let previousSibling = card.previousElementSibling; while (previousSibling) { if (previousSibling.classList.contains('tab-card')) { insertionPoint = previousSibling; break; } previousSibling = previousSibling.previousElementSibling; } for (let i = fieldsToMove.length - 1; i >= 0; i--) { const field = fieldsToMove[i]; if (insertionPoint) { insertionPoint.insertAdjacentElement('afterend', field); } else { card.parentElement.prepend(field); } } card.remove(); updateJsonFromUI(); } }); return card; };
 enableDragAndDrop = function(listElement) { if (!listElement) return; let draggedItem = null; listElement.addEventListener('dragstart', e => { draggedItem = e.target.closest('li'); setTimeout(() => draggedItem.classList.add('dragging'), 0); }); listElement.addEventListener('dragend', () => { if (draggedItem) draggedItem.classList.remove('dragging'); }); listElement.addEventListener('dragover', e => { e.preventDefault(); const afterElement = getDragAfterElement(listElement, e.clientY); if (afterElement == null) { listElement.appendChild(draggedItem); } else { listElement.insertBefore(draggedItem, afterElement); } }); };

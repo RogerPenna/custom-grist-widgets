@@ -15,16 +15,9 @@ let currentDrawerOptions = {};
 let isEditing = false;
 let currentRecord = null;
 
-// --- FUNÇÕES AUXILIARES DECLARADAS NO TOPO ---
-
-function _initializeDrawerDOM() {
-    if (document.getElementById('grist-drawer-panel')) return;
-    const link = document.createElement('link'); link.rel = 'stylesheet'; link.href = '../libraries/grist-drawer-component/drawer-style.css'; document.head.appendChild(link);
-    const style = document.createElement('style'); style.textContent = ` .drawer-body { display: flex; flex-direction: column; overflow: hidden; height: 100%; } .drawer-tabs{display:flex;border-bottom:1px solid #e0e0e0;flex-shrink:0;} .drawer-tab{padding:10px 15px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;} .drawer-tab.is-active{font-weight:bold;color:#007bff;border-bottom-color:#007bff;} .drawer-tab-panels{flex-grow:1;overflow-y:auto;} .drawer-tab-content{display:none;padding:20px;}.drawer-tab-content.is-active{display:block;} .drawer-header-buttons button { margin-left: 10px; } .is-locked-style { background-color: #f1f3f5; cursor: not-allowed; opacity: 0.8; padding: 6px 8px; border-radius: 4px; border: 1px solid #ced4da; min-height: 20px; } .drawer-field-label { display: flex; align-items: center; } .grf-tooltip-trigger { position: relative; display: inline-block; margin-left: 8px; width: 16px; height: 16px; border-radius: 50%; background-color: #adb5bd; color: white; font-size: 11px; font-weight: bold; text-align: center; line-height: 16px; cursor: help; } .grf-tooltip-trigger:before, .grf-tooltip-trigger:after { position: absolute; left: 50%; transform: translateX(-50%); opacity: 0; visibility: hidden; transition: opacity 0.2s ease, visibility 0.2s ease; z-index: 10; } .grf-tooltip-trigger:after { content: attr(data-tooltip); bottom: 150%; background-color: rgba(0, 0, 0, 0.8); color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; font-weight: normal; line-height: 1.4; white-space: pre-wrap; width: 250px; } .grf-tooltip-trigger:before { content: ''; bottom: 150%; margin-bottom: -5px; border-style: solid; border-width: 5px 5px 0 5px; border-color: rgba(0, 0, 0, 0.8) transparent transparent transparent; } .grf-tooltip-trigger:hover:before, .grf-tooltip-trigger:hover:after { opacity: 1; visibility: visible; } .required-indicator { color: #dc3545; font-weight: bold; margin-left: 4px; } `; document.head.appendChild(style);
-    drawerOverlay = document.createElement('div'); drawerOverlay.id = 'grist-drawer-overlay'; drawerPanel = document.createElement('div'); drawerPanel.id = 'grist-drawer-panel'; drawerPanel.innerHTML = `<div class="drawer-header"><h2 id="drawer-title"></h2><div class="drawer-header-buttons"><button id="drawer-add-btn">+ Adicionar Novo</button><button id="drawer-delete-btn">🗑️ Deletar</button><button id="drawer-edit-btn">✏️ Editar</button><button id="drawer-save-btn" style="display:none;">✔️ Salvar</button><button id="drawer-cancel-btn" style="display:none;">❌ Cancelar</button><button class="drawer-close-btn">×</button></div></div><div class="drawer-body"><div class="drawer-tabs"></div><div class="drawer-tab-panels"></div></div>`; document.body.appendChild(drawerOverlay); document.body.appendChild(drawerPanel); drawerHeader = drawerPanel.querySelector('.drawer-header'); drawerTitle = drawerPanel.querySelector('#drawer-title');
-    drawerPanel.querySelector('.drawer-close-btn').addEventListener('click', closeDrawer); drawerPanel.querySelector('#drawer-edit-btn').addEventListener('click', _handleEdit); drawerPanel.querySelector('#drawer-save-btn').addEventListener('click', _handleSave); drawerPanel.querySelector('#drawer-cancel-btn').addEventListener('click', _handleCancel); drawerPanel.querySelector('#drawer-add-btn').addEventListener('click', _handleAdd); drawerPanel.querySelector('#drawer-delete-btn').addEventListener('click', _handleDelete); drawerOverlay.addEventListener('click', closeDrawer);
-}
-
+// =================================================================================
+// --- INÍCIO DA SEÇÃO DE FUNÇÕES AUXILIARES (DEFINIDAS NO TOPO) ---
+// =================================================================================
 function _switchToTab(tabElement, panelElement) {
     drawerPanel.querySelectorAll('.drawer-tab.is-active').forEach(t => t.classList.remove('is-active'));
     drawerPanel.querySelectorAll('.drawer-tab-content.is-active').forEach(p => p.classList.remove('is-active'));
@@ -32,39 +25,104 @@ function _switchToTab(tabElement, panelElement) {
     panelElement.classList.add('is-active');
 }
 
-// --- LÓGICA DE WORKFLOW E VALIDAÇÃO (CORRIGIDA) ---
+function _updateButtonVisibility() {
+    drawerPanel.querySelector('#drawer-edit-btn').style.display = isEditing ? 'none' : 'inline-block';
+    drawerPanel.querySelector('#drawer-delete-btn').style.display = isEditing ? 'none' : 'inline-block';
+    const saveBtn = drawerPanel.querySelector('#drawer-save-btn');
+    saveBtn.style.display = isEditing ? 'inline-block' : 'none';
+    if (!isEditing) saveBtn.disabled = false;
+    drawerPanel.querySelector('#drawer-cancel-btn').style.display = isEditing ? 'inline-block' : 'none';
+}
+
+function _handleEdit() {
+    isEditing = true;
+    _renderDrawerContent();
+    _updateButtonVisibility();
+}
+
+function _handleCancel() {
+    isEditing = false;
+    _renderDrawerContent();
+    _updateButtonVisibility();
+}
+
+async function _handleAdd() {
+    const schema = await tableLens.getTableSchema(currentTableId, { mode: 'clean' });
+    openModal({
+        title: `Adicionar em ${currentTableId}`,
+        tableId: currentTableId,
+        record: {},
+        schema,
+        onSave: async (newRecord) => {
+            await dataWriter.addRecord(currentTableId, newRecord);
+            publish('data-changed', { tableId: currentTableId, action: 'add' });
+        },
+    });
+}
+
+async function _handleDelete() {
+    if (confirm(`Tem certeza que deseja deletar o registro ${currentRecordId}?`)) {
+        await dataWriter.deleteRecords(currentTableId, [currentRecordId]);
+        publish('data-changed', { tableId: currentTableId, recordId: currentRecordId, action: 'delete' });
+        closeDrawer();
+    }
+}
+
+async function _handleSave() {
+    const changes = {};
+    const formElements = drawerPanel.querySelectorAll('[data-col-id]');
+    formElements.forEach(el => {
+        const colId = el.dataset.colId;
+        const colSchema = currentSchema[colId];
+        if (colSchema && !colSchema.isFormula) {
+            let value;
+            if (colSchema.type === 'Bool' && el.tagName === 'SELECT') {
+                if (el.value === 'true') value = true; else if (el.value === 'false') value = false; else value = null;
+            } else if (colSchema.type === 'ChoiceList' && el.tagName === 'SELECT' && el.multiple) {
+                const selectedOptions = Array.from(el.selectedOptions).map(opt => opt.value);
+                value = selectedOptions.length > 0 ? ['L', ...selectedOptions] : null;
+            } else if (el.type === 'checkbox') {
+                value = el.checked;
+            } else if (colSchema.type.startsWith('Date')) {
+                value = el.value;
+                if (!value) { value = null; } else if (colSchema.type === 'Date') {
+                    const parts = value.split('-');
+                    value = Date.UTC(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10)) / 1000;
+                } else { value = new Date(value).getTime() / 1000; }
+            } else { value = el.value; }
+            changes[colId] = value;
+        }
+    });
+    if (Object.keys(changes).length > 0) {
+        await dataWriter.updateRecord(currentTableId, currentRecordId, changes);
+    }
+    publish('data-changed', { tableId: currentTableId, recordId: currentRecordId, action: 'update' });
+    isEditing = false;
+    await _renderDrawerContent();
+    _updateButtonVisibility();
+}
 
 function _getCombinedRules(record) {
     const { hiddenFields = [], lockedFields = [], requiredFields = [], workflow = {} } = currentDrawerOptions;
-    
-    // CORREÇÃO: A lógica agora usa as regras de estágio como a base, e as regras globais como fallback.
     let finalHidden = hiddenFields;
     let finalLocked = lockedFields;
     let finalRequired = requiredFields;
-
     if (workflow.enabled && workflow.stageField && record) {
         const stageValue = record[workflow.stageField];
         if (stageValue && workflow.stages && workflow.stages[stageValue]) {
             const stageRules = workflow.stages[stageValue];
-            // hasOwnProperty verifica se a regra foi definida para o estágio (mesmo que seja um array vazio).
-            if (stageRules.hasOwnProperty('hiddenFields'))   finalHidden   = stageRules.hiddenFields;
-            if (stageRules.hasOwnProperty('lockedFields'))   finalLocked   = stageRules.lockedFields;
+            if (stageRules.hasOwnProperty('hiddenFields')) finalHidden = stageRules.hiddenFields;
+            if (stageRules.hasOwnProperty('lockedFields')) finalLocked = stageRules.lockedFields;
             if (stageRules.hasOwnProperty('requiredFields')) finalRequired = stageRules.requiredFields;
         }
     }
-    
-    return {
-        hidden: [...new Set(finalHidden)],
-        locked: [...new Set(finalLocked)],
-        required: [...new Set(finalRequired)]
-    };
+    return { hidden: [...new Set(finalHidden)], locked: [...new Set(finalLocked)], required: [...new Set(finalRequired)] };
 }
 
 function _handleStageChange(event) {
     const stageFieldId = currentDrawerOptions.workflow.stageField;
     currentRecord[stageFieldId] = event.target.value;
     const newRules = _getCombinedRules(currentRecord);
-
     drawerPanel.querySelectorAll('.drawer-field-row').forEach(row => {
         const colId = row.dataset.colId;
         if (!colId || colId === stageFieldId) return;
@@ -107,7 +165,6 @@ function _validateForm() {
     const rules = _getCombinedRules(currentRecord);
     const saveButton = drawerPanel.querySelector('#drawer-save-btn');
     let isFormValid = true;
-
     for (const colId of rules.required) {
         if (rules.hidden.includes(colId)) continue;
         const fieldElement = drawerPanel.querySelector(`[data-col-id="${colId}"]`);
@@ -137,26 +194,50 @@ function _addFormListeners() {
     }
 }
 
-// --- FUNÇÕES DE CONTROLE PRINCIPAL ---
+// =================================================================================
+// --- FIM DA SEÇÃO DE FUNÇÕES AUXILIARES ---
+// =================================================================================
 
-function _handleEdit() {
-    isEditing = true;
-    _renderDrawerContent();
-    _updateButtonVisibility();
+function _initializeDrawerDOM() {
+    if (document.getElementById('grist-drawer-panel')) return;
+    const link = document.createElement('link'); link.rel = 'stylesheet'; link.href = '../libraries/grist-drawer-component/drawer-style.css'; document.head.appendChild(link);
+    const style = document.createElement('style'); style.textContent = `
+        .drawer-header-buttons .icon { width: 20px; height: 20px; } .drawer-close-btn .icon { width: 24px; height: 24px; } .required-indicator { color: #dc3545; font-weight: bold; margin-left: 4px; } .grf-tooltip-trigger { position: relative; display: inline-block; margin-left: 8px; width: 16px; height: 16px; border-radius: 50%; background-color: #adb5bd; color: white; font-size: 11px; font-weight: bold; text-align: center; line-height: 16px; cursor: help; } .grf-tooltip-trigger:before, .grf-tooltip-trigger:after { position: absolute; left: 50%; transform: translateX(-50%); opacity: 0; visibility: hidden; transition: opacity 0.2s ease, visibility 0.2s ease; z-index: 10; } .grf-tooltip-trigger:after { content: attr(data-tooltip); bottom: 150%; background-color: rgba(0, 0, 0, 0.8); color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; font-weight: normal; line-height: 1.4; white-space: pre-wrap; width: 250px; } .grf-tooltip-trigger:before { content: ''; bottom: 150%; margin-bottom: -5px; border-style: solid; border-width: 5px 5px 0 5px; border-color: rgba(0, 0, 0, 0.8) transparent transparent transparent; } .grf-tooltip-trigger:hover:before, .grf-tooltip-trigger:hover:after { opacity: 1; visibility: visible; }
+    `; document.head.appendChild(style);
+    
+    drawerOverlay = document.createElement('div');
+    drawerOverlay.id = 'grist-drawer-overlay';
+    
+    drawerPanel = document.createElement('div');
+    drawerPanel.id = 'grist-drawer-panel';
+    
+    const iconPath = '../libraries/icons/icons.svg';
+    
+    drawerPanel.innerHTML = `
+        <div class="drawer-header"><h2 id="drawer-title"></h2>
+            <div class="drawer-header-actions">
+                <div class="drawer-header-buttons">
+                    <button id="drawer-add-btn" title="Adicionar Novo"><svg class="icon"><use href="${iconPath}#icon-add"></use></svg></button>
+                    <button id="drawer-delete-btn" title="Deletar"><svg class="icon"><use href="${iconPath}#icon-delete"></use></svg></button>
+                    <button id="drawer-edit-btn" title="Editar"><svg class="icon"><use href="${iconPath}#icon-edit"></use></svg></button>
+                    <button id="drawer-save-btn" title="Salvar" style="display:none;"><svg class="icon"><use href="${iconPath}#icon-save"></use></svg></button>
+                    <button id="drawer-cancel-btn" title="Cancelar" style="display:none;"><svg class="icon"><use href="${iconPath}#icon-cancel"></use></svg></button>
+                </div>
+                <button class="drawer-close-btn" title="Fechar"><svg class="icon"><use href="${iconPath}#icon-close"></use></svg></button>
+            </div>
+        </div>
+        <div class="drawer-body"><div class="drawer-tabs"></div><div class="drawer-tab-panels"></div></div>`;
+    
+    document.body.appendChild(drawerOverlay); document.body.appendChild(drawerPanel); drawerHeader = drawerPanel.querySelector('.drawer-header'); drawerTitle = drawerPanel.querySelector('#drawer-title');
+    
+    drawerPanel.querySelector('.drawer-close-btn').addEventListener('click', closeDrawer);
+    drawerPanel.querySelector('#drawer-edit-btn').addEventListener('click', _handleEdit);
+    drawerPanel.querySelector('#drawer-save-btn').addEventListener('click', _handleSave);
+    drawerPanel.querySelector('#drawer-cancel-btn').addEventListener('click', _handleCancel);
+    drawerPanel.querySelector('#drawer-add-btn').addEventListener('click', _handleAdd);
+    drawerPanel.querySelector('#drawer-delete-btn').addEventListener('click', _handleDelete);
+    drawerOverlay.addEventListener('click', closeDrawer);
 }
-
-function _handleCancel() {
-    isEditing = false;
-    _renderDrawerContent();
-    _updateButtonVisibility();
-}
-
-async function _handleAdd() { /* Lógica inalterada */ }
-async function _handleDelete() { /* Lógica inalterada */ }
-function _updateButtonVisibility() { /* Lógica inalterada */ }
-async function _handleSave() { /* Lógica inalterada */ }
-
-// --- FUNÇÕES DE RENDERIZAÇÃO ---
 
 async function _renderDrawerContent() {
     const tabsContainer = drawerPanel.querySelector('.drawer-tabs');
@@ -193,10 +274,8 @@ function renderConfiguredTabs(configuredTabs, hiddenFields, lockedFields, requir
     const panelsContainer = drawerPanel.querySelector('.drawer-tab-panels');
     tabsContainer.innerHTML = ''; panelsContainer.innerHTML = '';
     configuredTabs.forEach((tabConfig, index) => {
-        const tabEl = document.createElement('div');
-        tabEl.className = 'drawer-tab'; tabEl.textContent = tabConfig.title; tabsContainer.appendChild(tabEl);
-        const panelEl = document.createElement('div');
-        panelEl.className = 'drawer-tab-content'; panelsContainer.appendChild(panelEl);
+        const tabEl = document.createElement('div'); tabEl.className = 'drawer-tab'; tabEl.textContent = tabConfig.title; tabsContainer.appendChild(tabEl);
+        const panelEl = document.createElement('div'); panelEl.className = 'drawer-tab-content'; panelsContainer.appendChild(panelEl);
         tabEl.addEventListener('click', () => _switchToTab(tabEl, panelEl));
         if (index === 0) _switchToTab(tabEl, panelEl);
         tabConfig.fields.forEach(fieldId => {
@@ -233,8 +312,7 @@ function renderDefaultTabs(hiddenFields, lockedFields, requiredFields, record, r
 }
 
 function renderSingleField(panelEl, colSchema, record, lockedFields, requiredFields, ruleIdToColIdMap, refListFieldConfig = {}) {
-    const row = document.createElement('div');
-    row.className = 'drawer-field-row'; row.dataset.colId = colSchema.colId;
+    const row = document.createElement('div'); row.className = 'drawer-field-row'; row.dataset.colId = colSchema.colId;
     const label = document.createElement('label'); label.className = 'drawer-field-label';
     const labelText = colSchema.label || colSchema.colId;
     const isFieldRequired = requiredFields.includes(colSchema.colId);
@@ -288,9 +366,3 @@ export function closeDrawer() {
     drawerPanel.classList.remove('is-modal');
     drawerOverlay.classList.remove('is-modal-overlay');
 }
-
-// Lógica inalterada para completude
-_handleAdd = async function() { const schema = await tableLens.getTableSchema(currentTableId, { mode: 'clean' }); openModal({ title: `Adicionar em ${currentTableId}`, tableId: currentTableId, record: {}, schema, onSave: async (newRecord) => { await dataWriter.addRecord(currentTableId, newRecord); publish('data-changed', { tableId: currentTableId, action: 'add' }); await _renderDrawerContent(); }, }); };
-_handleDelete = async function() { if (confirm(`Tem certeza que deseja deletar o registro ${currentRecordId}?`)) { await dataWriter.deleteRecords(currentTableId, [currentRecordId]); publish('data-changed', { tableId: currentTableId, recordId: currentRecordId, action: 'delete' }); closeDrawer(); } };
-_updateButtonVisibility = function() { drawerPanel.querySelector('#drawer-edit-btn').style.display = isEditing ? 'none' : 'inline-block'; drawerPanel.querySelector('#drawer-delete-btn').style.display = isEditing ? 'none' : 'inline-block'; const saveBtn = drawerPanel.querySelector('#drawer-save-btn'); saveBtn.style.display = isEditing ? 'inline-block' : 'none'; if (!isEditing) saveBtn.disabled = false; drawerPanel.querySelector('#drawer-cancel-btn').style.display = isEditing ? 'inline-block' : 'none'; };
-_handleSave = async function() { const changes = {}; const formElements = drawerPanel.querySelectorAll('[data-col-id]'); formElements.forEach(el => { const colId = el.dataset.colId; const colSchema = currentSchema[colId]; if (colSchema && !colSchema.isFormula) { let value; if (colSchema.type === 'Bool' && el.tagName === 'SELECT') { if (el.value === 'true') value = true; else if (el.value === 'false') value = false; else value = null; } else if (colSchema.type === 'ChoiceList' && el.tagName === 'SELECT' && el.multiple) { const selectedOptions = Array.from(el.selectedOptions).map(opt => opt.value); value = selectedOptions.length > 0 ? ['L', ...selectedOptions] : null; } else if (el.type === 'checkbox') { value = el.checked; } else if (colSchema.type.startsWith('Date')) { value = el.value; if (!value) { value = null; } else if (colSchema.type === 'Date') { const parts = value.split('-'); value = Date.UTC(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10)) / 1000; } else { value = new Date(value).getTime() / 1000; } } else { value = el.value; } changes[colId] = value; } }); if (Object.keys(changes).length > 0) { await dataWriter.updateRecord(currentTableId, currentRecordId, changes); } publish('data-changed', { tableId: currentTableId, recordId: currentRecordId, action: 'update' }); isEditing = false; await _renderDrawerContent(); _updateButtonVisibility(); };

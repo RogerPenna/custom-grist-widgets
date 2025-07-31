@@ -1,145 +1,298 @@
 /* libraries/grist-drawer-component/drawer-style.css */
 
-/* --- Layout Geral do Drawer --- */
+/* --- Layout Geral e Fontes (Inspirado no CardSystem) --- */
 #grist-drawer-panel {
-    /* ... (código existente) ... */
-    /* MUDANÇA: Borda grafite mais escura */
-    border-left: 4px solid #4A5568; 
+    position: fixed; top: 0; right: 0; width: 450px; max-width: 90vw; height: 100%;
+    background-color: #FFFFFF;
+    box-shadow: -2px 0 15px rgba(0,0,0,0.2);
+    z-index: 1001;
+    transform: translateX(100%);
+    transition: transform 0.3s ease-in-out;
+    display: flex; flex-direction: column;
+    font-family: Calibri, Candara, Segoe, "Segoe UI", Optima, Arial, sans-serif;
 }
-
-/* ... (resto do layout geral e do cabeçalho permanece o mesmo) ... */
 
 #grist-drawer-overlay {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background-color: rgba(0, 0, 0, 0.5); z-index: 1000; opacity: 0;
-    visibility: hidden; transition: opacity 0.3s, visibility 0.3s;
+    background-color: rgba(0, 0, 0, 0.4); z-index: 1000;
+    opacity: 0; visibility: hidden;
+    transition: opacity 0.3s, visibility 0.3s;
 }
-#grist-drawer-panel {
-    position: fixed; top: 0; right: 0; width: 450px; max-width: 90vw; height: 100%;
-    background-color: #fff; box-shadow: -2px 0 15px rgba(0,0,0,0.2); z-index: 1001;
-    transform: translateX(100%); transition: transform 0.3s ease-in-out;
-    display: flex; flex-direction: column; border-left: 4px solid #4A5568;
-}
+
 #grist-drawer-overlay.is-open,
 #grist-drawer-panel.is-open {
     opacity: 1; visibility: visible; transform: translateX(0);
 }
+
+/* --- Cabeçalho e Botões (Estilo CardSystem) --- */
 .drawer-header {
     display: flex; justify-content: space-between; align-items: center;
-    padding: 12px 20px; flex-shrink: 0; background-color: #4A5568; color: #FFFFFF;
+    padding: 10px 16px; flex-shrink: 0;
+    background-color: #f0f0f0;
+    border-bottom: 1px solid #dcdcdc;
+    color: #333333;
 }
-.drawer-header h2 { margin: 0; font-size: 1.2em; font-weight: 500; }
-.drawer-header-buttons button {
-    background: transparent; border: 1px solid rgba(255, 255, 255, 0.5); color: #FFFFFF;
-    padding: 6px 10px; margin-left: 8px; cursor: pointer; border-radius: 4px;
+
+.drawer-header h2 {
+    margin: 0; font-size: 1.1em; font-weight: 600;
+    text-overflow: ellipsis; white-space: nowrap; overflow: hidden;
+}
+
+.drawer-header-actions {
+    display: flex; align-items: center; gap: 16px;
+}
+
+.drawer-header-buttons {
+    display: flex; align-items: center; gap: 4px;
+}
+
+.drawer-header-actions button {
+    background-color: #f0f0f0;
+    border: 1px solid #b0b0b0;
+    color: #333333;
+    padding: 5px;
+    cursor: pointer;
+    border-radius: 4px;
     transition: background-color 0.2s;
+    display: flex; align-items: center; justify-content: center;
+    line-height: 1;
 }
-.drawer-header-buttons button:hover { background-color: rgba(255, 255, 255, 0.1); }
-.drawer-close-btn { font-size: 1.5em; font-weight: bold; line-height: 1; }
-.drawer-body { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; }
-.drawer-tabs { display: flex; border-bottom: 1px solid #e0e0e0; flex-shrink: 0; padding: 0 15px; }
-.drawer-tab { padding: 12px 18px; cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -1px; color: #555; font-weight: 500; }
-.drawer-tab.is-active { color: #2c5282; border-bottom-color: #2c5282; }
-.drawer-tab-panels { flex-grow: 1; overflow-y: auto; background-color: #fdfdfd; }
-.drawer-tab-content { display: none; padding: 25px; }
-.drawer-tab-content.is-active { display: block; }
 
+.drawer-header-actions button:hover {
+    background-color: #e0e0e0;
+}
 
-/* ========================================================== */
-/* ==== NOVOS ESTILOS PARA OS CAMPOS (Sua Referência) ==== */
-/* ========================================================== */
+.drawer-header-actions button:disabled {
+    color: #a0a0a0;
+    border-color: #dcdcdc;
+    cursor: not-allowed;
+    background-color: #f0f0f0;
+}
 
+.drawer-close-btn {
+    border: none !important;
+    background: transparent !important;
+}
+.drawer-close-btn:hover {
+    background: #e0e0e0 !important;
+}
+
+/* --- Corpo e Abas (Estilo CardSystem) --- */
+.drawer-body {
+    flex-grow: 1; display: flex; flex-direction: column; overflow: hidden;
+    background-color: #FFFFFF;
+}
+
+.drawer-tabs {
+    display: flex;
+    flex-shrink: 0;
+    padding: 0;
+    border-bottom: 2px solid #a0a0a0;
+}
+
+.drawer-tab {
+    flex-grow: 1;
+    text-align: center;
+    padding: 10px 16px;
+    cursor: pointer;
+    border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    color: #333;
+    font-weight: 500;
+    background-color: #e0e0e0;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.drawer-tab:not(.is-active):hover {
+    background-color: #d0d0d0;
+}
+
+.drawer-tab.is-active {
+    font-weight: 600;
+    color: #000;
+    background-color: #FFFFFF;
+    border-bottom: 2px solid #007bff;
+}
+
+.drawer-tab-panels {
+    flex-grow: 1; overflow-y: auto;
+}
+
+.drawer-tab-content {
+    display: none;
+    padding: 24px;
+}
+
+.drawer-tab-content.is-active {
+    display: block;
+}
+
+/* --- Estilos dos Campos do Formulário --- */
 .drawer-field-row {
     margin-bottom: 10px;
 }
 
 .drawer-field-label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: 600;
-    color: #4A5568;
+    display: flex;
+    align-items: center;
+    margin-bottom: 6px;
+    font-weight: 500;
+    color: #4a5568;
+    font-size: 0.9em;
+}
+
+.drawer-field-value {
+    background-color: #f8f9fa;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    min-height: 10px;
+    display: flex;
+    align-items: center;
+    padding: 0 4px;
+    flex-wrap: wrap; /* Permite que o header e a tabela da RefList quebrem a linha */
+}
+
+.drawer-field-value .grf-form-input,
+.drawer-field-value .grf-switch {
+    width: 100%; padding: 6px 8px; margin: 0; border: none;
+    background-color: transparent; box-shadow: none; outline: none;
     font-size: 1em;
+}
+
+.is-locked-style {
+    background-color: #e9ecef !important;
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+/* --- Estilos para RefList --- */
+.grf-reflist-header,
+.grf-reflist-table-container {
+    flex-basis: 100%; /* Força cada um a ocupar uma linha inteira */
+    width: 100%;
+}
+
+.grf-reflist-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
     padding: 4px 0;
 }
 
-/* O "container" do valor, que agora terá o estilo de fundo */
-.drawer-field-value {
-    background-color: #f0f2f5; /* Cinza claro de fundo */
-    border: 1px solid #e2e8f0;   /* Borda sutil */
+.grf-reflist-header .item-count {
+    font-size: 0.9em;
+    color: #6c757d;
+}
+
+.grf-reflist-header .add-btn {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
     border-radius: 4px;
-    padding: 2px;
-    min-height: 20px; /* Garante altura mínima consistente */
+    padding: 4px 8px;
+    cursor: pointer;
     display: flex;
-    flex-direction: column; /* Para acomodar múltiplos pills */
-    justify-content: center;
-    transition: background-color 0.2s;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.9em;
+}
+.grf-reflist-header .add-btn:hover {
+    background-color: #e9ecef;
+}
+.grf-reflist-header .add-btn .icon {
+    width: 16px;
+    height: 16px;
 }
 
-/* Se o campo tiver um estilo condicional, ele sobrescreve o fundo cinza */
-.drawer-field-value.has-conditional-style {
-    border-color: transparent;
-}
-
-/* Faz com que inputs e selects dentro do container ocupem todo o espaço
-   e pareçam integrados, removendo suas próprias bordas e fundos. */
-.drawer-field-value .grf-form-input,
-.drawer-field-value .grf-switch {
+.grf-reflist-table {
     width: 100%;
-    padding: 0;
-    margin: 0;
+    border-collapse: collapse;
+    font-size: 0.9em;
+}
+.grf-reflist-table th, .grf-reflist-table td {
+    border: 1px solid #dee2e6;
+    padding: 8px;
+    text-align: left;
+    vertical-align: middle;
+}
+.grf-reflist-table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+.grf-reflist-table.is-zebra-striped tbody tr:nth-child(even) {
+    background-color: #f8f9fa;
+}
+
+.grf-reflist-table .actions-cell {
+    position: relative;
+    text-align: center;
+}
+.reflist-action-menu-btn {
+    background: transparent;
     border: none;
-    background-color: transparent;
-    box-shadow: none;
-    outline: none;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+}
+.reflist-action-menu-btn:hover {
+    background-color: #f0f0f0;
+}
+.reflist-action-menu-btn .icon {
+    width: 18px;
+    height: 18px;
+    stroke-width: 2;
+}
+.reflist-action-menu-dropdown {
+    display: none;
+    position: absolute;
+    right: 100%;
+    top: 0;
+    background-color: white;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    z-index: 100;
+    min-width: 120px;
+    padding: 4px 0;
+}
+.reflist-action-menu-dropdown.is-open { display: block; }
+.reflist-action-menu-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 0.9em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.reflist-action-menu-item:hover {
+    background-color: #007bff;
+    color: white;
+}
+.reflist-action-menu-item .icon {
+    width: 16px;
+    height: 16px;
 }
 
-/* Ajuste para selects não terem a seta padrão cortada */
-.drawer-field-value .grf-form-input[multiple] {
-    min-height: 80px;
-}
-
-/* Estilos para campos travados (próxima etapa) */
-.grf-readonly-locked {
-    background-color: #e9ecef !important; /* !important para garantir a sobreposição */
-    opacity: 0.8;
-    cursor: not-allowed;
-}
-/* ========================================================== */
-/* ==== NOVOS ESTILOS PARA O MODO MODAL ===================== */
-/* ========================================================== */
-
-/* Quando o overlay está no modo modal, ele SEMPRE cobre a tela */
+/* --- Estilos do Modo Modal --- */
 #grist-drawer-overlay.is-modal-overlay {
-    background-color: rgba(0, 0, 0, 0.65);
+    background-color: rgba(0, 0, 0, 0.6);
 }
 
-/* Transforma o painel em um modal centralizado */
 #grist-drawer-panel.is-modal {
-    /* Cancela as transformações do modo drawer */
     transform: scale(0.95) translateY(-10px);
     transition: transform 0.2s ease-in-out, opacity 0.2s;
     opacity: 0;
-
-    /* Posicionamento central */
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    /* Começa um pouco menor e centralizado. O scale(1) virá na classe .is-open */
+    position: fixed; top: 50%; left: 50%;
     transform: translate(-50%, -50%) scale(0.95);
-
-    /* Dimensões */
-    height: 90vh; /* Ocupa 90% da altura da tela */
-    max-height: 800px; /* Mas não mais que 800px */
-    width: 60%; /* Usa a largura configurada na opção 'width' */
-    max-width: 900px; /* Mas não mais que 900px */
-
-    /* Estilo */
-    border-radius: 8px;
-    border-left: none; /* Remove a borda lateral do modo drawer */
+    height: 90vh; max-height: 800px;
+    width: 60%; max-width: 900px;
+    border-radius: 8px; border-left: none;
     box-shadow: 0 10px 30px rgba(0,0,0,0.2);
 }
 
-/* Animação de entrada para o modal */
 #grist-drawer-panel.is-modal.is-open {
     opacity: 1;
     transform: translate(-50%, -50%) scale(1);

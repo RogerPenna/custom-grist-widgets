@@ -1,229 +1,88 @@
 <!DOCTYPE html>
-<html lang="pt">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Grist Card Widget</title>
-    <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 10px;
-            padding: 10px;
-            background: #f4f4f4;
-        }
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: #333;
-            color: white;
-            padding: 10px;
-        }
-        .cards-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-top: 10px;
-        }
-        .card {
-            background: white;
-            padding: 15px;
-            border-radius: 5px;
-            width: 250px;
-            box-shadow: 0px 0px 5px rgba(0,0,0,0.1);
-            display: flex;
-            flex-direction: column;
-            position: relative;
-        }
-        .card img {
-            width: 100%;
-            height: auto;
-            border-radius: 5px;
-        }
-        .card h3 {
-            margin: 10px 0 5px;
-            font-size: 1.1em;
-        }
-        .card p {
-            font-size: 0.9em;
-            color: #555;
-        }
-        .card-buttons {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 10px;
-        }
-        .icon-button {
-            cursor: pointer;
-            background: none;
-            border: none;
-            font-size: 1.2em;
-            color: #333;
-        }
-        .edit-input {
-            width: 100%;
-            margin-top: 5px;
-            padding: 5px;
-            font-size: 1em;
-        }
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            justify-content: center;
-            align-items: center;
-        }
-        .modal-content {
-            background: white;
-            padding: 20px;
-            border-radius: 5px;
-            width: 300px;
-        }
-        .close-btn {
-            cursor: pointer;
-            float: right;
-            font-size: 1.5em;
-            color: red;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Card System Widget</title>
+
+  <!--
+    THIS IS THE CORRECTED AND MOST IMPORTANT LINE.
+    It loads the Grist API from the official website (CDN).
+  -->
+  <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+
+  <style>
+    html, body {
+      height: 100%;
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      font-family: sans-serif;
+      background-color: #f9f9f9;
+    }
+    #app-container {
+      height: 100%;
+      width: 100%;
+      box-sizing: border-box;
+      overflow-y: auto;
+    }
+  </style>
 </head>
 <body>
 
-    <div class="header">
-        <h2>📌 Widget de Cards (v1.1)</h2>
-        <button class="icon-button" onclick="openConfig()">⚙️</button>
-    </div>
+  <!-- The container where your script will render the cards -->
+  <div id="app-container"></div>
 
-    <div class="cards-container" id="cardsContainer"></div>
+  <!-- This loads your main script file from the same directory -->
+  <script src="script.js" defer></script>
 
-    <div class="modal" id="modal">
-        <div class="modal-content">
-            <span class="close-btn" onclick="closeModal()">×</span>
-            <h3>Detalhes do Registro</h3>
-            <pre id="modalDetails"></pre>
-        </div>
-    </div>
+  <!--
+    This "glue" script connects Grist to your CardSystem module.
+    It will run after the two scripts above are loaded.
+  -->
+  <script>
+    // This function will run once the DOM is ready.
+    function initializeWidget() {
+      // Check if the Grist API loaded correctly.
+      if (typeof grist === 'undefined') {
+        document.body.innerHTML = '<p style="color: red; padding: 15px;">Fatal Error: grist-plugin-api.js could not be loaded. Please check the network connection and the script tag in index.html.</p>';
+        return;
+      }
 
-    <script>
-        let mappedColumns = {};
-        let tableData = [];
+      // Check if your CardSystem module loaded correctly from script.js
+      if (typeof CardSystem === 'undefined') {
+        document.body.innerHTML = '<p style="color: red; padding: 15px;">Error: CardSystem module not found. Make sure script.js is loaded correctly and has no errors.</p>';
+        return;
+      }
 
-        grist.ready({
-            requiredAccess: 'full',
-            columns: [
-                { name: "Title", title: "Título", type: "Text", optional: false },
-                { name: "Subtitle", title: "Subtítulo", type: "Text", optional: true },
-                { name: "Image", title: "Imagem/Thumbnail", type: "Text", optional: true },
-                { name: "ExtraColumns", title: "Colunas Extras", type: "Any", allowMultiple: true, optional: true }
-            ]
-        });
+      const appContainer = document.getElementById('app-container');
+      let latestRecords = [];
+      let latestOptions = {};
 
-        grist.onRecords((records, mappings) => {
-            if (!records || !mappings) return;
-            mappedColumns = mappings;
-            tableData = records.map(grist.mapColumnNames);
-            renderCards();
-        });
+      function renderWidget() {
+        if (!appContainer || !latestRecords) return;
+        CardSystem.renderCards(appContainer, latestRecords, latestOptions);
+      }
 
-        function renderCards() {
-            const container = document.getElementById('cardsContainer');
-            container.innerHTML = '';
+      // Tell Grist we are ready.
+      grist.ready();
 
-            tableData.forEach(record => {
-                const card = document.createElement('div');
-                card.className = 'card';
+      // Listen for data from Grist.
+      grist.onRecords(function(records) {
+        latestRecords = records;
+        renderWidget();
+      });
 
-                if (record.Image) {
-                    const img = document.createElement('img');
-                    img.src = record.Image;
-                    card.appendChild(img);
-                }
+      // Listen for options from Grist.
+      grist.onOptions(function(options) {
+        latestOptions = options || {};
+        renderWidget();
+      });
+    }
 
-                const title = document.createElement('h3');
-                title.innerText = record.Title;
-                card.appendChild(title);
-
-                if (record.Subtitle) {
-                    const subtitle = document.createElement('p');
-                    subtitle.innerText = record.Subtitle;
-                    card.appendChild(subtitle);
-                }
-
-                // Adicionar colunas extras
-                if (mappedColumns.ExtraColumns && record.ExtraColumns) {
-                    record.ExtraColumns.forEach(extraColumn => {
-                        const extraInfo = document.createElement('p');
-                        extraInfo.innerText = `${extraColumn}: ${record[extraColumn] || "N/A"}`;
-                        card.appendChild(extraInfo);
-                    });
-                }
-
-                const editBtn = document.createElement('button');
-                editBtn.className = 'icon-button';
-                editBtn.innerHTML = '📝';
-                editBtn.onclick = () => editCard(record, card);
-                
-                const viewBtn = document.createElement('button');
-                viewBtn.className = 'icon-button';
-                viewBtn.innerHTML = '🔍';
-                viewBtn.onclick = () => openModal(record);
-
-                const buttonsDiv = document.createElement('div');
-                buttonsDiv.className = 'card-buttons';
-                buttonsDiv.appendChild(editBtn);
-                buttonsDiv.appendChild(viewBtn);
-
-                card.appendChild(buttonsDiv);
-                container.appendChild(card);
-            });
-        }
-
-        function editCard(record, card) {
-            card.innerHTML = '';
-
-            const titleInput = document.createElement('input');
-            titleInput.className = 'edit-input';
-            titleInput.value = record.Title;
-
-            const subtitleInput = document.createElement('input');
-            subtitleInput.className = 'edit-input';
-            subtitleInput.value = record.Subtitle || '';
-
-            const saveBtn = document.createElement('button');
-            saveBtn.className = 'icon-button';
-            saveBtn.innerHTML = '💾';
-            saveBtn.onclick = () => saveEdit(record.id, titleInput.value, subtitleInput.value, card);
-
-            card.appendChild(titleInput);
-            card.appendChild(subtitleInput);
-            card.appendChild(saveBtn);
-        }
-
-        async function saveEdit(id, newTitle, newSubtitle, card) {
-            await grist.docApi.applyUserActions([
-                ["UpdateRecord", grist.selectedTable, id, { [mappedColumns.Title]: newTitle, [mappedColumns.Subtitle]: newSubtitle }]
-            ]);
-            renderCards();
-        }
-
-        function openModal(record) {
-            document.getElementById('modalDetails').textContent = JSON.stringify(record, null, 2);
-            document.getElementById('modal').style.display = 'flex';
-        }
-
-        function closeModal() {
-            document.getElementById('modal').style.display = 'none';
-        }
-
-        function openConfig() {
-            grist.editOptions();
-        }
-    </script>
+    // Wait for the HTML document to be fully loaded before running the initialization logic.
+    document.addEventListener('DOMContentLoaded', initializeWidget);
+  </script>
 
 </body>
 </html>
