@@ -1,11 +1,13 @@
 // libraries/grist-field-renderer/renderers/render-choice.js
 export function renderChoice(options) {
-    const { container, colSchema, cellValue, isEditing, isLocked } = options;
+    // --- MUDANÇA 1: Extrai a nova opção styleOverride ---
+    const { container, colSchema, cellValue, isEditing, isLocked, styleOverride = {} } = options;
 
     const wopts = colSchema.widgetOptions || {};
     const choices = wopts.choices || [];
     const choiceOptions = wopts.choiceOptions || {};
     const isList = colSchema.type === 'ChoiceList';
+    const shouldApplyStyles = !styleOverride.ignoreCell; // Cria uma flag para facilitar a leitura
 
     // NOVO: Lógica para campos travados no modo de edição.
     // Simplesmente reutiliza a lógica do modo de visualização.
@@ -18,7 +20,8 @@ export function renderChoice(options) {
                     if (val) {
                         const pill = document.createElement('span'); pill.className = 'grf-choice-pill'; pill.textContent = val;
                         const style = choiceOptions[val];
-                        if (style) { if (style.textColor) pill.style.color = style.textColor; if (style.fillColor) pill.style.backgroundColor = style.fillColor; if (style.fontBold) pill.style.fontWeight = 'bold'; }
+                        // --- MUDANÇA 2: Verifica a flag antes de aplicar o estilo ---
+                        if (shouldApplyStyles && style) { if (style.textColor) pill.style.color = style.textColor; if (style.fillColor) pill.style.backgroundColor = style.fillColor; if (style.fontBold) pill.style.fontWeight = 'bold'; }
                         container.appendChild(pill);
                     }
                 });
@@ -26,7 +29,8 @@ export function renderChoice(options) {
         } else {
             container.textContent = String(cellValue ?? '(vazio)');
             const style = choiceOptions[cellValue];
-            if (style) {
+            // --- MUDANÇA 3: Verifica a flag antes de aplicar o estilo ---
+            if (shouldApplyStyles && style) {
                 if (style.textColor) container.style.color = style.textColor; if (style.fillColor) container.style.backgroundColor = style.fillColor; if (style.fontBold) container.style.fontWeight = 'bold';
                 container.style.padding = style.fillColor ? '2px 8px' : ''; container.style.borderRadius = style.fillColor ? '12px' : ''; container.style.display = 'inline-block';
             }
@@ -34,7 +38,6 @@ export function renderChoice(options) {
         container.closest('.drawer-field-value')?.classList.add('is-locked-style');
         return;
     }
-
 
     // MODO VISUALIZAÇÃO
     if (!isEditing) {
@@ -45,14 +48,16 @@ export function renderChoice(options) {
                 if (val) {
                     const pill = document.createElement('span'); pill.className = 'grf-choice-pill'; pill.textContent = val;
                     const style = choiceOptions[val];
-                    if (style) { if (style.textColor) pill.style.color = style.textColor; if (style.fillColor) pill.style.backgroundColor = style.fillColor; if (style.fontBold) pill.style.fontWeight = 'bold'; }
+                    // --- MUDANÇA 4: Verifica a flag antes de aplicar o estilo ---
+                    if (shouldApplyStyles && style) { if (style.textColor) pill.style.color = style.textColor; if (style.fillColor) pill.style.backgroundColor = style.fillColor; if (style.fontBold) pill.style.fontWeight = 'bold'; }
                     container.appendChild(pill);
                 }
             });
         } else {
             container.textContent = String(cellValue ?? '(vazio)');
             const style = choiceOptions[cellValue];
-            if (style) {
+            // --- MUDANÇA 5: Verifica a flag antes de aplicar o estilo ---
+            if (shouldApplyStyles && style) {
                 if (style.textColor) container.style.color = style.textColor; if (style.fillColor) container.style.backgroundColor = style.fillColor; if (style.fontBold) container.style.fontWeight = 'bold';
                 container.style.padding = style.fillColor ? '2px 8px' : ''; container.style.borderRadius = style.fillColor ? '12px' : ''; container.style.display = 'inline-block';
             }
@@ -67,6 +72,13 @@ export function renderChoice(options) {
     select.dataset.colId = colSchema.colId;
 
     const applyStyle = (element, value) => {
+        // --- MUDANÇA 6: A função de aplicar estilo agora respeita a flag ---
+        if (!shouldApplyStyles) {
+            element.style.backgroundColor = '';
+            element.style.color = '';
+            element.style.fontWeight = '';
+            return;
+        }
         const style = choiceOptions[value];
         if (element && style) {
             element.style.backgroundColor = style.fillColor || '';

@@ -244,6 +244,9 @@ async function _renderDrawerContent() {
     const panelsContainer = drawerPanel.querySelector('.drawer-tab-panels');
     tabsContainer.innerHTML = ''; panelsContainer.innerHTML = '';
     
+    // MUDANÇA AQUI: Lê a nova configuração styleOverrides
+    const { tabs = null, refListFieldConfig = {}, styleOverrides = {} } = currentDrawerOptions;
+    
     const [cleanSchema, rawSchema] = await Promise.all([tableLens.getTableSchema(currentTableId), tableLens.getTableSchema(currentTableId, { mode: 'raw' })]);
     Object.keys(cleanSchema).forEach(colId => { if (rawSchema[colId] && rawSchema[colId].description) cleanSchema[colId].description = rawSchema[colId].description; });
     currentSchema = cleanSchema;
@@ -251,16 +254,15 @@ async function _renderDrawerContent() {
     currentRecord = await tableLens.fetchRecordById(currentTableId, currentRecordId);
     if (!currentRecord) { closeDrawer(); return; }
 
-    const { tabs = null, refListFieldConfig = {} } = currentDrawerOptions;
     const rules = _getCombinedRules(currentRecord);
-    
     const ruleIdToColIdMap = new Map();
     Object.values(currentSchema).forEach(col => { if (col?.colId?.startsWith('gristHelper_')) ruleIdToColIdMap.set(col.id, col.id); });
 
     if (tabs && Array.isArray(tabs) && tabs.length > 0) {
-        renderConfiguredTabs(tabs, rules.hidden, rules.locked, rules.required, currentRecord, ruleIdToColIdMap, refListFieldConfig);
+        // Passa styleOverrides para a função de renderização
+        renderConfiguredTabs(tabs, rules.hidden, rules.locked, rules.required, currentRecord, ruleIdToColIdMap, refListFieldConfig, styleOverrides);
     } else {
-        renderDefaultTabs(rules.hidden, rules.locked, rules.required, currentRecord, ruleIdToColIdMap, refListFieldConfig);
+        renderDefaultTabs(rules.hidden, rules.locked, rules.required, currentRecord, ruleIdToColIdMap, refListFieldConfig, styleOverrides);
     }
     
     if (isEditing) {
@@ -269,7 +271,8 @@ async function _renderDrawerContent() {
     }
 }
 
-function renderConfiguredTabs(configuredTabs, hiddenFields, lockedFields, requiredFields, record, ruleIdToColIdMap, refListFieldConfig) {
+
+function renderConfiguredTabs(configuredTabs, hiddenFields, lockedFields, requiredFields, record, ruleIdToColIdMap, refListFieldConfig, styleOverrides) {
     const tabsContainer = drawerPanel.querySelector('.drawer-tabs');
     const panelsContainer = drawerPanel.querySelector('.drawer-tab-panels');
     tabsContainer.innerHTML = ''; panelsContainer.innerHTML = '';
@@ -281,13 +284,13 @@ function renderConfiguredTabs(configuredTabs, hiddenFields, lockedFields, requir
         tabConfig.fields.forEach(fieldId => {
             const colSchema = currentSchema[fieldId];
             if (colSchema && !hiddenFields.includes(colSchema.colId)) {
-                renderSingleField(panelEl, colSchema, record, lockedFields, requiredFields, ruleIdToColIdMap, refListFieldConfig);
+                renderSingleField(panelEl, colSchema, record, lockedFields, requiredFields, ruleIdToColIdMap, refListFieldConfig, styleOverrides);
             }
         });
     });
 }
 
-function renderDefaultTabs(hiddenFields, lockedFields, requiredFields, record, ruleIdToColIdMap, refListFieldConfig) {
+function renderDefaultTabs(hiddenFields, lockedFields, requiredFields, record, ruleIdToColIdMap, refListFieldConfig, styleOverrides) {
     const tabsContainer = drawerPanel.querySelector('.drawer-tabs');
     const panelsContainer = drawerPanel.querySelector('.drawer-tab-panels');
     const allCols = Object.values(currentSchema);
@@ -306,12 +309,12 @@ function renderDefaultTabs(hiddenFields, lockedFields, requiredFields, record, r
         tabEl.addEventListener('click', () => _switchToTab(tabEl, panelEl));
         if (index === 0) _switchToTab(tabEl, panelEl);
         cols.forEach(colSchema => {
-            renderSingleField(panelEl, colSchema, record, lockedFields, requiredFields, ruleIdToColIdMap, refListFieldConfig);
+            renderSingleField(panelEl, colSchema, record, lockedFields, requiredFields, ruleIdToColIdMap, refListFieldConfig, styleOverrides);
         });
     });
 }
 
-function renderSingleField(panelEl, colSchema, record, lockedFields, requiredFields, ruleIdToColIdMap, refListFieldConfig = {}) {
+function renderSingleField(panelEl, colSchema, record, lockedFields, requiredFields, ruleIdToColIdMap, refListFieldConfig = {}, styleOverrides = {}) {
     const row = document.createElement('div'); row.className = 'drawer-field-row'; row.dataset.colId = colSchema.colId;
     const label = document.createElement('label'); label.className = 'drawer-field-label';
     const labelText = colSchema.label || colSchema.colId;
@@ -326,8 +329,22 @@ function renderSingleField(panelEl, colSchema, record, lockedFields, requiredFie
     const valueContainer = document.createElement('div'); valueContainer.className = 'drawer-field-value';
     row.appendChild(label); row.appendChild(valueContainer); panelEl.appendChild(row);
     const isFieldLocked = lockedFields.includes(colSchema.colId);
-    const renderOptions = { container: valueContainer, labelElement: label, colSchema, record, tableLens, ruleIdToColIdMap, isEditing, isLocked: isFieldLocked };
-    if (colSchema.type.startsWith('RefList:') && refListFieldConfig[colSchema.colId]) { renderOptions.fieldConfig = refListFieldConfig[colSchema.colId]; }
+    
+    // MUDANÇA AQUI: Passa as regras de anulação de estilo para o renderField
+    const renderOptions = {
+        container: valueContainer,
+        labelElement: label,
+        colSchema,
+        record,
+        tableLens,
+        ruleIdToColIdMap,
+        isEditing,
+        isLocked: isFieldLocked,
+        styleOverride: styleOverrides[colSchema.colId] // Adiciona as regras específicas deste campo
+    };
+    if (colSchema.type.startsWith('RefList:') && refListFieldConfig[colSchema.colId]) {
+        renderOptions.fieldConfig = refListFieldConfig[colSchema.colId];
+    }
     renderField(renderOptions);
 }
 
