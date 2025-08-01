@@ -16,6 +16,13 @@
         <!-- Painel Esquerdo: Lista de Configurações -->
         <div class="sidebar">
             <h2>Configurações</h2>
+            <div class="new-config-controls">
+                <label for="newConfigTypeSelector" style="font-size: 12px; display: block; margin-bottom: 4px;">Tipo de Componente:</label>
+                <select id="newConfigTypeSelector">
+                    <option value="Drawer">Drawer</option>
+                    <option value="CardSystem">Card System</option>
+                </select>
+            </div>
             <button id="newConfigBtn" class="btn btn-primary">+ Nova Configuração</button>
             <ul id="configList">
                 <!-- A lista de configIds será preenchida pelo JavaScript -->
@@ -25,7 +32,7 @@
         <!-- Painel Direito: Editor da Configuração Selecionada -->
         <div class="editor-panel">
             <form id="configForm">
-                <input type="hidden" id="recordIdInput"> <!-- Para guardar o ID do registro Grist -->
+                <input type="hidden" id="recordIdInput">
 
                 <div class="form-group">
                     <label for="configIdInput">ID da Configuração (configId)</label>
@@ -36,28 +43,20 @@
                     <label for="descriptionInput">Descrição</label>
                     <input type="text" id="descriptionInput" placeholder="Ex: Configuração do drawer para a Matriz de Riscos">
                 </div>
+                
+                <!-- O contêiner pai que é mostrado/escondido -->
+                <div id="drawerEditor" style="display: none;">
+                    <hr>
+                    <div id="editorHeader"></div>
+                    <div id="tableSelectorContainer" class="form-group"></div>
+                    <div id="specializedEditorContainer" class="form-group"></div>
+                </div>
 
-<!-- This container will be shown/hidden dynamically for non-Drawer configs -->
-<div id="genericJsonEditor" class="form-group">
-    <label for="configJsonTextarea">JSON da Configuração (configJson)</label>
-    <textarea id="configJsonTextarea" rows="20" placeholder="Cole ou edite o JSON da sua configuração aqui..."></textarea>
-</div>
-
-<!-- This is the container for our new Drawer UI, which starts hidden -->
-<div id="drawerEditor" style="display: none;">
-    <hr>
-    <div id="editorHeader">
-        <!-- O título será inserido aqui pelo JS -->
-    </div>
-    <div id="tableSelectorContainer" class="form-group">
-        <!-- O seletor de tabelas será renderizado aqui -->
-    </div>
-    <div id="specializedUiContainer" class="form-group">
-        <!-- O módulo especialista irá renderizar sua UI aqui -->
-    </div>
-</div>
-</div>
-</div>
+                <!-- Editor de JSON para debug ou tipos não especializados -->
+                <div id="genericJsonEditor" class="form-group">
+                    <label for="configJsonTextarea">JSON da Configuração (configJson)</label>
+                    <textarea id="configJsonTextarea" rows="20" placeholder="Cole ou edite o JSON da sua configuração aqui..."></textarea>
+                </div>
 
                 <div class="form-actions">
                     <button type="submit" id="saveBtn" class="btn btn-success">Salvar Alterações</button>
@@ -68,6 +67,10 @@
     </div>
 
     <!-- Nossas bibliotecas do framework -->
+    <!-- CORREÇÃO CRÍTICA: Garantindo a ordem de carregamento correta -->
+    <script src="./editors/config-drawer.js" defer></script>
+    <script src="./editors/config-cards.js" defer></script>
     <script type="module" src="config-manager-widget.js"></script>
+
 </body>
 </html>
