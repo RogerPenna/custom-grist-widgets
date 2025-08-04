@@ -1,0 +1,145 @@
+// widgets/CardViewer.js
+// Este é o script de "cola" para o widget que exibe os cards.
+// Ele usa as bibliotecas CardSystem e ConfigManagerComponent.
+
+import { GristTableLens } from '../libraries/grist-table-lens/grist-table-lens.js';
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Verificação de dependências
+    if (typeof grist === 'undefined' || typeof CardSystem === 'undefined' || typeof ConfigManagerComponent === 'undefined') {
+        document.body.innerHTML = `<p style="color: red; padding: 15px;">Erro Crítico: Uma ou mais dependências do framework não foram carregadas. Verifique os caminhos dos scripts em CardViewer.html.</p>`;
+        return;
+    }
+
+    const appContainer = document.getElementById('app-container');
+    const tableLens = new GristTableLens(grist);
+
+    let currentRecords = [];
+    let currentConfig = null;
+    let configId = null;
+
+    function render() {
+        // Limpa o container antes de cada renderização
+        appContainer.innerHTML = '';
+
+        if (!configId) {
+            appContainer.innerHTML = `<div class="setup-placeholder">Widget não configurado. Clique na engrenagem ⚙️ para começar.</div>`;
+        } else if (!currentConfig) {
+            appContainer.innerHTML = `<p>Carregando configuração "${configId}"...</p>`;
+        } else {
+            // Se tudo estiver pronto, chama a biblioteca de cards para renderizar
+            CardSystem.renderCards(appContainer, currentRecords, currentConfig);
+        }
+
+        // A engrenagem de configurações é sempre visível
+        addSettingsGear();
+    }
+    
+    function addSettingsGear() {
+        if (document.getElementById('settings-gear-btn')) return;
+        const gearBtn = document.createElement('div');
+        gearBtn.id = 'settings-gear-btn';
+        gearBtn.innerHTML = '⚙️';
+        gearBtn.title = 'Configurações';
+        gearBtn.onclick = openSettingsModal;
+        appContainer.appendChild(gearBtn);
+    }
+
+    function openSettingsModal() {
+        closeSettingsModal(); // Garante que não haja modais duplicados
+
+        const currentId = grist.getOptions().configId || '';
+
+        const modal = document.createElement('div');
+        modal.id = 'settings-modal-overlay';
+        modal.innerHTML = `
+            <div class="settings-modal-content">
+                <h3>Configurações do Widget</h3>
+                
+                <div class="settings-group">
+                    <label>Abra o Gerenciador para criar ou encontrar um ID de configuração.</label>
+                    <button id="sm-open-configurator">Abrir Configurador</button>
+                </div>
+
+                <hr>
+
+                <div class="settings-group">
+                    <label for="sm-config-id-input">Cole o ID da configuração desejada aqui:</label>
+                    <div class="input-group">
+                        <input type="text" id="sm-config-id-input" value="${currentId}" placeholder="Ex: cards_projetos">
+                        <button id="sm-apply-id">Aplicar</button>
+                    </div>
+                </div>
+
+                 <hr>
+
+                <div class="settings-group">
+                     <label>Para limpar a configuração atual, clique aqui.</label>
+                     <button id="sm-clear-config" class="btn-danger">Limpar Configuração</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        modal.querySelector('#sm-open-configurator').onclick = () => {
+            closeSettingsModal();
+            // Chama o nosso componente de configuração
+            ConfigManagerComponent.open();
+        };
+
+        modal.querySelector('#sm-apply-id').onclick = () => {
+            const newId = modal.querySelector('#sm-config-id-input').value.trim();
+            // Salva o ID nas opções do widget, o que dispara o grist.onOptions
+            grist.setOptions({ configId: newId });
+            closeSettingsModal();
+        };
+        
+        modal.querySelector('#sm-clear-config').onclick = () => {
+            grist.setOptions({ configId: null });
+            closeSettingsModal();
+        };
+
+        modal.addEventListener('click', e => { if (e.target === modal) closeSettingsModal(); });
+    }
+
+    function closeSettingsModal() {
+        const modal = document.getElementById('settings-modal-overlay');
+        if (modal) modal.remove();
+    }
+
+    grist.ready();
+
+    grist.onRecords(records => {
+        currentRecords = records;
+        render();
+    });
+
+    grist.onOptions(async options => {
+        const newConfigId = options?.configId || null;
+        
+        // Se o ID não mudou, não faz nada
+        if (newConfigId === configId) return;
+
+        configId = newConfigId;
+        currentConfig = null; // Reseta a configuração para forçar o recarregamento
+
+        if (configId) {
+            render(); // Mostra a mensagem "loading..."
+            try {
+                const configRecord = await tableLens.findRecord('Grf_config', { configId: configId });
+                if (!configRecord) {
+                    throw new Error(`Configuração com ID "${configId}" não foi encontrada na tabela Grf_config.`);
+                }
+                currentConfig = JSON.parse(configRecord.configJson);
+            } catch (e) {
+                console.error(e);
+                appContainer.innerHTML = `<div class="error-msg">${e.message}</div>`;
+                addSettingsGear(); // Garante que a engrenagem ainda apareça no erro
+                return; // Interrompe o fluxo para não tentar renderizar
+            }
+        }
+        
+        render();
+    });
+});
