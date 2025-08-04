@@ -1,37 +1,30 @@
 // widgets/CardViewer.js
-// Este é o script de "cola" para o widget que exibe os cards.
-// Ele usa as bibliotecas CardSystem e ConfigManagerComponent.
+// VERSÃO CORRETA: Importa e usa o ConfigManagerComponent como um módulo.
 
 import { GristTableLens } from '../libraries/grist-table-lens/grist-table-lens.js';
+// NOVO: Importamos a função 'open' do nosso novo módulo.
+import { open as openConfigManager } from '../libraries/grist-config-manager/ConfigManagerComponent.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Verificação de dependências
-    if (typeof grist === 'undefined' || typeof CardSystem === 'undefined' || typeof ConfigManagerComponent === 'undefined') {
-        document.body.innerHTML = `<p style="color: red; padding: 15px;">Erro Crítico: Uma ou mais dependências do framework não foram carregadas. Verifique os caminhos dos scripts em CardViewer.html.</p>`;
+    if (typeof grist === 'undefined' || typeof CardSystem === 'undefined') {
+        document.body.innerHTML = `<p style="color: red; padding: 15px;">Erro Crítico: Dependências não carregadas.</p>`;
         return;
     }
 
     const appContainer = document.getElementById('app-container');
     const tableLens = new GristTableLens(grist);
 
-    let currentRecords = [];
-    let currentConfig = null;
-    let configId = null;
+    let currentRecords = [], currentConfig = null, configId = null;
 
     function render() {
-        // Limpa o container antes de cada renderização
         appContainer.innerHTML = '';
-
         if (!configId) {
             appContainer.innerHTML = `<div class="setup-placeholder">Widget não configurado. Clique na engrenagem ⚙️ para começar.</div>`;
         } else if (!currentConfig) {
             appContainer.innerHTML = `<p>Carregando configuração "${configId}"...</p>`;
         } else {
-            // Se tudo estiver pronto, chama a biblioteca de cards para renderizar
             CardSystem.renderCards(appContainer, currentRecords, currentConfig);
         }
-
-        // A engrenagem de configurações é sempre visível
         addSettingsGear();
     }
     
@@ -46,23 +39,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function openSettingsModal() {
-        closeSettingsModal(); // Garante que não haja modais duplicados
-
+        closeSettingsModal();
         const currentId = grist.getOptions().configId || '';
-
         const modal = document.createElement('div');
         modal.id = 'settings-modal-overlay';
         modal.innerHTML = `
             <div class="settings-modal-content">
                 <h3>Configurações do Widget</h3>
-                
                 <div class="settings-group">
                     <label>Abra o Gerenciador para criar ou encontrar um ID de configuração.</label>
                     <button id="sm-open-configurator">Abrir Configurador</button>
                 </div>
-
                 <hr>
-
                 <div class="settings-group">
                     <label for="sm-config-id-input">Cole o ID da configuração desejada aqui:</label>
                     <div class="input-group">
@@ -70,27 +58,28 @@ document.addEventListener('DOMContentLoaded', () => {
                         <button id="sm-apply-id">Aplicar</button>
                     </div>
                 </div>
-
                  <hr>
-
                 <div class="settings-group">
                      <label>Para limpar a configuração atual, clique aqui.</label>
                      <button id="sm-clear-config" class="btn-danger">Limpar Configuração</button>
                 </div>
             </div>
         `;
-
         document.body.appendChild(modal);
 
-        modal.querySelector('#sm-open-configurator').onclick = () => {
+        modal.querySelector('#sm-open-configurator').onclick = async () => {
             closeSettingsModal();
-            // Chama o nosso componente de configuração
-            ConfigManagerComponent.open();
+            try {
+                const configs = await tableLens.fetchTableRecords('Grf_config');
+                // NOVO: Chamamos a função importada.
+                openConfigManager({ configs: configs });
+            } catch(e) {
+                alert("Erro ao buscar configurações: " + e.message);
+            }
         };
 
         modal.querySelector('#sm-apply-id').onclick = () => {
             const newId = modal.querySelector('#sm-config-id-input').value.trim();
-            // Salva o ID nas opções do widget, o que dispara o grist.onOptions
             grist.setOptions({ configId: newId });
             closeSettingsModal();
         };
@@ -108,38 +97,25 @@ document.addEventListener('DOMContentLoaded', () => {
         if (modal) modal.remove();
     }
 
-    grist.ready();
-
-    grist.onRecords(records => {
-        currentRecords = records;
-        render();
-    });
-
+    grist.ready({ requiredAccess: 'full' });
+    grist.onRecords(records => { currentRecords = records; render(); });
     grist.onOptions(async options => {
         const newConfigId = options?.configId || null;
-        
-        // Se o ID não mudou, não faz nada
         if (newConfigId === configId) return;
-
         configId = newConfigId;
-        currentConfig = null; // Reseta a configuração para forçar o recarregamento
-
+        currentConfig = null;
         if (configId) {
-            render(); // Mostra a mensagem "loading..."
+            render();
             try {
                 const configRecord = await tableLens.findRecord('Grf_config', { configId: configId });
-                if (!configRecord) {
-                    throw new Error(`Configuração com ID "${configId}" não foi encontrada na tabela Grf_config.`);
-                }
+                if (!configRecord) throw new Error(`Configuração "${configId}" não encontrada.`);
                 currentConfig = JSON.parse(configRecord.configJson);
             } catch (e) {
-                console.error(e);
                 appContainer.innerHTML = `<div class="error-msg">${e.message}</div>`;
-                addSettingsGear(); // Garante que a engrenagem ainda apareça no erro
-                return; // Interrompe o fluxo para não tentar renderizar
+                addSettingsGear();
+                return;
             }
         }
-        
         render();
     });
 });

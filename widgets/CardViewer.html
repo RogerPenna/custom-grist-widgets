@@ -28,19 +28,19 @@
 <body>
     <div id="app-container"></div>
     
-    <!-- Carrega as dependências na ordem correta -->
     <script src="../framework-config.js"></script>
-    
     <script type="module" src="../libraries/grist-table-lens/grist-table-lens.js"></script>
     <script type="module" src="../libraries/grist-data-writer.js"></script>
     
     <script src="../libraries/grist-card-system/CardSystem.js" defer></script>
-    <script src="../libraries/grist-config-manager/ConfigManagerComponent.js" defer></script>
+    
+    <!-- MUDANÇA: Agora é carregado como um módulo. O defer é implícito. -->
+    <script type="module" src="../libraries/grist-config-manager/ConfigManagerComponent.js"></script>
 
+    <!-- Editores Especialistas (ainda precisam ser carregados globalmente para o ConfigManager encontrar) -->
     <script src="../ConfigManager/editors/config-drawer.js" defer></script>
     <script src="../ConfigManager/editors/config-cards.js" defer></script>
     
-    <!-- Carrega o script principal deste widget -->
     <script src="./CardViewer.js" type="module"></script>
 </body>
 </html>
