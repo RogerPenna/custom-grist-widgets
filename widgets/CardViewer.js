@@ -6,20 +6,21 @@ import { open as openConfigManager } from '../libraries/grist-config-manager/Con
 
 document.addEventListener('DOMContentLoaded', async () => {
     
-    // CORREÇÃO DE ÍCONES: Carrega o SVG dinamicamente
+    // Carrega o arquivo SVG e o injeta no DOM.
     async function loadIcons() {
         try {
             const response = await fetch('../libraries/icons/icons.svg');
-            if (!response.ok) throw new Error('Network response was not ok');
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const svgText = await response.text();
             const div = document.createElement('div');
+            div.style.display = 'none'; // Garante que o container do SVG não seja visível
             div.innerHTML = svgText;
             document.body.insertBefore(div, document.body.firstChild);
         } catch (error) {
-            console.error('Failed to load icons:', error);
+            console.error('Falha ao carregar o arquivo de ícones:', error);
         }
     }
-    await loadIcons(); // Espera os ícones carregarem antes de continuar
+    await loadIcons();
 
     const getIcon = (id) => `<svg class="icon"><use href="#${id}"></use></svg>`;
 
@@ -34,7 +35,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let state = {
         records: [],
         configData: null,
-        configId: grist.getOptions()?.configId || null // Inicializa com o valor salvo
+        configId: grist.getOptions()?.configId || null
     };
 
     function render() {
@@ -42,7 +43,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!state.configId) {
             appContainer.innerHTML = `<div class="setup-placeholder">Widget não configurado. Clique no ícone ⚙️ para configurar.</div>`;
         } else if (!state.configData) {
-            appContainer.innerHTML = `<p class="setup-placeholder">Carregando configuração ID: "${state.configId}"...</p>`;
+            if (state.configId) {
+                appContainer.innerHTML = `<div class="error-msg">Configuração com ID "${state.configId}" não encontrada.</div>`;
+            } else {
+                 appContainer.innerHTML = `<p class="setup-placeholder">Carregando...</p>`;
+            }
         } else {
             CardSystem.renderCards(appContainer, state.records, state.configData);
         }
@@ -63,8 +68,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         event.stopPropagation();
         closeSettingsPopover();
         
-        // CORREÇÃO DE PERSISTÊNCIA: Sempre lê o valor mais recente das opções
-        const activeConfigId = grist.getOptions().configId || '';
+        // CORREÇÃO DO BUG: Usa o `state.configId` como a fonte da verdade.
+        const activeConfigId = state.configId || '';
         const isLinked = !!activeConfigId && !!state.configData;
 
         const overlay = document.createElement('div');
@@ -111,13 +116,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (overlay) overlay.remove();
     }
 
-    // --- Ciclo de Vida do Widget ---
     grist.ready({ requiredAccess: 'full' });
     grist.onRecords(records => { state.records = records; render(); });
 
-    grist.onOptions(async (options) => {
+    grist.onOptions(async (options, oldOptions) => {
         const newConfigId = options?.configId || null;
-        if (newConfigId === state.configId) return;
+        if (newConfigId === state.configId && oldOptions) return;
 
         state.configId = newConfigId;
         state.configData = null;
@@ -126,11 +130,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             try {
                 const configRecord = await tableLens.findRecord('Grf_config', { configId: state.configId });
                 state.configData = configRecord ? JSON.parse(configRecord.configJson) : null;
-                if (!configRecord) {
-                    // Adiciona um placeholder na UI se o ID for inválido
-                    appContainer.innerHTML = `<div class="error-msg">Configuração com ID "${state.configId}" não encontrada.</div>`;
-                    addSettingsGear();
-                }
             } catch (e) {
                 console.error("Erro ao carregar configuração:", e);
                 state.configData = null;
