@@ -3,44 +3,113 @@
 <head>
     <meta charset="UTF-8">
     <title>Card Viewer Widget</title>
+    <!-- API Grist, sempre necessária -->
     <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
 
-    <!-- Carrega o CSS da biblioteca de configuração -->
+    <!-- Carrega o CSS da biblioteca de configuração. Isso está correto. -->
     <link rel="stylesheet" href="../libraries/grist-config-manager/ConfigManagerComponent.css">
     
     <style>
-        /* ... (todos os estilos que tínhamos antes permanecem aqui) ... */
-        html, body { height: 100%; width: 100%; margin: 0; padding: 0; font-family: sans-serif; }
-        #app-container { height: 100%; width: 100%; box-sizing: border-box; position: relative; }
-        .error-msg, .setup-placeholder { padding: 30px; text-align: center; color: #888; background-color: #f9f9f9; border: 2px dashed #ccc; margin: 30px; border-radius: 8px; }
-        #settings-gear-btn { position: absolute; top: 10px; right: 10px; font-size: 24px; cursor: pointer; z-index: 100; padding: 5px; background-color: rgba(255, 255, 255, 0.7); border-radius: 50%; width: 30px; height: 30px; display: flex; justify-content: center; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
-        #settings-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); display: flex; justify-content: center; align-items: center; z-index: 1500; }
-        .settings-modal-content { background-color: white; padding: 20px 30px; border-radius: 8px; width: 90%; max-width: 450px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
-        .settings-modal-content h3 { margin-top: 0; }
-        .settings-group { margin-bottom: 15px; }
-        .settings-group label { display: block; margin-bottom: 8px; font-size: 14px; color: #555; }
-        .settings-group button { width: 100%; padding: 10px; cursor: pointer; }
+        /* Estilos do widget e do modal de configuração */
+        html, body { 
+            height: 100%; 
+            width: 100%; 
+            margin: 0; 
+            padding: 0; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f7f7f7; /* Um fundo suave para o widget */
+        }
+        #app-container { 
+            height: 100%; 
+            width: 100%; 
+            box-sizing: border-box; 
+            position: relative; 
+            overflow-y: auto; /* Permite scroll se os cards transbordarem */
+        }
+        .error-msg, .setup-placeholder { 
+            padding: 30px; 
+            text-align: center; 
+            color: #6c757d; 
+            background-color: #fdfdfe; 
+            border: 1px dashed #ced4da; 
+            margin: 20px; 
+            border-radius: 8px; 
+            height: calc(100% - 42px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-sizing: border-box;
+        }
+        #settings-gear-btn { 
+            position: absolute; 
+            top: 10px; 
+            right: 10px; 
+            font-size: 20px; 
+            cursor: pointer; 
+            z-index: 100; 
+            padding: 5px; 
+            background-color: rgba(255, 255, 255, 0.8); 
+            border-radius: 50%; 
+            width: 28px; 
+            height: 28px; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+            transition: transform 0.2s;
+        }
+        #settings-gear-btn:hover {
+            transform: rotate(45deg);
+        }
+        #settings-modal-overlay { 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            background-color: rgba(0, 0, 0, 0.6); 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            z-index: 1500; 
+        }
+        .settings-modal-content { 
+            background-color: white; 
+            padding: 20px 30px; 
+            border-radius: 8px; 
+            width: 90%; 
+            max-width: 450px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
+        }
+        .settings-modal-content h3 { margin-top: 0; color: #343a40; }
+        .settings-group { margin-bottom: 20px; }
+        .settings-group label { display: block; margin-bottom: 8px; font-size: 14px; color: #495057; }
+        .settings-group button { width: 100%; padding: 10px; cursor: pointer; border: 1px solid #0d6efd; background-color: #0d6efd; color: white; border-radius: 5px; }
         .input-group { display: flex; }
-        .input-group input { flex-grow: 1; padding: 10px; border: 1px solid #ccc; border-right: none; }
-        .btn-danger { background-color: #dc3545; color: white; border-color: #dc3545; }
+        .input-group input { flex-grow: 1; padding: 10px; border: 1px solid #ced4da; border-right: none; border-radius: 5px 0 0 5px; }
+        .input-group input:focus { outline: none; border-color: #86b7fe; box-shadow: 0 0 0 0.25rem rgba(13,110,253,.25); }
+        .input-group button { border-radius: 0 5px 5px 0; }
+        .btn-danger { background-color: #dc3545; border-color: #dc3545; }
     </style>
 </head>
 <body>
-    <div id="app-container"></div>
+    <div id="app-container">Carregando Widget...</div>
     
-    <script src="../framework-config.js"></script>
-    <script type="module" src="../libraries/grist-table-lens/grist-table-lens.js"></script>
-    <script type="module" src="../libraries/grist-data-writer.js"></script>
-    
-    <script src="../libraries/grist-card-system/CardSystem.js" defer></script>
-    
-    <!-- MUDANÇA: Agora é carregado como um módulo. O defer é implícito. -->
-    <script type="module" src="../libraries/grist-config-manager/ConfigManagerComponent.js"></script>
+    <!-- =================================================================== -->
+    <!-- ESTRATÉGIA DE CARREGAMENTO DE SCRIPTS (A FORMA CORRETA) -->
+    <!-- =================================================================== -->
 
-    <!-- Editores Especialistas (ainda precisam ser carregados globalmente para o ConfigManager encontrar) -->
-    <script src="../ConfigManager/editors/config-drawer.js" defer></script>
-    <script src="../ConfigManager/editors/config-cards.js" defer></script>
+    <!-- Carregamos o CardSystem, que parece ser um script global (não usa export) -->
+    <script src="../libraries/grist-card-system/CardSystem.js"></script>
     
+    <!-- Carregamos os editores, que também são globais -->
+    <script src="../ConfigManager/editors/config-drawer.js"></script>
+    <script src="../ConfigManager/editors/config-cards.js"></script>
+    
+    <!-- FINALMENTE, carregamos o nosso ponto de entrada como MÓDULO. -->
+    <!-- Ele será responsável por importar TODAS as outras bibliotecas de módulo. -->
     <script src="./CardViewer.js" type="module"></script>
+
+
 </body>
 </html>

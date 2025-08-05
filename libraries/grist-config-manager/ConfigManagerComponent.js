@@ -1,161 +1,198 @@
 // libraries/grist-config-manager/ConfigManagerComponent.js
-// VERSÃO CORRETA: Agora é um módulo JavaScript moderno.
+// VERSÃO FINAL CORRIGIDA - Alinhada com o esquema de dados de produção.
 
 import { GristTableLens } from '../grist-table-lens/grist-table-lens.js';
 import { GristDataWriter } from '../grist-data-writer.js';
 
 let overlay = null;
 
-// A função open é agora exportada diretamente.
-export async function open(options = {}) {
-    if (overlay) return;
+function copyToClipboard(text, element) {
+    navigator.clipboard.writeText(text).then(() => {
+        const originalText = element.textContent;
+        element.textContent = 'Copiado!';
+        setTimeout(() => {
+            element.textContent = originalText;
+        }, 1500);
+    }).catch(err => console.error('Falha ao copiar texto: ', err));
+}
 
-    const allConfigs = options.configs || [];
-
-    overlay = document.createElement('div');
-    overlay.className = 'grf-cm-overlay';
-    overlay.innerHTML = `
-        <div class="grf-cm-modal">
-            <div class="grf-cm-header">
-                <h1>Gerenciador de Configurações</h1>
-                <button class="grf-cm-close">×</button>
+// CORREÇÃO TOTAL: O tutorial agora ensina o esquema de colunas de produção.
+function renderSetupInstructions(container) {
+    container.innerHTML = `
+        <div class="grf-cm-setup-guide">
+            <h2>Configuração Necessária do Framework</h2>
+            <p>A tabela <code>Grf_config</code> precisa existir com a estrutura correta.</p>
+            
+            <h4>Passo 1: Crie a Tabela</h4>
+            <p>Crie uma nova tabela com o nome exato:</p>
+            <div class="grf-copy-box" title="Clique para copiar">
+                <code>Grf_config</code>
+                <button class="grf-copy-btn">Copiar</button>
             </div>
-            <div class="grf-cm-body"></div>
+
+            <h4>Passo 2: Crie as Colunas</h4>
+            <p>Adicione estas colunas (clique nos nomes para copiar):</p>
+            <table class="grf-setup-table">
+                <thead><tr><th>Nome da Coluna</th><th>Tipo no Grist</th></tr></thead>
+                <tbody>
+                    <tr><td class="grf-copy-cell">configId</td><td>Text</td></tr>
+                    <tr><td class="grf-copy-cell">widgetTitle</td><td>Text</td></tr>
+                    <tr><td class="grf-copy-cell">description</td><td>Text</td></tr>
+                    <tr><td class="grf-copy-cell">componentType</td><td>Text</td></tr>
+                    <tr><td class="grf-copy-cell">configJson</td><td>Text</td></tr>
+                    <tr><td class="grf-copy-cell">pageId</td><td>Numeric</td></tr>
+                </tbody>
+            </table>
+            <p class="grf-setup-footer">Após criar a tabela e as colunas, feche esta janela e abra o configurador novamente.</p>
         </div>
     `;
-    document.body.appendChild(overlay);
-
-    overlay.querySelector('.grf-cm-close').onclick = close;
-    overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
-
-    await renderMainUI(overlay.querySelector('.grf-cm-body'), allConfigs);
+    container.querySelector('.grf-copy-btn').addEventListener('click', (e) => copyToClipboard('Grf_config', e.target));
+    container.querySelectorAll('.grf-copy-cell').forEach(cell => {
+        cell.style.cursor = 'pointer';
+        cell.addEventListener('click', (e) => copyToClipboard(e.target.textContent, e.target));
+    });
 }
 
 function close() {
-    if (overlay && overlay.parentNode) {
-        overlay.parentNode.removeChild(overlay);
-    }
+    if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
     overlay = null;
 }
 
-// Esta função agora é interna ao módulo e pode usar GristTableLens.
-async function renderMainUI(container, allConfigs) {
-    container.innerHTML = `
-        <div class="grf-cm-main-container">
-            <div class="grf-cm-sidebar">
-                <h2>Configurações</h2>
-                <div class="grf-cm-new-controls">
-                    <select id="cm-new-type-selector"><option value="Drawer">Drawer</option><option value="CardSystem">Card System</option></select>
-                    <button id="cm-new-btn" class="btn btn-primary">+ Nova</button>
-                </div>
-                <ul id="cm-config-list"></ul>
-            </div>
-            <div class="grf-cm-editor-panel">
-                <form id="cm-config-form" onsubmit="return false;">
-                    <input type="hidden" id="cm-record-id">
-                    <div class="form-group">
-                        <label for="cm-config-id">ID da Configuração (Copie este valor)</label>
-                        <input type="text" id="cm-config-id" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="cm-description">Descrição</label>
-                        <input type="text" id="cm-description">
-                    </div>
-                    <div id="cm-editor-content"><p class="editor-placeholder">Selecione uma config. à esquerda ou crie uma nova.</p></div>
-                    <div class="form-actions"><button type="submit" id="cm-save-btn" class="btn btn-success">Salvar</button></div>
-                </form>
-            </div>
-        </div>`;
-
-    // CORREÇÃO 2: Garante que os nomes dos editores estão corretos.
-    const editorMap = { 'Drawer': window.DrawerConfigEditor, 'CardSystem': window.CardConfigEditor };
-    
-    const configListEl = container.querySelector('#cm-config-list');
-    const editorContentEl = container.querySelector('#cm-editor-content');
-    const configIdInputEl = container.querySelector('#cm-config-id');
-    const descriptionInputEl = container.querySelector('#cm-description');
-    const recordIdInputEl = container.querySelector('#cm-record-id');
-    const formEl = container.querySelector('#cm-config-form');
-    const tableLens = new GristTableLens(grist);
-    const dataWriter = new GristDataWriter(grist);
+// CORREÇÃO TOTAL: Toda a lógica interna foi atualizada para usar o esquema de colunas correto.
+async function renderMainUI(container) {
     const CONFIG_TABLE = 'Grf_config';
-    
-    let selectedConfig = null;
-    let currentEditorModule = null;
+    const tableLens = new GristTableLens(grist);
 
-    // CORREÇÃO 1: A lógica de 'displayConfig' foi corrigida.
-    const displayConfig = async (config) => {
-        selectedConfig = config;
-        recordIdInputEl.value = config.id || '';
-        configIdInputEl.value = config.configId || '';
-        descriptionInputEl.value = config.description || '';
-        configIdInputEl.readOnly = !!config.id;
-
-        currentEditorModule = editorMap[config.componentType];
-        if (!currentEditorModule) {
-            editorContentEl.innerHTML = `<p style="color:red;">Editor para o tipo "${config.componentType}" não foi encontrado. Verifique se o script do editor está sendo carregado e o nome no mapa está correto.</p>`;
+    try {
+        const allTableIds = await grist.docApi.listTables();
+        if (!allTableIds.includes(CONFIG_TABLE)) {
+            renderSetupInstructions(container);
             return;
         }
 
-        editorContentEl.innerHTML = `
-            <div class="form-group" id="cm-table-selector-container"></div>
-            <div id="cm-specialized-editor"></div>`;
+        const allConfigs = await tableLens.fetchTableRecords(CONFIG_TABLE);
+        const dataWriter = new GristDataWriter(grist);
         
-        const specializedEditor = editorContentEl.querySelector('#cm-specialized-editor');
-        const tableSelectorContainer = editorContentEl.querySelector('#cm-table-selector-container');
+        // CORREÇÃO: HTML do formulário alinhado com o novo esquema.
+        container.innerHTML = `
+            <div class="grf-cm-main-container">
+                <div class="grf-cm-sidebar">
+                    <h2>Configurações</h2>
+                    <div class="grf-cm-new-controls">
+                        <select id="cm-new-type-selector"><option value="Card System">Card System</option><option value="Drawer">Drawer</option></select>
+                        <button id="cm-new-btn" class="btn btn-primary">+ Nova</button>
+                    </div>
+                    <ul id="cm-config-list"></ul>
+                </div>
+                <div class="grf-cm-editor-panel">
+                    <form id="cm-config-form">
+                        <input type="hidden" id="cm-record-id">
+                        <div class="form-group"><label for="cm-widget-title">Título do Widget (Nome na lista)</label><input type="text" id="cm-widget-title" required></div>
+                        <div class="form-group"><label for="cm-config-id">ID da Configuração (Identificador único, ex: 'cards_clientes')</label><input type="text" id="cm-config-id" required></div>
+                        <div class="form-group"><label for="cm-description">Descrição</label><input type="text" id="cm-description"></div>
+                        <div id="cm-editor-content"><p class="editor-placeholder">Selecione uma config ou crie uma nova.</p></div>
+                        <div class="form-actions"><button type="submit" id="cm-save-btn" class="btn btn-success">Salvar e Fechar</button></div>
+                    </form>
+                </div>
+            </div>`;
         
-        const tables = await tableLens.listAllTables();
-        tableSelectorContainer.innerHTML = `<label for="cm-table-selector">Tabela de Dados:</label>
-            <select id="cm-table-selector"><option value="">-- Selecione --</option>
-            ${tables.map(t => `<option value="${t.id}">${t.id}</option>`).join('')}
-            </select>`;
-        
-        const tableSelector = editorContentEl.querySelector('#cm-table-selector');
-        
-        tableSelector.onchange = () => {
-            specializedEditor.innerHTML = '';
-            currentEditorModule.render(specializedEditor, JSON.parse(config.configJson || '{}'), tableLens, tableSelector.value);
+        const editorMap = { 'Card System': window.CardConfigEditor, 'Drawer': window.DrawerConfigEditor };
+        const configListEl = container.querySelector('#cm-config-list');
+        const editorContentEl = container.querySelector('#cm-editor-content');
+        const formEl = container.querySelector('#cm-config-form');
+        let selectedConfig = null;
+        let currentEditorModule = null;
+
+        const loadList = (configs) => {
+            configListEl.innerHTML = '';
+            configs.forEach(c => {
+                const li = document.createElement('li');
+                li.textContent = c.widgetTitle || c.configId; // Usa widgetTitle como nome na lista
+                li.dataset.id = c.id;
+                li.onclick = () => {
+                    document.querySelectorAll('#cm-config-list li').forEach(item => item.classList.remove('is-active'));
+                    li.classList.add('is-active');
+                    displayConfig(c);
+                };
+                configListEl.appendChild(li);
+            });
         };
-    };
 
-    const renderList = (configs) => {
-        configListEl.innerHTML = '';
-        configs.forEach(c => {
-            const li = document.createElement('li');
-            li.textContent = c.configId;
-            li.onclick = () => {
-                container.querySelectorAll('#cm-config-list li').forEach(item => item.classList.remove('is-active'));
-                li.classList.add('is-active');
-                displayConfig(c);
+        // CORREÇÃO: Lógica para popular o formulário com os dados corretos.
+        const displayConfig = (config) => {
+            selectedConfig = config;
+            formEl.querySelector('#cm-record-id').value = config.id || '';
+            formEl.querySelector('#cm-widget-title').value = config.widgetTitle || '';
+            formEl.querySelector('#cm-config-id').value = config.configId || '';
+            formEl.querySelector('#cm-description').value = config.description || '';
+            
+            const editorKey = (config.componentType || '').replace(/\s+/g, '');
+            currentEditorModule = editorMap[editorKey] || editorMap[config.componentType];
+
+            if (currentEditorModule) {
+                const configData = JSON.parse(config.configJson || '{}');
+                currentEditorModule.render(editorContentEl, configData, tableLens);
+            } else {
+                editorContentEl.innerHTML = `<p class="editor-error">Editor para "${config.componentType}" não encontrado.</p>`;
+            }
+        };
+
+        container.querySelector('#cm-new-btn').onclick = () => {
+            const type = container.querySelector('#cm-new-type-selector').value;
+            displayConfig({ id: null, componentType: type, widgetTitle: `Nova Config - ${type}`, configId: `nova_config_${Date.now()}`, configJson: '{}' });
+        };
+            
+        // CORREÇÃO: Lógica de salvamento para montar o objeto de registro correto.
+        formEl.onsubmit = async (e) => {
+            e.preventDefault();
+            if (!selectedConfig) return;
+
+            const configJson = currentEditorModule ? currentEditorModule.read(editorContentEl) : {};
+            const recordData = {
+                widgetTitle: formEl.querySelector('#cm-widget-title').value.trim(),
+                configId: formEl.querySelector('#cm-config-id').value.trim(),
+                description: formEl.querySelector('#cm-description').value.trim(),
+                componentType: selectedConfig.componentType,
+                configJson: JSON.stringify(configJson)
+                // pageId não está no formulário, então não é salvo aqui.
             };
-            configListEl.appendChild(li);
-        });
-    };
 
-    container.querySelector('#cm-new-btn').onclick = () => {
-        const type = container.querySelector('#cm-new-type-selector').value;
-        const newId = `${type.toLowerCase()}_${Date.now()}`;
-        const newConfig = { id: null, componentType: type, configId: newId, configJson: '{}', description: '' };
-        displayConfig(newConfig);
-    };
+            if (!recordData.widgetTitle || !recordData.configId) {
+                alert("Título do Widget e ID da Configuração são obrigatórios.");
+                return;
+            }
+
+            try {
+                if (selectedConfig.id) {
+                    await dataWriter.updateRecord(CONFIG_TABLE, selectedConfig.id, recordData);
+                } else {
+                    await dataWriter.addRecord(CONFIG_TABLE, recordData);
+                }
+                alert(`Configuração "${recordData.widgetTitle}" salva com sucesso!`);
+                close();
+            } catch (err) {
+                alert(`Erro ao salvar: ${err.message}`);
+                console.error("Erro ao salvar configuração:", err);
+            }
+        };
+
+        loadList(allConfigs);
+
+    } catch (error) {
+        console.error("Erro inesperado no ConfigManager:", error);
+        container.innerHTML = `<div class="editor-error">Erro inesperado: ${error.message}. Verifique o console.</div>`;
+    }
+}
+
+export function open() {
+    if (overlay) return;
+    overlay = document.createElement('div');
+    overlay.className = 'grf-cm-overlay';
+    overlay.innerHTML = `<div class="grf-cm-modal"><div class="grf-cm-header"><h1>Gerenciador de Configurações</h1><button class="grf-cm-close">×</button></div><div class="grf-cm-body"><p>Carregando...</p></div></div>`;
+    document.body.appendChild(overlay);
+        
+    overlay.querySelector('.grf-cm-close').onclick = close;
+    overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
     
-    formEl.onsubmit = async (e) => {
-        e.preventDefault();
-        if (!selectedConfig || !currentEditorModule) return;
-        const configId = configIdInputEl.value.trim();
-        if (!configId) { alert('O ID da Configuração é obrigatório.'); return; }
-        const specializedEditor = editorContentEl.querySelector('#cm-specialized-editor');
-        const newConfigData = currentEditorModule.read(specializedEditor);
-        const recordData = { configId, description: descriptionInputEl.value.trim(), configJson: JSON.stringify(newConfigData), componentType: selectedConfig.componentType };
-        if (selectedConfig.id) {
-            await dataWriter.updateRecord(CONFIG_TABLE, selectedConfig.id, recordData);
-        } else {
-            await dataWriter.addRecord(CONFIG_TABLE, recordData);
-        }
-        alert(`Configuração "${configId}" salva com sucesso! Você já pode copiar o ID e fechar esta janela.`);
-        const updatedConfigs = await tableLens.fetchTableRecords(CONFIG_TABLE);
-        renderList(updatedConfigs);
-    };
-
-    renderList(allConfigs);
+    renderMainUI(overlay.querySelector('.grf-cm-body'));
 }
