@@ -1,11 +1,12 @@
 // libraries/grist-config-manager/ConfigManagerComponent.js
-// VERSÃO FINAL CORRIGIDA - Alinhada com o esquema de dados de produção.
+// VERSÃO SEM DECLARAÇÕES DUPLICADAS DE FUNÇÕES
 
 import { GristTableLens } from '../grist-table-lens/grist-table-lens.js';
 import { GristDataWriter } from '../grist-data-writer.js';
 
 let overlay = null;
 
+// Funções auxiliares (declaradas uma única vez)
 function copyToClipboard(text, element) {
     navigator.clipboard.writeText(text).then(() => {
         const originalText = element.textContent;
@@ -16,24 +17,16 @@ function copyToClipboard(text, element) {
     }).catch(err => console.error('Falha ao copiar texto: ', err));
 }
 
-// CORREÇÃO TOTAL: O tutorial agora ensina o esquema de colunas de produção.
 function renderSetupInstructions(container) {
     container.innerHTML = `
         <div class="grf-cm-setup-guide">
             <h2>Configuração Necessária do Framework</h2>
             <p>A tabela <code>Grf_config</code> precisa existir com a estrutura correta.</p>
-            
             <h4>Passo 1: Crie a Tabela</h4>
-            <p>Crie uma nova tabela com o nome exato:</p>
-            <div class="grf-copy-box" title="Clique para copiar">
-                <code>Grf_config</code>
-                <button class="grf-copy-btn">Copiar</button>
-            </div>
-
+            <p>Crie uma nova tabela com o nome exato: <code>Grf_config</code> <button class="grf-copy-btn">Copiar</button></p>
             <h4>Passo 2: Crie as Colunas</h4>
-            <p>Adicione estas colunas (clique nos nomes para copiar):</p>
             <table class="grf-setup-table">
-                <thead><tr><th>Nome da Coluna</th><th>Tipo no Grist</th></tr></thead>
+                <thead><tr><th>Nome da Coluna (Clique para copiar)</th><th>Tipo no Grist</th></tr></thead>
                 <tbody>
                     <tr><td class="grf-copy-cell">configId</td><td>Text</td></tr>
                     <tr><td class="grf-copy-cell">widgetTitle</td><td>Text</td></tr>
@@ -43,7 +36,7 @@ function renderSetupInstructions(container) {
                     <tr><td class="grf-copy-cell">pageId</td><td>Numeric</td></tr>
                 </tbody>
             </table>
-            <p class="grf-setup-footer">Após criar a tabela e as colunas, feche esta janela e abra o configurador novamente.</p>
+            <p class="grf-setup-footer">Após criar, feche e reabra o configurador.</p>
         </div>
     `;
     container.querySelector('.grf-copy-btn').addEventListener('click', (e) => copyToClipboard('Grf_config', e.target));
@@ -58,7 +51,7 @@ function close() {
     overlay = null;
 }
 
-// CORREÇÃO TOTAL: Toda a lógica interna foi atualizada para usar o esquema de colunas correto.
+// Lógica principal da UI
 async function renderMainUI(container) {
     const CONFIG_TABLE = 'Grf_config';
     const tableLens = new GristTableLens(grist);
@@ -70,10 +63,9 @@ async function renderMainUI(container) {
             return;
         }
 
-        const allConfigs = await tableLens.fetchTableRecords(CONFIG_TABLE);
+        let allConfigs = await tableLens.fetchTableRecords(CONFIG_TABLE);
         const dataWriter = new GristDataWriter(grist);
         
-        // CORREÇÃO: HTML do formulário alinhado com o novo esquema.
         container.innerHTML = `
             <div class="grf-cm-main-container">
                 <div class="grf-cm-sidebar">
@@ -88,7 +80,7 @@ async function renderMainUI(container) {
                     <form id="cm-config-form">
                         <input type="hidden" id="cm-record-id">
                         <div class="form-group"><label for="cm-widget-title">Título do Widget (Nome na lista)</label><input type="text" id="cm-widget-title" required></div>
-                        <div class="form-group"><label for="cm-config-id">ID da Configuração (Identificador único, ex: 'cards_clientes')</label><input type="text" id="cm-config-id" required></div>
+                        <div class="form-group"><label for="cm-config-id">ID da Configuração (Identificador único)</label><input type="text" id="cm-config-id" required></div>
                         <div class="form-group"><label for="cm-description">Descrição</label><input type="text" id="cm-description"></div>
                         <div id="cm-editor-content"><p class="editor-placeholder">Selecione uma config ou crie uma nova.</p></div>
                         <div class="form-actions"><button type="submit" id="cm-save-btn" class="btn btn-success">Salvar e Fechar</button></div>
@@ -96,7 +88,10 @@ async function renderMainUI(container) {
                 </div>
             </div>`;
         
-        const editorMap = { 'Card System': window.CardConfigEditor, 'Drawer': window.DrawerConfigEditor };
+        const editorMap = {
+            'CardSystem': window.CardConfigEditor,
+            'Drawer': window.DrawerConfigEditor
+        };
         const configListEl = container.querySelector('#cm-config-list');
         const editorContentEl = container.querySelector('#cm-editor-content');
         const formEl = container.querySelector('#cm-config-form');
@@ -107,7 +102,7 @@ async function renderMainUI(container) {
             configListEl.innerHTML = '';
             configs.forEach(c => {
                 const li = document.createElement('li');
-                li.textContent = c.widgetTitle || c.configId; // Usa widgetTitle como nome na lista
+                li.textContent = c.widgetTitle || c.configId;
                 li.dataset.id = c.id;
                 li.onclick = () => {
                     document.querySelectorAll('#cm-config-list li').forEach(item => item.classList.remove('is-active'));
@@ -118,8 +113,7 @@ async function renderMainUI(container) {
             });
         };
 
-        // CORREÇÃO: Lógica para popular o formulário com os dados corretos.
-        const displayConfig = (config) => {
+        const displayConfig = async (config) => {
             selectedConfig = config;
             formEl.querySelector('#cm-record-id').value = config.id || '';
             formEl.querySelector('#cm-widget-title').value = config.widgetTitle || '';
@@ -127,40 +121,71 @@ async function renderMainUI(container) {
             formEl.querySelector('#cm-description').value = config.description || '';
             
             const editorKey = (config.componentType || '').replace(/\s+/g, '');
-            currentEditorModule = editorMap[editorKey] || editorMap[config.componentType];
+            currentEditorModule = editorMap[editorKey];
 
-            if (currentEditorModule) {
-                const configData = JSON.parse(config.configJson || '{}');
-                currentEditorModule.render(editorContentEl, configData, tableLens);
-            } else {
+            if (!currentEditorModule) {
                 editorContentEl.innerHTML = `<p class="editor-error">Editor para "${config.componentType}" não encontrado.</p>`;
+                return;
+            }
+
+            const tables = await tableLens.listAllTables();
+            const configData = JSON.parse(config.configJson || '{}');
+            const targetTableId = configData.targetTableId || '';
+
+            editorContentEl.innerHTML = `
+                <div class="form-group" id="cm-table-selector-container">
+                    <label for="cm-table-selector">Tabela de Dados Alvo:</label>
+                    <select id="cm-table-selector">
+                        <option value="">-- Selecione uma tabela --</option>
+                        ${tables.map(t => `<option value="${t.id}" ${t.id === targetTableId ? 'selected' : ''}>${t.id}</option>`).join('')}
+                    </select>
+                </div>
+                <div id="cm-specialized-editor"></div>`;
+
+            const tableSelector = editorContentEl.querySelector('#cm-table-selector');
+            const specializedEditorContainer = editorContentEl.querySelector('#cm-specialized-editor');
+
+            const renderSpecializedEditor = (tableId) => {
+                if (tableId) {
+                    currentEditorModule.render(specializedEditorContainer, configData, tableLens, tableId);
+                } else {
+                    specializedEditorContainer.innerHTML = '';
+                }
+            };
+            
+            tableSelector.onchange = () => {
+                renderSpecializedEditor(tableSelector.value);
+            };
+
+            if (targetTableId) {
+                renderSpecializedEditor(targetTableId);
             }
         };
 
         container.querySelector('#cm-new-btn').onclick = () => {
             const type = container.querySelector('#cm-new-type-selector').value;
-            displayConfig({ id: null, componentType: type, widgetTitle: `Nova Config - ${type}`, configId: `nova_config_${Date.now()}`, configJson: '{}' });
+            displayConfig({ id: null, componentType: type, widgetTitle: `Nova Config - ${type}`, configId: `nova_${type.replace(/\s+/g, '').toLowerCase()}_${Date.now()}`, configJson: '{}' });
         };
             
-        // CORREÇÃO: Lógica de salvamento para montar o objeto de registro correto.
         formEl.onsubmit = async (e) => {
             e.preventDefault();
-            if (!selectedConfig) return;
+            if (!selectedConfig || !currentEditorModule) return;
 
-            const configJson = currentEditorModule ? currentEditorModule.read(editorContentEl) : {};
+            const specializedEditorContainer = editorContentEl.querySelector('#cm-specialized-editor');
+            const newConfigData = currentEditorModule.read(specializedEditorContainer);
+            
+            const tableSelector = editorContentEl.querySelector('#cm-table-selector');
+            if (tableSelector) {
+                newConfigData.targetTableId = tableSelector.value;
+            }
+
             const recordData = {
                 widgetTitle: formEl.querySelector('#cm-widget-title').value.trim(),
                 configId: formEl.querySelector('#cm-config-id').value.trim(),
                 description: formEl.querySelector('#cm-description').value.trim(),
                 componentType: selectedConfig.componentType,
-                configJson: JSON.stringify(configJson)
-                // pageId não está no formulário, então não é salvo aqui.
+                configJson: JSON.stringify(newConfigData)
             };
-
-            if (!recordData.widgetTitle || !recordData.configId) {
-                alert("Título do Widget e ID da Configuração são obrigatórios.");
-                return;
-            }
 
             try {
                 if (selectedConfig.id) {
@@ -168,11 +193,11 @@ async function renderMainUI(container) {
                 } else {
                     await dataWriter.addRecord(CONFIG_TABLE, recordData);
                 }
-                alert(`Configuração "${recordData.widgetTitle}" salva com sucesso!`);
+                alert(`Configuração "${recordData.widgetTitle}" salva!`);
                 close();
-            } catch (err) {
-                alert(`Erro ao salvar: ${err.message}`);
-                console.error("Erro ao salvar configuração:", err);
+            } catch(err) {
+                 alert(`Erro ao salvar: ${err.message}`);
+                 console.error("Erro ao salvar config:", err);
             }
         };
 
@@ -184,6 +209,7 @@ async function renderMainUI(container) {
     }
 }
 
+// Função 'open' principal e exportada
 export function open() {
     if (overlay) return;
     overlay = document.createElement('div');

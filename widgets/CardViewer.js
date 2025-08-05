@@ -1,43 +1,50 @@
 // widgets/CardViewer.js
-// VERSÃO COMPLETA E CORRIGIDA - Importa todas as suas dependências de módulo.
+// VERSÃO CORRIGIDA PARA ÍCONES E PERSISTÊNCIA DE ID
 
-// PASSO 1: Importamos as classes/funções que precisamos de outros arquivos de módulo.
 import { GristTableLens } from '../libraries/grist-table-lens/grist-table-lens.js';
 import { open as openConfigManager } from '../libraries/grist-config-manager/ConfigManagerComponent.js';
 
-// NOTA: CardSystem e os editores são carregados como scripts globais no HTML, por isso não os importamos aqui.
+document.addEventListener('DOMContentLoaded', async () => {
+    
+    // CORREÇÃO DE ÍCONES: Carrega o SVG dinamicamente
+    async function loadIcons() {
+        try {
+            const response = await fetch('../libraries/icons/icons.svg');
+            if (!response.ok) throw new Error('Network response was not ok');
+            const svgText = await response.text();
+            const div = document.createElement('div');
+            div.innerHTML = svgText;
+            document.body.insertBefore(div, document.body.firstChild);
+        } catch (error) {
+            console.error('Failed to load icons:', error);
+        }
+    }
+    await loadIcons(); // Espera os ícones carregarem antes de continuar
 
-document.addEventListener('DOMContentLoaded', () => {
-    // PASSO 2: A verificação de dependências agora só checa os scripts globais.
-    // Se os imports acima falharem, o script inteiro não roda, então não precisamos testá-los aqui.
+    const getIcon = (id) => `<svg class="icon"><use href="#${id}"></use></svg>`;
+
     if (typeof grist === 'undefined' || typeof CardSystem === 'undefined') {
-        const errorMsg = "Erro Crítico: Bibliotecas globais essenciais (grist, CardSystem) não foram carregadas. Verifique as tags <script> no arquivo .html.";
-        document.body.innerHTML = `<p class="error-msg">${errorMsg}</p>`;
-        console.error(errorMsg, { grist: typeof grist, CardSystem: typeof CardSystem });
+        document.body.innerHTML = `<p class="error-msg">Erro Crítico: Bibliotecas não carregadas.</p>`;
         return;
     }
 
-    console.log("CardViewer.js: Dependências globais OK. Iniciando o widget.");
-
     const appContainer = document.getElementById('app-container');
-    
-    // PASSO 3: Instanciamos a classe que foi IMPORTADA. Não dependemos mais de um objeto global.
     const tableLens = new GristTableLens(grist);
 
-    // Declaração das variáveis de estado do widget
-    let currentRecords = [];
-    let currentConfigData = null;
-    let configRecordId = null;
+    let state = {
+        records: [],
+        configData: null,
+        configId: grist.getOptions()?.configId || null // Inicializa com o valor salvo
+    };
 
     function render() {
         appContainer.innerHTML = '';
-        if (!configRecordId) {
-            appContainer.innerHTML = `<div class="setup-placeholder">Widget não configurado. Clique na engrenagem ⚙️ para começar.</div>`;
-        } else if (!currentConfigData) {
-            appContainer.innerHTML = `<p class="setup-placeholder">Carregando configuração do registro ID: ${configRecordId}...</p>`;
+        if (!state.configId) {
+            appContainer.innerHTML = `<div class="setup-placeholder">Widget não configurado. Clique no ícone ⚙️ para configurar.</div>`;
+        } else if (!state.configData) {
+            appContainer.innerHTML = `<p class="setup-placeholder">Carregando configuração ID: "${state.configId}"...</p>`;
         } else {
-            // A biblioteca CardSystem renderiza os cards
-            CardSystem.renderCards(appContainer, currentRecords, currentConfigData);
+            CardSystem.renderCards(appContainer, state.records, state.configData);
         }
         addSettingsGear();
     }
@@ -46,103 +53,89 @@ document.addEventListener('DOMContentLoaded', () => {
         if (document.getElementById('settings-gear-btn')) return;
         const gearBtn = document.createElement('div');
         gearBtn.id = 'settings-gear-btn';
-        gearBtn.innerHTML = '⚙️';
-        gearBtn.title = 'Configurações';
-        gearBtn.onclick = openSettingsModal;
+        gearBtn.innerHTML = getIcon('icon-settings');
+        gearBtn.title = 'Configurações do Widget';
+        gearBtn.onclick = openSettingsPopover;
         appContainer.appendChild(gearBtn);
     }
 
-    function openSettingsModal() {
-        closeSettingsModal();
-        const currentId = grist.getOptions().configRecordId || ''; 
-        const modal = document.createElement('div');
-        modal.id = 'settings-modal-overlay';
-        modal.innerHTML = `
-            <div class="settings-modal-content">
-                <h3>Configurações do Widget</h3>
-                <div class="settings-group">
-                    <label>Abra o Gerenciador para criar ou encontrar um ID de registro de configuração.</label>
-                    <button id="sm-open-configurator">Abrir Gerenciador de Configurações</button>
-                </div>
-                <hr>
-                <div class="settings-group">
-                    <label for="sm-config-id-input">Cole o ID do Registro da configuração aqui:</label>
-                    <div class="input-group">
-                        <input type="text" id="sm-config-id-input" value="${currentId}" placeholder="Ex: 5">
-                        <button id="sm-apply-id">Aplicar</button>
-                    </div>
-                </div>
-                 <hr>
-                <div class="settings-group">
-                     <label>Para limpar a configuração atual, clique aqui.</label>
-                     <button id="sm-clear-config" class="btn-danger">Limpar Configuração</button>
+    function openSettingsPopover(event) {
+        event.stopPropagation();
+        closeSettingsPopover();
+        
+        // CORREÇÃO DE PERSISTÊNCIA: Sempre lê o valor mais recente das opções
+        const activeConfigId = grist.getOptions().configId || '';
+        const isLinked = !!activeConfigId && !!state.configData;
+
+        const overlay = document.createElement('div');
+        overlay.id = 'config-popover-overlay';
+        overlay.onclick = closeSettingsPopover;
+        document.body.appendChild(overlay);
+
+        const popover = document.createElement('div');
+        popover.className = 'config-popover';
+        popover.onclick = e => e.stopPropagation();
+        
+        popover.innerHTML = `
+            <div>
+                <label for="popover-config-id">Config ID</label>
+                <div class="input-group">
+                    <input type="text" id="popover-config-id" value="${activeConfigId}" placeholder="Cole o ID aqui...">
+                    <button id="popover-link-btn" class="config-popover-btn" title="${isLinked ? 'Desvincular' : 'Vincular'}">
+                        ${isLinked ? getIcon('icon-link') : getIcon('icon-link-broken')}
+                    </button>
                 </div>
             </div>
+            <button id="popover-manager-btn" class="config-popover-btn" title="Abrir Gerenciador de Configurações">
+                ${getIcon('icon-settings')}
+            </button>
         `;
-        document.body.appendChild(modal);
+        document.body.appendChild(popover);
 
-        modal.querySelector('#sm-open-configurator').onclick = () => {
-             // Chama a função 'open' que importamos e renomeamos para 'openConfigManager'
-             openConfigManager();
-        };
-
-        modal.querySelector('#sm-apply-id').onclick = () => {
-            const newId = modal.querySelector('#sm-config-id-input').value.trim();
-            grist.setOptions({ configRecordId: newId ? parseInt(newId, 10) : null });
-            closeSettingsModal();
+        popover.querySelector('#popover-link-btn').onclick = () => {
+            const newId = popover.querySelector('#popover-config-id').value.trim();
+            grist.setOptions({ configId: newId || null });
+            closeSettingsPopover();
         };
         
-        modal.querySelector('#sm-clear-config').onclick = () => {
-            grist.setOptions({ configRecordId: null });
-            closeSettingsModal();
+        popover.querySelector('#popover-manager-btn').onclick = () => {
+            closeSettingsPopover();
+            openConfigManager();
         };
-
-        modal.addEventListener('click', e => { if (e.target === modal) closeSettingsModal(); });
     }
 
-    function closeSettingsModal() {
-        const modal = document.getElementById('settings-modal-overlay');
-        if (modal) modal.remove();
+    function closeSettingsPopover() {
+        const popover = document.querySelector('.config-popover');
+        if (popover) popover.remove();
+        const overlay = document.getElementById('config-popover-overlay');
+        if (overlay) overlay.remove();
     }
 
-    // Eventos do Grist que controlam o ciclo de vida do widget
+    // --- Ciclo de Vida do Widget ---
     grist.ready({ requiredAccess: 'full' });
-
-    grist.onRecords(records => {
-        currentRecords = records;
-        render();
-    });
+    grist.onRecords(records => { state.records = records; render(); });
 
     grist.onOptions(async (options) => {
-        const newConfigRecordId = options?.configRecordId || null;
-        if (newConfigRecordId === configRecordId) {
-            return; // Nada mudou, não faz nada
-        }
+        const newConfigId = options?.configId || null;
+        if (newConfigId === state.configId) return;
 
-        configRecordId = newConfigRecordId;
-        currentConfigData = null; // Reseta a configuração antiga
-        render(); // Mostra a mensagem de "Carregando..."
-
-        if (configRecordId) {
+        state.configId = newConfigId;
+        state.configData = null;
+        
+        if (state.configId) {
             try {
-                // ANOTAÇÃO FUTURA: Esta função 'findRecord' ainda precisa ser implementada no GristTableLens.
-                // Por enquanto, ela vai falhar, mas a estrutura está pronta.
-                const configRecord = await tableLens.findRecord('_grf_config', { id: configRecordId });
-                
+                const configRecord = await tableLens.findRecord('Grf_config', { configId: state.configId });
+                state.configData = configRecord ? JSON.parse(configRecord.configJson) : null;
                 if (!configRecord) {
-                    throw new Error(`Registro de configuração com ID "${configRecordId}" não foi encontrado na tabela "_grf_config".`);
+                    // Adiciona um placeholder na UI se o ID for inválido
+                    appContainer.innerHTML = `<div class="error-msg">Configuração com ID "${state.configId}" não encontrada.</div>`;
+                    addSettingsGear();
                 }
-                
-                // O JSON de configuração está na coluna 'configData'
-                currentConfigData = JSON.parse(configRecord.configData);
             } catch (e) {
-                console.error("Erro ao carregar a configuração:", e);
-                appContainer.innerHTML = `<div class="error-msg">${e.message}</div>`;
-                addSettingsGear();
-                return;
+                console.error("Erro ao carregar configuração:", e);
+                state.configData = null;
             }
         }
-        
-        render(); // Renderiza com os dados carregados ou limpa a tela se o ID for nulo
+        render();
     });
 });
