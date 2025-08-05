@@ -162,6 +162,50 @@
         border-radius: 4px;
         margin-left: auto; /* Alinha o botão de engrenagem à direita */
     }
+	.icon, #settings-gear-btn svg {
+    width: 18px;
+    height: 18px;
+    /* Define a cor base para os ícones */
+    color: #495057;
+    /* Aplica a cor tanto ao preenchimento quanto ao contorno */
+    fill: currentColor;
+    stroke: currentColor;
+}
+/* Alinha o layout do popover em uma única linha */
+.config-popover {
+    flex-direction: row; /* MUDANÇA: de column para row */
+    align-items: flex-end; /* Alinha os itens na base */
+}
+.config-popover > div { /* O container do input/label */
+    flex-grow: 1;
+/* ========================================================== */
+/* CORREÇÃO PRECISA PARA ÍCONES DE CONTORNO (ADICIONE ISTO) */
+/* ========================================================== */
+
+/* Define a cor e o tamanho para todos os ícones */
+#settings-gear-btn svg, .config-popover-btn .icon {
+    width: 18px;
+    height: 18px;
+    color: #495057; /* Cinza escuro para o 'currentColor' */
+}
+
+/* 
+ * A MÁGICA ESTÁ AQUI: Esta regra se aplica às FORMAS DENTRO dos ícones.
+ * Ela força o preenchimento a ser transparente e o contorno a usar a cor definida acima.
+*/
+#settings-gear-btn svg *, .config-popover-btn .icon * {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2; /* Garante uma espessura de linha consistente */
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* 
+ * EXCEÇÃO: Para os poucos ícones sólidos, o atributo 'fill="currentColor"' 
+ * dentro do arquivo icons.svg vai sobrescrever o 'fill: none' acima, 
+ * então eles também funcionarão corretamente.
+*/
     </style>
 </head>
 <body>
