@@ -8,6 +8,7 @@
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.14.0/Sortable.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
   <style>
+    /* ... (todo o seu CSS existente permanece aqui, sem mudanças) ... */
     :root {
       --collapsed: 60px;
       --dbg: 2em;
@@ -23,13 +24,37 @@
     body {
       display: flex;
       flex-direction: column;
-      background: #E9ECEF; /* Cor de fundo padrão, será sobrescrita pela config */
+      background: #E9ECEF;
     }
 
-    .config-button-bar {
-      text-align: right;
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       padding: 4px 8px;
     }
+
+    .lang-selector {
+        display: flex;
+        gap: 5px;
+    }
+
+    .lang-selector button {
+        background: none;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        padding: 3px 8px;
+        font-size: 0.8em;
+        cursor: pointer;
+    }
+
+    .lang-selector button.active {
+        background-color: #0d6efd;
+        color: white;
+        border-color: #0d6efd;
+        font-weight: bold;
+    }
+
 
     .config-button-bar button {
       padding: 4px 10px;
@@ -45,6 +70,7 @@
       padding: 8px;
     }
 
+    /* ... (o restante do seu CSS continua aqui sem alterações) ... */
     #board,
     .board {
       display: flex;
@@ -136,15 +162,14 @@
     .card {
       background: #fff;
       border-radius: 4px;
-      /* box-shadow: 0 1px 3px rgba(0, 0, 0, .15); */ /* Default shadow removed */
       padding: 8px 8px 8px 12px;
       cursor: grab;
       position: relative;
       color: #333;
-      transition: box-shadow 0.2s ease; /* Added transition for shadow */
+      transition: box-shadow 0.2s ease;
     }
 
-    .card.with-shadow { /* Class to toggle shadow */
+    .card.with-shadow {
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
     }
 
@@ -221,18 +246,17 @@
       overflow-y: auto;
     }
 
-    #drawer label { /* Estilo base para todos os labels no drawer */
-      display: block; /* Para que ocupem a linha */
-      margin-bottom: 2px; /* Um pouco de espaço antes do input */
-      font-weight: bold; /* Labels geralmente são bold */
+    #drawer label {
+      display: block;
+      margin-bottom: 2px;
+      font-weight: bold;
     }
 
-    #drawer label.formatted { /* Para formatação Grist específica */
+    #drawer label.formatted {
       padding: 2px 4px;
       border-radius: 3px;
-      display: inline-block; /* Para que a formatação de cor de fundo não ocupe a linha toda */
-      margin-bottom: 1px; /* Ajuste fino */
-      /* width: auto !important; Removido !important, display:inline-block deve cuidar disso */
+      display: inline-block;
+      margin-bottom: 1px;
     }
 
     #drawer input,
@@ -245,7 +269,7 @@
       font-size: .9em;
       box-sizing: border-box;
       margin-top: 2px;
-      margin-bottom: 8px; /* Espaço após cada input */
+      margin-bottom: 8px;
       background: #fff;
       color: #333;
     }
@@ -264,8 +288,8 @@
       font-size: .9em;
       word-break: break-word;
       margin-top: 2px;
-      margin-bottom: 8px; /* Espaço após cada readonly field */
-      min-height: 20px; /* Para melhor visualização de campos vazios */
+      margin-bottom: 8px;
+      min-height: 20px;
     }
 
 
@@ -341,14 +365,14 @@
       border-top: 1px solid #ccc;
       border-top-left-radius: 4px;
       border-top-right-radius: 4px;
-      margin-bottom: -1px; /* Para sobrepor a borda inferior do container .cfg-tabs */
+      margin-bottom: -1px;
     }
 
     .cfg-tab-content {
       display: none;
       padding: 15px;
       border: 1px solid #ccc;
-      border-top: none; /* A borda superior é gerenciada pelos botões ativos */
+      border-top: none;
     }
 
     .cfg-tab-content.active {
@@ -356,7 +380,7 @@
     }
 
     #cfg-drawer .content {
-      padding: 0; /* Removido padding para que .cfg-tab-content o controle */
+      padding: 0;
       overflow-y: auto;
       flex: 1;
     }
@@ -373,7 +397,7 @@
 
     #cfg-drawer .config-section label,
     #cfg-drawer .wip-limit-table label,
-    #cfg-drawer .config-section h4 /* Para o título da seção de background */
+    #cfg-drawer .config-section h4
      {
       font-size: 0.9em;
       font-weight: bold;
@@ -382,7 +406,7 @@
       color: #333;
     }
     #cfg-drawer .config-section h4 {
-        margin-top: 0; /* Para o h4 do background */
+        margin-top: 0;
         margin-bottom: 10px;
         font-size: 1em;
     }
@@ -400,11 +424,11 @@
       box-sizing: border-box;
     }
     #cfg-drawer .config-section input[type="color"] {
-        padding: 2px; /* Inputs de cor geralmente são menores */
+        padding: 2px;
         height: 30px;
     }
     #cfg-drawer .config-section input[type="number"] {
-        width: 60px; /* Para inputs de número menores */
+        width: 60px;
     }
 
 
@@ -600,8 +624,7 @@
       font-size: 0.8em;
     }
 
-    /* --- ESTILOS PARA A NOVA ABA DE REGRAS --- */
-    .rules-lane-section { /* Antigo .rules-container para não conflitar com .container do Bootstrap */
+    .rules-lane-section {
         margin-bottom: 20px;
         padding: 10px;
         border: 1px solid #e0e0e0;
@@ -651,7 +674,7 @@
         padding-left: 10px;
         border-left: 3px solid #eee;
     }
-    .rule-params > div { /* Para cada linha de parâmetro */
+    .rule-params > div {
       display: flex;
       gap: 8px;
       align-items: center;
@@ -659,7 +682,7 @@
     .rule-params label {
       font-size: 0.85em;
       margin-bottom: 0;
-      min-width: 100px; /* Para alinhar os inputs */
+      min-width: 100px;
     }
     .rule-params input[type="text"],
     .rule-params select {
@@ -670,7 +693,7 @@
         border-radius: 3px;
     }
     .rule-params input.rule-operator {
-        max-width: 80px; /* Operadores são curtos */
+        max-width: 80px;
     }
     .rule-mappings-container {
         margin-top: 8px;
@@ -697,7 +720,7 @@
         margin-top: 5px;
     }
     .attachment-preview-container a,
-    .readonly-field a { /* Para links de anexo no drawer */
+    .readonly-field a {
         display: inline-block;
         margin-right: 8px;
         text-decoration: none;
@@ -707,16 +730,14 @@
         background-color: #f0f0f0;
         font-size: 0.9em;
     }
-    .attachment-icon {
-        /* Adicione um ícone de clipe de papel ou algo similar */
-    }
+
     .markdown-content p:first-child, .markdown-content-drawer p:first-child {
         margin-top: 0;
     }
     .markdown-content p:last-child, .markdown-content-drawer p:last-child {
         margin-bottom: 0;
     }
-    /* Estilo para texto markdown no drawer para se assemelhar a outros campos */
+
     .markdown-content-drawer {
       background: #E9ECEF;
       color: #333;
@@ -726,11 +747,9 @@
       font-size: .9em;
       word-break: break-word;
       margin-top: 2px;
-      min-height: 50px; /* Para dar algum espaço */
+      min-height: 50px;
     }
-    /* --- FIM DOS ESTILOS PARA REGRAS --- */
     
-    /* --- NEW/UPDATED STYLES --- */
     .reflist-container {
         padding: 8px;
         border: 1px solid #ddd;
@@ -790,15 +809,19 @@
       font-size: 0.9em;
       color: #0d6efd;
     }
-    /* --- END NEW/UPDATED STYLES --- */
-
   </style>
 </head>
 
 <body>
 
-  <div class="config-button-bar">
-    <button id="cfg-btn">⚙️ Config</button>
+  <div class="top-bar">
+    <div class="lang-selector">
+        <button id="lang-pt" class="active">Português</button>
+        <button id="lang-en">English</button>
+    </div>
+    <div class="config-button-bar">
+        <button id="cfg-btn" data-i18n="config_button">⚙️ Config</button>
+    </div>
   </div>
 
   <div id="boardWrap">
@@ -813,30 +836,30 @@
     </header>
     <div id="drawerContent"></div>
     <div class="actions">
-      <button id="cancelBtnDrawer">Cancelar</button>
-      <button id="saveBtn" class="primary">Salvar</button>
+      <button id="cancelBtnDrawer" data-i18n="cancel_button">Cancelar</button>
+      <button id="saveBtn" class="primary" data-i18n="save_button">Salvar</button>
     </div>
   </div>
 
   <aside id="cfg-drawer">
     <header>
-      <h3>Configurações do Kanban</h3>
+      <h3 data-i18n="settings_title">Configurações do Kanban</h3>
       <button id="cfg-close">×</button>
     </header>
 
     <div class="cfg-tabs">
-      <button id="cfg-tab-btn-fields" class="active" data-tab="fields">Campos por Lane</button>
-      <button id="cfg-tab-btn-general" data-tab="general">Geral, WIP e Ordenação</button>
-      <button id="cfg-tab-btn-visual" data-tab="visual">Visuais</button>
-      <button id="cfg-tab-btn-rules" data-tab="rules">Regras</button> <!-- NOVO BOTÃO DA ABA -->
+      <button id="cfg-tab-btn-fields" class="active" data-tab="fields" data-i18n="tab_fields">Campos por Lane</button>
+      <button id="cfg-tab-btn-general" data-tab="general" data-i18n="tab_general">Geral, WIP e Ordenação</button>
+      <button id="cfg-tab-btn-visual" data-tab="visual" data-i18n="tab_visual">Visuais</button>
+      <button id="cfg-tab-btn-rules" data-tab="rules" data-i18n="tab_rules">Regras</button>
     </div>
 
     <div class="content">
       <div id="cfg-tab-content-fields" class="cfg-tab-content active">
         <div class="config-section" id="kanban-lane-selector-div">
-          <label for="kanban-lane-select">Configurar para a Coluna Kanban (Lane):</label>
+          <label for="kanban-lane-select" data-i18n="config_for_column">Configurar para a Coluna Kanban (Lane):</label>
           <select id="kanban-lane-select">
-            <option value="">-- Selecione uma lane --</option>
+            <option value="" data-i18n="select_lane">-- Selecione uma lane --</option>
           </select>
         </div>
         <div id="cfg-fields-table-container" style="margin-top: 15px; display: none;">
@@ -845,166 +868,149 @@
 
       <div id="cfg-tab-content-general" class="cfg-tab-content">
         <div class="config-section">
-          <h4>Mapeamento da Coluna Principal do Kanban</h4>
-          <label for="kanban-defining-column-map-select">Usar coluna da tabela para as Lanes do Kanban:</label>
+          <h4 data-i18n="main_kanban_column_mapping">Mapeamento da Coluna Principal do Kanban</h4>
+          <label for="kanban-defining-column-map-select" data-i18n="use_table_column_for_lanes">Usar coluna da tabela para as Lanes do Kanban:</label>
           <select id="kanban-defining-column-map-select">
-            <option value="">-- Selecione uma coluna --</option>
+            <option value="" data-i18n="select_column">-- Selecione uma coluna --</option>
           </select>
-          <p style="font-size:0.8em; color:#555; margin-top:5px;">
+          <p style="font-size:0.8em; color:#555; margin-top:5px;" data-i18n="main_kanban_column_desc">
             Define qual coluna da sua tabela Grist será usada para criar as colunas (lanes) do Kanban.
           </p>
         </div>
 
         <div class="config-section">
-          <h4>Ordenação dos Cartões Dentro das Lanes</h4>
-          <p style="font-size:0.8em; color:#555; margin-bottom:10px;">
+          <h4 data-i18n="card_sorting_in_lanes">Ordenação dos Cartões Dentro das Lanes</h4>
+          <p style="font-size:0.8em; color:#555; margin-bottom:10px;" data-i18n="card_sorting_desc">
             Defina até três critérios para ordenar os cartões dentro de cada lane.
           </p>
           <div id="card-sort-criteria-container">
-            <!-- Critérios de ordenação (populados pelo JS) -->
           </div>
         </div>
 
         <div class="config-section">
-          <h4>Limites por Lane (WIP - Work In Progress)</h4>
-          <p style="font-size:0.8em; color:#555; margin-bottom:10px;">
+          <h4 data-i18n="wip_limits">Limites por Lane (WIP - Work In Progress)</h4>
+          <p style="font-size:0.8em; color:#555; margin-bottom:10px;" data-i18n="wip_limits_desc">
             Defina o número máximo de cartões visíveis inicialmente e o limite máximo de cartões permitidos para cada lane. Deixe em branco ou 0 para sem limite.
           </p>
           <div id="wip-limits-table-container">
-            <!-- Tabela de WIP limits (populada pelo JS) -->
           </div>
         </div>
-
+        
         <div class="config-section">
-          <label for="cfg-card-title-font-color">Cor Fonte Título Card (Geral):</label>
-          <input type="color" id="cfg-card-title-font-color">
-        </div>
-        <div class="config-section">
-          <label for="cfg-card-fields-font-color">Cor Fonte Campos Card (Geral):</label>
-          <input type="color" id="cfg-card-fields-font-color">
-        </div>
-        <div class="config-section">
-          <label for="cfg-drawer-font-color">Cor Fonte Drawer (Geral):</label>
-          <input type="color" id="cfg-drawer-font-color">
-        </div>
-
-        <!-- Seção de Background do Widget (já existente) -->
-        <div class="config-section">
-          <h4>Background do Widget</h4>
-          <!-- ... (resto da configuração de background) ... -->
-        </div>
-
-        <div class="config-section">
-          <h4>Restrições de Movimento</h4>
+          <h4 data-i18n="movement_restrictions">Restrições de Movimento</h4>
           <label>
             <input type="checkbox" id="cfg-restrict-adjacent-move">
-            Permitir mover cartões apenas para lanes adjacentes
+            <span data-i18n="allow_adjacent_move_only">Permitir mover cartões apenas para lanes adjacentes</span>
           </label>
         </div>
       </div>
 
       <div id="cfg-tab-content-visual" class="cfg-tab-content">
         <div class="config-section">
-          <label><input type="checkbox" id="cfg-center-columns"> Centralizar colunas</label>
+          <label><input type="checkbox" id="cfg-center-columns"> <span data-i18n="center_columns">Centralizar colunas</span></label>
         </div>
         <div class="config-section">
-          <label for="cfg-col-width-percent">Largura % das colunas:</label>
+          <label for="cfg-col-width-percent" data-i18n="column_width_percent">Largura % das colunas:</label>
           <input type="number" id="cfg-col-width-percent" min="0" max="100">%
           <div style="display:flex; gap:8px; margin-top:4px;">
             <div>
-              <label for="cfg-col-min-width">mín (px):</label>
+              <label for="cfg-col-min-width" data-i18n="min_px">mín (px):</label>
               <input type="number" id="cfg-col-min-width" min="0">
             </div>
             <div>
-              <label for="cfg-col-max-width">máx (px):</label>
+              <label for="cfg-col-max-width" data-i18n="max_px">máx (px):</label>
               <input type="number" id="cfg-col-max-width" min="0">
             </div>
           </div>
         </div>
         <div class="config-section">
-          <label for="cfg-col-color">Cor das Colunas:</label>
+          <label for="cfg-col-color" data-i18n="column_color">Cor das Colunas:</label>
           <input type="color" id="cfg-col-color">
         </div>
         <div class="config-section">
-          <label for="cfg-card-color">Cor dos Cartões:</label>
+          <label for="cfg-card-color" data-i18n="card_color">Cor dos Cartões:</label>
           <input type="color" id="cfg-card-color">
         </div>
         <div class="config-section">
           <label>
             <input type="checkbox" id="cfg-card-shadow">
-            Mostrar sombra nos cartões
+            <span data-i18n="show_card_shadow">Mostrar sombra nos cartões</span>
           </label>
         </div>
 
-        <!-- NOVA SEÇÃO DE BACKGROUND DO WIDGET -->
         <div class="config-section">
-          <h4>Background do Widget</h4>
-          <label for="cfg-background-type">Tipo de Background:</label>
-          <select id="cfg-background-type">
-            <option value="solid">Cor Sólida</option>
-            <option value="linear">Degradê Linear</option>
-            <option value="radial">Degradê Radial</option>
-          </select>
-
-          <div id="cfg-solid-color-settings" style="margin-top:10px;">
-            <label for="cfg-solid-background-color">Cor de Fundo (Sólida):</label>
-            <input type="color" id="cfg-solid-background-color">
-          </div>
-
-          <div id="cfg-gradient-settings" style="display:none; margin-top:10px;">
-            <label for="cfg-gradient-color1">Cor 1 do Degradê:</label>
-            <input type="color" id="cfg-gradient-color1" style="margin-bottom:5px;">
-            <label for="cfg-gradient-color2">Cor 2 do Degradê:</label>
-            <input type="color" id="cfg-gradient-color2" style="margin-bottom:5px;">
-
-            <div id="cfg-gradient-direction-container" style="display:none; margin-top:5px;">
-              <label for="cfg-gradient-direction">Direção (Linear):</label>
-              <select id="cfg-gradient-direction">
-                <option value="to right">Para Direita</option>
-                <option value="to left">Para Esquerda</option>
-                <option value="to bottom">Para Baixo</option>
-                <option value="to top">Para Cima</option>
-                <option value="to bottom right">Para Canto Inferior Direito</option>
-                <option value="to bottom left">Para Canto Inferior Esquerdo</option>
-                <option value="to top right">Para Canto Superior Direito</option>
-                <option value="to top left">Para Canto Superior Esquerdo</option>
-                <option value="45deg">45 Graus</option>
-                <option value="135deg">135 Graus</option>
-                <option value="225deg">225 Graus (-135deg)</option>
-                <option value="315deg">315 Graus (-45deg)</option>
-              </select>
+            <h4 data-i18n="widget_background">Background do Widget</h4>
+            <label for="cfg-background-type" data-i18n="background_type">Tipo de Background:</label>
+            <select id="cfg-background-type">
+                <option value="solid" data-i18n="solid_color">Cor Sólida</option>
+                <option value="linear" data-i18n="linear_gradient">Degradê Linear</option>
+                <option value="radial" data-i18n="radial_gradient">Degradê Radial</option>
+            </select>
+            <div id="cfg-solid-color-settings" style="margin-top:10px;">
+                <label for="cfg-solid-background-color" data-i18n="solid_bg_color">Cor de Fundo (Sólida):</label>
+                <input type="color" id="cfg-solid-background-color">
             </div>
-          </div>
+            <div id="cfg-gradient-settings" style="display:none; margin-top:10px;">
+                <label for="cfg-gradient-color1" data-i18n="gradient_color_1">Cor 1 do Degradê:</label>
+                <input type="color" id="cfg-gradient-color1" style="margin-bottom:5px;">
+                <label for="cfg-gradient-color2" data-i18n="gradient_color_2">Cor 2 do Degradê:</label>
+                <input type="color" id="cfg-gradient-color2" style="margin-bottom:5px;">
+                <div id="cfg-gradient-direction-container" style="display:none; margin-top:5px;">
+                    <label for="cfg-gradient-direction" data-i18n="direction_linear">Direção (Linear):</label>
+                    <select id="cfg-gradient-direction">
+                        <option value="to right" data-i18n="dir_to_right">Para Direita</option>
+                        <option value="to left" data-i18n="dir_to_left">Para Esquerda</option>
+                        <option value="to bottom" data-i18n="dir_to_bottom">Para Baixo</option>
+                        <option value="to top" data-i18n="dir_to_top">Para Cima</option>
+                        <option value="to bottom right" data-i18n="dir_to_br">Para Canto Inferior Direito</option>
+                        <option value="to bottom left" data-i18n="dir_to_bl">Para Canto Inferior Esquerdo</option>
+                        <option value="to top right" data-i18n="dir_to_tr">Para Canto Superior Direito</option>
+                        <option value="to top left" data-i18n="dir_to_tl">Para Canto Superior Esquerdo</option>
+                        <option value="45deg" data-i18n="dir_45_deg">45 Graus</option>
+                        <option value="135deg" data-i18n="dir_135_deg">135 Graus</option>
+                        <option value="225deg" data-i18n="dir_225_deg">225 Graus (-135deg)</option>
+                        <option value="315deg" data-i18n="dir_315_deg">315 Graus (-45deg)</option>
+                    </select>
+                </div>
+            </div>
         </div>
-        <!-- FIM DA NOVA SEÇÃO DE BACKGROUND DO WIDGET -->
 
+        <div class="config-section">
+          <label for="cfg-card-title-font-color" data-i18n="card_title_font_color">Cor Fonte Título Card (Geral):</label>
+          <input type="color" id="cfg-card-title-font-color">
+        </div>
+        <div class="config-section">
+          <label for="cfg-card-fields-font-color" data-i18n="card_fields_font_color">Cor Fonte Campos Card (Geral):</label>
+          <input type="color" id="cfg-card-fields-font-color">
+        </div>
+        <div class="config-section">
+          <label for="cfg-drawer-font-color" data-i18n="drawer_font_color">Cor Fonte Drawer (Geral):</label>
+          <input type="color" id="cfg-drawer-font-color">
+        </div>
       </div>
-
-      <!-- NOVO CONTEÚDO DA ABA DE REGRAS -->
+      
       <div id="cfg-tab-content-rules" class="cfg-tab-content">
-        <p style="font-size:0.85em; color:#555; margin-bottom:15px;">
+        <p style="font-size:0.85em; color:#555; margin-bottom:15px;" data-i18n="rules_tab_desc">
           Configure regras para cada lane do Kanban. As regras são verificadas/executadas quando um cartão entra em uma lane.
         </p>
         <div id="rules-config-area">
-          <!-- As seções de regras por lane serão populadas aqui pelo JavaScript -->
         </div>
       </div>
-      <!-- FIM DO NOVO CONTEÚDO DA ABA DE REGRAS -->
 
     </div>
 
     <div class="actions">
       <div class="left-actions">
-        <button id="cfg-replicate">Replicar</button>
+        <button id="cfg-replicate" data-i18n="replicate_button">Replicar</button>
       </div>
       <div>
-        <button id="cfg-cancel">Cancelar</button>
-        <button id="cfg-save" class="primary">Salvar Configurações</button>
+        <button id="cfg-cancel" data-i18n="cancel_button">Cancelar</button>
+        <button id="cfg-save" class="primary" data-i18n="save_settings_button">Salvar Configurações</button>
       </div>
     </div>
   </aside>
 
-  <div id="dbg" class="collapsed"><strong>API Debug</strong><br></div>
+  <div id="dbg" class="collapsed"><strong data-i18n="api_debug_title">API Debug</strong><br></div>
 
   <script src="script.js"></script>
 </body>
