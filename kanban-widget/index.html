@@ -814,11 +814,7 @@
 
 <body>
 
-  <div class="top-bar">
-    <div class="lang-selector">
-        <button id="lang-pt" class="active">Português</button>
-        <button id="lang-en">English</button>
-    </div>
+<div class="top-bar">
     <div class="config-button-bar">
         <button id="cfg-btn" data-i18n="config_button">⚙️ Config</button>
     </div>
@@ -865,6 +861,22 @@
         <div id="cfg-fields-table-container" style="margin-top: 15px; display: none;">
         </div>
       </div>
+	  
+	  <div id="cfg-tab-content-general" class="cfg-tab-content">
+        <!-- INÍCIO DO NOVO BLOCO DE CÓDIGO -->
+        <div class="config-section">
+          <h4 data-i18n="language_settings">Configurações de Idioma</h4>
+          <label for="cfg-lang-select" data-i18n="widget_language">Idioma do Widget:</label>
+          <select id="cfg-lang-select" style="width: auto; padding: 6px;">
+            <option value="pt">Português</option>
+            <option value="en">English</option>
+          </select>
+        </div>
+        <!-- FIM DO NOVO BLOCO DE CÓDIGO -->
+
+        <div class="config-section">
+          <h4 data-i18n="main_kanban_column_mapping">Mapeamento da Coluna Principal do Kanban</h4>
+          <label for="kanban-defining-column-map-select" data-i18n="use_table_column_for_lanes">Usar coluna da tabela para as Lanes do Kanban:</label>
 
       <div id="cfg-tab-content-general" class="cfg-tab-content">
         <div class="config-section">
