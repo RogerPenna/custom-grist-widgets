@@ -2,14 +2,17 @@ document.addEventListener('DOMContentLoaded', function () {
   console.log("KANBAN WIDGET SCRIPT: DOMContentLoaded event fired.");
 
   // --- INÍCIO DO BLOCO DE INTERNACIONALIZAÇÃO (I18N) ---
+  // --- INÍCIO DO BLOCO DE INTERNACIONALIZAÇÃO (I18N) ---
   const LANGUAGES = {
     'pt': {
       "tab_fields": "Campos por Lane", "tab_general": "Geral, WIP e Ordenação", "tab_visual": "Visuais", "tab_rules": "Regras", "config_for_column": "Configurar para a Coluna Kanban (Lane):", "select_lane": "-- Selecione uma lane --", "no_lane_defined": "-- Nenhuma lane Kanban definida --", "select_column": "-- Selecione uma coluna --", "rules_for_lane": "Regras para Lane: ", "add_rule": "+ Adicionar Regra", "remove_rule": "Remover Regra", "rule_type_allow": "Só permite cartões SE...", "rule_type_create": "SE cartão entrar ENTÃO criar em outra tabela...", "rule_type_move": "SE condição ENTÃO mover automaticamente para...", "rule_value_placeholder": "Valor para comparar", "field_current_table": "-- Campo Tabela Atual --", "operator": "-- Operador --", "target_table": "-- Selecione Tabela Destino --", "relation_field": "Campo de Relação (ID do cartão Kanban):", "status_column_dest": "Coluna de Status/Lane (em Destino):", "initial_lane": "Lane Inicial para Novo Cartão (em Destino):", "condition_if": "Condição (SE):", "action_move": "Ação (ENTÃO Mover Para):", "select_target_lane": "-- Selecione Lane Destino --", "na": "N/A", "ini": "Ini#", "field_name": "Nome do Campo", "use_formatting": "Usar Formatação (Card)", "on_card": "No Card", "card_position": "Card Pos#", "show_label": "Mostrar Label Card", "visible_drawer": "Visível Drawer", "editable_drawer": "Editável Drawer", "drawer_position": "Pos# Drawer", "none": "-- Nenhum --", "asc": "Ascendente", "desc": "Descendente", "priority": "Prioridade (destaque)", "due_date": "Data Limite (destaque)", "max_visible": "Max Cartões Visíveis (Inicial)", "max_allowed": "Max Cartões Permitidos (Limite WIP)", "all": "Todos", "no_limit": "Sem limite", "no_lanes_wip": "Nenhuma lane definida para configurar WIP. Selecione uma 'Coluna para Lanes do Kanban' na aba 'Geral'.", "load_metadata": "Carregue metadados da tabela para configurar ordenação.", "select_lane_to_config": "Selecione uma lane para ver/configurar seus campos.", "error_loading_fields": "Erro ao carregar campos.", "no_ref_table": "ID da tabela referenciada não encontrado.", "linked_columns_config": "Configuração de Colunas da Tabela Vinculada",
-      "config_button": "Config", "settings_title": "Configurações do Kanban", "main_kanban_column_mapping": "Mapeamento da Coluna Principal do Kanban", "use_table_column_for_lanes": "Usar coluna da tabela para as Lanes do Kanban:", "main_kanban_column_desc": "Define qual coluna da sua tabela Grist será usada para criar as colunas (lanes) do Kanban.", "card_sorting_in_lanes": "Ordenação dos Cartões Dentro das Lanes", "card_sorting_desc": "Defina até três critérios para ordenar os cartões dentro de cada lane.", "wip_limits": "Limites por Lane (WIP - Work In Progress)", "wip_limits_desc": "Defina o número máximo de cartões visíveis inicialmente e o limite máximo de cartões permitidos para cada lane. Deixe em branco ou 0 para sem limite.", "card_title_font_color": "Cor Fonte Título Card (Geral):", "card_fields_font_color": "Cor Fonte Campos Card (Geral):", "drawer_font_color": "Cor Fonte Drawer (Geral):", "widget_background": "Background do Widget", "movement_restrictions": "Restrições de Movimento", "allow_adjacent_move_only": "Permitir mover cartões apenas para lanes adjacentes", "center_columns": "Centralizar colunas", "column_width_percent": "Largura % das colunas:", "min_px": "mín (px):", "max_px": "máx (px):", "column_color": "Cor das Colunas:", "card_color": "Cor dos Cartões:", "show_card_shadow": "Mostrar sombra nos cartões", "background_type": "Tipo de Background:", "solid_color": "Cor Sólida", "linear_gradient": "Degradê Linear", "radial_gradient": "Degradê Radial", "solid_bg_color": "Cor de Fundo (Sólida):", "gradient_color_1": "Cor 1 do Degradê:", "gradient_color_2": "Cor 2 do Degradê:", "direction_linear": "Direção (Linear):", "dir_to_right": "Para Direita", "dir_to_left": "Para Esquerda", "dir_to_bottom": "Para Baixo", "dir_to_top": "Para Cima", "dir_to_br": "Para Canto Inferior Direito", "dir_to_bl": "Para Canto Inferior Esquerdo", "dir_to_tr": "Para Canto Superior Direito", "dir_to_tl": "Para Canto Superior Esquerdo", "dir_45_deg": "45 Graus", "dir_135_deg": "135 Graus", "dir_225_deg": "225 Graus (-135deg)", "dir_315_deg": "315 Graus (-45deg)", "rules_tab_desc": "Configure regras para cada lane do Kanban. As regras são verificadas/executadas quando um cartão entra em uma lane.", "replicate_button": "Replicar", "cancel_button": "Cancelar", "save_button": "Salvar", "save_settings_button": "Salvar Configurações", "api_debug_title": "API Debug"
+      "config_button": "Config", "settings_title": "Configurações do Kanban", "main_kanban_column_mapping": "Mapeamento da Coluna Principal do Kanban", "use_table_column_for_lanes": "Usar coluna da tabela para as Lanes do Kanban:", "main_kanban_column_desc": "Define qual coluna da sua tabela Grist será usada para criar as colunas (lanes) do Kanban.", "card_sorting_in_lanes": "Ordenação dos Cartões Dentro das Lanes", "card_sorting_desc": "Defina até três critérios para ordenar os cartões dentro de cada lane.", "wip_limits": "Limites por Lane (WIP - Work In Progress)", "wip_limits_desc": "Defina o número máximo de cartões visíveis inicialmente e o limite máximo de cartões permitidos para cada lane. Deixe em branco ou 0 para sem limite.", "card_title_font_color": "Cor Fonte Título Card (Geral):", "card_fields_font_color": "Cor Fonte Campos Card (Geral):", "drawer_font_color": "Cor Fonte Drawer (Geral):", "widget_background": "Background do Widget", "movement_restrictions": "Restrições de Movimento", "allow_adjacent_move_only": "Permitir mover cartões apenas para lanes adjacentes", "center_columns": "Centralizar colunas", "column_width_percent": "Largura % das colunas:", "min_px": "mín (px):", "max_px": "máx (px):", "column_color": "Cor das Colunas:", "card_color": "Cor dos Cartões:", "show_card_shadow": "Mostrar sombra nos cartões", "background_type": "Tipo de Background:", "solid_color": "Cor Sólida", "linear_gradient": "Degradê Linear", "radial_gradient": "Degradê Radial", "solid_bg_color": "Cor de Fundo (Sólida):", "gradient_color_1": "Cor 1 do Degradê:", "gradient_color_2": "Cor 2 do Degradê:", "direction_linear": "Direção (Linear):", "dir_to_right": "Para Direita", "dir_to_left": "Para Esquerda", "dir_to_bottom": "Para Baixo", "dir_to_top": "Para Cima", "dir_to_br": "Para Canto Inferior Direito", "dir_to_bl": "Para Canto Inferior Esquerdo", "dir_to_tr": "Para Canto Superior Direito", "dir_to_tl": "Para Canto Superior Esquerdo", "dir_45_deg": "45 Graus", "dir_135_deg": "135 Graus", "dir_225_deg": "225 Graus (-135deg)", "dir_315_deg": "315 Graus (-45deg)", "rules_tab_desc": "Configure regras para cada lane do Kanban. As regras são verificadas/executadas quando um cartão entra em uma lane.", "replicate_button": "Replicar", "cancel_button": "Cancelar", "save_button": "Salvar", "save_settings_button": "Salvar Configurações", "api_debug_title": "API Debug",
+      "language_settings": "Configurações de Idioma", "widget_language": "Idioma do Widget:"
     },
     'en': {
       "tab_fields": "Fields by Lane", "tab_general": "General, WIP & Sorting", "tab_visual": "Visuals", "tab_rules": "Rules", "config_for_column": "Configure for Kanban Column (Lane):", "select_lane": "-- Select a lane --", "no_lane_defined": "-- No Kanban lane defined --", "select_column": "-- Select a column --", "rules_for_lane": "Rules for Lane: ", "add_rule": "+ Add Rule", "remove_rule": "Remove Rule", "rule_type_allow": "Only allow cards IF...", "rule_type_create": "IF card enters THEN create in another table...", "rule_type_move": "IF condition THEN automatically move to...", "rule_value_placeholder": "Value to compare", "field_current_table": "-- Current Table Field --", "operator": "-- Operator --", "target_table": "-- Select Target Table --", "relation_field": "Relation Field (Kanban card ID):", "status_column_dest": "Status/Lane Column (in Target):", "initial_lane": "Initial Lane for New Card (in Target):", "condition_if": "Condition (IF):", "action_move": "Action (THEN Move To):", "select_target_lane": "-- Select Target Lane --", "na": "N/A", "ini": "Init#", "field_name": "Field Name", "use_formatting": "Use Formatting (Card)", "on_card": "On Card", "card_position": "Card Pos#", "show_label": "Show Label Card", "visible_drawer": "Visible Drawer", "editable_drawer": "Editable Drawer", "drawer_position": "Drawer Pos#", "none": "-- None --", "asc": "Ascending", "desc": "Descending", "priority": "Priority (highlight)", "due_date": "Due Date (highlight)", "max_visible": "Max Visible Cards (Initial)", "max_allowed": "Max Allowed Cards (WIP Limit)", "all": "All", "no_limit": "No limit", "no_lanes_wip": "No lanes defined to configure WIP. Select a 'Kanban Lane Column' in the 'General' tab.", "load_metadata": "Load table metadata to configure sorting.", "select_lane_to_config": "Select a lane to view/configure its fields.", "error_loading_fields": "Error loading fields.", "no_ref_table": "Referenced table ID not found.", "linked_columns_config": "Linked Table Columns Configuration",
-      "config_button": "Config", "settings_title": "Kanban Settings", "main_kanban_column_mapping": "Main Kanban Column Mapping", "use_table_column_for_lanes": "Use table column for Kanban Lanes:", "main_kanban_column_desc": "Defines which column from your Grist table will be used to create the Kanban columns (lanes).", "card_sorting_in_lanes": "Card Sorting Within Lanes", "card_sorting_desc": "Set up to three criteria to sort cards within each lane.", "wip_limits": "Limits per Lane (WIP - Work In Progress)", "wip_limits_desc": "Set the maximum number of initially visible cards and the maximum allowed cards for each lane. Leave blank or 0 for no limit.", "card_title_font_color": "Card Title Font Color (General):", "card_fields_font_color": "Card Fields Font Color (General):", "drawer_font_color": "Drawer Font Color (General):", "widget_background": "Widget Background", "movement_restrictions": "Movement Restrictions", "allow_adjacent_move_only": "Allow moving cards to adjacent lanes only", "center_columns": "Center columns", "column_width_percent": "Column width %:", "min_px": "min (px):", "max_px": "max (px):", "column_color": "Column Color:", "card_color": "Card Color:", "show_card_shadow": "Show shadow on cards", "background_type": "Background Type:", "solid_color": "Solid Color", "linear_gradient": "Linear Gradient", "radial_gradient": "Radial Gradient", "solid_bg_color": "Background Color (Solid):", "gradient_color_1": "Gradient Color 1:", "gradient_color_2": "Gradient Color 2:", "direction_linear": "Direction (Linear):", "dir_to_right": "To Right", "dir_to_left": "To Left", "dir_to_bottom": "To Bottom", "dir_to_top": "To Top", "dir_to_br": "To Bottom Right", "dir_to_bl": "To Bottom Left", "dir_to_tr": "To Top Right", "dir_to_tl": "To Top Left", "dir_45_deg": "45 Degrees", "dir_135_deg": "135 Degrees", "dir_225_deg": "225 Degrees (-135deg)", "dir_315_deg": "315 Degrees (-45deg)", "rules_tab_desc": "Configure rules for each Kanban lane. Rules are checked/executed when a card enters a lane.", "replicate_button": "Replicate", "cancel_button": "Cancel", "save_button": "Save", "save_settings_button": "Save Settings", "api_debug_title": "API Debug"
+      "config_button": "Config", "settings_title": "Kanban Settings", "main_kanban_column_mapping": "Main Kanban Column Mapping", "use_table_column_for_lanes": "Use table column for Kanban Lanes:", "main_kanban_column_desc": "Defines which column from your Grist table will be used to create the Kanban columns (lanes).", "card_sorting_in_lanes": "Card Sorting Within Lanes", "card_sorting_desc": "Set up to three criteria to sort cards within each lane.", "wip_limits": "Limits per Lane (WIP - Work In Progress)", "wip_limits_desc": "Set the maximum number of initially visible cards and the maximum allowed cards for each lane. Leave blank or 0 for no limit.", "card_title_font_color": "Card Title Font Color (General):", "card_fields_font_color": "Card Fields Font Color (General):", "drawer_font_color": "Drawer Font Color (General):", "widget_background": "Widget Background", "movement_restrictions": "Movement Restrictions", "allow_adjacent_move_only": "Allow moving cards to adjacent lanes only", "center_columns": "Center columns", "column_width_percent": "Column width %:", "min_px": "min (px):", "max_px": "max (px):", "column_color": "Column Color:", "card_color": "Card Color:", "show_card_shadow": "Show shadow on cards", "background_type": "Background Type:", "solid_color": "Solid Color", "linear_gradient": "Linear Gradient", "radial_gradient": "Radial Gradient", "solid_bg_color": "Background Color (Solid):", "gradient_color_1": "Gradient Color 1:", "gradient_color_2": "Gradient Color 2:", "direction_linear": "Direction (Linear):", "dir_to_right": "To Right", "dir_to_left": "To Left", "dir_to_bottom": "To Bottom", "dir_to_top": "To Top", "dir_to_br": "To Bottom Right", "dir_to_bl": "To Bottom Left", "dir_to_tr": "To Top Right", "dir_to_tl": "To Top Left", "dir_45_deg": "45 Degrees", "dir_135_deg": "135 Degrees", "dir_225_deg": "225 Degrees (-135deg)", "dir_315_deg": "315 Degrees (-45deg)", "rules_tab_desc": "Configure rules for each Kanban lane. Rules are checked/executed when a card enters a lane.", "replicate_button": "Replicate", "cancel_button": "Cancel", "save_button": "Save", "save_settings_button": "Save Settings", "api_debug_title": "API Debug",
+      "language_settings": "Language Settings", "widget_language": "Widget Language:"
     }
   };
   
@@ -1160,38 +1163,51 @@ document.addEventListener('DOMContentLoaded', function () {
     loadGristDataAndSetupKanban();
     
     // --- LÓGICA DE TROCA DE IDIOMA ---
-    const btnLangPt = document.getElementById('lang-pt');
-    const btnLangEn = document.getElementById('lang-en');
+    // --- LÓGICA DE TROCA DE IDIOMA ---
+    const langSelect = document.getElementById('cfg-lang-select');
 
+    // Função para definir o idioma e recarregar a interface
     function setLanguageAndReload(langCode) {
-      if (LANGUAGES[langCode]) {
-        currentLang = langCode;
-        console.log(`Idioma alterado para: ${langCode}`);
+        if (LANGUAGES[langCode]) {
+            currentLang = langCode;
+            console.log(`Idioma alterado para: ${langCode}`);
+            
+            // Define o valor do select para o idioma atual
+            if (langSelect) {
+                langSelect.value = currentLang;
+            }
 
-        btnLangPt.classList.toggle('active', langCode === 'pt');
-        btnLangEn.classList.toggle('active', langCode === 'en');
-        
-        translatePageContent();
-        loadGristDataAndSetupKanban(); // Recarrega os dados, que também redesenha o kanban
-        
-        const configDrawer = document.getElementById('cfg-drawer');
-        if (configDrawer && configDrawer.classList.contains('visible')) {
-            ConfigUIBuilder.close();
-            // A UI será re-traduzida na próxima vez que for aberta.
-            alert('Idioma alterado. Abra a configuração novamente para ver as mudanças.');
+            // Traduz o conteúdo estático da página novamente
+            translatePageContent();
+
+            // Recarrega a visualização principal e a gaveta de config se estiver aberta
+            loadGristDataAndSetupKanban(); 
+            
+            const configDrawer = document.getElementById('cfg-drawer');
+            if (configDrawer && configDrawer.classList.contains('visible')) {
+                // Redesenha o conteúdo dinâmico da gaveta de config
+                // A maneira mais simples é forçar um clique para fechar e reabrir
+                cfgBtn.click(); // Simula um clique para fechar
+                setTimeout(() => cfgBtn.click(), 10); // e reabrir, já com o novo idioma
+            }
+        } else {
+            console.error(`Idioma não encontrado: ${langCode}`);
         }
-      } else {
-        console.error(`Idioma não encontrado: ${langCode}`);
-      }
     }
 
-    if (btnLangPt) {
-      btnLangPt.onclick = () => setLanguageAndReload('pt');
-    }
-    if (btnLangEn) {
-      btnLangEn.onclick = () => setLanguageAndReload('en');
+    // Garante que o select mostre o idioma atual quando a config for aberta
+    grist.on('pageLoaded', () => {
+        if (langSelect) {
+            langSelect.value = currentLang;
+        }
+    });
+
+    // Adiciona o listener para quando o usuário mudar o valor do select
+    if (langSelect) {
+        langSelect.onchange = (event) => setLanguageAndReload(event.target.value);
     }
     // --- FIM DA LÓGICA DE TROCA DE IDIOMA ---
+
 
   })(); // Fim da função main()
 
