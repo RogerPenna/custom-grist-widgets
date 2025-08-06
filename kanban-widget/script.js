@@ -2,7 +2,6 @@ document.addEventListener('DOMContentLoaded', function () {
   console.log("KANBAN WIDGET SCRIPT: DOMContentLoaded event fired.");
 
   // --- INÍCIO DO BLOCO DE INTERNACIONALIZAÇÃO (I18N) ---
-  // --- INÍCIO DO BLOCO DE INTERNACIONALIZAÇÃO (I18N) ---
   const LANGUAGES = {
     'pt': {
       "tab_fields": "Campos por Lane", "tab_general": "Geral, WIP e Ordenação", "tab_visual": "Visuais", "tab_rules": "Regras", "config_for_column": "Configurar para a Coluna Kanban (Lane):", "select_lane": "-- Selecione uma lane --", "no_lane_defined": "-- Nenhuma lane Kanban definida --", "select_column": "-- Selecione uma coluna --", "rules_for_lane": "Regras para Lane: ", "add_rule": "+ Adicionar Regra", "remove_rule": "Remover Regra", "rule_type_allow": "Só permite cartões SE...", "rule_type_create": "SE cartão entrar ENTÃO criar em outra tabela...", "rule_type_move": "SE condição ENTÃO mover automaticamente para...", "rule_value_placeholder": "Valor para comparar", "field_current_table": "-- Campo Tabela Atual --", "operator": "-- Operador --", "target_table": "-- Selecione Tabela Destino --", "relation_field": "Campo de Relação (ID do cartão Kanban):", "status_column_dest": "Coluna de Status/Lane (em Destino):", "initial_lane": "Lane Inicial para Novo Cartão (em Destino):", "condition_if": "Condição (SE):", "action_move": "Ação (ENTÃO Mover Para):", "select_target_lane": "-- Selecione Lane Destino --", "na": "N/A", "ini": "Ini#", "field_name": "Nome do Campo", "use_formatting": "Usar Formatação (Card)", "on_card": "No Card", "card_position": "Card Pos#", "show_label": "Mostrar Label Card", "visible_drawer": "Visível Drawer", "editable_drawer": "Editável Drawer", "drawer_position": "Pos# Drawer", "none": "-- Nenhum --", "asc": "Ascendente", "desc": "Descendente", "priority": "Prioridade (destaque)", "due_date": "Data Limite (destaque)", "max_visible": "Max Cartões Visíveis (Inicial)", "max_allowed": "Max Cartões Permitidos (Limite WIP)", "all": "Todos", "no_limit": "Sem limite", "no_lanes_wip": "Nenhuma lane definida para configurar WIP. Selecione uma 'Coluna para Lanes do Kanban' na aba 'Geral'.", "load_metadata": "Carregue metadados da tabela para configurar ordenação.", "select_lane_to_config": "Selecione uma lane para ver/configurar seus campos.", "error_loading_fields": "Erro ao carregar campos.", "no_ref_table": "ID da tabela referenciada não encontrado.", "linked_columns_config": "Configuração de Colunas da Tabela Vinculada",
@@ -27,11 +26,9 @@ document.addEventListener('DOMContentLoaded', function () {
       document.querySelectorAll('[data-i18n]').forEach(element => {
           const key = element.dataset.i18n;
           const translation = _(key);
-          // Esta lógica é um pouco mais robusta para lidar com ícones dentro de botões.
           const textNode = Array.from(element.childNodes).find(node => node.nodeType === Node.TEXT_NODE && node.textContent.trim());
           if (textNode) {
-              // Adiciona um espaço para separar do ícone, se houver
-              textNode.textContent = (element.nodeName === 'BUTTON' && element.querySelector('i, span')) ? ' ' + translation : translation;
+              textNode.textContent = (element.nodeName === 'BUTTON' && (element.textContent.includes('⚙️') || element.querySelector('i, span'))) ? ' ' + translation : translation;
           } else {
               element.textContent = translation;
           }
@@ -1163,7 +1160,6 @@ document.addEventListener('DOMContentLoaded', function () {
     loadGristDataAndSetupKanban();
     
     // --- LÓGICA DE TROCA DE IDIOMA ---
-    // --- LÓGICA DE TROCA DE IDIOMA ---
     const langSelect = document.getElementById('cfg-lang-select');
 
     // Função para definir o idioma e recarregar a interface
@@ -1208,22 +1204,8 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     // --- FIM DA LÓGICA DE TROCA DE IDIOMA ---
 
-
   })(); // Fim da função main()
 
   // Traduz o conteúdo da página pela primeira vez ao carregar.
   translatePageContent();
 });
-```
-
-### Explicação das Correções
-
-1.  **Estrutura Única:** Agora existe apenas um `document.addEventListener('DOMContentLoaded', ...)`. Todo o código está contido dentro dele, garantindo que ele só execute quando a página estiver pronta.
-2.  **Bloco de Tradução no Topo:** O bloco de i18n (`LANGUAGES`, `currentLang`, `_()`, `translatePageContent()`) foi movido para o topo, logo dentro do `DOMContentLoaded`. Isso garante que as funções de tradução estejam disponíveis para todo o resto do script.
-3.  **Constantes Globais:** As constantes como `CURRENT_CONFIG_KEY_FOR_GRIST` foram declaradas apenas uma vez, no escopo principal do `DOMContentLoaded`.
-4.  **Lógica `main()`:** A sua lógica principal, que começa com `(async function () { ... })()`, foi nomeada para `(async function main() { ... })()` para clareza.
-5.  **Lógica de Troca de Idioma:** A parte que adiciona os `onclick` aos botões de idioma foi movida para **dentro** da função `main()`. Isso é importante porque ela precisa ter acesso à função `loadGristDataAndSetupKanban()` que está definida dentro de `main`.
-6.  **Primeira Tradução:** A chamada `translatePageContent();` é feita no final, logo antes do fechamento do `DOMContentLoaded`. Isso garante que todo o HTML estático seja traduzido assim que o script é executado.
-7.  **Melhora na Re-tradução da Configuração:** A lógica em `setLanguageAndReload` agora lida melhor com a gaveta de configuração. Se ela estiver aberta quando o idioma for trocado, ela será fechada e o usuário será avisado para abri-la novamente, garantindo que o conteúdo dinâmico (como a lista de lanes) seja re-traduzido corretamente.
-
-Agora, com o `index.html` e o `script.js` acima, seu widget deve funcionar corretamente, com a tradução completa e a funcionalidade de troca de idioma implementada.
