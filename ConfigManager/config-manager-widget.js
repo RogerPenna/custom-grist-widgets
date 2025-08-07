@@ -1,4 +1,5 @@
-// config-manager-widget.js (VERSÃO CORRIGIDA E COMPLETA)
+// --- START OF COMPLETE AND FINAL config-manager-widget.js ---
+
 import { GristTableLens } from '/libraries/grist-table-lens/grist-table-lens.js';
 import { GristDataWriter } from '/libraries/grist-data-writer.js';
 import { publish } from '/libraries/grist-event-bus/grist-event-bus.js';
@@ -120,7 +121,8 @@ document.addEventListener('DOMContentLoaded', async function () {
             document.getElementById('editorHeader').innerHTML = `<h3>Configurações de ${componentType}</h3>`;
             
             const tableId = document.getElementById('tableSelector').value;
-            await currentEditorModule.render(specializedEditorContainerEl, JSON.parse(config.configJson || '{}'), tableLens, tableId);
+            // CORREÇÃO CRÍTICA APLICADA AQUI
+            await currentEditorModule.render(specializedEditorContainerEl, JSON.parse(config.configJson || '{}'), tableLens, tableId, allConfigs);
         } else {
             editorParentContainerEl.style.display = 'none';
             genericJsonEditorEl.style.display = 'block';
@@ -152,74 +154,64 @@ document.addEventListener('DOMContentLoaded', async function () {
         document.querySelectorAll('.config-list-item.is-active').forEach(item => item.classList.remove('is-active'));
     }
 
-async function handleSave() {
-    if (!selectedConfig) return showError("Nenhuma configuração selecionada para salvar.");
-    showError('');
-    const recordId = selectedConfig.id || null;
-    const configId = configIdInputEl.value.trim();
-    if (!configId) return showError("O 'ID da Configuração' é obrigatório.");
+    async function handleSave() {
+        if (!selectedConfig) return showError("Nenhuma configuração selecionada para salvar.");
+        showError('');
+        const recordId = selectedConfig.id || null;
+        const configId = configIdInputEl.value.trim();
+        if (!configId) return showError("O 'ID da Configuração' é obrigatório.");
 
-    let configJson;
-    const currentEditorModule = editorMap[selectedConfig.componentType];
-    if (currentEditorModule && typeof currentEditorModule.read === 'function') {
-        try {
-            const optionsObject = currentEditorModule.read(specializedEditorContainerEl);
-            configJson = JSON.stringify(optionsObject, null, 2);
-            configJsonTextareaEl.value = configJson;
-        } catch (error) {
-            console.error("Erro lendo do editor:", error);
-            return showError(`Erro ao ler dados da UI: ${error.message}`);
-        }
-    } else {
-        return showError("Editor não encontrado para este tipo de componente.");
-    }
-    
-    const recordData = {
-        configId,
-        description: descriptionInputEl.value.trim(),
-        configJson,
-        componentType: selectedConfig.componentType,
-    };
-    
-    showLoading(true);
-    try {
-        let savedRecordId;
-        if (recordId) {
-            await dataWriter.updateRecord(CONFIG_TABLE_ID, recordId, recordData);
-            savedRecordId = recordId;
+        let configJson;
+        const currentEditorModule = editorMap[selectedConfig.componentType];
+        if (currentEditorModule && typeof currentEditorModule.read === 'function') {
+            try {
+                const optionsObject = currentEditorModule.read(specializedEditorContainerEl);
+                configJson = JSON.stringify(optionsObject); // Removido o pretty print para economizar espaço
+            } catch (error) {
+                console.error("Erro lendo do editor:", error);
+                return showError(`Erro ao ler dados da UI: ${error.message}`);
+            }
         } else {
-            if (allConfigs.some(c => c.configId === configId)) throw new Error(`O ID '${configId}' já existe.`);
-            const newRecord = await dataWriter.addRecord(CONFIG_TABLE_ID, recordData);
-            savedRecordId = newRecord.id;
+            return showError("Editor não encontrado para este tipo de componente.");
         }
         
-        // --- INÍCIO DA MODIFICAÇÃO CRÍTICA ---
-        // Se este widget estiver rodando dentro de um iframe (nosso modal),
-        // ele envia uma mensagem para a janela "pai" (o MainViewWidget).
-        if (window.parent && window.parent !== window) {
-            window.parent.postMessage({
-                type: 'grf-config-saved',
-                configId: configId
-            }, window.location.origin);
+        const recordData = {
+            configId,
+            description: descriptionInputEl.value.trim(),
+            configJson,
+            componentType: selectedConfig.componentType,
+        };
+        
+        showLoading(true);
+        try {
+            let savedRecordId;
+            if (recordId) {
+                await dataWriter.updateRecord(CONFIG_TABLE_ID, recordId, recordData);
+                savedRecordId = recordId;
+            } else {
+                if (allConfigs.some(c => c.configId === configId)) throw new Error(`O ID '${configId}' já existe.`);
+                const newRecord = await dataWriter.addRecord(CONFIG_TABLE_ID, recordData);
+                savedRecordId = newRecord.id;
+            }
+            
+            if (window.parent && window.parent !== window) {
+                window.parent.postMessage({ type: 'grf-config-saved', configId: configId }, window.location.origin);
+            }
+            
+            publish('config-changed', { configId, action: 'save' });
+            tableLens.clearConfigCache(configId);
+            
+            selectedConfig = { id: savedRecordId };
+            await loadAndRenderConfigs();
+            
+            alert("Configuração salva com sucesso!");
+
+        } catch (error) {
+            showError(`Erro ao salvar: ${error.message}`);
+        } finally {
+            showLoading(false);
         }
-        // --- FIM DA MODIFICAÇÃO CRÍTICA ---
-
-        // A comunicação via EventBus para outros widgets na mesma página Grist continua.
-        publish('config-changed', { configId, action: 'save' });
-        tableLens.clearConfigCache(configId);
-        
-        // Atualiza a própria UI do ConfigManager.
-        selectedConfig = { id: savedRecordId };
-        await loadAndRenderConfigs();
-        
-        alert("Configuração salva com sucesso!");
-
-    } catch (error) {
-        showError(`Erro ao salvar: ${error.message}`);
-    } finally {
-        showLoading(false);
     }
-}
     
     async function handleDelete() {
         if (!selectedConfig || !selectedConfig.id) return;
@@ -259,3 +251,5 @@ async function handleSave() {
     grist.ready({ requiredAccess: 'full' });
     initializeApp();
 });
+
+// --- END OF COMPLETE AND FINAL config-manager-widget.js ---
