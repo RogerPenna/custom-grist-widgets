@@ -1,3 +1,5 @@
+// --- START OF 100% COMPLETE AND CORRECTED ConfigManagerComponent.js ---
+
 // libraries/grist-config-manager/ConfigManagerComponent.js
 // VERSÃO SEM DECLARAÇÕES DUPLICADAS DE FUNÇÕES
 
@@ -130,7 +132,7 @@ async function renderMainUI(container) {
 
             const tables = await tableLens.listAllTables();
             const configData = JSON.parse(config.configJson || '{}');
-            const targetTableId = configData.targetTableId || '';
+            const targetTableId = configData.tableId || ''; // Chave corrigida para 'tableId'
 
             editorContentEl.innerHTML = `
                 <div class="form-group" id="cm-table-selector-container">
@@ -145,20 +147,20 @@ async function renderMainUI(container) {
             const tableSelector = editorContentEl.querySelector('#cm-table-selector');
             const specializedEditorContainer = editorContentEl.querySelector('#cm-specialized-editor');
 
-            const renderSpecializedEditor = (tableId) => {
+            const renderSpecializedEditor = (tableId, configsToPass) => {
                 if (tableId) {
-                    currentEditorModule.render(specializedEditorContainer, configData, tableLens, tableId);
+                    currentEditorModule.render(specializedEditorContainer, configData, tableLens, tableId, configsToPass);
                 } else {
                     specializedEditorContainer.innerHTML = '';
                 }
             };
             
             tableSelector.onchange = () => {
-                renderSpecializedEditor(tableSelector.value);
+                renderSpecializedEditor(tableSelector.value, allConfigs); // CORREÇÃO APLICADA
             };
 
             if (targetTableId) {
-                renderSpecializedEditor(targetTableId);
+                renderSpecializedEditor(targetTableId, allConfigs); // CORREÇÃO APLICADA
             }
         };
 
@@ -174,11 +176,8 @@ async function renderMainUI(container) {
             const specializedEditorContainer = editorContentEl.querySelector('#cm-specialized-editor');
             const newConfigData = currentEditorModule.read(specializedEditorContainer);
             
-            const tableSelector = editorContentEl.querySelector('#cm-table-selector');
-            if (tableSelector) {
-                newConfigData.targetTableId = tableSelector.value;
-            }
-
+            // A lógica de salvar o tableId agora está centralizada no editor de cards, não precisamos mais disso aqui.
+            
             const recordData = {
                 widgetTitle: formEl.querySelector('#cm-widget-title').value.trim(),
                 configId: formEl.querySelector('#cm-config-id').value.trim(),
@@ -209,7 +208,7 @@ async function renderMainUI(container) {
     }
 }
 
-// Função 'open' principal e exportada
+// --- CORREÇÃO FINAL: 'open' AGORA É EXPORTADO ---
 export function open() {
     if (overlay) return;
     overlay = document.createElement('div');
@@ -222,3 +221,5 @@ export function open() {
     
     renderMainUI(overlay.querySelector('.grf-cm-body'));
 }
+
+// --- END OF 100% COMPLETE AND CORRECTED ConfigManagerComponent.js ---

@@ -45,15 +45,31 @@ window.CardConfigEditor = (() => {
         switchTab("sty", container);
     }
 
-    function read(container) {
-        const newStyling = readStylingTab(container);
-        const layoutTab = container.querySelector("[data-tab-section='fld']");
-        const viewMode = layoutTab.querySelector("#cs-vm-click").checked ? "click" : "burger";
-        const numRows = parseInt(layoutTab.querySelector("#cs-num-rows").value, 10) || DEFAULT_NUM_ROWS;
-        const sidePanelTab = container.querySelector("[data-tab-section='sid']");
-        const sidePanel = { size: sidePanelTab.querySelector("#cs-sp-size").value, drawerConfigId: sidePanelTab.querySelector("#cs-sp-drawer-config").value || null };
-        return { tableId: state.tableId, styling: newStyling, sidePanel, layout: state.layout, viewMode, numRows };
-    }
+function read(container) {
+    const newStyling = readStylingTab(container);
+    const layoutTab = container.querySelector("[data-tab-section='fld']");
+    const viewMode = layoutTab.querySelector("#cs-vm-click").checked ? "click" : "burger";
+    const numRows = parseInt(layoutTab.querySelector("#cs-num-rows").value, 10) || DEFAULT_NUM_ROWS;
+    
+    // --- INÍCIO DA CORREÇÃO ---
+    // A lógica para ler a aba de Ações estava faltando.
+    const sidePanelTab = container.querySelector("[data-tab-section='sid']");
+    const sidePanel = {
+        size: sidePanelTab.querySelector("#cs-sp-size").value,
+        drawerConfigId: sidePanelTab.querySelector("#cs-sp-drawer-config").value || null
+    };
+    // --- FIM DA CORREÇÃO ---
+    
+    return {
+        tableId: state.tableId,
+        styling: newStyling,
+        sidePanel, // Agora usa o objeto corrigido
+        layout: state.layout,
+        viewMode,
+        numRows
+    };
+}
+
 
     const DEFAULT_FIELD_STYLE = { labelVisible: true, labelPosition: 'above', labelFont: 'inherit', labelFontSize: 'inherit', labelColor: 'inherit', labelOutline: false, labelOutlineColor: '#ffffff', dataJustify: 'left', heightLimited: false, maxHeightRows: 1, isTitleField: false };
     const DEFAULT_STYLING = { widgetBackgroundMode: "solid", widgetBackgroundSolidColor: "#f9f9f9", widgetBackgroundGradientType: "linear-gradient(to right, {c1}, {c2})", widgetBackgroundGradientColor1: "#f9f9f9", widgetBackgroundGradientColor2: "#e9e9e9", cardsColorMode: "solid", cardsColorSolidColor: "#ffffff", cardsColorGradientType: "linear-gradient(to right, {c1}, {c2})", cardsColorGradientColor1: "#ffffff", cardsColorGradientColor2: "#f0f0f0", cardBorderThickness: 0, cardBorderMode: "solid", cardBorderSolidColor: "#cccccc", cardTitleFontColor: "#000000", cardTitleFontStyle: "Calibri", cardTitleFontSize: "20px", cardTitleTopBarEnabled: false, cardTitleTopBarMode: "solid", cardTitleTopBarSolidColor: "#dddddd", cardTitleTopBarGradientType: "linear-gradient(to right, {c1}, {c2})", cardTitleTopBarGradientColor1: "#dddddd", cardTitleTopBarGradientColor2: "#cccccc", cardTitleTopBarLabelFontColor: "#000000", cardTitleTopBarLabelFontStyle: "Calibri", cardTitleTopBarLabelFontSize: "16px", cardTitleTopBarDataFontColor: "#333333", cardTitleTopBarDataFontStyle: "Calibri", cardTitleTopBarDataFontSize: "16px", handleAreaWidth: "8px", handleAreaMode: "solid", handleAreaSolidColor: "#40E0D0", widgetPadding: "10px", cardsSpacing: "15px", selectedCard: { enabled: false, scale: 1.05, colorEffect: "none" } };
@@ -152,7 +168,66 @@ window.CardConfigEditor = (() => {
     function buildGridUI(gridEl, tabEl) { gridEl.innerHTML = ""; for (let r = 0; r < state.numRows; r++) { const rowDiv = document.createElement("div"); rowDiv.className = 'layout-grid-row'; rowDiv.dataset.rowIndex = String(r); rowDiv.addEventListener("dragover", e => e.preventDefault()); rowDiv.addEventListener("drop", e => { e.preventDefault(); const colId = e.dataTransfer.getData("text/colid"); if (!colId) return; const rect = rowDiv.getBoundingClientRect(); const col = Math.floor((e.clientX - rect.left) / COL_WIDTH); state.layout.push({ colId, row: r, col, colSpan: 2, style: {...DEFAULT_FIELD_STYLE} }); buildGridUI(gridEl, tabEl); buildAvailableFieldsList(tabEl.querySelector("#cs-layout-fields")); }); state.layout.filter(f => f.row === r).forEach(f => { rowDiv.appendChild(createFieldBoxInConfigUI(f, gridEl, tabEl)); }); gridEl.appendChild(rowDiv); } }
     function createFieldBoxInConfigUI(fieldDef, gridEl, tabEl) { const fieldSchema = state.fields.find(field => field.colId === fieldDef.colId); const box = document.createElement("div"); box.className = 'layout-field-box'; box.textContent = fieldSchema ? (fieldSchema.label || fieldSchema.colId) : fieldDef.colId; box.style.left = (fieldDef.col * COL_WIDTH) + "px"; box.style.width = (fieldDef.colSpan * COL_WIDTH) + "px"; const gearIcon = document.createElement("div"); gearIcon.innerHTML = "⚙️"; gearIcon.className = 'field-box-icon gear'; gearIcon.addEventListener("click", e => { e.stopPropagation(); openFieldStylePopup(fieldDef); }); box.appendChild(gearIcon); const removeIcon = document.createElement("div"); removeIcon.innerHTML = "✕"; removeIcon.className = 'field-box-icon remove'; removeIcon.addEventListener("click", e => { e.stopPropagation(); const idx = state.layout.indexOf(fieldDef); if (idx > -1) state.layout.splice(idx, 1); buildGridUI(gridEl, tabEl); buildAvailableFieldsList(tabEl.querySelector("#cs-layout-fields")); }); box.appendChild(removeIcon); box.draggable = true; box.addEventListener("dragstart", e => { e.dataTransfer.setData("text/colid", fieldDef.colId); const idx = state.layout.indexOf(fieldDef); if (idx > -1) state.layout.splice(idx, 1); }); const handle = document.createElement("div"); handle.className = 'resize-handle'; box.appendChild(handle); handle.addEventListener("mousedown", e => { e.stopPropagation(); e.preventDefault(); box.draggable = false; const startX = e.clientX, origW = parseFloat(box.style.width); const onMouseMove = moveEvt => { let newWidth = origW + (moveEvt.clientX - startX); box.style.width = newWidth + "px"; }; const onMouseUp = () => { document.removeEventListener("mousemove", onMouseMove); document.removeEventListener("mouseup", onMouseUp); let newSpan = Math.round(parseFloat(box.style.width) / COL_WIDTH); fieldDef.colSpan = Math.max(1, Math.min(NUM_COLS - fieldDef.col, newSpan)); box.draggable = true; buildGridUI(gridEl, tabEl); }; document.addEventListener("mousemove", onMouseMove); document.addEventListener("mouseup", onMouseUp); }); return box; }
     function buildAvailableFieldsList(container) { container.innerHTML = ""; const usedCols = state.layout.map(l => l.colId); const availableCols = state.fields.filter(f => !usedCols.includes(f.colId)); if (!availableCols.length) { container.innerHTML = "<i>All fields placed.</i>"; return; } availableCols.forEach(field => { const el = document.createElement("div"); el.className = 'available-field'; el.textContent = field.label || field.colId; el.dataset.colid = field.colId; el.draggable = true; el.addEventListener("dragstart", e => e.dataTransfer.setData("text/colid", field.colId)); container.appendChild(el); }); }
-    function buildSidePanelTab(contentArea) { const tabEl = document.createElement("div"); tabEl.dataset.tabSection = "sid"; tabEl.style.display = "none"; tabEl.innerHTML = ` <h3>Side Panel & Actions</h3> <p>Configure what happens when a user clicks on a card.</p> <fieldset> <legend>Action on Click</legend> <div class="form-group"> <label for="cs-sp-drawer-config">Open Details Panel (Drawer):</label> <select id="cs-sp-drawer-config"> <option value="">-- No Action / No Drawer --</option> </select> <p class="help-text">Select a pre-defined 'Drawer' configuration. Create them using the main ConfigManager.</p> </div> <hr> <div class="form-group"> <label for="cs-sp-size">Drawer Size:</label> <select id="cs-sp-size"> <option value="25%">25%</option> <option value="35%">35%</option> <option value="50%">50%</option> <option value="75%">75%</option> </select> </div> </fieldset> `; contentArea.appendChild(tabEl); const spSizeSel = tabEl.querySelector("#cs-sp-size"); spSizeSel.value = state.sidePanel.size || "35%"; }
+    function buildSidePanelTab(contentArea) {
+    const tabEl = document.createElement("div");
+    tabEl.dataset.tabSection = "sid";
+    tabEl.style.display = "none";
+    
+    // O HTML permanece o mesmo
+    tabEl.innerHTML = `
+        <h3>Side Panel & Actions</h3>
+        <p>Configure what happens when a user clicks on a card.</p>
+        <fieldset>
+            <legend>Action on Click</legend>
+            <div class="form-group">
+                <label for="cs-sp-drawer-config">Open Details Panel (Drawer):</label>
+                <select id="cs-sp-drawer-config">
+                    <option value="">-- No Action / No Drawer --</option>
+                </select>
+                <p class="help-text">Select a pre-defined 'Drawer' configuration. Create them using the main ConfigManager.</p>
+            </div>
+            <hr>
+            <div class="form-group">
+                <label for="cs-sp-size">Drawer Size:</label>
+                <select id="cs-sp-size">
+                    <option value="25%">25%</option>
+                    <option value="35%">35%</option>
+                    <option value="50%">50%</option>
+                    <option value="75%">75%</option>
+                </select>
+            </div>
+        </fieldset>
+    `;
+    contentArea.appendChild(tabEl);
+
+    // --- LOG DE DEPURAÇÃO ---
+    console.log("[buildSidePanelTab] Verificando state.allConfigs:", state.allConfigs);
+    
+    const drawerSelect = tabEl.querySelector("#cs-sp-drawer-config");
+    
+    if (state.allConfigs && Array.isArray(state.allConfigs)) {
+        const drawerConfigs = state.allConfigs.filter(c => c.componentType === 'Drawer');
+
+        // --- LOG 2 ---
+        console.log(`Encontradas ${drawerConfigs.length} configurações de Drawer.`);
+
+        drawerConfigs.forEach(c => {
+            const option = document.createElement('option');
+            option.value = c.configId;
+            option.textContent = c.configId || `[Drawer Sem ID]`; 
+            drawerSelect.appendChild(option);
+        });
+    } else {
+        console.error("[buildSidePanelTab] ERRO: state.allConfigs não é um array válido.");
+    }
+
+    if (state.sidePanel && state.sidePanel.drawerConfigId) {
+        drawerSelect.value = state.sidePanel.drawerConfigId;
+    }
+
+    const spSizeSel = tabEl.querySelector("#cs-sp-size");
+    spSizeSel.value = state.sidePanel.size || "35%";
+}
     function openFieldStylePopup(fieldDef) { if (_fieldStylePopup && _fieldStylePopup.parentNode) { _fieldStylePopup.parentNode.removeChild(_fieldStylePopup); } _fieldStylePopup = document.createElement("div"); _fieldStylePopup.style.cssText = ` position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1060; `; _fieldStylePopup.className = 'field-style-popup'; _fieldStylePopup.innerHTML = ` <div class="field-style-popup-content"> <h3 style="margin-top:0;">Style: ${fieldDef.colId}</h3> <div><label><input type="checkbox" id="fs-lv"> Show Label</label></div> <div>Label Position: <label><input type="radio" name="fs-lp" value="above"> Above</label> <label><input type="radio" name="fs-lp" value="left"> Left</label> </div> <div>Data Justification: <select id="fs-dj"><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select> </div> <div><label><input type="checkbox" id="fs-hl"> Limit Height</label></div> <div id="fs-hl-rows" style="display:none;"><label>Max Rows: <input type="number" id="fs-hr" min="1" style="width:50px;"></label></div> <hr> <div><label><input type="checkbox" id="fs-itf"> Is a Title Field</label></div> <p class="help-text">Title Fields appear in the Top Bar if it's enabled.</p> <div class="popup-actions"> <button id="fs-cancel" type="button" class="btn btn-secondary">Cancel</button> <button id="fs-save" type="button" class="btn btn-primary">Save</button> </div> </div> `; _mainContainer.appendChild(_fieldStylePopup); const s = { ...DEFAULT_FIELD_STYLE, ...fieldDef.style }; _fieldStylePopup.querySelector('#fs-lv').checked = s.labelVisible; _fieldStylePopup.querySelector(`input[name='fs-lp'][value='${s.labelPosition}']`).checked = true; _fieldStylePopup.querySelector('#fs-dj').value = s.dataJustify; _fieldStylePopup.querySelector('#fs-hl').checked = s.heightLimited; _fieldStylePopup.querySelector('#fs-hl-rows').style.display = s.heightLimited ? 'block' : 'none'; _fieldStylePopup.querySelector('#fs-hr').value = s.maxHeightRows; _fieldStylePopup.querySelector('#fs-itf').checked = s.isTitleField; _fieldStylePopup.querySelector('#fs-hl').addEventListener('change', e => { _fieldStylePopup.querySelector('#fs-hl-rows').style.display = e.target.checked ? 'block' : 'none'; }); const closePopup = () => { if (_fieldStylePopup && _fieldStylePopup.parentNode) { _fieldStylePopup.parentNode.removeChild(_fieldStylePopup); } _fieldStylePopup = null; }; _fieldStylePopup.querySelector('#fs-cancel').addEventListener('click', closePopup); _fieldStylePopup.querySelector('#fs-save').addEventListener('click', () => { const newStyle = { labelVisible: _fieldStylePopup.querySelector('#fs-lv').checked, labelPosition: _fieldStylePopup.querySelector('input[name="fs-lp"]:checked').value, dataJustify: _fieldStylePopup.querySelector('#fs-dj').value, heightLimited: _fieldStylePopup.querySelector('#fs-hl').checked, maxHeightRows: parseInt(_fieldStylePopup.querySelector('#fs-hr').value, 10) || 1, isTitleField: _fieldStylePopup.querySelector('#fs-itf').checked }; fieldDef.style = { ...DEFAULT_FIELD_STYLE, ...newStyle }; closePopup(); updateDebugJson(_mainContainer); }); }
 
     return { render, read };

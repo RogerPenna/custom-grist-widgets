@@ -1,15 +1,20 @@
+// --- START OF 100% COMPLETE CardViewer.js WITH DEBUG LOGS ---
+
 // widgets/CardViewer.js
 // VERSÃO CORRIGIDA PARA ÍCONES E PERSISTÊNCIA DE ID
 
 import { GristTableLens } from '../libraries/grist-table-lens/grist-table-lens.js';
 import { open as openConfigManager } from '../libraries/grist-config-manager/ConfigManagerComponent.js';
+import { CardSystem } from '../libraries/grist-card-system/CardSystem.js';
+import { subscribe } from '../libraries/grist-event-bus/grist-event-bus.js';
+import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
     
     // Carrega o arquivo SVG e o injeta no DOM.
     async function loadIcons() {
         try {
-            const response = await fetch('../libraries/icons/icons.svg');
+            const response = await fetch('/libraries/icons/icons.svg');
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const svgText = await response.text();
             const div = document.createElement('div');
@@ -24,34 +29,83 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const getIcon = (id) => `<svg class="icon"><use href="#${id}"></use></svg>`;
 
-    if (typeof grist === 'undefined' || typeof CardSystem === 'undefined') {
-        document.body.innerHTML = `<p class="error-msg">Erro Crítico: Bibliotecas não carregadas.</p>`;
+    if (typeof grist === 'undefined') {
+        document.body.innerHTML = `<p class="error-msg">Erro Crítico: Grist API não carregada.</p>`;
         return;
     }
 
     const appContainer = document.getElementById('app-container');
     const tableLens = new GristTableLens(grist);
 
-    let state = {
-        records: [],
-        configData: null,
-        configId: grist.getOptions()?.configId || null
-    };
+    let currentConfig = null;
+    let currentConfigId = null;
 
-    function render() {
-        appContainer.innerHTML = '';
-        if (!state.configId) {
-            appContainer.innerHTML = `<div class="setup-placeholder">Widget não configurado. Clique no ícone ⚙️ para configurar.</div>`;
-        } else if (!state.configData) {
-            if (state.configId) {
-                appContainer.innerHTML = `<div class="error-msg">Configuração com ID "${state.configId}" não encontrada.</div>`;
-            } else {
-                 appContainer.innerHTML = `<p class="setup-placeholder">Carregando...</p>`;
-            }
-        } else {
-            CardSystem.renderCards(appContainer, state.records, state.configData);
+    // A função principal que orquestra tudo, com logs de depuração.
+    async function initializeAndUpdate() {
+        console.log(`[1] initializeAndUpdate chamado com configId: ${currentConfigId}`);
+        renderStatus("Carregando...");
+
+        if (!currentConfigId) {
+            console.log("[2] Nenhuma configId. Mostrando tela de setup.");
+            renderStatus("Widget não configurado. Clique no ícone ⚙️ para configurar.");
+            addSettingsGear();
+            return;
         }
-        addSettingsGear();
+
+        // 1. Carrega a configuração
+        try {
+            console.log(`[3] Buscando config record para ID: ${currentConfigId}`);
+            const configRecord = await tableLens.findRecord('Grf_config', { configId: currentConfigId });
+            currentConfig = configRecord ? JSON.parse(configRecord.configJson) : null;
+            console.log("[4] Configuração carregada:", currentConfig);
+
+            if (!currentConfig) {
+                renderStatus(`Erro: Configuração com ID "${currentConfigId}" não encontrada.`);
+                addSettingsGear();
+                return;
+            }
+        } catch (e) {
+            renderStatus(`Erro ao carregar configuração: ${e.message}`);
+            addSettingsGear();
+            return;
+        }
+
+        const tableId = currentConfig.tableId;
+        console.log(`[5] tableId extraído da configuração: ${tableId}`);
+        if (!tableId) {
+            renderStatus("Erro de Configuração: 'tableId' não definido no JSON.");
+            addSettingsGear();
+            return;
+        }
+
+        // 2. Carrega os dados (records e schema)
+        try {
+            console.log(`[6] Buscando records e schema para a tabela: ${tableId}`);
+            const [records, schema] = await Promise.all([
+                tableLens.fetchTableRecords(tableId),
+                tableLens.getTableSchema(tableId)
+            ]);
+            
+            console.log("[7] Dados carregados com sucesso:", { recordsCount: records.length, schemaKeys: Object.keys(schema).length });
+            
+            appContainer.innerHTML = '';
+            CardSystem.renderCards(appContainer, records, currentConfig, schema);
+            addSettingsGear();
+            console.log("[8] Renderização concluída.");
+
+        } catch (e) {
+            console.error(`Erro ao carregar dados da tabela "${tableId}":`, e);
+            renderStatus(`Erro ao carregar dados da tabela "${tableId}": ${e.message}`);
+            addSettingsGear();
+        }
+    }
+    
+    function renderStatus(message) {
+        let gearBtn = document.getElementById('settings-gear-btn');
+        appContainer.innerHTML = `<div class="status-placeholder">${message}</div>`;
+        if (gearBtn) {
+            appContainer.appendChild(gearBtn);
+        }
     }
     
     function addSettingsGear() {
@@ -68,9 +122,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         event.stopPropagation();
         closeSettingsPopover();
         
-        // CORREÇÃO DO BUG: Usa o `state.configId` como a fonte da verdade.
-        const activeConfigId = state.configId || '';
-        const isLinked = !!activeConfigId && !!state.configData;
+        const activeConfigId = currentConfigId || '';
+        const isLinked = !!activeConfigId && !!currentConfig;
 
         const overlay = document.createElement('div');
         overlay.id = 'config-popover-overlay';
@@ -116,25 +169,45 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (overlay) overlay.remove();
     }
 
+    // --- LÓGICA DE INICIALIZAÇÃO E EVENTOS ---
+
     grist.ready({ requiredAccess: 'full' });
-    grist.onRecords(records => { state.records = records; render(); });
 
-    grist.onOptions(async (options, oldOptions) => {
-        const newConfigId = options?.configId || null;
-        if (newConfigId === state.configId && oldOptions) return;
-
-        state.configId = newConfigId;
-        state.configData = null;
-        
-        if (state.configId) {
-            try {
-                const configRecord = await tableLens.findRecord('Grf_config', { configId: state.configId });
-                state.configData = configRecord ? JSON.parse(configRecord.configJson) : null;
-            } catch (e) {
-                console.error("Erro ao carregar configuração:", e);
-                state.configData = null;
-            }
+    // grist.onRecords agora apenas dispara a atualização.
+    grist.onRecords(() => {
+        console.log("Evento onRecords disparado. Disparando atualização se a config estiver carregada.");
+        if (currentConfig) {
+            initializeAndUpdate();
         }
-        render();
+    });
+
+	// onOptions é o gatilho principal.
+    grist.onOptions(async (options) => {
+        console.log("Evento onOptions disparado. Opções recebidas:", options);
+        const newConfigId = options?.configId || null;
+        if (newConfigId !== currentConfigId) {
+            currentConfigId = newConfigId;
+            await initializeAndUpdate();
+        }
+    });
+
+    // Lógica para o clique do card
+    subscribe('grf-card-clicked', async (eventData) => {
+        if (!eventData.drawerConfigId) return;
+        console.log("Card clicado! Tentando abrir drawer com config:", eventData.drawerConfigId);
+        try {
+            const drawerConfigRecord = await tableLens.findRecord('Grf_config', { configId: eventData.drawerConfigId });
+            if (drawerConfigRecord) {
+                const drawerConfigData = JSON.parse(drawerConfigRecord.configJson);
+                openDrawer(eventData.tableId, eventData.recordId, drawerConfigData);
+            } else {
+                console.error(`Configuração de Drawer com ID "${eventData.drawerConfigId}" não encontrada.`);
+                alert(`Erro: A configuração para o painel de detalhes não foi encontrada.`);
+            }
+        } catch(e) {
+            console.error("Erro ao buscar ou abrir o Drawer:", e);
+        }
     });
 });
+
+// --- END OF 100% COMPLETE CardViewer.js WITH DEBUG LOGS ---

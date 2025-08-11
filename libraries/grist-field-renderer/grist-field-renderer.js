@@ -1,4 +1,4 @@
-// libraries/grist-field-renderer/grist-field-renderer.js
+// --- START OF COMPLETE AND CORRECTED grist-field-renderer.js ---
 
 import { renderText } from './renderers/render-text.js';
 import { renderDate } from './renderers/render-date.js';
@@ -16,7 +16,81 @@ import { renderBool } from './renderers/render-bool.js';
     document.head.appendChild(link);
 })();
 
-// --- INÍCIO DA MUDANÇA PRINCIPAL ---
+/**
+ * NOVA FUNÇÃO EXPORTÁVEL: A fonte única da verdade para estilos de campo.
+ * Retorna um objeto de estilo { fillColor, textColor, fontBold, etc. }
+ * para um campo, seguindo a hierarquia de prioridade do Grist.
+ * 
+ * @param {object} record O registro de dados completo.
+ * @param {object} colSchema O objeto de schema para a coluna específica.
+ * @returns {object} Um objeto com as propriedades de estilo.
+ */
+export function getFieldStyle(record, colSchema) {
+    const style = {
+        fillColor: null,
+        textColor: null,
+        fontBold: false,
+        fontItalic: false,
+        alignment: null
+    };
+
+    if (!record || !colSchema) {
+        return style;
+    }
+
+    let wopts = {};
+    if (typeof colSchema.widgetOptions === 'string' && colSchema.widgetOptions) {
+        try { wopts = JSON.parse(colSchema.widgetOptions); } catch (e) { /* ignore */ }
+    } else if (typeof colSchema.widgetOptions === 'object' && colSchema.widgetOptions !== null) {
+        wopts = colSchema.widgetOptions;
+    }
+
+    // NÍVEL 1: Formatação Condicional (Prioridade Máxima)
+    if (colSchema.conditionalFormattingRules && colSchema.conditionalFormattingRules.length > 0) {
+        for (const rule of colSchema.conditionalFormattingRules) {
+            if (record[rule.helperColumnId] === true) {
+                const ruleStyle = rule.style || {};
+                return {
+                    textColor: ruleStyle.textColor || null,
+                    fillColor: ruleStyle.fillColor || null,
+                    fontBold: ruleStyle.fontBold || false,
+                    fontItalic: ruleStyle.fontItalic || false,
+                    alignment: ruleStyle.alignment || wopts.alignment || null
+                };
+            }
+        }
+    }
+
+    // NÍVEL 2: Cores de Opções (para campos Choice e ChoiceList)
+    const type = colSchema.type || '';
+    if (type === 'Choice' || type === 'ChoiceList') {
+        const choiceOptions = wopts.choiceOptions || {};
+        const cellValue = record[colSchema.colId];
+        const valueToStyle = (type === 'ChoiceList' && Array.isArray(cellValue) && cellValue.length > 1) ? cellValue[1] : cellValue;
+        const choiceStyle = choiceOptions[valueToStyle];
+        
+        if (choiceStyle) {
+            style.textColor = choiceStyle.textColor || null;
+            style.fillColor = choiceStyle.fillColor || null;
+            style.fontBold = choiceStyle.fontBold || false;
+        }
+    } else {
+        // NÍVEL 3: Estilos Fixos da Coluna (não se aplicam a Choice/ChoiceList se eles tiverem seu próprio estilo)
+        if (wopts.fillColor) style.fillColor = wopts.fillColor;
+        if (wopts.textColor) style.textColor = wopts.textColor;
+        if (wopts.fontBold) style.fontBold = wopts.fontBold;
+    }
+
+    if (wopts.alignment) style.alignment = wopts.alignment;
+    
+    return style;
+}
+
+
+/**
+ * FUNÇÃO INTERNA REFATORADA: Agora usa a nova getFieldStyle.
+ * Aplica os estilos a um elemento do DOM.
+ */
 function _applyStyles(element, colSchema, record, ruleIdToColIdMap, isLabel = false, overrideRules = {}) {
     if (!element) return;
     element.style.color = ''; element.style.backgroundColor = ''; element.style.fontWeight = ''; element.style.fontStyle = '';
@@ -28,7 +102,6 @@ function _applyStyles(element, colSchema, record, ruleIdToColIdMap, isLabel = fa
         wopts = colSchema.widgetOptions;
     }
     
-    // Formatação do Cabeçalho (só aplica se não for para ignorar)
     if (isLabel && !overrideRules.ignoreHeader) {
         if (wopts.headerFillColor) element.style.backgroundColor = wopts.headerFillColor;
         if (wopts.headerTextColor) element.style.color = wopts.headerTextColor;
@@ -36,10 +109,8 @@ function _applyStyles(element, colSchema, record, ruleIdToColIdMap, isLabel = fa
         return;
     }
     
-    // Se for um label e a regra é ignorar, para aqui.
     if (isLabel) return;
 
-    // NÍVEL 1: Formatação Condicional (só aplica se não for para ignorar)
     if (!overrideRules.ignoreConditional && colSchema.conditionalFormattingRules && colSchema.conditionalFormattingRules.length > 0) {
         for (const rule of colSchema.conditionalFormattingRules) {
             if (record[rule.helperColumnId] === true) {
@@ -48,14 +119,12 @@ function _applyStyles(element, colSchema, record, ruleIdToColIdMap, isLabel = fa
                 if (style.fillColor) element.style.backgroundColor = style.fillColor;
                 if (style.fontBold) element.style.fontWeight = 'bold';
                 if (style.fontItalic) element.style.fontStyle = 'italic';
-                // Adiciona uma classe para que o drawer-component possa saber que um estilo foi aplicado
                 element.classList.add('has-conditional-style'); 
-                return; // Se a regra condicional foi aplicada, TERMINA AQUI.
+                return;
             }
         }
     }
 
-    // NÍVEL 3: Formatação fixa da célula (só aplica se não for para ignorar)
     if (!overrideRules.ignoreCell) {
         if (wopts.alignment) element.style.textAlign = wopts.alignment;
         
@@ -66,8 +135,12 @@ function _applyStyles(element, colSchema, record, ruleIdToColIdMap, isLabel = fa
         }
     }
 }
-// --- FIM DA MUDANÇA PRINCIPAL ---
 
+
+/**
+ * FUNÇÃO PRINCIPAL DO RENDERER: Nenhuma mudança necessária aqui.
+ * Ela despacha para os renderers específicos de cada tipo.
+ */
 export async function renderField(options) {
     const { container, colSchema, record, isEditing = false, labelElement, styleOverride } = options;
     if (!colSchema) { 
@@ -77,7 +150,6 @@ export async function renderField(options) {
 
     const cellValue = record ? record[colSchema.colId] : null;
     container.innerHTML = '';
-    // Garante que a classe de estilo condicional seja removida antes de reavaliar
     container.classList.remove('has-conditional-style');
 
     const isDisabled = isEditing && colSchema.isFormula;
@@ -108,3 +180,5 @@ export async function renderField(options) {
         renderText(callOptions);
     }
 }
+
+// --- END OF COMPLETE AND CORRECTED grist-field-renderer.js ---

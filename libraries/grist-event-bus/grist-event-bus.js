@@ -1,40 +1,62 @@
-// libraries/grist-event-bus/grist-event-bus.js
-
-// Cria um único canal de comunicação com um nome fixo para todo o nosso framework.
-// Todos os widgets que usarem este arquivo sintonizarão automaticamente nesta "estação de rádio".
-const channel = new BroadcastChannel('grist_reusable_framework_channel');
+// --- START OF CORRECTED grist-event-bus.js ---
 
 /**
- * Publica uma mensagem no canal para todos os outros widgets ouvintes.
- * @param {string} eventName - O nome do evento (usado para filtragem).
- * @param {any} data - O objeto de dados a ser enviado.
+ * A simple publish-subscribe event bus for cross-component communication.
+ * This implementation ensures a Singleton pattern by attaching the bus to the global 'window' object,
+ * guaranteeing that all modules share the same event bus instance.
  */
-export function publish(eventName, data) {
-    // Enviamos um objeto que contém tanto o nome do evento quanto os dados.
-    channel.postMessage({ eventName, data });
+
+// Use a symbol to create a unique, non-colliding key on the window object.
+const BUS_KEY = Symbol.for("GRF_EVENT_BUS");
+
+// Initialize the bus on the window object if it doesn't already exist.
+if (!window[BUS_KEY]) {
+    window[BUS_KEY] = {
+        listeners: {}
+    };
+    console.log("GRF Event Bus initialized.");
 }
 
+const eventBus = window[BUS_KEY];
+
 /**
- * Inscreve-se para ouvir mensagens de um tipo específico no canal.
- * @param {string} eventName - O nome do evento para o qual se inscrever.
- * @param {function} callback - A função a ser executada quando o evento for recebido.
- *                                A função receberá um objeto de evento com uma propriedade 'detail'.
+ * Subscribes a callback function to a specific event.
+ * @param {string} eventName The name of the event to subscribe to.
+ * @param {function} callback The function to call when the event is published.
+ * @returns {function} An unsubscribe function.
  */
 export function subscribe(eventName, callback) {
-    channel.onmessage = (messageEvent) => {
-        // messageEvent.data contém o objeto que enviamos: { eventName, data }
-        const { eventName: receivedEventName, data } = messageEvent.data;
+    if (!eventBus.listeners[eventName]) {
+        eventBus.listeners[eventName] = [];
+    }
+    eventBus.listeners[eventName].push(callback);
 
-        // Verifica se a mensagem recebida é do tipo que estamos esperando.
-        if (receivedEventName === eventName) {
-            // Para manter a compatibilidade com a API de CustomEvent,
-            // passamos para o callback um objeto com uma propriedade 'detail'.
-            callback({ detail: data });
-        }
+    // Return an unsubscribe function for cleanup
+    return () => {
+        eventBus.listeners[eventName] = eventBus.listeners[eventName].filter(
+            listener => listener !== callback
+        );
     };
 }
 
-// Opcional: Adicionar um listener de erro para depuração.
-channel.onmessageerror = (errorEvent) => {
-    console.error("GristEventBus: Erro no BroadcastChannel:", errorEvent);
-};
+/**
+ * Publishes an event, calling all subscribed callbacks with the provided data.
+ * @param {string} eventName The name of the event to publish.
+ * @param {*} [data] The data to pass to the subscribers.
+ */
+export function publish(eventName, data) {
+    if (eventBus.listeners[eventName]) {
+        console.log(`[EventBus] Publishing event '${eventName}' with data:`, data);
+        eventBus.listeners[eventName].forEach(callback => {
+            try {
+                callback(data);
+            } catch (error) {
+                console.error(`[EventBus] Error in subscriber for event '${eventName}':`, error);
+            }
+        });
+    } else {
+        console.warn(`[EventBus] No listeners for event '${eventName}'.`);
+    }
+}
+
+// --- END OF CORRECTED grist-event-bus.js ---

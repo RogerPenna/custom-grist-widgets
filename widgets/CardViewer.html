@@ -216,7 +216,7 @@
     <!-- =================================================================== -->
 
     <!-- Carregamos o CardSystem, que parece ser um script global (não usa export) -->
-    <script src="../libraries/grist-card-system/CardSystem.js"></script>
+    <script type="module" src="../libraries/grist-card-system/CardSystem.js"></script>
     
     <!-- Carregamos os editores, que também são globais -->
     <script src="../ConfigManager/editors/config-drawer.js"></script>
@@ -224,7 +224,7 @@
     
     <!-- FINALMENTE, carregamos o nosso ponto de entrada como MÓDULO. -->
     <!-- Ele será responsável por importar TODAS as outras bibliotecas de módulo. -->
-    <script src="./CardViewer.js" type="module"></script>
+    <script type="module" src="CardViewer.js"></script>
 
 
 </body>

@@ -122,7 +122,8 @@ document.addEventListener('DOMContentLoaded', async function () {
             
             const tableId = document.getElementById('tableSelector').value;
             // CORREÇÃO CRÍTICA APLICADA AQUI
-            await currentEditorModule.render(specializedEditorContainerEl, JSON.parse(config.configJson || '{}'), tableLens, tableId, allConfigs);
+            console.log("[ConfigManager] Preste a renderizar o editor. Passando este allConfigs:", allConfigs);
+await currentEditorModule.render(specializedEditorContainerEl, JSON.parse(config.configJson || '{}'), tableLens, tableId, allConfigs);
         } else {
             editorParentContainerEl.style.display = 'none';
             genericJsonEditorEl.style.display = 'block';
