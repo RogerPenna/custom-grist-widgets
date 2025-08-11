@@ -201,17 +201,15 @@ function _addFormListeners() {
 function _initializeDrawerDOM() {
     if (document.getElementById('grist-drawer-panel')) return;
 
-    // --- INÍCIO DA CORREÇÃO DE ÍCONES ---
-    // Adiciona esta função para garantir que os ícones existam no documento.
-    // Ela é "segura" - se os ícones já foram carregados por outro widget, ela não faz nada.
+    // A função de carregamento de ícones está correta e pode permanecer.
     async function ensureIconsLoaded() {
-        if (document.getElementById('grf-icon-symbols')) return; // Já carregado
+        if (document.getElementById('grf-icon-symbols')) return;
         try {
             const response = await fetch('/libraries/icons/icons.svg');
             if (!response.ok) return;
             const svgText = await response.text();
             const div = document.createElement('div');
-            div.id = 'grf-icon-symbols'; // Adiciona um ID para evitar recarregamento
+            div.id = 'grf-icon-symbols';
             div.style.display = 'none';
             div.innerHTML = svgText;
             document.body.insertBefore(div, document.body.firstChild);
@@ -219,14 +217,30 @@ function _initializeDrawerDOM() {
             console.error('DrawerComponent: Falha ao carregar ícones:', error);
         }
     }
-    // Chama a função para garantir que os ícones estejam prontos.
     ensureIconsLoaded();
-    // --- FIM DA CORREÇÃO DE ÍCONES ---
 
     const link = document.createElement('link'); link.rel = 'stylesheet'; link.href = '../libraries/grist-drawer-component/drawer-style.css'; document.head.appendChild(link);
-    const style = document.createElement('style'); style.textContent = `
-        .drawer-header-buttons .icon { width: 20px; height: 20px; } .drawer-close-btn .icon { width: 24px; height: 24px; } .required-indicator { color: #dc3545; font-weight: bold; margin-left: 4px; } .grf-tooltip-trigger { position: relative; display: inline-block; margin-left: 8px; width: 16px; height: 16px; border-radius: 50%; background-color: #adb5bd; color: white; font-size: 11px; font-weight: bold; text-align: center; line-height: 16px; cursor: help; } .grf-tooltip-trigger:before, .grf-tooltip-trigger:after { position: absolute; left: 50%; transform: translateX(-50%); opacity: 0; visibility: hidden; transition: opacity 0.2s ease, visibility 0.2s ease; z-index: 10; } .grf-tooltip-trigger:after { content: attr(data-tooltip); bottom: 150%; background-color: rgba(0, 0, 0, 0.8); color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; font-weight: normal; line-height: 1.4; white-space: pre-wrap; width: 250px; } .grf-tooltip-trigger:before { content: ''; bottom: 150%; margin-bottom: -5px; border-style: solid; border-width: 5px 5px 0 5px; border-color: rgba(0, 0, 0, 0.8) transparent transparent transparent; } .grf-tooltip-trigger:hover:before, .grf-tooltip-trigger:hover:after { opacity: 1; visibility: visible; }
-    `; document.head.appendChild(style);
+    const style = document.createElement('style');
+    
+    // CSS DE PRODUÇÃO FINAL
+    style.textContent = `
+        .drawer-header-buttons .icon, .drawer-close-btn .icon {
+            color: #424242; /* Cor de ícone padrão (cinza escuro) */
+            transition: color 0.2s;
+        }
+        .drawer-header-buttons button:hover .icon, .drawer-close-btn:hover .icon {
+            color: #000000;
+        }
+        .drawer-header-buttons .icon { width: 20px; height: 20px; } 
+        .drawer-close-btn .icon { width: 24px; height: 24px; } 
+        .required-indicator { color: #dc3545; font-weight: bold; margin-left: 4px; } 
+        .grf-tooltip-trigger { position: relative; display: inline-block; margin-left: 8px; width: 16px; height: 16px; border-radius: 50%; background-color: #adb5bd; color: white; font-size: 11px; font-weight: bold; text-align: center; line-height: 16px; cursor: help; } 
+        .grf-tooltip-trigger:before, .grf-tooltip-trigger:after { position: absolute; left: 50%; transform: translateX(-50%); opacity: 0; visibility: hidden; transition: opacity 0.2s ease, visibility 0.2s ease; z-index: 10; } 
+        .grf-tooltip-trigger:after { content: attr(data-tooltip); bottom: 150%; background-color: rgba(0, 0, 0, 0.8); color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; font-weight: normal; line-height: 1.4; white-space: pre-wrap; width: 250px; } 
+        .grf-tooltip-trigger:before { content: ''; bottom: 150%; margin-bottom: -5px; border-style: solid; border-width: 5px 5px 0 5px; border-color: rgba(0, 0, 0, 0.8) transparent transparent transparent; } 
+        .grf-tooltip-trigger:hover:before, .grf-tooltip-trigger:hover:after { opacity: 1; visibility: visible; }
+    `;
+    document.head.appendChild(style);
     
     drawerOverlay = document.createElement('div');
     drawerOverlay.id = 'grist-drawer-overlay';
@@ -234,23 +248,25 @@ function _initializeDrawerDOM() {
     drawerPanel = document.createElement('div');
     drawerPanel.id = 'grist-drawer-panel';
     
-    // --- MUDANÇA NO HTML: Remove a variável 'iconPath' e usa a referência direta de ID ---
+    // --- HTML CORRIGIDO COM OS IDs DE ÍCONE CORRETOS DO SEU ARQUIVO ---
     drawerPanel.innerHTML = `
         <div class="drawer-header"><h2 id="drawer-title"></h2>
             <div class="drawer-header-actions">
                 <div class="drawer-header-buttons">
-                    <button id="drawer-add-btn" title="Adicionar Novo"><svg class="icon"><use href="#icon-add"></use></svg></button>
-                    <button id="drawer-delete-btn" title="Deletar"><svg class="icon"><use href="#icon-delete"></use></svg></button>
+                    <button id="drawer-add-btn" title="Adicionar Novo"><svg class="icon"><use href="#icon-plus-circle-alt"></use></svg></button>
+                    <button id="drawer-delete-btn" title="Deletar"><svg class="icon"><use href="#icon-trashbin"></use></svg></button>
                     <button id="drawer-edit-btn" title="Editar"><svg class="icon"><use href="#icon-edit"></use></svg></button>
                     <button id="drawer-save-btn" title="Salvar" style="display:none;"><svg class="icon"><use href="#icon-save"></use></svg></button>
-                    <button id="drawer-cancel-btn" title="Cancelar" style="display:none;"><svg class="icon"><use href="#icon-cancel"></use></svg></button>
+                    <button id="drawer-cancel-btn" title="Cancelar" style="display:none;"><svg class="icon"><use href="#icon-close-circle"></use></svg></button>
                 </div>
-                <button class="drawer-close-btn" title="Fechar"><svg class="icon"><use href="#icon-close"></use></svg></button>
+                <button class="drawer-close-btn" title="Fechar"><svg class="icon"><use href="#icon-close-circle"></use></svg></button>
             </div>
         </div>
         <div class="drawer-body"><div class="drawer-tabs"></div><div class="drawer-tab-panels"></div></div>`;
     
-    document.body.appendChild(drawerOverlay); document.body.appendChild(drawerPanel); drawerHeader = drawerPanel.querySelector('.drawer-header'); drawerTitle = drawerPanel.querySelector('#drawer-title');
+    document.body.appendChild(drawerOverlay); document.body.appendChild(drawerPanel);
+    drawerHeader = drawerPanel.querySelector('.drawer-header');
+    drawerTitle = drawerPanel.querySelector('#drawer-title');
     
     drawerPanel.querySelector('.drawer-close-btn').addEventListener('click', closeDrawer);
     drawerPanel.querySelector('#drawer-edit-btn').addEventListener('click', _handleEdit);
