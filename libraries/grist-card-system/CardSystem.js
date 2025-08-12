@@ -1,5 +1,3 @@
-// --- START OF COMPLETE AND CORRECTED CardSystem.js ---
-
 import { getFieldStyle } from '../grist-field-renderer/grist-field-renderer.js';
 import { publish } from '../grist-event-bus/grist-event-bus.js';
 
@@ -23,11 +21,13 @@ export const CardSystem = (() => {
   const DEFAULT_STYLING = {
     widgetBackgroundMode: "solid", widgetBackgroundSolidColor: "#f9f9f9", widgetBackgroundGradientType: "linear-gradient(to right, {c1}, {c2})", widgetBackgroundGradientColor1: "#f9f9f9", widgetBackgroundGradientColor2: "#e9e9e9",
     cardsColorMode: "solid", cardsColorSolidColor: "#ffffff", cardsColorGradientType: "linear-gradient(to right, {c1}, {c2})", cardsColorGradientColor1: "#ffffff", cardsColorGradientColor2: "#f0f0f0",
+    cardsColorApplyText: false, // <-- NOVA PROPRIEDADE
     cardBorderThickness: 0, cardBorderMode: "solid", cardBorderSolidColor: "#cccccc",
     cardTitleFontColor: "#000000", cardTitleFontStyle: "Calibri", cardTitleFontSize: "20px",
     cardTitleTopBarEnabled: false, cardTitleTopBarMode: "solid", cardTitleTopBarSolidColor: "#dddddd", cardTitleTopBarGradientType: "linear-gradient(to right, {c1}, {c2})", cardTitleTopBarGradientColor1: "#dddddd", cardTitleTopBarGradientColor2: "#cccccc", cardTitleTopBarLabelFontColor: "#000000", cardTitleTopBarLabelFontStyle: "Calibri", cardTitleTopBarLabelFontSize: "16px", cardTitleTopBarDataFontColor: "#333333", cardTitleTopBarDataFontStyle: "Calibri", cardTitleTopBarDataFontSize: "16px",
     handleAreaWidth: "8px", handleAreaMode: "solid", handleAreaSolidColor: "#40E0D0",
     widgetPadding: "10px", cardsSpacing: "15px",
+	cardTitleTopBarApplyText: false,
     selectedCard: { enabled: false, scale: 1.05, colorEffect: "none" }
   };
 
@@ -60,13 +60,33 @@ export const CardSystem = (() => {
       cardEl.style.gridTemplateRows = `repeat(${numRows}, auto)`;
       cardEl.style.gridTemplateColumns = `repeat(${NUM_COLS}, 1fr)`;
       cardEl.style.gap = "4px";
-      cardEl.style.background = resolveStyle(record, schema, styling.cardsColorMode, styling.cardsColorSolidColor, { type: styling.cardsColorGradientType, c1: styling.cardsColorGradientColor1, c2: styling.cardsColorGradientColor2 }, styling.cardsColorField);
       cardEl.style.marginBottom = styling.cardsSpacing;
       cardEl.style.borderRadius = "8px";
       cardEl.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)";
       cardEl.style.position = "relative";
       cardEl.style.minHeight = "60px";
       cardEl.style.transition = "all 0.2s ease-in-out";
+
+      // --- INÍCIO DA LÓGICA DE ESTILO DO CARD ATUALIZADA ---
+      if (styling.cardsColorMode === 'conditional' && styling.cardsColorField) {
+          const colSchema = schema[styling.cardsColorField];
+          if (colSchema) {
+              const fieldStyle = getFieldStyle(record, colSchema);
+              // Aplica a cor de fundo (com fallback para a cor sólida padrão)
+              cardEl.style.background = fieldStyle.fillColor || styling.cardsColorSolidColor;
+              // APLICA A COR DE TEXTO SE A OPÇÃO ESTIVER MARCADA
+              if (styling.cardsColorApplyText && fieldStyle.textColor) {
+                  cardEl.style.color = fieldStyle.textColor;
+              }
+          } else {
+              // Fallback se o campo configurado não for encontrado no schema
+              cardEl.style.background = styling.cardsColorSolidColor;
+          }
+      } else {
+          // A lógica antiga para Solid e Gradient permanece a mesma
+          cardEl.style.background = resolveStyle(record, schema, styling.cardsColorMode, styling.cardsColorSolidColor, { type: styling.cardsColorGradientType, c1: styling.cardsColorGradientColor1, c2: styling.cardsColorGradientColor2 }, styling.cardsColorField);
+      }
+      // --- FIM DA LÓGICA DE ESTILO DO CARD ATUALIZADA ---
 
       if (styling.cardBorderThickness > 0) {
         const borderColor = resolveStyle(record, schema, styling.cardBorderMode, styling.cardBorderSolidColor, null, styling.cardBorderField);
@@ -87,32 +107,16 @@ export const CardSystem = (() => {
       cardEl.appendChild(handleEl);
 
       cardEl.style.paddingLeft = styling.handleAreaWidth;
-
-      // --- LOG DE DEPURAÇÃO PARA O MODO DE VISUALIZAÇÃO ---
-      console.log(`[CardSystem Render] Para o card do registro ${record.id}, o viewMode é: '${viewMode}'`);
-
       if (viewMode === "burger") {
-          console.log(`[CardSystem Render] Adicionando listener de clique no ÍCONE BURGER.`);
-          const burger = document.createElement("span");
-          burger.innerHTML = "☰";
-          burger.style.cssText = "position: absolute; left: 8px; top: 8px; font-size: 18px; color: #555; cursor: pointer; z-index: 2;";
-          handleEl.appendChild(burger);
-          burger.addEventListener("click", (e) => {
-              console.log("[CardSystem Click] ÍCONE BURGER CLICADO!");
-              e.stopPropagation();
-              openSidePanel(record, currentOptions);
-          });
-          cardEl.style.cursor = "default";
-      } else if (viewMode === "click") {
-          console.log(`[CardSystem Render] Adicionando listener de clique no CARD INTEIRO.`);
-          cardEl.style.cursor = "pointer";
-          cardEl.addEventListener("click", () => {
-              console.log("[CardSystem Click] CARD INTEIRO CLICADO!");
-              openSidePanel(record, currentOptions);
-          });
+        const burger = document.createElement("span");
+        burger.innerHTML = "☰";
+        burger.style.cssText = "position: absolute; left: 8px; top: 8px; font-size: 18px; color: #555; cursor: pointer; z-index: 2;";
+        handleEl.appendChild(burger);
+        burger.addEventListener("click", (e) => { e.stopPropagation(); openSidePanel(record, currentOptions); });
+        cardEl.style.cursor = "default";
       } else {
-          console.warn(`[CardSystem Render] viewMode ('${viewMode}') não reconhecido. Nenhum listener de clique foi adicionado.`);
-          cardEl.style.cursor = "default";
+        cardEl.style.cursor = "pointer";
+        cardEl.addEventListener("click", () => { openSidePanel(record, currentOptions); });
       }
 
       if (styling.selectedCard?.enabled) {
@@ -129,7 +133,26 @@ export const CardSystem = (() => {
         topBarEl.style.display = "flex";
         topBarEl.style.alignItems = "center";
         topBarEl.style.gap = "16px";
-        topBarEl.style.background = resolveStyle(record, schema, styling.cardTitleTopBarMode, styling.cardTitleTopBarSolidColor, { type: styling.cardTitleTopBarGradientType, c1: styling.cardTitleTopBarGradientColor1, c2: styling.cardTitleTopBarGradientColor2 }, styling.cardTitleTopBarField);
+        if (styling.cardTitleTopBarMode === 'conditional' && styling.cardTitleTopBarField) {
+    const colSchema = schema[styling.cardTitleTopBarField];
+    if (colSchema) {
+        const fieldStyle = getFieldStyle(record, colSchema);
+        
+        // Aplica a cor de fundo (com fallback)
+        topBarEl.style.background = fieldStyle.fillColor || styling.cardTitleTopBarSolidColor;
+
+        // APLICA A COR DE TEXTO SE A OPÇÃO ESTIVER MARCADA
+        // Nota: Isso afetará os labels "Label Style" e "Data Style" se eles não tiverem uma cor própria definida.
+        if (styling.cardTitleTopBarApplyText && fieldStyle.textColor) {
+            topBarEl.style.color = fieldStyle.textColor;
+        }
+    } else {
+        topBarEl.style.background = styling.cardTitleTopBarSolidColor;
+    }
+} else {
+    // A lógica antiga para Solid e Gradient permanece
+    topBarEl.style.background = resolveStyle(record, schema, styling.cardTitleTopBarMode, styling.cardTitleTopBarSolidColor, { type: styling.cardTitleTopBarGradientType, c1: styling.cardTitleTopBarGradientColor1, c2: styling.cardTitleTopBarGradientColor2 }, styling.cardTitleTopBarField);
+}
         topBarEl.style.borderTopLeftRadius = "8px";
         topBarEl.style.borderTopRightRadius = "8px";
         cardEl.appendChild(topBarEl);
@@ -206,40 +229,23 @@ export const CardSystem = (() => {
     });
   }
 
-  //--------------------------------------------------------------------
-  // 3) Helper Functions
-  //--------------------------------------------------------------------
-  
-  // FUNÇÃO ATUALIZADA para emitir um evento em vez de logar no console.
-function openSidePanel(record, options) {
-    // --- LOG DE DEPURAÇÃO DEFINITIVO ---
-    console.log("[openSidePanel] Função acionada. Verificando o objeto 'options' recebido:", options);
-    // --- FIM DO LOG ---
-
+  function openSidePanel(record, options) {
     const drawerConfigId = options?.sidePanel?.drawerConfigId;
     const tableId = options?.tableId;
-
     if (!drawerConfigId || !tableId) {
-        console.warn("Nenhuma ação de clique configurada. Verifique se 'drawerConfigId' e 'tableId' existem no objeto 'options' acima.", {
-            drawerConfigId_Encontrado: drawerConfigId,
-            tableId_Encontrado: tableId
-        });
+        console.warn("Nenhuma ação de clique configurada. Verifique a aba 'Actions' na configuração do card.", {options});
         return;
     }
-
-    console.log("Card clicado. Emitindo evento 'grf-card-clicked'...", { drawerConfigId, recordId: record.id, tableId });
     publish('grf-card-clicked', {
         drawerConfigId: drawerConfigId,
         recordId: record.id,
         tableId: tableId
     });
-}
+  }
 
   function resolveStyle(record, schema, mode, solidColor, gradientOptions, fieldName) {
-    if (mode === 'gradient' && gradientOptions && gradientOptions.type) {
-        return gradientOptions.type.replace('{c1}', gradientOptions.c1).replace('{c2}', gradientOptions.c2);
-    }
-    if (mode === 'conditional' && fieldName && record && schema && schema[fieldName]) {
+    if (mode === 'gradient' && gradientOptions?.type) { return gradientOptions.type.replace('{c1}', gradientOptions.c1).replace('{c2}', gradientOptions.c2); }
+    if (mode === 'conditional' && fieldName && record && schema?.[fieldName]) {
         const colSchema = schema[fieldName];
         const fieldStyle = getFieldStyle(record, colSchema);
         return fieldStyle.fillColor || solidColor;
@@ -247,12 +253,5 @@ function openSidePanel(record, options) {
     return solidColor;
   }
 
-  //--------------------------------------------------------------------
-  // 4) Public API
-  //--------------------------------------------------------------------
-  return {
-    renderCards
-  };
+  return { renderCards };
 })();
-
-// --- END OF COMPLETE AND CORRECTED CardSystem.js ---
