@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>App do Auditor</title>
+    <link rel="stylesheet" href="apaud_style.css">
+</head>
+<body>
+
+    <!-- TELA 1: CARREGAMENTO -->
+    <div id="tela-carregamento" class="tela ativa">
+        <div class="container">
+            <h1>App de Auditoria</h1>
+            <p>Cole o "Pacote de Auditoria" gerado no campo abaixo.</p>
+            <textarea id="json-input" placeholder="Cole o JSON aqui..."></textarea>
+            <button id="load-button">Carregar Auditoria</button>
+            <div id="status-carregamento"></div>
+        </div>
+    </div>
+
+    <!-- TELA 2: SELEÇÃO DA AUDITORIA -->
+    <div id="tela-selecao" class="tela">
+        <div class="container">
+            <h2 id="titulo-auditoria"></h2>
+            <h3>Selecione a auditoria que deseja iniciar:</h3>
+            <div id="lista-planejamentos"></div>
+        </div>
+    </div>
+
+    <!-- TELA 3: EXECUÇÃO DO CHECKLIST -->
+    <div id="tela-checklist" class="tela">
+        <div id="checklist-header">
+            <div id="header-titulo">Auditoria</div>
+            <div id="header-progresso">0 / 0 (0%)</div>
+        </div>
+        <div id="checklist-container" class="container">
+            <!-- O checklist será renderizado aqui pelo JavaScript -->
+        </div>
+    </div>
+
+    <script type="module" src="js/apaud_main.js"></script>
+</body>
+</html>

@@ -1,0 +1,126 @@
+/* apaud_style.css (Conteúdo Completo e Final) */
+
+/* --- Reset e Estilos Globais --- */
+body, html { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f4f7f9; color: #333; }
+.tela { display: none; width: 100%; min-height: 100vh; }
+.tela.ativa { display: block; }
+.container { max-width: 800px; margin: 0 auto; padding: 1rem; }
+button { font-size: 1rem; padding: 0.8rem 1.5rem; margin-top: 1rem; cursor: pointer; border-radius: 5px; border: none; font-weight: bold; transition: background-color 0.2s; }
+
+/* --- Tela de Carregamento --- */
+#tela-carregamento { text-align: center; padding-top: 5vh; }
+textarea { width: 95%; height: 250px; margin-top: 1rem; padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-family: monospace; resize: vertical; }
+#load-button { background-color: #28a745; color: white; }
+#status-carregamento { margin-top: 1rem; font-weight: bold; min-height: 24px; }
+
+/* --- Tela de Seleção --- */
+#lista-planejamentos .planejamento-item { background-color: white; border: 1px solid #ddd; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; cursor: pointer; transition: all 0.2s; }
+#lista-planejamentos .planejamento-item:hover { box-shadow: 0 4px 8px rgba(0,0,0,0.1); transform: translateY(-2px); }
+.planejamento-item h4 { margin: 0 0 0.5rem 0; color: #0056b3; }
+.planejamento-item p { margin: 0.25rem 0; font-size: 0.9rem; color: #666; }
+.planejamento-item.selecionado { border-color: #007bff; }
+.card-detalhes { max-height: 0; overflow: hidden; transition: all 0.3s ease-out; padding: 0 1rem; border-top: 1px solid transparent; margin-top: 0; }
+.card-detalhes.expandido { max-height: 500px; padding: 1rem; margin-top: 1rem; border-top-color: #eee; }
+.iniciar-auditoria-btn { background-color: #007bff; color: white; width: 100%; margin-top: 1rem; }
+
+/* --- Tela de Checklist --- */
+#checklist-header { position: sticky; top: 0; background-color: white; padding: 1rem; border-bottom: 1px solid #e0e0e0; z-index: 100; display: flex; justify-content: space-between; align-items: center; }
+#header-titulo { font-weight: bold; font-size: 1.1rem; }
+#header-progresso { font-size: 1rem; color: #555; }
+#tela-checklist .container { padding-top: 80px; /* Espaço para o cabeçalho fixo */ }
+
+.secao-card, .pergunta-card { background-color: white; border-radius: 8px; margin-bottom: 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+.secao-header { background-color: #6a1b9a; color: white; padding: 1rem 1.5rem; border-radius: 8px 8px 0 0; display: flex; justify-content: space-between; align-items: center; }
+.secao-header h3 { margin: 0; font-size: 1.2rem; }
+.secao-body { padding: 1.5rem; border: 1px solid #eee; border-top: none; border-radius: 0 0 8px 8px;}
+.pergunta-card { padding: 1.5rem; }
+.texto-pergunta { font-size: 1.1rem; font-weight: 500; margin: 0 0 1.5rem 0; line-height: 1.4; }
+
+.respostas-container { display: flex; flex-direction: column; gap: 0.75rem; }
+.botao-resposta { width: 100%; padding: 1rem; font-size: 1rem; text-align: center; border: 2px solid #ddd; background-color: #f8f9fa; color: #333; border-radius: 8px; cursor: pointer; transition: all 0.2s ease-in-out; }
+.botao-resposta.selecionado { font-weight: bold; border-width: 3px; }
+
+.acoes-container { margin-top: 1.5rem; display: flex; gap: 1rem; border-top: 1px solid #eee; padding-top: 1rem; }
+.botao-acao { background-color: transparent; border: none; color: #007bff; font-size: 0.9rem; font-weight: bold; cursor: pointer; padding: 0.5rem; border-radius: 5px; }
+
+/* Lógica Condicional */
+.item-escondido { display: none !important; }
+
+/* Seção Repetível */
+.botao-repetir-secao {
+    background-color: #28a745;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 36px; /* Ajuste de tamanho */
+    height: 36px;
+    cursor: pointer;
+    padding: 0; /* Remove padding que pode desalinhar */
+    display: flex; /* Usa flexbox para centralizar o ícone */
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s;
+}
+.botao-repetir-secao:hover {
+    transform: scale(1.1);
+}
+.botao-repetir-secao svg {
+    width: 28px; /* Tamanho do ícone dentro do botão */
+    height: 28px;
+}
+.secao-instancias-container { margin-top: 1rem; }
+.secao-repetida-container { border-left: 3px solid #6a1b9a; margin-top: 1rem; padding-left: 1rem; background-color: #fafafa; padding: 1rem; border-radius: 5px; }
+.secao-repetida-header { display: flex; justify-content: space-between; align-items: center; background-color: #f1e4f8; padding: 0.5rem 1rem; border-radius: 5px; margin-bottom: 1rem; }
+.secao-repetida-header h4 { margin: 0; color: #6a1b9a; }
+.botao-remover-secao { background: none; border: none; color: #dc3545; font-size: 1.5rem; cursor: pointer; }
+/* apaud_style.css */
+.pergunta-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+}
+.botao-detalhe {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 1px solid #007bff;
+    background-color: white;
+    color: #007bff;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 0;
+    margin: 0;
+}
+.anotacao-area {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    border-top: 1px solid #eee;
+    padding-top: 1rem;
+}
+.anotacao-area textarea {
+    width: 95%; /* Evita overflow */
+    min-height: 80px;
+    padding: 0.5rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    resize: vertical;
+}
+.anotacao-botoes {
+    display: flex;
+    justify-content: flex-end; /* Alinha botões à direita */
+    gap: 0.5rem;
+}
+.anotacao-botoes button {
+    margin-top: 0;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.9rem;
+    background-color: #6c757d;
+    color: white;
+}
+.anotacao-botoes .botao-salvar-anotacao {
+    background-color: #007bff;
+}
