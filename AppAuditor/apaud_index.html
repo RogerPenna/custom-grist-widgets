@@ -57,15 +57,27 @@
 </div>
 
     <!-- TELA 3: EXECUÇÃO DO CHECKLIST -->
-    <div id="tela-checklist" class="tela">
-        <div id="checklist-header">
-            <div id="header-titulo">Auditoria</div>
-            <div id="header-progresso">0 / 0 (0%)</div>
-        </div>
-        <div id="checklist-container" class="container">
-            <!-- O checklist será renderizado aqui pelo JavaScript -->
-        </div>
+<div id="tela-checklist" class="tela">
+    <div id="checklist-header">
+        <!-- NOVO BOTÃO DE VOLTAR -->
+        <button id="btn-voltar-principal" class="btn-header">&lt; Voltar</button>
+        <div id="header-titulo">Auditoria</div>
+        <div id="header-progresso">0 / 0 (0%)</div>
     </div>
+    <div id="checklist-container" class="container">
+        <!-- O checklist será renderizado aqui -->
+    </div>
+</div>
+
+<div id="modal-finalizar" class="modal-finalizar-overlay">
+    <div class="modal-finalizar-conteudo">
+        <span class="fechar-modal-finalizar">&times;</span>
+        <h2>Auditoria Finalizada</h2>
+        <p>Copie o JSON abaixo para importar os resultados no sistema principal.</p>
+        <textarea id="resultado-json-output" readonly></textarea>
+        <button id="btn-copiar-resultado" class="btn-primario">Copiar JSON</button>
+    </div>
+</div>
 	<!-- Input escondido para upload de arquivos -->
 <input type="file" id="media-input" style="display: none;" multiple>
 

@@ -153,3 +153,141 @@ textarea { width: 95%; height: 250px; margin-top: 1rem; padding: 10px; border: 1
     background-color: #e9ecef;
     color: var(--cor-texto-padrao);
 }
+
+/* --- Estilos para o Header do Checklist --- */
+#checklist-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+}
+.btn-header {
+    background: none;
+    border: 1px solid var(--cor-borda);
+    color: var(--cor-texto-padrao);
+    padding: 0.5rem 1rem;
+    flex-shrink: 0; /* Impede que o botão encolha */
+}
+#header-titulo {
+    text-align: center;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis; /* Evita que títulos longos quebrem o layout */
+}
+#header-progresso {
+    text-align: right;
+    flex-shrink: 0;
+}
+
+/* --- Estilos para o Botão de Finalizar --- */
+.finalizar-container {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    background-color: var(--cor-fundo-secao-repetivel);
+    border: 1px solid var(--cor-borda);
+    border-radius: 0.75rem;
+    text-align: center;
+}
+#btn-finalizar-auditoria {
+    width: 100%;
+    padding: 1rem;
+    font-size: 1.2rem;
+    background-color: #10b981; /* Verde */
+    color: white;
+}
+
+/* --- Estilos para o Modal de Finalização --- */
+.modal-finalizar-overlay {
+    display: none; /* Escondido por padrão */
+    position: fixed;
+    z-index: 300;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.6);
+    justify-content: center;
+    align-items: center;
+}
+.modal-finalizar-conteudo {
+    background-color: white;
+    padding: 2rem;
+    border-radius: 0.75rem;
+    width: 90%;
+    max-width: 600px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+.fechar-modal-finalizar {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    color: #aaa;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+.modal-finalizar-conteudo textarea {
+    flex-grow: 1;
+    height: 200px; /* Altura inicial */
+    margin: 1rem 0;
+}
+
+/* --- Indicador de Auditoria em Progresso --- */
+.planejamento-item.em-progresso {
+    border-left: 5px solid #fd7e14; /* Laranja */
+}
+.planejamento-item.em-progresso h4::after {
+    content: ' (Em andamento)';
+    color: #fd7e14;
+    font-size: 0.9rem;
+    font-weight: normal;
+}
+
+/* --- Indicador de Auditoria Finalizada --- */
+.planejamento-item.finalizada {
+    border-left: 5px solid var(--cor-primaria); /* Azul */
+}
+.planejamento-item.finalizada h4::after {
+    content: ' (Finalizada)';
+    color: var(--cor-primaria);
+    font-size: 0.9rem;
+    font-weight: normal;
+}
+
+/* --- Resumo da Auditoria no Card --- */
+.resumo-progresso {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--cor-borda);
+    font-size: 0.9rem;
+}
+.resumo-progresso p {
+    margin: 0.3rem 0;
+}
+.resumo-progresso .nc-maior {
+    color: #dc3545; /* Vermelho */
+    font-weight: bold;
+}
+.resumo-progresso .nc-normal {
+    color: #fd7e14; /* Laranja */
+    font-weight: bold;
+}
+
+/* --- Botões de Ação dentro do Card --- */
+.botoes-acao-card {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+.botoes-acao-card button {
+    flex-grow: 1;
+    font-size: 0.9rem;
+}
+.btn-pdf {
+    background-color: #6c757d; /* Cinza */
+    color: white;
+}

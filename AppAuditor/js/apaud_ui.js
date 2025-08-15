@@ -40,29 +40,32 @@ export function mostrarStatusCarregamento(mensagem, tipo = 'info') {
 export function renderizarListaDePlanejamentos(planejamentos) {
     const container = document.getElementById('lista-planejamentos');
     container.innerHTML = '';
+    const auditoriaAtiva = Auditoria.getAuditoriaAtiva();
 
-    if (!planejamentos || planejamentos.length === 0) {
-        container.innerHTML = '<p>Nenhum planejamento de auditoria encontrado.</p>';
-        return;
-    }
+    if (!planejamentos || planejamentos.length === 0) { /*...*/ }
 
     planejamentos.forEach(item => {
         const div = document.createElement('div');
         div.className = 'planejamento-item';
+        
+        // LÓGICA DE STATUS APRIMORADA
+        if (auditoriaAtiva && auditoriaAtiva.planejamentoId == item.id) {
+            if (auditoriaAtiva.status === 'em_progresso') {
+                div.classList.add('em-progresso');
+            } else if (auditoriaAtiva.status === 'finalizada') {
+                div.classList.add('finalizada');
+            }
+        }
+        // ... (resto da função é igual)
         div.dataset.id = item.id;
         div.dataset.areaId = item.Departamento;
-
         const totalPerguntas = Auditoria.contarPerguntasParaArea(item.Departamento);
-        const dataFormatada = item.Data ? new Date(item.Data * 1000).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : 'Data não definida';
-
-        div.innerHTML = `
-            <h4>${item.Departamento_Departamento || 'Área não definida'}</h4>
-            <p>Data Planejada: ${dataFormatada}</p>
-            <p class="info-perguntas"><strong>${totalPerguntas}</strong> perguntas nesta auditoria.</p>
-            <div class="card-detalhes"></div>`;
+        const dataFormatada = item.Data ? new Date(item.Data * 1000).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : 'N/D';
+        div.innerHTML = `<h4>${item.Departamento_Departamento || 'Área não definida'}</h4><p>Data Planejada: ${dataFormatada}</p><p class="info-perguntas"><strong>${totalPerguntas}</strong> perguntas.</p><div class="card-detalhes"></div>`;
         container.appendChild(div);
     });
 }
+
 
 export function expandirCard(cardElement, detalhes) {
     const detalheAtual = cardElement.querySelector('.card-detalhes');
@@ -75,15 +78,47 @@ export function expandirCard(cardElement, detalhes) {
         d.closest('.planejamento-item').classList.remove('selecionado');
     });
 
-    if (!isExpandido && detalhes) {
-        cardElement.classList.add('selecionado');
-        detalheAtual.classList.add('expandido');
-        detalheAtual.innerHTML = `
+    if (isExpandido) return; // Se já estava expandido, apenas fecha
+
+    cardElement.classList.add('selecionado');
+    detalheAtual.classList.add('expandido');
+    
+    let htmlInterno = '';
+
+    // Se o card está marcado como EM PROGRESSO
+    if (cardElement.classList.contains('em-progresso')) {
+        const progresso = Auditoria.calcularProgresso();
+        const ncs = Auditoria.contarNaoConformidades();
+        htmlInterno = `
+            <div class="resumo-progresso">
+                <p><strong>Progresso:</strong> ${progresso.respondidas} / ${progresso.total} (${progresso.percentual}%)</p>
+                <p><span class="nc-normal">${ncs.nc}</span> Não Conformidades</p>
+                <p><span class="nc-maior">${ncs.ncMaior}</span> NC Maiores</p>
+            </div>
+            <div class="botoes-acao-card">
+                <button class="btn-primario btn-continuar">Continuar Auditoria</button>
+            </div>
+        `;
+    // Se o card está marcado como FINALIZADA
+    } else if (cardElement.classList.contains('finalizada')) {
+        htmlInterno = `
+            <p>Auditoria finalizada. Você pode reabri-la para edição ou exportar os resultados.</p>
+            <div class="botoes-acao-card">
+                <button class="btn-secundario btn-reabrir">Reabrir</button>
+                <button class="btn-pdf btn-exportar-pdf">Exportar PDF</button>
+            </div>
+        `;
+    // Se for uma auditoria nova
+    } else {
+        htmlInterno = `
             <p><strong>Responsável:</strong> ${detalhes.responsavel}</p>
-            <p><strong>Líder:</strong> ${detalhes.auditorLider}</p>
-            <p><strong>Acompanhante:</strong> ${detalhes.auditorAcompanhante}</p>
-            <button class="iniciar-auditoria-btn">Iniciar Auditoria</button>`;
+            <p><strong>Líder Planejado:</strong> ${detalhes.auditorLider}</p>
+            <p><strong>Acompanhante Planejado:</strong> ${detalhes.auditorAcompanhante}</p>
+            <button class="iniciar-auditoria-btn">Iniciar Nova Auditoria</button>
+        `;
     }
+
+    detalheAtual.innerHTML = htmlInterno;
 }
 
 
@@ -92,6 +127,7 @@ export function expandirCard(cardElement, detalhes) {
 export function renderizarChecklistCompleto() {
     const container = document.getElementById('checklist-container');
     container.innerHTML = '';
+    // ... (código existente da função) ...
     const checklist = Auditoria.getChecklistParaAreaAtiva();
     if (!checklist || checklist.length === 0) {
         container.innerHTML = '<h3>Nenhuma pergunta para esta auditoria.</h3>';
@@ -99,6 +135,19 @@ export function renderizarChecklistCompleto() {
     }
     const itensRaiz = checklist.filter(item => !item.ID_Pai || item.ID_Pai === 0).sort((a, b) => a.Ordem - b.Ordem);
     itensRaiz.forEach(item => renderizarItem(item, container, checklist));
+
+    // NOVO: Adiciona o botão de finalizar no final
+    const finalizarDiv = document.createElement('div');
+    finalizarDiv.className = 'finalizar-container';
+    finalizarDiv.innerHTML = `<button id="btn-finalizar-auditoria">Finalizar e Salvar Auditoria</button>`;
+    container.appendChild(finalizarDiv);
+}
+
+export function mostrarModalFinalizar(resultadoJSON) {
+    const modal = document.getElementById('modal-finalizar');
+    const textarea = document.getElementById('resultado-json-output');
+    textarea.value = JSON.stringify(resultadoJSON, null, 2); // Formata o JSON para leitura
+    modal.style.display = 'flex';
 }
 
 function renderizarItem(item, containerPai, checklistCompleto, instanciaInfo = null) {

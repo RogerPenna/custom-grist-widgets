@@ -1,16 +1,27 @@
-// js/apaud_main.js (v6.0 - Com fluxo de confirmação)
+// js/apaud_main.js (v8.0 - Gerenciamento de Estado Completo)
 
 import * as Auditoria from './apaud_auditoria.js';
 import * as UI from './apaud_ui.js';
 
 function main() {
-    console.log("DOM carregado. Iniciando script principal (main.js)...");
+    // Tenta carregar uma auditoria em andamento do localStorage
+    Auditoria.loadStateFromLocalStorage();
+
     const loadButton = document.getElementById('load-button');
     if (loadButton) {
         loadButton.addEventListener('click', () => {
             if (Auditoria.carregarPacoteJSON()) {
-                UI.renderizarListaDePlanejamentos(Auditoria.getPlanejamentos());
-                UI.mostrarTela('tela-selecao');
+                // Se carregou o pacote e já há uma auditoria pendente, vai direto para o checklist
+                if (Auditoria.getAuditoriaAtiva()) {
+                    UI.atualizarHeaderTitulo();
+                    UI.renderizarChecklistCompleto();
+                    UI.atualizarHeaderProgresso();
+                    UI.mostrarTela('tela-checklist');
+                } else {
+                    // Senão, mostra a lista de planejamentos para escolher uma
+                    UI.renderizarListaDePlanejamentos(Auditoria.getPlanejamentos());
+                    UI.mostrarTela('tela-selecao');
+                }
             }
         });
     }
@@ -18,30 +29,58 @@ function main() {
 }
 
 function adicionarListenersDeConteudo() {
-    // --- TELA DE SELEÇÃO ---
+    // --- TELA DE SELEÇÃO (Listener principal de ações) ---
     const containerPlanejamentos = document.getElementById('lista-planejamentos');
     if (containerPlanejamentos) {
         containerPlanejamentos.addEventListener('click', (event) => {
             const cardClicado = event.target.closest('.planejamento-item');
             if (!cardClicado) return;
 
-            // Se clicou no botão "Iniciar Auditoria"
-            if (event.target.classList.contains('iniciar-auditoria-btn')) {
-                const areaId = cardClicado.dataset.areaId;
-                const planejamentoId = cardClicado.dataset.id;
+            const planejamentoId = cardClicado.dataset.id;
+            const areaId = cardClicado.dataset.areaId;
+            const target = event.target;
 
-                // Prepara os dados para a tela de confirmação
+            // AÇÃO: Iniciar uma NOVA auditoria
+            if (target.classList.contains('iniciar-auditoria-btn')) {
+                // Se já existir uma auditoria salva, pede confirmação antes de apagar
+                if (Auditoria.getAuditoriaAtiva()) {
+                    if (!confirm("Isso irá descartar a auditoria em andamento. Deseja iniciar uma nova mesmo assim?")) {
+                        return;
+                    }
+                }
                 Auditoria.iniciarAuditoriaParaArea(areaId, planejamentoId);
                 const planejamento = Auditoria.getPlanejamentoPorId(planejamentoId);
                 const todosAuditores = Auditoria.getAuditores();
-
-                // Renderiza e mostra a tela de confirmação
                 UI.renderizarTelaConfirmacao(planejamento, todosAuditores);
                 UI.mostrarTela('tela-confirmacao');
-
-            } else { // Se clicou no card para expandir
-                const idDoPai = cardClicado.dataset.id;
-                const detalhes = Auditoria.getDetalhesDoPlanejamento(idDoPai);
+            }
+            // AÇÃO: CONTINUAR uma auditoria em progresso
+            else if (target.classList.contains('btn-continuar')) {
+                // O estado já foi carregado do localStorage, então apenas navegamos para a tela de checklist
+                UI.atualizarHeaderTitulo();
+                UI.renderizarChecklistCompleto();
+                UI.atualizarHeaderProgresso();
+                UI.mostrarTela('tela-checklist');
+            }
+            // AÇÃO: REABRIR uma auditoria finalizada
+            else if (target.classList.contains('btn-reabrir')) {
+                Auditoria.reabrirAuditoria();
+                // Re-renderiza a lista para que o card mude de 'finalizada' para 'em progresso'
+                UI.renderizarListaDePlanejamentos(Auditoria.getPlanejamentos());
+                // Força a re-expansão do card que o usuário acabou de clicar
+                const novoCard = document.querySelector(`.planejamento-item[data-id='${planejamentoId}']`);
+                if(novoCard) {
+                     const detalhes = Auditoria.getDetalhesDoPlanejamento(planejamentoId);
+                     UI.expandirCard(novoCard, detalhes);
+                }
+            }
+            // AÇÃO: EXPORTAR PDF (placeholder)
+            else if (target.classList.contains('btn-exportar-pdf')) {
+                alert("Funcionalidade de exportar PDF ainda não implementada.");
+            }
+            // AÇÃO: Expandir o card para ver detalhes/ações
+            else {
+                const detalhes = Auditoria.getDetalhesDoPlanejamento(planejamentoId);
                 UI.expandirCard(cardClicado, detalhes);
             }
         });
@@ -49,9 +88,8 @@ function adicionarListenersDeConteudo() {
 
     // --- TELA DE CONFIRMAÇÃO ---
     const telaConfirmacao = document.getElementById('tela-confirmacao');
-    if(telaConfirmacao) {
+    if (telaConfirmacao) {
         telaConfirmacao.addEventListener('click', (event) => {
-            // Se clicou em "Confirmar e Iniciar"
             if (event.target.id === 'btn-confirmar-iniciar') {
                 const detalhes = {
                     data: document.getElementById('data-auditoria').value,
@@ -59,26 +97,41 @@ function adicionarListenersDeConteudo() {
                     acompId: document.getElementById('auditor-acomp-select').value
                 };
                 Auditoria.salvarDetalhesExecucao(detalhes);
-
                 UI.atualizarHeaderTitulo();
                 UI.renderizarChecklistCompleto();
                 UI.atualizarHeaderProgresso();
                 UI.mostrarTela('tela-checklist');
             }
-
-            // Se clicou em "Voltar"
             if (event.target.id === 'btn-voltar-selecao') {
                 UI.mostrarTela('tela-selecao');
             }
         });
     }
 
+    // --- TELA DE CHECKLIST ---
+    const checklistHeader = document.getElementById('checklist-header');
+    if (checklistHeader) {
+        checklistHeader.addEventListener('click', (event) => {
+            if (event.target.id === 'btn-voltar-principal') {
+                UI.renderizarListaDePlanejamentos(Auditoria.getPlanejamentos());
+                UI.mostrarTela('tela-selecao');
+            }
+        });
+    }
 
-    // --- TELA DE CHECKLIST (código existente, sem alterações) ---
     const containerChecklist = document.getElementById('checklist-container');
-    const mediaInput = document.getElementById('media-input');
     if (containerChecklist) {
         containerChecklist.addEventListener('click', (event) => {
+            if (event.target.id === 'btn-finalizar-auditoria') {
+                if (confirm("Tem certeza que deseja finalizar esta auditoria?")) {
+                    const resultado = Auditoria.finalizarAuditoria();
+                    if (resultado) {
+                        UI.mostrarModalFinalizar(resultado);
+                    }
+                }
+                return;
+            }
+            
             const target = event.target;
             let precisaAtualizarGeral = false;
             const cardPergunta = target.closest('.pergunta-card');
@@ -86,9 +139,10 @@ function adicionarListenersDeConteudo() {
             const cabecalhoSecaoNormal = target.closest('.secao-nao-repetivel .secao-header');
             const botaoAdicionar = target.closest('.secao-adicionar-card');
             const botaoRemover = target.closest('.botao-remover-secao');
+
             if (botaoRemover) {
                 event.stopPropagation();
-                if (confirm("Tem certeza que deseja remover esta seção?")) {
+                if (confirm("Tem certeza?")) {
                     Auditoria.removerInstanciaSecao(botaoRemover.dataset.secaoId, botaoRemover.dataset.instanciaNumero);
                     precisaAtualizarGeral = true;
                 }
@@ -107,7 +161,7 @@ function adicionarListenersDeConteudo() {
                 const icone = cabecalhoClicado.querySelector('.icone-toggle');
                 corpo.classList.toggle('expandido');
                 icone.classList.toggle('expandido');
-                if(cabecalhoInstancia) {
+                if (cabecalhoInstancia) {
                     const idUnico = cabecalhoClicado.dataset.idUnico;
                     if (UI.estadoUI.secoesExpandidas.has(idUnico)) {
                         UI.estadoUI.secoesExpandidas.delete(idUnico);
@@ -126,8 +180,8 @@ function adicionarListenersDeConteudo() {
                     });
                 }
                 if (target.closest('.botao-midia')) {
-                    mediaInput.dataset.perguntaId = cardPergunta.dataset.itemId;
-                    mediaInput.click();
+                    document.getElementById('media-input').dataset.perguntaId = cardPergunta.dataset.itemId;
+                    document.getElementById('media-input').click();
                 }
             }
             if (precisaAtualizarGeral) {
@@ -135,13 +189,15 @@ function adicionarListenersDeConteudo() {
                 UI.atualizarHeaderProgresso();
             }
         });
+
         containerChecklist.addEventListener('input', (event) => {
             if (event.target.matches('.resposta-texto')) {
                 Auditoria.salvarResposta(event.target.dataset.perguntaId, event.target.value);
                 UI.atualizarHeaderProgresso();
             }
         });
-        mediaInput.addEventListener('change', (event) => {
+
+        document.getElementById('media-input').addEventListener('change', (event) => {
             const perguntaId = event.target.dataset.perguntaId;
             const files = event.target.files;
             if (perguntaId && files.length > 0) {
@@ -149,6 +205,28 @@ function adicionarListenersDeConteudo() {
                 UI.renderizarChecklistCompleto();
             }
             event.target.value = '';
+        });
+    }
+
+    // --- MODAL DE FINALIZAÇÃO ---
+    const modalFinalizar = document.getElementById('modal-finalizar');
+    if (modalFinalizar) {
+        modalFinalizar.addEventListener('click', (event) => {
+            if (event.target.classList.contains('fechar-modal-finalizar')) {
+                modalFinalizar.style.display = 'none';
+                // Após fechar o modal, atualiza a lista para mostrar o novo status "Finalizada"
+                UI.renderizarListaDePlanejamentos(Auditoria.getPlanejamentos());
+                UI.mostrarTela('tela-selecao');
+            }
+            if (event.target.id === 'btn-copiar-resultado') {
+                const textarea = document.getElementById('resultado-json-output');
+                textarea.select();
+                document.execCommand('copy');
+                event.target.textContent = 'Copiado!';
+                setTimeout(() => {
+                    event.target.textContent = 'Copiar JSON';
+                }, 2000);
+            }
         });
     }
 }
