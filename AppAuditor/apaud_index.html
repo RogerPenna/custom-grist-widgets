@@ -27,6 +27,34 @@
             <div id="lista-planejamentos"></div>
         </div>
     </div>
+	
+	<!-- NOVA TELA 2.5: CONFIRMAÇÃO DA AUDITORIA -->
+<div id="tela-confirmacao" class="tela">
+    <div class="container">
+        <h2 id="confirmacao-titulo">Preparar Auditoria</h2>
+        <div id="confirmacao-departamento"></div>
+
+        <div class="form-grupo">
+            <label for="data-auditoria">Data da Realização:</label>
+            <input type="date" id="data-auditoria">
+        </div>
+        
+        <div class="form-grupo">
+            <label for="auditor-lider-select">Auditor Líder:</label>
+            <select id="auditor-lider-select"></select>
+        </div>
+
+        <div class="form-grupo">
+            <label for="auditor-acomp-select">Auditor Acompanhante:</label>
+            <select id="auditor-acomp-select"></select>
+        </div>
+
+        <div class="botoes-confirmacao">
+            <button id="btn-voltar-selecao" class="btn-secundario">Voltar</button>
+            <button id="btn-confirmar-iniciar" class="btn-primario">Confirmar e Iniciar</button>
+        </div>
+    </div>
+</div>
 
     <!-- TELA 3: EXECUÇÃO DO CHECKLIST -->
     <div id="tela-checklist" class="tela">
@@ -38,6 +66,8 @@
             <!-- O checklist será renderizado aqui pelo JavaScript -->
         </div>
     </div>
+	<!-- Input escondido para upload de arquivos -->
+<input type="file" id="media-input" style="display: none;" multiple>
 
     <script type="module" src="js/apaud_main.js"></script>
 </body>

@@ -1,59 +1,45 @@
-// js/apaud_main.js (v4.2 - Todos os Listeners Corrigidos)
+// js/apaud_main.js (v6.0 - Com fluxo de confirmação)
 
 import * as Auditoria from './apaud_auditoria.js';
 import * as UI from './apaud_ui.js';
 
-// Função principal que roda quando o HTML está pronto
 function main() {
     console.log("DOM carregado. Iniciando script principal (main.js)...");
-
-    // --- Passo 1: Encontrar os elementos principais do DOM ---
     const loadButton = document.getElementById('load-button');
-    
-    // --- Passo 2: Verificação de Segurança ---
-    if (!loadButton) {
-        console.error("ERRO FATAL: O botão 'load-button' não foi encontrado no HTML.");
-        return; // Interrompe a execução
+    if (loadButton) {
+        loadButton.addEventListener('click', () => {
+            if (Auditoria.carregarPacoteJSON()) {
+                UI.renderizarListaDePlanejamentos(Auditoria.getPlanejamentos());
+                UI.mostrarTela('tela-selecao');
+            }
+        });
     }
-    console.log("Elemento 'load-button' encontrado com sucesso.");
-
-    // --- Passo 3: Adicionar os Event Listeners ---
-
-    // Listener para o botão de carregar o JSON
-    loadButton.addEventListener('click', () => {
-        console.log("Botão 'Carregar Auditoria' clicado.");
-        if (Auditoria.carregarPacoteJSON()) {
-            UI.renderizarListaDePlanejamentos(Auditoria.getPlanejamentos());
-            UI.mostrarTela('tela-selecao');
-        }
-    });
-
-    // Chama a função que adiciona os listeners para os conteúdos dinâmicos
     adicionarListenersDeConteudo();
-
-    console.log("Todos os event listeners foram registrados.");
 }
 
-
-// Função que centraliza os listeners para elementos que são criados dinamicamente
 function adicionarListenersDeConteudo() {
-    // Listener para a tela de seleção de auditoria
+    // --- TELA DE SELEÇÃO ---
     const containerPlanejamentos = document.getElementById('lista-planejamentos');
     if (containerPlanejamentos) {
         containerPlanejamentos.addEventListener('click', (event) => {
             const cardClicado = event.target.closest('.planejamento-item');
-            if (!cardClicado) return; // Se clicou fora de um card, não faz nada
+            if (!cardClicado) return;
 
-            // Se o clique foi no botão "Iniciar Auditoria"
+            // Se clicou no botão "Iniciar Auditoria"
             if (event.target.classList.contains('iniciar-auditoria-btn')) {
                 const areaId = cardClicado.dataset.areaId;
-                if (Auditoria.iniciarAuditoriaParaArea(areaId)) {
-                    UI.renderizarChecklistCompleto();
-                    UI.atualizarHeaderProgresso();
-                    UI.mostrarTela('tela-checklist');
-                }
-            } else {
-                // Se o clique foi em qualquer outra parte do card, expande/retrai
+                const planejamentoId = cardClicado.dataset.id;
+
+                // Prepara os dados para a tela de confirmação
+                Auditoria.iniciarAuditoriaParaArea(areaId, planejamentoId);
+                const planejamento = Auditoria.getPlanejamentoPorId(planejamentoId);
+                const todosAuditores = Auditoria.getAuditores();
+
+                // Renderiza e mostra a tela de confirmação
+                UI.renderizarTelaConfirmacao(planejamento, todosAuditores);
+                UI.mostrarTela('tela-confirmacao');
+
+            } else { // Se clicou no card para expandir
                 const idDoPai = cardClicado.dataset.id;
                 const detalhes = Auditoria.getDetalhesDoPlanejamento(idDoPai);
                 UI.expandirCard(cardClicado, detalhes);
@@ -61,66 +47,110 @@ function adicionarListenersDeConteudo() {
         });
     }
 
-    // Listener para a tela do checklist (engloba cliques e inputs)
+    // --- TELA DE CONFIRMAÇÃO ---
+    const telaConfirmacao = document.getElementById('tela-confirmacao');
+    if(telaConfirmacao) {
+        telaConfirmacao.addEventListener('click', (event) => {
+            // Se clicou em "Confirmar e Iniciar"
+            if (event.target.id === 'btn-confirmar-iniciar') {
+                const detalhes = {
+                    data: document.getElementById('data-auditoria').value,
+                    liderId: document.getElementById('auditor-lider-select').value,
+                    acompId: document.getElementById('auditor-acomp-select').value
+                };
+                Auditoria.salvarDetalhesExecucao(detalhes);
+
+                UI.atualizarHeaderTitulo();
+                UI.renderizarChecklistCompleto();
+                UI.atualizarHeaderProgresso();
+                UI.mostrarTela('tela-checklist');
+            }
+
+            // Se clicou em "Voltar"
+            if (event.target.id === 'btn-voltar-selecao') {
+                UI.mostrarTela('tela-selecao');
+            }
+        });
+    }
+
+
+    // --- TELA DE CHECKLIST (código existente, sem alterações) ---
     const containerChecklist = document.getElementById('checklist-container');
+    const mediaInput = document.getElementById('media-input');
     if (containerChecklist) {
-        // --- Listener para CLIQUES (Botões) ---
-containerChecklist.addEventListener('click', (event) => {
-    const target = event.target;
-    let precisaAtualizarUI = false; // Flag para controlar a re-renderização completa
-
-    const card = target.closest('.pergunta-card');
-    if (!card) return; // Se não clicou dentro de um card de pergunta, ignora
-
-    // --- Lógica para os diferentes botões ---
-
-    // Botão de Resposta (múltipla escolha)
-    if (target.matches('.botao-resposta')) {
-        const perguntaId = target.dataset.perguntaId;
-        const valor = target.dataset.valor;
-        Auditoria.salvarResposta(perguntaId, valor);
-        precisaAtualizarUI = true;
-    }
-
-    // Botão de Repetir Seção (+)
-    const botaoRepetir = target.closest('.botao-repetir-secao');
-    if (botaoRepetir) {
-        const secaoId = botaoRepetir.dataset.secaoId;
-        Auditoria.adicionarInstanciaSecao(secaoId);
-        precisaAtualizarUI = true;
-    }
-    
-    // Botão de Anotações
-    if (target.matches('.botao-anotacao')) {
-        UI.alternarAreaAnotacao(card);
-    }
-
-    // Botão de Mídia
-    if (target.matches('.botao-midia')) {
-        alert('Funcionalidade "Mídia" a ser implementada.\n\nAqui abriria a câmera ou a galeria de arquivos.');
-    }
-
-    // --- Atualização da UI ---
-    if (precisaAtualizarUI) {
-        UI.renderizarChecklistCompleto();
-        UI.atualizarHeaderProgresso();
-    }
-});
-
-        // --- Listener para INPUT (Campos de Texto) ---
-        containerChecklist.addEventListener('input', (event) => {
+        containerChecklist.addEventListener('click', (event) => {
             const target = event.target;
-            
-            // Campo de Texto de Resposta
-            if (target.matches('.resposta-texto')) {
-                const perguntaId = target.dataset.perguntaId;
-                const valor = target.value;
-                Auditoria.salvarResposta(perguntaId, valor);
+            let precisaAtualizarGeral = false;
+            const cardPergunta = target.closest('.pergunta-card');
+            const cabecalhoInstancia = target.closest('.secao-instancia-header');
+            const cabecalhoSecaoNormal = target.closest('.secao-nao-repetivel .secao-header');
+            const botaoAdicionar = target.closest('.secao-adicionar-card');
+            const botaoRemover = target.closest('.botao-remover-secao');
+            if (botaoRemover) {
+                event.stopPropagation();
+                if (confirm("Tem certeza que deseja remover esta seção?")) {
+                    Auditoria.removerInstanciaSecao(botaoRemover.dataset.secaoId, botaoRemover.dataset.instanciaNumero);
+                    precisaAtualizarGeral = true;
+                }
+            }
+            if (target.matches('.botao-resposta')) {
+                Auditoria.salvarResposta(target.dataset.perguntaId, target.dataset.valor);
+                precisaAtualizarGeral = true;
+            }
+            if (botaoAdicionar) {
+                Auditoria.adicionarInstanciaSecao(botaoAdicionar.dataset.secaoId);
+                precisaAtualizarGeral = true;
+            }
+            const cabecalhoClicado = cabecalhoInstancia || cabecalhoSecaoNormal;
+            if (cabecalhoClicado && !target.closest('.botao-remover-secao')) {
+                const corpo = cabecalhoClicado.nextElementSibling;
+                const icone = cabecalhoClicado.querySelector('.icone-toggle');
+                corpo.classList.toggle('expandido');
+                icone.classList.toggle('expandido');
+                if(cabecalhoInstancia) {
+                    const idUnico = cabecalhoClicado.dataset.idUnico;
+                    if (UI.estadoUI.secoesExpandidas.has(idUnico)) {
+                        UI.estadoUI.secoesExpandidas.delete(idUnico);
+                    } else {
+                        UI.estadoUI.secoesExpandidas.add(idUnico);
+                    }
+                }
+            }
+            if (cardPergunta) {
+                if (target.closest('.botao-anotacao')) {
+                    const perguntaId = cardPergunta.dataset.itemId;
+                    const textoAtual = Auditoria.getAnotacao(perguntaId);
+                    UI.expandirAnotacaoParaFullscreen(textoAtual, (novoTexto) => {
+                        Auditoria.salvarAnotacao(perguntaId, novoTexto);
+                        UI.renderizarChecklistCompleto();
+                    });
+                }
+                if (target.closest('.botao-midia')) {
+                    mediaInput.dataset.perguntaId = cardPergunta.dataset.itemId;
+                    mediaInput.click();
+                }
+            }
+            if (precisaAtualizarGeral) {
+                UI.renderizarChecklistCompleto();
                 UI.atualizarHeaderProgresso();
             }
+        });
+        containerChecklist.addEventListener('input', (event) => {
+            if (event.target.matches('.resposta-texto')) {
+                Auditoria.salvarResposta(event.target.dataset.perguntaId, event.target.value);
+                UI.atualizarHeaderProgresso();
+            }
+        });
+        mediaInput.addEventListener('change', (event) => {
+            const perguntaId = event.target.dataset.perguntaId;
+            const files = event.target.files;
+            if (perguntaId && files.length > 0) {
+                Auditoria.anexarMidia(perguntaId, files);
+                UI.renderizarChecklistCompleto();
+            }
+            event.target.value = '';
         });
     }
 }
 
-// --- Gatilho de Inicialização ---
 document.addEventListener("DOMContentLoaded", main);

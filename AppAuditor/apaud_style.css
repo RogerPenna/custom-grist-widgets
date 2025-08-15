@@ -1,126 +1,155 @@
-/* apaud_style.css (Conteúdo Completo e Final) */
+/* apaud_style.css (v3.0 - Melhorias de UI/UX) */
 
-/* --- Reset e Estilos Globais --- */
-body, html { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f4f7f9; color: #333; }
-.tela { display: none; width: 100%; min-height: 100vh; }
+/* --- Variáveis de Cor e Reset Global --- */
+:root {
+    --cor-primaria: #6559FF;
+    --cor-fundo-app: #F8F9FC;
+    --cor-fundo-card: white;
+    --cor-borda: #BFC6D4;
+    --cor-fundo-secao-repetivel: #E9EDF6;
+    --cor-texto-padrao: #374151;
+    --cor-texto-secundario: #6b7280;
+}
+body, html { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: var(--cor-fundo-app); color: var(--cor-texto-padrao); }
+.tela { display: none; }
 .tela.ativa { display: block; }
 .container { max-width: 800px; margin: 0 auto; padding: 1rem; }
-button { font-size: 1rem; padding: 0.8rem 1.5rem; margin-top: 1rem; cursor: pointer; border-radius: 5px; border: none; font-weight: bold; transition: background-color 0.2s; }
+button { font-size: 1rem; cursor: pointer; border-radius: 0.5rem; border: none; font-weight: 600; transition: all 0.2s; }
 
-/* --- Tela de Carregamento --- */
+/* --- Telas de Carregamento e Seleção --- */
 #tela-carregamento { text-align: center; padding-top: 5vh; }
-textarea { width: 95%; height: 250px; margin-top: 1rem; padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-family: monospace; resize: vertical; }
-#load-button { background-color: #28a745; color: white; }
-#status-carregamento { margin-top: 1rem; font-weight: bold; min-height: 24px; }
-
-/* --- Tela de Seleção --- */
-#lista-planejamentos .planejamento-item { background-color: white; border: 1px solid #ddd; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; cursor: pointer; transition: all 0.2s; }
-#lista-planejamentos .planejamento-item:hover { box-shadow: 0 4px 8px rgba(0,0,0,0.1); transform: translateY(-2px); }
-.planejamento-item h4 { margin: 0 0 0.5rem 0; color: #0056b3; }
-.planejamento-item p { margin: 0.25rem 0; font-size: 0.9rem; color: #666; }
-.planejamento-item.selecionado { border-color: #007bff; }
-.card-detalhes { max-height: 0; overflow: hidden; transition: all 0.3s ease-out; padding: 0 1rem; border-top: 1px solid transparent; margin-top: 0; }
-.card-detalhes.expandido { max-height: 500px; padding: 1rem; margin-top: 1rem; border-top-color: #eee; }
-.iniciar-auditoria-btn { background-color: #007bff; color: white; width: 100%; margin-top: 1rem; }
+textarea { width: 95%; height: 250px; margin-top: 1rem; padding: 10px; border: 1px solid var(--cor-borda); border-radius: 0.5rem; }
+#load-button { background-color: var(--cor-primaria); color: white; padding: 0.8rem 1.5rem; }
+.planejamento-item { background-color: var(--cor-fundo-card); border: 1px solid var(--cor-borda); border-radius: 0.75rem; padding: 1rem; margin-bottom: 1rem; cursor: pointer; }
+.planejamento-item.selecionado { border-color: var(--cor-primaria); box-shadow: 0 0 0 3px rgba(101, 89, 255, 0.2); }
+.iniciar-auditoria-btn { background-color: var(--cor-primaria); color: white; width: 100%; padding: 0.8rem 1.5rem; }
 
 /* --- Tela de Checklist --- */
-#checklist-header { position: sticky; top: 0; background-color: white; padding: 1rem; border-bottom: 1px solid #e0e0e0; z-index: 100; display: flex; justify-content: space-between; align-items: center; }
-#header-titulo { font-weight: bold; font-size: 1.1rem; }
-#header-progresso { font-size: 1rem; color: #555; }
-#tela-checklist .container { padding-top: 80px; /* Espaço para o cabeçalho fixo */ }
+#checklist-header { position: sticky; top: 0; background-color: rgba(255,255,255,0.9); backdrop-filter: blur(8px); padding: 1rem; border-bottom: 1px solid var(--cor-borda); z-index: 100; }
+#tela-checklist .container { padding-top: 80px; }
 
-.secao-card, .pergunta-card { background-color: white; border-radius: 8px; margin-bottom: 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-.secao-header { background-color: #6a1b9a; color: white; padding: 1rem 1.5rem; border-radius: 8px 8px 0 0; display: flex; justify-content: space-between; align-items: center; }
-.secao-header h3 { margin: 0; font-size: 1.2rem; }
-.secao-body { padding: 1.5rem; border: 1px solid #eee; border-top: none; border-radius: 0 0 8px 8px;}
-.pergunta-card { padding: 1.5rem; }
-.texto-pergunta { font-size: 1.1rem; font-weight: 500; margin: 0 0 1.5rem 0; line-height: 1.4; }
-
-.respostas-container { display: flex; flex-direction: column; gap: 0.75rem; }
-.botao-resposta { width: 100%; padding: 1rem; font-size: 1rem; text-align: center; border: 2px solid #ddd; background-color: #f8f9fa; color: #333; border-radius: 8px; cursor: pointer; transition: all 0.2s ease-in-out; }
-.botao-resposta.selecionado { font-weight: bold; border-width: 3px; }
-
-.acoes-container { margin-top: 1.5rem; display: flex; gap: 1rem; border-top: 1px solid #eee; padding-top: 1rem; }
-.botao-acao { background-color: transparent; border: none; color: #007bff; font-size: 0.9rem; font-weight: bold; cursor: pointer; padding: 0.5rem; border-radius: 5px; }
-
-/* Lógica Condicional */
-.item-escondido { display: none !important; }
-
-/* Seção Repetível */
-.botao-repetir-secao {
-    background-color: #28a745;
-    color: white;
-    border: none;
-    border-radius: 50%;
-    width: 36px; /* Ajuste de tamanho */
-    height: 36px;
-    cursor: pointer;
-    padding: 0; /* Remove padding que pode desalinhar */
-    display: flex; /* Usa flexbox para centralizar o ícone */
-    align-items: center;
-    justify-content: center;
-    transition: transform 0.2s;
-}
-.botao-repetir-secao:hover {
-    transform: scale(1.1);
-}
-.botao-repetir-secao svg {
-    width: 28px; /* Tamanho do ícone dentro do botão */
-    height: 28px;
-}
-.secao-instancias-container { margin-top: 1rem; }
-.secao-repetida-container { border-left: 3px solid #6a1b9a; margin-top: 1rem; padding-left: 1rem; background-color: #fafafa; padding: 1rem; border-radius: 5px; }
-.secao-repetida-header { display: flex; justify-content: space-between; align-items: center; background-color: #f1e4f8; padding: 0.5rem 1rem; border-radius: 5px; margin-bottom: 1rem; }
-.secao-repetida-header h4 { margin: 0; color: #6a1b9a; }
-.botao-remover-secao { background: none; border: none; color: #dc3545; font-size: 1.5rem; cursor: pointer; }
-/* apaud_style.css */
-.pergunta-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 1rem;
-}
-.botao-detalhe {
-    flex-shrink: 0;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    border: 1px solid #007bff;
-    background-color: white;
-    color: #007bff;
-    font-weight: bold;
-    cursor: pointer;
-    padding: 0;
-    margin: 0;
-}
-.anotacao-area {
+/* --- Card de Pergunta --- */
+.pergunta-card { background-color: var(--cor-fundo-card); border-radius: 0.75rem; padding: 1.25rem; margin-bottom: 1.5rem; border: 1px solid var(--cor-borda); }
+.texto-pergunta { font-size: 1.1rem; font-weight: 500; margin: 0 0 1.5rem 0; }
+.respostas-container {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
-    margin-top: 1rem;
-    border-top: 1px solid #eee;
-    padding-top: 1rem;
+    gap: 0.75rem; /* Este é o espaçamento entre os botões. Ajuste se necessário. */
 }
-.anotacao-area textarea {
-    width: 95%; /* Evita overflow */
-    min-height: 80px;
-    padding: 0.5rem;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    resize: vertical;
-}
-.anotacao-botoes {
+.botao-resposta { width: 100%; padding: 0.9rem; text-align: center; border: 2px solid var(--cor-borda); background-color: var(--cor-fundo-card); color: var(--cor-primaria); border-radius: 0.5rem; }
+.botao-resposta.selecionado { font-weight: 700; border-width: 3px; }
+
+/* --- Ícones de Ação (Anotações, Mídia) --- */
+.acoes-container { margin-top: 1.5rem; display: flex; gap: 0.5rem; border-top: 1px solid #f3f4f6; padding-top: 1rem; }
+.botao-acao { background-color: transparent; border: 1px solid transparent; color: var(--cor-texto-secundario); font-size: 0.9rem; font-weight: 500; display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; }
+.botao-acao svg { width: 20px; height: 20px; fill: currentColor; }
+.botao-acao:hover { background-color: #f3f4f6; }
+
+/* Estilo do indicador quando há conteúdo */
+.botao-acao.com-conteudo { color: var(--cor-primaria); font-weight: 700; }
+.contador-conteudo { font-size: 0.8rem; color: var(--cor-texto-secundario); margin-left: 4px; }
+.com-conteudo .contador-conteudo { color: var(--cor-primaria); }
+
+/* --- Seções (Geral) --- */
+.secao-header { padding: 0.75rem 1.25rem; display: flex; align-items: center; justify-content: space-between; cursor: pointer; border-radius: 0.75rem; }
+.secao-header .titulo-container { display: flex; align-items: center; gap: 0.75rem; }
+.secao-header .icone-toggle { width: 24px; height: 24px; transition: transform 0.2s; }
+.secao-header .icone-toggle.expandido { transform: rotate(90deg); }
+.secao-header h4 { margin: 0; font-weight: 600; }
+.secao-body { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-in-out; }
+.secao-body.expandido { max-height: 5000px; /* Altura grande o suficiente */ }
+
+/* NOVO: Indentação para perguntas dentro de seções */
+.secao-body .pergunta-card { margin-left: 2rem; }
+
+/* --- Seções NÃO Repetíveis --- */
+.secao-nao-repetivel { background-color: var(--cor-fundo-card); border: 1px solid var(--cor-borda); border-radius: 0.75rem; margin-bottom: 1.5rem; }
+.secao-nao-repetivel .secao-header { background-color: var(--cor-primaria); color: white; font-weight: bold; }
+
+/* --- Seções Repetíveis --- */
+.secao-instancia-card { background-color: var(--cor-fundo-secao-repetivel); border: 1px solid var(--cor-borda); border-radius: 0.75rem; margin-bottom: 1.5rem; }
+.secao-instancia-card .secao-body { background-color: var(--cor-fundo-card); border-top: 1px solid var(--cor-borda); border-radius: 0 0 0.75rem 0.75rem; }
+.botao-remover-secao { background: none; border: none; color: var(--cor-primaria); cursor: pointer; padding: 0.5rem; }
+.botao-remover-secao svg { width: 20px; height: 20px; }
+.secao-adicionar-card {
+    background-color: var(--cor-fundo-secao-repetivel); /* Fundo #E9EDF6 */
+    border: 1px solid var(--cor-borda);             /* Borda sólida */
+    border-radius: 0.75rem;
+    padding: 0.75rem 1.25rem;
+    margin-bottom: 1.5rem;
     display: flex;
-    justify-content: flex-end; /* Alinha botões à direita */
-    gap: 0.5rem;
+    align-items: center;
+    gap: 1rem;
+    cursor: pointer;
+    color: var(--cor-texto-padrao); /* Fonte escura (chumbo) */
+    transition: background-color 0.2s;
 }
-.anotacao-botoes button {
-    margin-top: 0;
-    padding: 0.4rem 0.8rem;
-    font-size: 0.9rem;
-    background-color: #6c757d;
+.secao-adicionar-card:hover {
+    background-color: #dde2ee; /* Efeito hover para feedback visual */
+}
+.secao-adicionar-card .icone-add {
+    background-color: #10b981; /* Fundo verde */
+    color: white;              /* Ícone '+' branco */
+    border-radius: 50%;        /* Transforma em círculo */
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0; /* Impede que o ícone encolha */
+}
+.secao-adicionar-card .icone-add svg { width: 24px; height: 24px; }
+.secao-adicionar-card h4 { margin: 0; font-weight: 600; }
+
+/* --- Modal de Anotações (com os estilos da resposta anterior) --- */
+.modal-anotacao-fullscreen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: white; z-index: 200; display: flex; flex-direction: column; padding: 0; box-sizing: border-box; }
+.modal-anotacao-fullscreen .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; border-bottom: 1px solid var(--cor-borda); }
+.modal-anotacao-fullscreen .modal-header h3 { margin: 0; }
+.botao-modal-cancelar { background: none; border: none; font-size: 2rem; line-height: 1; cursor: pointer; color: var(--cor-texto-secundario); }
+.modal-anotacao-fullscreen textarea { flex-grow: 1; width: 100%; height: auto; font-size: 1.2rem; border: none; padding: 1rem; box-sizing: border-box; resize: none; }
+.anotacao-botoes-modal { padding: 1rem; text-align: right; border-top: 1px solid var(--cor-borda); }
+.botao-modal-salvar { background-color: var(--cor-primaria); color: white; padding: 0.8rem 1.5rem; }
+#confirmacao-titulo {
+    margin-bottom: 0.5rem;
+}
+#confirmacao-departamento {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 2rem;
+    color: var(--cor-primaria);
+}
+.form-grupo {
+    margin-bottom: 1.5rem;
+}
+.form-grupo label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+.form-grupo input[type="date"],
+.form-grupo select {
+    width: 100%;
+    padding: 0.8rem;
+    border: 1px solid var(--cor-borda);
+    border-radius: 0.5rem;
+    font-size: 1rem;
+    background-color: white;
+}
+.botoes-confirmacao {
+    margin-top: 2rem;
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+}
+.botoes-confirmacao button {
+    flex-grow: 1;
+    padding: 0.8rem 1.5rem;
+}
+.btn-primario {
+    background-color: var(--cor-primaria);
     color: white;
 }
-.anotacao-botoes .botao-salvar-anotacao {
-    background-color: #007bff;
+.btn-secundario {
+    background-color: #e9ecef;
+    color: var(--cor-texto-padrao);
 }
