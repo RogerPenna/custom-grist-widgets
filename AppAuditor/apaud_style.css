@@ -291,3 +291,15 @@ textarea { width: 95%; height: 250px; margin-top: 1rem; padding: 10px; border: 1
     background-color: #6c757d; /* Cinza */
     color: white;
 }
+.btn-carregar-arquivo {
+    display: inline-block; /* Permite padding e margin */
+    padding: 1rem 2rem;
+    cursor: pointer;
+    margin-top: 1rem;
+    font-size: 1.1rem;
+}
+.btn-grande {
+    padding: 1rem;
+    font-size: 1.2rem;
+    width: 100%;
+}

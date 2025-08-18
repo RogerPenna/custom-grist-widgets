@@ -9,15 +9,20 @@
 <body>
 
     <!-- TELA 1: CARREGAMENTO -->
-    <div id="tela-carregamento" class="tela ativa">
-        <div class="container">
-            <h1>App de Auditoria</h1>
-            <p>Cole o "Pacote de Auditoria" gerado no campo abaixo.</p>
-            <textarea id="json-input" placeholder="Cole o JSON aqui..."></textarea>
-            <button id="load-button">Carregar Auditoria</button>
-            <div id="status-carregamento"></div>
-        </div>
+<div id="tela-carregamento" class="tela ativa">
+    <div class="container">
+        <h1>App de Auditoria</h1>
+        <p>Carregue o "Pacote de Auditoria" (.json) para começar.</p>
+        
+        <!-- REMOVIDO a textarea e o botão. ADICIONADO o input de arquivo estilizado como um botão. -->
+        <label for="json-file-input" class="btn-primario btn-carregar-arquivo">
+            Selecionar Arquivo de Auditoria
+        </label>
+        <input type="file" id="json-file-input" accept=".json,application/json" style="display: none;">
+        
+        <div id="status-carregamento"></div>
     </div>
+</div>
 
     <!-- TELA 2: SELEÇÃO DA AUDITORIA -->
     <div id="tela-selecao" class="tela">
@@ -73,9 +78,10 @@
     <div class="modal-finalizar-conteudo">
         <span class="fechar-modal-finalizar">&times;</span>
         <h2>Auditoria Finalizada</h2>
-        <p>Copie o JSON abaixo para importar os resultados no sistema principal.</p>
-        <textarea id="resultado-json-output" readonly></textarea>
-        <button id="btn-copiar-resultado" class="btn-primario">Copiar JSON</button>
+        <p>O arquivo com os resultados da auditoria está pronto para ser baixado. Envie este arquivo para o responsável.</p>
+        
+        <!-- REMOVIDA a textarea. O botão agora tem outra função. -->
+        <button id="btn-baixar-resultado" class="btn-primario btn-grande">Baixar Arquivo de Resultado (.json)</button>
     </div>
 </div>
 	<!-- Input escondido para upload de arquivos -->

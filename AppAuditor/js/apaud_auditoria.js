@@ -53,12 +53,9 @@ export function getAuditoriaAtiva() {
 }
 
 // --- Funções de Carregamento ---
-export function carregarPacoteJSON() {
-    // ... (código existente, sem alterações) ...
-    const textarea = document.getElementById('json-input');
-    const textoJSON = textarea.value;
-    if (!textoJSON.trim()) {
-        mostrarStatusCarregamento("Erro: O campo está vazio.", 'erro');
+export function carregarPacoteJSON(textoJSON) {
+    if (!textoJSON || !textoJSON.trim()) {
+        mostrarStatusCarregamento("Erro: O arquivo está vazio ou é inválido.", 'erro');
         return false;
     }
     try {
