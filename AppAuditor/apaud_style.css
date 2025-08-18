@@ -303,3 +303,99 @@ textarea { width: 95%; height: 250px; margin-top: 1rem; padding: 10px; border: 1
     font-size: 1.2rem;
     width: 100%;
 }
+.filtros-container {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background-color: var(--cor-fundo-secao-repetivel);
+    border-radius: 0.75rem;
+    flex-wrap: wrap;
+}
+.filtro-grupo {
+    flex-grow: 1;
+    min-width: 150px;
+}
+.filtro-grupo label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+}
+.filtro-grupo select {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid var(--cor-borda);
+    border-radius: 0.5rem;
+}
+
+/* --- Indicador de Exportação no Card --- */
+.export-status {
+    display: flex;
+    justify-content: space-around;
+    font-size: 0.8rem;
+    color: var(--cor-texto-secundario);
+    margin-top: 0.75rem;
+    padding-top: 0.5rem;
+    border-top: 1px dashed var(--cor-borda);
+}
+.export-status span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+.export-status .exportado {
+    color: #10b981; /* Verde */
+    font-weight: 600;
+}
+.ponto-em-aberto-card {
+    border-left: 5px solid #f59e0b; /* Âmbar */
+    background-color: #fefce8; /* Fundo amarelo claro */
+}
+
+/* Indicador no card principal da auditoria */
+.info-status-extra {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-left: 1rem;
+    font-size: 0.9rem;
+    color: #f59e0b;
+    font-weight: 600;
+}
+.info-status-extra svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* Modal de Ponto em Aberto */
+.modal-ponto-aberto-overlay {
+    display: none;
+    position: fixed;
+    z-index: 400; /* Mais alto que outros modais */
+    left: 0; top: 0;
+    width: 100%; height: 100%;
+    background-color: rgba(0,0,0,0.6);
+    justify-content: center;
+    align-items: center;
+}
+.modal-ponto-aberto-conteudo {
+    background-color: white;
+    padding: 1.5rem;
+    border-radius: 0.75rem;
+    width: 90%;
+    max-width: 500px;
+}
+.modal-ponto-aberto-conteudo h3 {
+    margin-top: 0;
+}
+.modal-ponto-aberto-conteudo textarea {
+    width: 95%; /* Evita overflow */
+    min-height: 100px;
+    margin: 1rem 0;
+}
+.modal-ponto-aberto-botoes {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
