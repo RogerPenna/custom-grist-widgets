@@ -118,10 +118,26 @@ export function expandirCard(cardElement) {
                 <p><strong>${pontosAbertos}</strong> Pontos em Aberto</p>
             </div>`;
         
+        let botoesResetHTML = '';
+        // Condição de segurança: só mostra o botão de reset se algo já foi exportado
+        if (state.jsonExportado || state.pdfExportado) {
+            const iconeLixeira = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.58.22-2.365.468a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.576l.84-10.518.149.022a.75.75 0 10.23-1.482A41.03 41.03 0 0014 4.193v-.443A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25-.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clip-rule="evenodd"/></svg>`;
+            botoesResetHTML = `<button class="botao-remover-secao btn-resetar-auditoria" title="Resetar progresso da auditoria">${iconeLixeira}</button>`;
+        }
+
         if (state.status === 'em_progresso') {
-            htmlInterno += `<div class="botoes-acao-card"><button class="btn-primario btn-continuar">Continuar</button><button class="btn-secundario btn-exportar-json">Exportar JSON</button></div>`;
-        } else {
-            htmlInterno += `<div class="botoes-acao-card"><button class="btn-secundario btn-reabrir">Reabrir</button><button class="btn-primario btn-exportar-json">Exportar JSON</button><button class="btn-pdf btn-exportar-pdf">Exportar PDF</button></div>`;
+            htmlInterno += `<div class="botoes-acao-card">
+                                <button class="btn-primario btn-continuar">Continuar</button>
+                                <button class="btn-secundario btn-exportar-json">Exportar JSON</button>
+                                ${botoesResetHTML}
+                            </div>`;
+        } else { // 'finalizada'
+            htmlInterno += `<div class="botoes-acao-card">
+                                <button class="btn-secundario btn-reabrir">Reabrir</button>
+                                <button class="btn-primario btn-exportar-json">Exportar JSON</button>
+                                <button class="btn-pdf btn-exportar-pdf">Exportar PDF</button>
+                                ${botoesResetHTML}
+                            </div>`;
         }
         htmlInterno += `<div class="export-status">Exportado: ${statusJson} | ${statusPdf}</div>`;
     } else {
@@ -165,7 +181,15 @@ export function atualizarHeaderTitulo() {
 export function atualizarHeaderProgresso() {
     const progressoEl = document.getElementById('header-progresso');
     if (!progressoEl) return;
-    const progresso = Auditoria.calcularProgresso();
+    
+    // Pega o ID da auditoria ativa de forma segura através do novo getter
+    const idDaAuditoriaAtiva = Auditoria.getCurrentAuditoriaId();
+    if (!idDaAuditoriaAtiva) {
+        progressoEl.textContent = '0 / 0 (0%)';
+        return;
+    }
+
+    const progresso = Auditoria.calcularProgresso(idDaAuditoriaAtiva);
     progressoEl.textContent = `${progresso.respondidas} / ${progresso.total} (${progresso.percentual}%)`;
 }
 
@@ -179,7 +203,7 @@ export function renderizarChecklistCompleto() {
     }
     const itensRaiz = checklist.filter(item => !item.ID_Pai || item.ID_Pai === 0).sort((a, b) => a.Ordem - b.Ordem);
     itensRaiz.forEach(item => renderizarItem(item, container, checklist));
-    
+    ajustarAlturaTextareas(); // Garante que todos os textareas tenham a altura correta no carregamento
     // Adiciona o botão de finalizar no final
     const finalizarDiv = document.createElement('div');
     finalizarDiv.className = 'finalizar-container';
@@ -206,8 +230,22 @@ function renderizarItem(item, containerPai, checklistCompleto, instanciaInfo = n
     }
 }
 
+function ajustarAlturaTextareas() {
+    const textareas = document.querySelectorAll('.resposta-texto');
+    textareas.forEach(textarea => {
+        // Define uma altura mínima baseada no 'rows' para garantir que comece pequeno
+        const lineHeight = parseFloat(getComputedStyle(textarea).lineHeight);
+        textarea.style.minHeight = (textarea.rows * lineHeight) + 'px';
+        
+        // Ajusta a altura com base no conteúdo existente (ou falta dele)
+        textarea.style.height = 'auto'; // Reseta a altura para o cálculo
+        textarea.style.height = textarea.scrollHeight + 'px';
+    });
+}
+
+// SUBSTITUA A FUNÇÃO 'renderizarPergunta' INTEIRA POR ESTE BLOCO
 function renderizarPergunta(dadosCompletos, containerPai, instanciaInfo) {
-    const { modelo, opcoes } = dadosCompletos;
+    const { modelo, grupo, opcoes } = dadosCompletos;
     const perguntaCard = document.createElement('div');
     perguntaCard.className = 'pergunta-card';
     const idUnico = instanciaInfo ? `${modelo.id}-${instanciaInfo.numero}` : String(modelo.id);
@@ -221,40 +259,69 @@ function renderizarPergunta(dadosCompletos, containerPai, instanciaInfo) {
     const anotacaoSalva = Auditoria.getAnotacao(idUnico);
     const temAnotacao = anotacaoSalva.trim() !== '';
     const classeAnotacao = temAnotacao ? 'com-conteudo' : '';
-    const contadorAnotacaoHTML = temAnotacao ? `(${anotacaoSalva.split('\n').length} l)` : '';
+    const contadorAnotacaoHTML = temAnotacao ? '(' + anotacaoSalva.split('\n').length + ' l)' : '';
 
     const midiasAnexadas = Auditoria.getMidias(idUnico);
     const temMidia = midiasAnexadas.length > 0;
     const classeMidia = temMidia ? 'com-conteudo' : '';
-    const contadorMidiaHTML = temMidia ? `(${midiasAnexadas.length})` : '';
+    const contadorMidiaHTML = temMidia ? '(' + midiasAnexadas.length + ')' : '';
 
-    const iconeAnotacao = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z"/><path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z"/></svg> Anotações <span class="contador-conteudo">${contadorAnotacaoHTML}</span>`;
-    const iconeMidia = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M1 5.25A2.25 2.25 0 013.25 3h13.5A2.25 2.25 0 0119 5.25v9.5A2.25 2.25 0 0116.75 17H3.25A2.25 2.25 0 011 14.75v-9.5zm1.5 5.81v3.69c0 .414.336.75.75.75h13.5a.75.75 0 00.75-.75v-3.69l-2.76-2.76a.75.75 0 00-1.06 0l-2.22 2.22a.75.75 0 000 1.06l-2.22-2.22a.75.75 0 00-1.06 0l-2.22 2.22a.75.75 0 000 1.06l-1.47-1.47a.75.75 0 00-1.06 0L2.5 11.06zM6.25 7a.75.75 0 100-1.5.75.75 0 000 1.5z" clip-rule="evenodd"/></svg> Mídia <span class="contador-conteudo">${contadorMidiaHTML}</span>`;
-    const iconePontoAberto = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 6a3 3 0 013-3h10a1 1 0 01.8 1.6L14.25 8l2.55 3.4A1 1 0 0116 13H6a1 1 0 00-1 1v3a1 1 0 11-2 0V6z" clip-rule="evenodd" /></svg> Ponto Aberto`;
+const iconeAnotacao = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z"/><path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z"/></svg>';
+const iconeMidia = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M1 5.25A2.25 2.25 0 013.25 3h13.5A2.25 2.25 0 0119 5.25v9.5A2.25 2.25 0 0116.75 17H3.25A2.25 2.25 0 011 14.75v-9.5zm1.5 5.81v3.69c0 .414.336.75.75.75h13.5a.75.75 0 00.75-.75v-3.69l-2.76-2.76a.75.75 0 00-1.06 0l-2.22 2.22a.75.75 0 000 1.06l-2.22-2.22a.75.75 0 00-1.06 0l-2.22 2.22a.75.75 0 000 1.06l-1.47-1.47a.75.75 0 00-1.06 0L2.5 11.06zM6.25 7a.75.75 0 100-1.5.75.75 0 000 1.5z" clip-rule="evenodd"/></svg>';
+const iconePontoAberto = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 6a3 3 0 013-3h10a1 1 0 01.8 1.6L14.25 8l2.55 3.4A1 1 0 0116 13H6a1 1 0 00-1 1v3a1 1 0 11-2 0V6z" clip-rule="evenodd" /></svg>';
     
-    const tooltipPendencia = pontoAberto ? `title="Pendência: ${pontoAberto.pendencia}"` : 'title="Marcar como Ponto em Aberto"';
+    const tooltipTexto = pontoAberto ? `Pendência: ${pontoAberto.pendencia}` : 'Marcar como Ponto em Aberto';
     
     let respostasHTML = '';
-    if (opcoes.length > 0) {
-        respostasHTML = opcoes.map(opt => {
-            const isSelecionado = Auditoria.getResposta(idUnico) === opt.Texto_Opcao;
-            const estilo = isSelecionado ? `style="background-color:${opt.Fundo}; color:${opt.Fonte}; border-color:${opt.Fundo};"` : '';
-            return `<button class="botao-resposta ${isSelecionado ? 'selecionado' : ''}" data-pergunta-id="${idUnico}" data-valor="${opt.Texto_Opcao}" ${estilo}>${opt.Texto_Opcao}</button>`;
-        }).join('');
-    } else if (modelo.Tipo_Resposta_Utilizado) {
-        const valorSalvo = Auditoria.getResposta(idUnico) || '';
-        respostasHTML = `<textarea class="resposta-texto" data-pergunta-id="${idUnico}" placeholder="Digite sua observação...">${valorSalvo}</textarea>`;
+    // Assume 'botoes' como padrão se a propriedade não existir no JSON
+    const tipoApresentacao = grupo?.Tipo_Apresentacao || 'botoes'; 
+    const valorSalvo = Auditoria.getResposta(idUnico);
+
+    switch (tipoApresentacao) {
+        case 'dropdown':
+            // Adiciona uma classe CSS específica para o dropdown
+            const optionsHTML = opcoes.map(opt => {
+                const isSelecionado = String(valorSalvo) === String(opt.id);
+                return `<option value="${opt.id}" ${isSelecionado ? 'selected' : ''}>${opt.Texto_Opcao}</option>`;
+            }).join('');
+            respostasHTML = `<select class="resposta-dropdown" data-pergunta-id="${idUnico}"><option value="">Selecione...</option>${optionsHTML}</select>`;
+            break;
+
+        case 'textolivre':
+            respostasHTML = `<textarea class="resposta-texto" data-pergunta-id="${idUnico}" placeholder="Digite sua observação..." rows="2">${valorSalvo || ''}</textarea>`;
+            break;
+
+        case 'botoes':
+        default:
+            respostasHTML = opcoes.map(opt => {
+                const isSelecionado = String(valorSalvo) === String(opt.id);
+                const estilo = isSelecionado ? `style="background-color:${opt.Fundo}; color:${opt.Fonte}; border-color:${opt.Fundo};"` : '';
+                // CRUCIAL: data-valor agora salva o ID da opção (opt.id)
+                return `<button class="botao-resposta ${isSelecionado ? 'selecionado' : ''}" data-pergunta-id="${idUnico}" data-valor="${opt.id}" ${estilo}>${opt.Texto_Opcao}</button>`;
+            }).join('');
+            break;
     }
+
 
     perguntaCard.innerHTML = `
         <p class="texto-pergunta">${modelo.Texto_Pergunta}</p>
         <div class="respostas-container">${respostasHTML}</div>
         <div class="acoes-container">
-            <button class="botao-acao botao-anotacao ${classeAnotacao}">${iconeAnotacao}</button>
-            <button class="botao-acao botao-midia ${classeMidia}">${iconeMidia}</button>
-            <button class="botao-acao botao-ponto-aberto ${pontoAberto ? 'com-conteudo' : ''}" ${tooltipPendencia}>${iconePontoAberto}</button>
+            <div class="acao-item">
+                <button class="botao-acao botao-anotacao ${classeAnotacao}" title="Anotações">${iconeAnotacao}</button>
+                <span class="contador-conteudo">${contadorAnotacaoHTML}</span>
+            </div>
+            <div class="acao-item">
+                <button class="botao-acao botao-midia ${classeMidia}" title="Mídias">${iconeMidia}</button>
+                <span class="contador-conteudo">${contadorMidiaHTML}</span>
+            </div>
+            <div class="acao-item">
+                <button class="botao-acao botao-ponto-aberto ${pontoAberto ? 'com-conteudo' : ''}" title="${pontoAberto ? `Pendência: ${pontoAberto.pendencia}` : 'Marcar como Ponto em Aberto'}">${iconePontoAberto}</button>
+            </div>
         </div>`;
+
     containerPai.appendChild(perguntaCard);
+
 }
 
 function renderizarSecaoNaoRepetivel(modeloSecao, containerPai, checklistCompleto) {
@@ -345,6 +412,57 @@ export function mostrarModalPontoAberto(perguntaId) {
 
 export function fecharModalPontoAberto() {
     const modal = document.getElementById('modal-ponto-aberto');
+    modal.style.display = 'none';
+    delete modal.dataset.perguntaId;
+}
+
+export function mostrarModalGerenciarMidia(perguntaId) {
+    const modal = document.getElementById('modal-gerenciar-midia');
+    const container = document.getElementById('lista-midias-container');
+    const textoPerguntaEl = document.getElementById('modal-midia-pergunta-texto');
+    const inputAdicionar = document.getElementById('adicionar-nova-midia-input');
+    
+    modal.dataset.perguntaId = perguntaId;
+    inputAdicionar.value = ''; 
+
+    const dadosPergunta = Auditoria.getDadosCompletosPergunta(perguntaId.split('-')[0]);
+    textoPerguntaEl.textContent = `Anexos para: "${dadosPergunta.modelo.Texto_Pergunta}"`;
+
+    const midias = Auditoria.getMidias(perguntaId);
+    container.innerHTML = '';
+    if (midias.length === 0) {
+        container.innerHTML = '<p>Nenhuma mídia anexada.</p>';
+    } else {
+        const iconeLixeira = `<svg ... (código do ícone de lixeira) ... </svg>`; // O código do ícone já está no seu arquivo, pode manter
+        const iconeArquivoGenerico = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="midia-generica-icona"><path fill-rule="evenodd" d="M4 2a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V8.343a1 1 0 00-.293-.707l-4.636-4.636A1 1 0 0011.657 2H4zm3.293 2.293a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L10 6.414V11a1 1 0 11-2 0V6.414L6.293 8.707a1 1 0 01-1.414-1.414l3-3z" clip-rule="evenodd" /></svg>`;
+
+        const listaUL = document.createElement('ul');
+        listaUL.className = 'lista-anexos';
+        midias.forEach(midia => {
+            const itemLI = document.createElement('li');
+            let midiaPreviewHTML = '';
+
+            if (midia.dataUrl) { // Se for imagem, mostra a miniatura
+                midiaPreviewHTML = `<img src="${midia.dataUrl}" class="midia-thumbnail" alt="miniatura">`;
+            } else { // Senão, mostra um ícone genérico
+                midiaPreviewHTML = iconeArquivoGenerico;
+            }
+
+            itemLI.innerHTML = `
+                <div class="midia-preview-container">${midiaPreviewHTML}</div>
+                <span class="midia-nome-arquivo">${midia.name}</span>
+                <button class="botao-remover-secao btn-remover-midia" data-nome-arquivo="${midia.name}" title="Remover anexo">${iconeLixeira}</button>
+            `;
+            listaUL.appendChild(itemLI);
+        });
+        container.appendChild(listaUL);
+    }
+
+    modal.style.display = 'flex';
+}
+
+export function fecharModalGerenciarMidia() {
+    const modal = document.getElementById('modal-gerenciar-midia');
     modal.style.display = 'none';
     delete modal.dataset.perguntaId;
 }

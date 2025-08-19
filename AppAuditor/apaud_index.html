@@ -125,6 +125,21 @@
 	<!-- Input escondido para upload de arquivos -->
 <input type="file" id="media-input" style="display: none;" multiple>
 
+<div id="modal-gerenciar-midia" class="modal-finalizar-overlay">
+    <div class="modal-finalizar-conteudo">
+        <span class="fechar-modal-finalizar" id="fechar-modal-midia">&times;</span>
+        <h3>Gerenciar Mídias</h3>
+        <p id="modal-midia-pergunta-texto"></p>
+        <div id="lista-midias-container">
+            <!-- Mídias serão listadas aqui -->
+        </div>
+        <div class="botoes-confirmacao" style="justify-content: flex-start;">
+            <label for="adicionar-nova-midia-input" class="btn-primario">Adicionar Nova Mídia</label>
+            <input type="file" id="adicionar-nova-midia-input" style="display: none;" multiple>
+        </div>
+    </div>
+</div>
+
     <script type="module" src="js/apaud_main.js"></script>
 </body>
 </html>

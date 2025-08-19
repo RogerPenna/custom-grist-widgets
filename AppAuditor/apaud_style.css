@@ -40,7 +40,14 @@ textarea { width: 95%; height: 250px; margin-top: 1rem; padding: 10px; border: 1
 .botao-resposta.selecionado { font-weight: 700; border-width: 3px; }
 
 /* --- Ícones de Ação (Anotações, Mídia) --- */
-.acoes-container { margin-top: 1.5rem; display: flex; gap: 0.5rem; border-top: 1px solid #f3f4f6; padding-top: 1rem; }
+.acoes-container {
+    margin-top: 1.5rem;
+    display: flex;
+    justify-content: center; /* Centraliza o grupo de botões */
+    gap: 1.5rem; /* Aumenta o espaço entre os botões */
+    border-top: 1px solid #f3f4f6;
+    padding-top: 1rem;
+}
 .botao-acao { background-color: transparent; border: 1px solid transparent; color: var(--cor-texto-secundario); font-size: 0.9rem; font-weight: 500; display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; }
 .botao-acao svg { width: 20px; height: 20px; fill: currentColor; }
 .botao-acao:hover { background-color: #f3f4f6; }
@@ -398,4 +405,119 @@ textarea { width: 95%; height: 250px; margin-top: 1rem; padding: 10px; border: 1
     display: flex;
     justify-content: flex-end;
     gap: 0.5rem;
+}
+.resposta-dropdown {
+    width: 100%;
+    padding: 0.9rem;
+    font-size: 1rem;
+    border: 2px solid var(--cor-borda);
+    border-radius: 0.5rem;
+    background-color: var(--cor-fundo-card);
+    color: var(--cor-texto-padrao);
+    cursor: pointer;
+}
+
+.resposta-dropdown:focus {
+    outline: none;
+    border-color: var(--cor-primaria);
+    box-shadow: 0 0 0 3px rgba(101, 89, 255, 0.2);
+}
+
+/* Estilo para Textarea de Resposta Livre */
+.resposta-texto {
+    width: 100%;
+    padding: 0.8rem;
+    font-size: 1rem;
+    line-height: 1.5; /* Importante para o cálculo de altura */
+    border: 2px solid var(--cor-borda);
+    border-radius: 0.5rem;
+    resize: none; /* Desabilita o redimensionamento manual */
+    overflow-y: hidden; /* Essencial para o auto-ajuste de altura */
+    box-sizing: border-box;
+}
+
+.resposta-texto:focus {
+    outline: none;
+    border-color: var(--cor-primaria);
+    box-shadow: 0 0 0 3px rgba(101, 89, 255, 0.2);
+}
+
+.acao-item {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+.botao-acao {
+    padding: 0.5rem; /* Mais compacto */
+}
+.contador-conteudo {
+    font-size: 0.9rem;
+    color: var(--cor-texto-secundario);
+    font-weight: 500;
+}
+.com-conteudo + .contador-conteudo {
+    color: var(--cor-primaria);
+    font-weight: 700;
+}
+
+#modal-midia-pergunta-texto {
+    font-size: 0.9rem;
+    color: var(--cor-texto-secundario);
+    margin-bottom: 1.5rem;
+    border-left: 3px solid var(--cor-primaria);
+    padding-left: 1rem;
+}
+.lista-anexos {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1.5rem 0;
+    max-height: 40vh;
+    overflow-y: auto;
+}
+.lista-anexos li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--cor-borda);
+}
+.lista-anexos li:last-child {
+    border-bottom: none;
+}
+.btn-remover-midia {
+    color: var(--cor-texto-secundario);
+}
+.btn-remover-midia:hover {
+    color: #dc3545; /* Vermelho */
+}
+.lista-anexos li {
+    gap: 0.75rem; /* Adiciona espaço entre os elementos */
+}
+.midia-preview-container {
+    flex-shrink: 0;
+    width: 50px;
+    height: 50px;
+    background-color: #f3f4f6;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+.midia-thumbnail {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* Garante que a imagem cubra o espaço sem distorcer */
+}
+.midia-generica-icona {
+    width: 28px;
+    height: 28px;
+    color: var(--cor-texto-secundario);
+}
+.midia-nome-arquivo {
+    flex-grow: 1; /* Faz o nome do arquivo ocupar o espaço restante */
+    font-size: 0.9rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }

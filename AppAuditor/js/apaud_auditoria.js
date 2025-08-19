@@ -1,4 +1,4 @@
-// js/apaud_auditoria.js (v5.0 - Com persistência de estado)
+// js/apaud_auditoria.js (v5.1 - Lógica de Apresentação e Visibilidade)
 
 import { mostrarStatusCarregamento } from './apaud_ui.js';
 
@@ -29,7 +29,9 @@ export function loadStateFromLocalStorage() {
 export function getAuditoriaState(planejamentoId) { return auditoriasEmProgresso.get(Number(planejamentoId)); }
 export function setCurrentAuditoriaId(planejamentoId) { currentAuditoriaId = Number(planejamentoId); }
 function _getCurrentState() { return getAuditoriaState(currentAuditoriaId); }
-
+export function getCurrentAuditoriaId() {
+    return currentAuditoriaId;
+}
 // --- Funções de Carregamento ---
 export function carregarPacoteJSON(textoJSON) {
     if (!textoJSON || !textoJSON.trim()) {
@@ -57,7 +59,7 @@ export function iniciarAuditoriaParaArea(areaId, planejamentoId) {
         status: 'em_progresso', areaId: Number(areaId), planejamentoId: id,
         dataRealizada: null, auditorLiderId: null, auditorAcompanhanteId: null,
         respostas: {}, anotacoes: {}, midias: {}, instanciasRepetidas: {},
-        pontosEmAberto: {}, // <-- NOVA PROPRIEDADE ADICIONADA AQUI
+        pontosEmAberto: {},
         jsonExportado: false, pdfExportado: false,
     });
     _saveStateToLocalStorage();
@@ -98,7 +100,7 @@ export function gerarJsonDeResultado(planejamentoId) {
 export function salvarPontoEmAberto(perguntaId, textoPendencia) {
     const state = _getCurrentState();
     if (!state) return;
-    if(!state.pontosEmAberto) state.pontosEmAberto = {}; // Garante que o objeto exista
+    if(!state.pontosEmAberto) state.pontosEmAberto = {}; 
     state.pontosEmAberto[perguntaId] = { pendencia: textoPendencia };
     _saveStateToLocalStorage();
 }
@@ -121,7 +123,7 @@ export function getPontosEmAbertoCount(planejamentoId) {
     return (state && state.pontosEmAberto) ? Object.keys(state.pontosEmAberto).length : 0;
 }
 
-// --- Funções que modificam o estado agora devem SALVAR ---
+// --- Funções que modificam o estado ---
 export function salvarAnotacao(perguntaId, texto) { const s = _getCurrentState(); if (s) { s.anotacoes[perguntaId] = texto; _saveStateToLocalStorage(); } }
 export function salvarResposta(perguntaId, valor) { const s = _getCurrentState(); if (s) { s.respostas[perguntaId] = valor; _saveStateToLocalStorage(); } }
 export function adicionarInstanciaSecao(secaoId) { const s = _getCurrentState(); if (!s) return; const idStr = String(secaoId); s.instanciasRepetidas[idStr] = (s.instanciasRepetidas[idStr] || 0) + 1; ultimaInstanciaAdicionada = { secaoId: idStr, numero: s.instanciasRepetidas[idStr] }; _saveStateToLocalStorage(); }
@@ -152,8 +154,44 @@ export function removerInstanciaSecao(secaoId, numeroInstancia) {
     state.instanciasRepetidas[idStr]--;
     _saveStateToLocalStorage();
 }
-export function anexarMidia(perguntaId, fileList) { const s = _getCurrentState(); if (!s) return; const idStr = String(perguntaId); const novosArquivos = Array.from(fileList).map(file => ({ name: file.name, size: file.size, type: file.type })); s.midias[idStr] = [...(s.midias[idStr] || []), ...novosArquivos]; _saveStateToLocalStorage(); }
-// ... (O resto das funções que APENAS LEEM dados não precisam mudar)
+export async function anexarMidia(perguntaId, fileList) {
+    const state = _getCurrentState();
+    if (!state) return;
+    const idStr = String(perguntaId);
+
+    const processarArquivo = (file) => {
+        return new Promise((resolve) => {
+            // Se for uma imagem, leia o conteúdo para gerar uma miniatura
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    resolve({ 
+                        name: file.name, 
+                        size: file.size, 
+                        type: file.type, 
+                        dataUrl: e.target.result // Salva a imagem como Base64
+                    });
+                };
+                reader.readAsDataURL(file);
+            } else {
+                // Se não for imagem, apenas salve os metadados
+                resolve({ 
+                    name: file.name, 
+                    size: file.size, 
+                    type: file.type, 
+                    dataUrl: null 
+                });
+            }
+        });
+    };
+
+    const novosArquivosProcessados = await Promise.all(Array.from(fileList).map(processarArquivo));
+    
+    state.midias[idStr] = [...(state.midias[idStr] || []), ...novosArquivosProcessados];
+    _saveStateToLocalStorage();
+}
+
+// --- Funções que APENAS LEEM dados ---
 export function getAnotacao(perguntaId) { const s = _getCurrentState(); return s ? s.anotacoes[perguntaId] || '' : ''; }
 export function getMidias(perguntaId) { const s = _getCurrentState(); return s ? s.midias[perguntaId] || [] : []; }
 export function getResposta(perguntaId) { const s = _getCurrentState(); return s ? s.respostas[perguntaId] : undefined; }
@@ -161,74 +199,127 @@ export function getPlanejamentos() { if (!pacoteDeAuditoria) return []; return p
 export function getAuditores() { if (!pacoteDeAuditoria) return []; return pacoteDeAuditoria.dados_suporte.auditores; }
 export function getPlanejamentoPorId(planejamentoId) { if (!pacoteDeAuditoria) return null; return getPlanejamentos().find(p => p.id == planejamentoId); }
 export function getChecklistParaAreaAtiva() { const s = _getCurrentState(); if (!s || !pacoteDeAuditoria) return []; return pacoteDeAuditoria.dados_suporte.perguntas.filter(p => p.Referencia_Area == s.areaId); }
-export function avaliarCondicao(pergunta) { const idPerguntaMae = pergunta.Visibilidade_DependeDe; if (!idPerguntaMae || idPerguntaMae === 0) return true; const valorEsperado = pergunta.Visibilidade_Valor; const valorAtual = getResposta(idPerguntaMae); return valorAtual === valorEsperado; }
+
+// <-- MODIFICADO --- Lógica de Visibilidade Condicional
+export function avaliarCondicao(pergunta) {
+    const idPerguntaMae = pergunta.Visibilidade_DependeDe;
+    if (!idPerguntaMae || idPerguntaMae === 0) {
+        return true;
+    }
+
+    const valoresEsperados = pergunta.Visibilidade_Valor;
+    const valorAtual = getResposta(String(idPerguntaMae)); // Garante que o ID da resposta seja string para comparação
+
+    if (valorAtual === undefined || valorAtual === null) {
+        return false;
+    }
+    
+    // Se for uma RefList (formato ["L", id1, id2...])
+    if (Array.isArray(valoresEsperados) && valoresEsperados[0] === 'L') {
+        // Remove o "L" e compara os IDs. Converte valorAtual para número para a comparação.
+        const idsEsperados = valoresEsperados.slice(1);
+        return idsEsperados.includes(Number(valorAtual));
+    }
+    
+    // Lógica antiga para compatibilidade (texto simples)
+    return String(valorAtual) === String(valoresEsperados);
+}
+
 export function verificarUltimaInstanciaAdicionada(secaoId, numero) { if (ultimaInstanciaAdicionada && ultimaInstanciaAdicionada.secaoId === String(secaoId) && ultimaInstanciaAdicionada.numero === numero) { ultimaInstanciaAdicionada = null; return true; } return false; }
 export function getContagemInstancias(secaoId) { const s = _getCurrentState(); return s ? s.instanciasRepetidas[String(secaoId)] || 0 : 0; }
-export function getDadosCompletosPergunta(perguntaId) { if (!pacoteDeAuditoria) return null; const { perguntas, grupos_respostas, opcoes_respostas } = pacoteDeAuditoria.dados_suporte; const modelo = perguntas.find(p => p.id == perguntaId); if (!modelo) return { modelo: { Texto_Pergunta: `ERRO` }, opcoes: [] }; const grupo = grupos_respostas.find(g => g.id == modelo.Tipo_Resposta_Utilizado); let opcoes = []; if (grupo) { opcoes = opcoes_respostas.filter(o => o.RefTiposRespostasGrupos == grupo.id).sort((a, b) => a.Ordem - b.Ordem); } return { modelo, opcoes }; }
+
+// <-- MODIFICADO --- Retorna o objeto 'grupo' inteiro
+export function getDadosCompletosPergunta(perguntaId) {
+    if (!pacoteDeAuditoria) return null;
+    const { perguntas, grupos_respostas, opcoes_respostas } = pacoteDeAuditoria.dados_suporte;
+    const modelo = perguntas.find(p => p.id == perguntaId);
+    if (!modelo) return { modelo: { Texto_Pergunta: `ERRO` }, grupo: null, opcoes: [] };
+    
+    // O tipo de resposta pode vir do modelo ou do grupo.
+    const grupo = grupos_respostas.find(g => g.id == modelo.Tipo_Resposta_Utilizado);
+    
+    let opcoes = [];
+    if (grupo) {
+        opcoes = opcoes_respostas.filter(o => o.RefTiposRespostasGrupos == grupo.id).sort((a, b) => a.Ordem - b.Ordem);
+    }
+    return { modelo, grupo, opcoes };
+}
+
 export function contarPerguntasParaArea(idDaArea) { if (!pacoteDeAuditoria) return 0; return pacoteDeAuditoria.dados_suporte.perguntas.filter(item => item.Referencia_Area == idDaArea && item.Tipo_Item === 'Pergunta').length; }
 export function getDetalhesDoPlanejamento(idDoPai) { if (!pacoteDeAuditoria) return null; const { planejamento_pai, departamentos, auditores } = pacoteDeAuditoria.dados_suporte; const planejamento = planejamento_pai.find(p => p.id == idDoPai); if (!planejamento) return null; const idDaArea = planejamento.Departamento; const departamentoInfo = departamentos.find(d => d.id == idDaArea); const auditorLiderInfo = auditores.find(a => a.id == planejamento.Auditor_Lider); const auditorAcompInfo = auditores.find(a => a.id == planejamento.Auditor_Acompanhante); const perguntasNestaArea = contarPerguntasParaArea(idDaArea); return { responsavel: departamentoInfo ? (departamentoInfo.gristHelper_Display2 || 'N/A') : 'N/A', auditorLider: auditorLiderInfo ? auditorLiderInfo.NomeAuditorRef : 'Não definido', auditorAcompanhante: auditorAcompInfo ? auditorAcompInfo.NomeAuditorRef : 'Não definido', totalPerguntas: perguntasNestaArea }; }
 export function getInfoAuditoriaPrincipal() { if (!pacoteDeAuditoria || !pacoteDeAuditoria.auditoria_geral) return { Nome_Auditoria: 'N/A' }; return { Nome_Auditoria: pacoteDeAuditoria.auditoria_geral.IdAud || 'N/A' }; }
 export function getDepartamentoAtivoNome() { const s = _getCurrentState(); if (!s || !pacoteDeAuditoria) return 'N/A'; const depto = pacoteDeAuditoria.dados_suporte.departamentos.find(d => d.id == s.areaId); return depto ? depto.Departamento : 'N/A'; }
+
+// <-- MODIFICADO --- Lógica de cálculo de progresso adaptada
 export function calcularProgresso(planejamentoId) {
-    // Usa o estado da auditoria específica, não a "ativa"
     const state = getAuditoriaState(planejamentoId);
     if (!pacoteDeAuditoria || !state) return { respondidas: 0, total: 0, percentual: 0 };
 
-    const perguntasDaAuditoria = pacoteDeAuditoria.dados_suporte.perguntas.filter(
-        item => item.Referencia_Area == state.areaId
-    );
+    const perguntasDaAuditoria = pacoteDeAuditoria.dados_suporte.perguntas;
+    const perguntasDaArea = perguntasDaAuditoria.filter(item => item.Referencia_Area == state.areaId);
     
     let totalPerguntasVisiveis = 0;
     let perguntasRespondidas = 0;
 
-    // Função interna de leitura adaptada
     const getRespostaDestaAuditoria = (id) => state.respostas[id];
 
-    const avaliarCondicaoDestaAuditoria = (pergunta) => {
-        const idPerguntaMae = pergunta.Visibilidade_DependeDe;
-        if (!idPerguntaMae || idPerguntaMae === 0) return true;
-        const valorEsperado = pergunta.Visibilidade_Valor;
+    // Função de visibilidade aprimorada que entende o contexto da instância
+    const avaliarCondicaoDestaAuditoria = (pergunta, instanciaInfo) => {
+        const idPerguntaMaeOriginal = pergunta.Visibilidade_DependeDe;
+        if (!idPerguntaMaeOriginal || idPerguntaMaeOriginal === 0) return true;
+        
+        // Constrói o ID da pergunta mãe considerando se está dentro de uma instância
+        const idPerguntaMae = instanciaInfo 
+            ? `${idPerguntaMaeOriginal}-${instanciaInfo.numero}` 
+            : String(idPerguntaMaeOriginal);
+
+        const valoresEsperados = pergunta.Visibilidade_Valor;
         const valorAtual = getRespostaDestaAuditoria(idPerguntaMae);
-        return valorAtual === valorEsperado;
+
+        if (valorAtual === undefined || valorAtual === null) return false;
+
+        if (Array.isArray(valoresEsperados) && valoresEsperados[0] === 'L') {
+            const idsEsperados = valoresEsperados.slice(1);
+            return idsEsperados.includes(Number(valorAtual));
+        }
+        return String(valorAtual) === String(valoresEsperados);
     };
 
-    function percorrerItens(itens) {
+    function percorrerItens(itens, instanciaInfo = null) {
         itens.forEach(item => {
-            if (!avaliarCondicaoDestaAuditoria(item)) return;
+            // Se o item não for visível, seus filhos também não serão, então pulamos.
+            if (!avaliarCondicaoDestaAuditoria(item, instanciaInfo)) return;
+
+            const idBase = instanciaInfo ? `${item.id}-${instanciaInfo.numero}` : String(item.id);
 
             if (item.Tipo_Item === 'Pergunta') {
                 totalPerguntasVisiveis++;
-                if (state.respostas[item.id] !== undefined) {
+                const resposta = getRespostaDestaAuditoria(idBase);
+                if (resposta && resposta !== '') {
                     perguntasRespondidas++;
                 }
             }
 
+            const filhos = perguntasDaAuditoria.filter(filho => filho.ID_Pai === item.id);
+
             if (item.Tipo_Item === 'Secao' || item.Tipo_Item === 'secao') {
-                const filhosDaSecao = perguntasDaAuditoria.filter(filho => filho.ID_Pai === item.id);
-                percorrerItens(filhosDaSecao);
-
-                const contagemInstancias = state.instanciasRepetidas[item.id] || 0;
-                for (let i = 1; i <= contagemInstancias; i++) {
-                    filhosDaSecao.forEach(filho => {
-                        if (filho.Tipo_Item === 'Pergunta') {
-                             totalPerguntasVisiveis++;
-                             const idInstancia = `${filho.id}-${i}`;
-                             if (state.respostas[idInstancia] !== undefined) {
-                                 perguntasRespondidas++;
-                             }
-                        }
-                    });
+                if (item.Repetivel === 'SIM') {
+                    const contagemInstancias = state.instanciasRepetidas[item.id] || 0;
+                    for (let i = 1; i <= contagemInstancias; i++) {
+                        percorrerItens(filhos, { numero: i });
+                    }
+                } else {
+                    // Para seções não repetíveis, continue passando o mesmo contexto de instância (se houver)
+                    percorrerItens(filhos, instanciaInfo);
                 }
-            }
-
-            const filhosDaPergunta = perguntasDaAuditoria.filter(filho => filho.ID_Pai === item.id);
-            if (filhosDaPergunta.length > 0) {
-                 percorrerItens(filhosDaPergunta);
+            } else {
+                // Para perguntas, também precisamos verificar seus filhos (perguntas condicionais)
+                percorrerItens(filhos, instanciaInfo);
             }
         });
     }
 
-    const itensRaiz = perguntasDaAuditoria.filter(item => !item.ID_Pai || item.ID_Pai === 0);
+    const itensRaiz = perguntasDaArea.filter(item => !item.ID_Pai || item.ID_Pai === 0);
     percorrerItens(itensRaiz);
 
     const percentual = totalPerguntasVisiveis > 0 ? (perguntasRespondidas / totalPerguntasVisiveis) * 100 : 0;
@@ -243,10 +334,42 @@ export function contarNaoConformidades(planejamentoId) {
     const state = getAuditoriaState(planejamentoId);
     if (!state) return { nc: 0, ncMaior: 0 };
     let nc = 0, ncMaior = 0;
-    for (const resposta of Object.values(state.respostas)) {
-        const lowerCaseRes = String(resposta).toLowerCase();
-        if (lowerCaseRes === 'não conforme') nc++;
-        else if (lowerCaseRes === 'nc maior') ncMaior++;
+    // Precisa buscar as opções de resposta para saber o texto
+    const { opcoes_respostas } = pacoteDeAuditoria.dados_suporte;
+
+    for (const respostaId of Object.values(state.respostas)) {
+        const opcao = opcoes_respostas.find(o => o.id == respostaId);
+        if (opcao) {
+            const lowerCaseRes = String(opcao.Texto_Opcao).toLowerCase();
+            if (lowerCaseRes === 'não conforme') nc++;
+            else if (lowerCaseRes === 'nc maior') ncMaior++;
+        }
     }
     return { nc, ncMaior };
+}
+
+export function resetarAuditoria(planejamentoId) {
+    const idNum = Number(planejamentoId);
+    if (auditoriasEmProgresso.has(idNum)) {
+        auditoriasEmProgresso.delete(idNum);
+        _saveStateToLocalStorage();
+        return true; // Sucesso
+    }
+    return false; // Não encontrou
+}
+
+export function removerMidia(perguntaId, nomeDoArquivo) {
+    const state = _getCurrentState();
+    if (!state || !state.midias[perguntaId]) return;
+
+    state.midias[perguntaId] = state.midias[perguntaId].filter(
+        arquivo => arquivo.name !== nomeDoArquivo
+    );
+
+    // Se não houver mais mídias, remove a chave para limpar o estado
+    if (state.midias[perguntaId].length === 0) {
+        delete state.midias[perguntaId];
+    }
+    
+    _saveStateToLocalStorage();
 }

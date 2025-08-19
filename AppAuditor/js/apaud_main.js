@@ -93,6 +93,21 @@ function adicionarListenersDeConteudo() {
         else if (target.classList.contains('btn-exportar-pdf')) {
             alert("Funcionalidade de exportar PDF ainda não implementada.");
         }
+		        else if (target.closest('.btn-resetar-auditoria')) {
+            // O target pode ser o SVG, então buscamos o botão pai
+            const botaoReset = target.closest('.btn-resetar-auditoria');
+            const idParaResetar = cardClicado.dataset.id; // Já temos o cardClicado do início do listener
+            
+            const confirmacao = prompt("Para confirmar a exclusão do progresso desta auditoria, digite 'deletar':");
+            if (confirmacao === 'deletar') {
+                if (Auditoria.resetarAuditoria(idParaResetar)) {
+                    alert("Progresso da auditoria resetado com sucesso!");
+                    atualizarLista(); // Essencial para atualizar a UI
+                } else {
+                    alert("Erro ao tentar resetar a auditoria.");
+                }
+            }
+        }
         else {
             UI.expandirCard(cardClicado);
         }
@@ -129,38 +144,77 @@ function adicionarListenersDeConteudo() {
     const containerChecklist = document.getElementById('checklist-container');
     if (containerChecklist) {
         containerChecklist.addEventListener('click', (event) => {
-            if (event.target.id === 'btn-finalizar-auditoria') {
+            const target = event.target;
+            const cardPergunta = target.closest('.pergunta-card');
+
+            // --- Ações que finalizam a auditoria ---
+            if (target.id === 'btn-finalizar-auditoria') {
                 if(confirm("Tem certeza que deseja finalizar esta auditoria?")) {
                     Auditoria.finalizarAuditoria();
                     atualizarLista();
                     UI.mostrarTela('tela-selecao');
                 }
+                return; // Encerra a execução aqui
+            }
+
+            // --- Ações que alteram a estrutura (seções) e precisam de re-renderização ---
+            const botaoAdicionar = target.closest('.secao-adicionar-card');
+            if (botaoAdicionar) {
+                Auditoria.adicionarInstanciaSecao(botaoAdicionar.dataset.secaoId);
+                UI.renderizarChecklistCompleto();
+                UI.atualizarHeaderProgresso();
                 return;
             }
-            
-            const target = event.target;
-            let precisaAtualizarGeral = false;
-            const cardPergunta = target.closest('.pergunta-card');
-            const cabecalhoInstancia = target.closest('.secao-instancia-header');
-            const cabecalhoSecaoNormal = target.closest('.secao-nao-repetivel .secao-header');
-            const botaoAdicionar = target.closest('.secao-adicionar-card');
-            const botaoRemover = target.closest('.botao-remover-secao');
 
+            const botaoRemover = target.closest('.botao-remover-secao');
             if (botaoRemover) {
                 event.stopPropagation();
                 if (confirm("Tem certeza?")) {
                     Auditoria.removerInstanciaSecao(botaoRemover.dataset.secaoId, botaoRemover.dataset.instanciaNumero);
-                    precisaAtualizarGeral = true;
+                    UI.renderizarChecklistCompleto();
+                    UI.atualizarHeaderProgresso();
                 }
+                return;
             }
+            
+            // --- Ação de responder com botão ---
             if (target.matches('.botao-resposta')) {
                 Auditoria.salvarResposta(target.dataset.perguntaId, target.dataset.valor);
-                precisaAtualizarGeral = true;
+                UI.renderizarChecklistCompleto(); // Necessário para visibilidade condicional
+                UI.atualizarHeaderProgresso();
+                return;
             }
-            if (botaoAdicionar) {
-                Auditoria.adicionarInstanciaSecao(botaoAdicionar.dataset.secaoId);
-                precisaAtualizarGeral = true;
+
+            // --- Ações dentro de um card de pergunta (anotação, mídia, etc.) ---
+            if (cardPergunta) {
+                const perguntaId = cardPergunta.dataset.itemId;
+
+                if (target.closest('.botao-anotacao')) {
+                    const textoAtual = Auditoria.getAnotacao(perguntaId);
+                    UI.expandirAnotacaoParaFullscreen(textoAtual, (novoTexto) => {
+                        Auditoria.salvarAnotacao(perguntaId, novoTexto);
+                        UI.renderizarChecklistCompleto(); 
+                    });
+                }
+                else if (target.closest('.botao-midia')) {
+    UI.mostrarModalGerenciarMidia(perguntaId);
+}
+                else if (target.closest('.botao-ponto-aberto')) {
+                    const pontoAberto = Auditoria.getPontoEmAberto(perguntaId);
+                    if (pontoAberto) {
+                        if(confirm(`Pendência: ${pontoAberto.pendencia}\n\nDeseja resolver este Ponto em Aberto?`)) {
+                            Auditoria.resolverPontoEmAberto(perguntaId);
+                            UI.renderizarChecklistCompleto();
+                        }
+                    } else {
+                        UI.mostrarModalPontoAberto(perguntaId);
+                    }
+                }
             }
+
+            // --- Ação de expandir/recolher seções ---
+            const cabecalhoInstancia = target.closest('.secao-instancia-header');
+            const cabecalhoSecaoNormal = target.closest('.secao-nao-repetivel .secao-header');
             const cabecalhoClicado = cabecalhoInstancia || cabecalhoSecaoNormal;
             if (cabecalhoClicado && !target.closest('.botao-remover-secao')) {
                 const corpo = cabecalhoClicado.nextElementSibling;
@@ -176,51 +230,46 @@ function adicionarListenersDeConteudo() {
                     }
                 }
             }
-if (cardPergunta) {
-    if (target.closest('.botao-anotacao')) {
-        // ... sua lógica de anotação ...
-    }
-    if (target.closest('.botao-midia')) {
-        // ... sua lógica de mídia ...
-    }
-
-    // ADICIONE ESTE BLOCO AQUI
-    if (target.closest('.botao-ponto-aberto')) {
-        const perguntaId = cardPergunta.dataset.itemId;
-        const pontoAberto = Auditoria.getPontoEmAberto(perguntaId);
-        
-        if (pontoAberto) {
-            if(confirm(`Pendência: ${pontoAberto.pendencia}\n\nDeseja resolver este Ponto em Aberto?`)) {
-                Auditoria.resolverPontoEmAberto(perguntaId);
-                UI.renderizarChecklistCompleto();
-            }
-        } else {
-            UI.mostrarModalPontoAberto(perguntaId);
-        }
-    }
-}
-            if (precisaAtualizarGeral) {
-                UI.renderizarChecklistCompleto();
-                UI.atualizarHeaderProgresso();
-            }
         });
 
         containerChecklist.addEventListener('input', (event) => {
             if (event.target.matches('.resposta-texto')) {
-                Auditoria.salvarResposta(event.target.dataset.perguntaId, event.target.value);
+                const textarea = event.target;
+                
+                // Lógica de auto-expansão
+                textarea.style.height = 'auto'; // Reseta a altura
+                textarea.style.height = (textarea.scrollHeight) + 'px'; // Ajusta para o conteúdo
+
+                // Salva a resposta no cérebro
+                Auditoria.salvarResposta(textarea.dataset.perguntaId, textarea.value);
+                
+                // Atualiza o progresso (pois agora uma resposta de texto foi digitada)
                 UI.atualizarHeaderProgresso();
             }
         });
-
-        document.getElementById('media-input').addEventListener('change', (event) => {
-            const perguntaId = event.target.dataset.perguntaId;
-            const files = event.target.files;
-            if (perguntaId && files.length > 0) {
-                Auditoria.anexarMidia(perguntaId, files);
+		        containerChecklist.addEventListener('change', (event) => {
+            // Este listener é para o novo elemento <select> (dropdown)
+            if (event.target.matches('.resposta-dropdown')) {
+                const perguntaId = event.target.dataset.perguntaId;
+                const valorId = event.target.value;
+                Auditoria.salvarResposta(perguntaId, valorId);
+                
+                // Após salvar, é crucial re-renderizar para que as perguntas
+                // condicionais (visibilidade) sejam reavaliadas.
                 UI.renderizarChecklistCompleto();
+                UI.atualizarHeaderProgresso();
             }
-            event.target.value = '';
         });
+        
+document.getElementById('media-input').addEventListener('change', async (event) => {
+    const perguntaId = event.target.dataset.perguntaId;
+    const files = event.target.files;
+    if (perguntaId && files.length > 0) {
+        await Auditoria.anexarMidia(perguntaId, files); // MUDANÇA AQUI
+        UI.mostrarModalGerenciarMidia(perguntaId); // Abre o modal para ver o resultado
+    }
+    event.target.value = '';
+});
     }
 	const modalPontoAberto = document.getElementById('modal-ponto-aberto');
 if (modalPontoAberto) {
@@ -245,6 +294,41 @@ if (modalPontoAberto) {
             UI.fecharModalPontoAberto();
         }
     });
+}
+
+const modalMidia = document.getElementById('modal-gerenciar-midia');
+if (modalMidia) {
+    modalMidia.addEventListener('click', (event) => {
+        const perguntaId = modalMidia.dataset.perguntaId;
+        if (!perguntaId) return;
+
+        // Fechar modal
+        if (event.target.id === 'fechar-modal-midia' || event.target.classList.contains('modal-finalizar-overlay')) {
+            UI.fecharModalGerenciarMidia();
+            UI.renderizarChecklistCompleto(); // Atualiza o contador no card
+        }
+
+        // Remover uma mídia
+        const botaoRemover = event.target.closest('.btn-remover-midia');
+        if (botaoRemover) {
+            const nomeArquivo = botaoRemover.dataset.nomeArquivo;
+            if (confirm(`Tem certeza que deseja remover o anexo "${nomeArquivo}"?`)) {
+                Auditoria.removerMidia(perguntaId, nomeArquivo);
+                // Re-renderiza o conteúdo do modal sem fechá-lo
+                UI.mostrarModalGerenciarMidia(perguntaId);
+            }
+        }
+    });
+
+    // Listener para o input de adicionar nova mídia
+document.getElementById('adicionar-nova-midia-input').addEventListener('change', async (event) => { // MUDANÇA AQUI
+    const perguntaId = modalMidia.dataset.perguntaId;
+    const files = event.target.files;
+    if (perguntaId && files.length > 0) {
+        await Auditoria.anexarMidia(perguntaId, files); // MUDANÇA AQUI
+        UI.mostrarModalGerenciarMidia(perguntaId);
+    }
+});
 }
 
     // O modal de finalização foi removido deste fluxo, pois a exportação
