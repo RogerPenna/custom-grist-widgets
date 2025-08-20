@@ -373,3 +373,109 @@ export function removerMidia(perguntaId, nomeDoArquivo) {
     
     _saveStateToLocalStorage();
 }
+
+export function executarCalculo(formulaTexto, instanciaInfo) {
+    if (!formulaTexto) return null;
+    console.log(`--- Iniciando Cálculo --- (Instância: ${instanciaInfo ? instanciaInfo.numero : 'N/A'})`);
+    console.log(`Fórmula: ${formulaTexto}`);
+
+    const state = _getCurrentState();
+    if (!state) {
+        console.error("Estado da auditoria não encontrado!");
+        return null;
+    }
+
+    const { perguntas, opcoes_respostas } = pacoteDeAuditoria.dados_suporte;
+    const placeholderRegex = /\[([A-Z0-9_]+)\]/g; 
+
+    let expressaoFinal = formulaTexto;
+    let todosValoresEncontrados = true;
+    const placeholders = formulaTexto.match(placeholderRegex) || [];
+
+    for (const placeholder of placeholders) {
+        const idCalculo = placeholder.replace(/[\[\]]/g, '');
+        console.log(`Procurando valor para o placeholder: ${idCalculo}`);
+        
+        const perguntaFator = perguntas.find(p => p.IDCalculo === idCalculo);
+        if (!perguntaFator) {
+            console.warn(`IDCalculo "${idCalculo}" não encontrado nos modelos de pergunta.`);
+            todosValoresEncontrados = false;
+            continue;
+        }
+
+        // AQUI ESTÁ A CORREÇÃO CRÍTICA:
+        // Constrói o ID completo do fator usando a informação da instância
+        const idCompletoFator = instanciaInfo 
+            ? `${perguntaFator.id}-${instanciaInfo.numero}`
+            : String(perguntaFator.id);
+        
+        const respostaId = state.respostas[idCompletoFator];
+        console.log(`   ID da pergunta-fator: ${idCompletoFator}, Resposta salva (ID da opção): ${respostaId}`);
+
+        if (respostaId && respostaId !== '') {
+            const opcao = opcoes_respostas.find(o => o.id == respostaId);
+            if (opcao && typeof opcao.Valor_Calculo === 'number') {
+                console.log(`   Valor numérico encontrado: ${opcao.Valor_Calculo}`);
+                expressaoFinal = expressaoFinal.replace(placeholder, String(opcao.Valor_Calculo));
+            } else {
+                console.warn(`   Opção de resposta não encontrada ou sem Valor_Calculo para o ID ${respostaId}`);
+                todosValoresEncontrados = false;
+            }
+        } else {
+            console.warn(`   Nenhuma resposta encontrada para ${idCompletoFator}`);
+            todosValoresEncontrados = false;
+        }
+    }
+
+    if (!todosValoresEncontrados) {
+        console.log(`Cálculo abortado: um ou mais fatores não foram preenchidos.`);
+        return null; 
+    }
+
+    console.log(`Expressão final para cálculo: ${expressaoFinal}`);
+    try {
+        const expressaoSegura = expressaoFinal.replace(/[^-()\d/*+.]/g, '');
+        const resultado = new Function('return ' + expressaoSegura)();
+        console.log(`Resultado do cálculo: ${resultado}`);
+        console.log(`--- Fim do Cálculo ---`);
+        return resultado;
+    } catch (error) {
+        console.error("Erro ao executar a fórmula segura:", error);
+        return null;
+    }
+}
+
+export function getDescricaoDaFaixa(idDaFaixaRef, valor) {
+    console.log(`--- Iniciando Busca de Faixa ---`);
+    console.log(`Procurando Faixa com ID de Referência:`, idDaFaixaRef, `(tipo: ${typeof idDaFaixaRef})`);
+    console.log(`... para o Valor numérico:`, valor, `(tipo: ${typeof valor})`);
+
+    if (!pacoteDeAuditoria.dados_suporte.faixas_resultado || pacoteDeAuditoria.dados_suporte.faixas_resultado.length === 0) {
+        console.error("ERRO: O array 'faixas_resultado' no JSON está vazio ou não existe!");
+        return null;
+    }
+
+    // Para fins de depuração, vamos imprimir todo o array de faixas
+    console.log("Conteúdo completo do array 'faixas_resultado':", pacoteDeAuditoria.dados_suporte.faixas_resultado);
+
+    const faixaEncontrada = pacoteDeAuditoria.dados_suporte.faixas_resultado.find(f => {
+        // Log para cada comparação individual
+        console.log(`Comparando: RefFaixa (${f.RefFaixa}, tipo ${typeof f.RefFaixa}) == idDaFaixaRef (${idDaFaixaRef}, tipo ${typeof idDaFaixaRef}) -> ${f.RefFaixa == idDaFaixaRef}`);
+        console.log(`           FaixaResult (${f.FaixaResult}, tipo ${typeof f.FaixaResult}) == valor (${valor}, tipo ${typeof valor}) -> ${f.FaixaResult == valor}`);
+        return f.RefFaixa == idDaFaixaRef && f.FaixaResult == valor;
+    });
+
+    if (faixaEncontrada) {
+        console.log("SUCESSO! Faixa encontrada:", faixaEncontrada, "CHAVES DISPONÍVEIS:", Object.keys(faixaEncontrada));
+        console.log(`--- Fim da Busca de Faixa ---`);
+        return {
+            Descricao_Saida: faixaEncontrada.Result,
+            Cor_Fundo: faixaEncontrada.Fundo || '#28a745',
+            Cor_Texto: faixaEncontrada.Fonte || '#FFFFFF'
+        };
+    }
+
+    console.warn("AVISO: Nenhuma faixa correspondente foi encontrada.");
+    console.log(`--- Fim da Busca de Faixa ---`);
+    return null;
+}

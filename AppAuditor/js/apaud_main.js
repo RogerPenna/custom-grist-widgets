@@ -134,9 +134,14 @@ function adicionarListenersDeConteudo() {
 
     // Listener para o cabeçalho do checklist
     document.getElementById('checklist-header').addEventListener('click', (event) => {
-        if(event.target.id === 'btn-voltar-principal') {
+        const target = event.target;
+        if(target.id === 'btn-voltar-principal') {
             atualizarLista();
             UI.mostrarTela('tela-selecao');
+        } 
+        else if (target.id === 'header-titulo') {
+            // Lógica para expandir/recolher o título
+            target.classList.toggle('titulo-expandido');
         }
     });
 
@@ -179,10 +184,11 @@ function adicionarListenersDeConteudo() {
             
             // --- Ação de responder com botão ---
             if (target.matches('.botao-resposta')) {
+                console.log('Botão de resposta clicado! Acionando recálculo e re-renderização.'); // LOG DE DIAGNÓSTICO
                 Auditoria.salvarResposta(target.dataset.perguntaId, target.dataset.valor);
-                UI.renderizarChecklistCompleto(); // Necessário para visibilidade condicional
+                UI.renderizarChecklistCompleto();
                 UI.atualizarHeaderProgresso();
-                return;
+                return; // Adicionado para garantir que o fluxo pare aqui
             }
 
             // --- Ações dentro de um card de pergunta (anotação, mídia, etc.) ---
@@ -247,15 +253,15 @@ function adicionarListenersDeConteudo() {
                 UI.atualizarHeaderProgresso();
             }
         });
-		        containerChecklist.addEventListener('change', (event) => {
-            // Este listener é para o novo elemento <select> (dropdown)
+        containerChecklist.addEventListener('change', (event) => {
             if (event.target.matches('.resposta-dropdown')) {
+                console.log('Dropdown alterado! Acionando recálculo e re-renderização.'); // LOG DE DIAGNÓSTICO
+                
                 const perguntaId = event.target.dataset.perguntaId;
                 const valorId = event.target.value;
                 Auditoria.salvarResposta(perguntaId, valorId);
                 
-                // Após salvar, é crucial re-renderizar para que as perguntas
-                // condicionais (visibilidade) sejam reavaliadas.
+                // Força o redesenho completo, que por sua vez acionará o cálculo
                 UI.renderizarChecklistCompleto();
                 UI.atualizarHeaderProgresso();
             }

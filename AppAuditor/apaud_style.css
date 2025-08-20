@@ -521,3 +521,46 @@ textarea { width: 95%; height: 250px; margin-top: 1rem; padding: 10px; border: 1
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
+
+.resultado-calculado-card .acoes-container {
+    display: none; /* Esconde botões de ação para perguntas de resultado */
+}
+
+.resultado-container {
+    text-align: center;
+    margin: 1rem 0;
+}
+
+.resultado-badge {
+    display: inline-block;
+    padding: 0.8rem 1.5rem;
+    font-size: 1.2rem;
+    font-weight: 600;
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    background-color: #6c757d; /* Cor padrão */
+    color: #FFFFFF; /* Cor padrão */
+}
+
+.resultado-valor-numerico {
+    font-size: 0.9rem;
+    font-weight: 400;
+    margin-left: 0.5rem;
+    opacity: 0.8;
+}
+
+.resultado-placeholder {
+    color: var(--cor-texto-secundario);
+    font-style: italic;
+}
+#header-titulo {
+    cursor: pointer; /* Indica que o título é clicável */
+    transition: all 0.2s ease-in-out;
+}
+#header-titulo.titulo-expandido {
+    white-space: normal; /* Permite que o texto quebre em várias linhas */
+    text-overflow: clip;   /* Remove o '...' */
+    overflow: visible;
+    flex-shrink: 1; /* Permite que ele encolha se necessário, mas quebre a linha */
+}

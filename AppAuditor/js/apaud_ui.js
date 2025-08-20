@@ -212,10 +212,29 @@ export function renderizarChecklistCompleto() {
 }
 
 function renderizarItem(item, containerPai, checklistCompleto, instanciaInfo = null) {
-    if (!Auditoria.avaliarCondicao(item)) return;
+    // --- INÍCIO DO BLOCO DE DEBUG ---
+    console.log(`[renderizarItem] Processando item ID: ${item.id} ("${item.Texto_Pergunta}")`);
+    
+    if (!Auditoria.avaliarCondicao(item)) {
+        console.log(` -> Item ID ${item.id} está OCULTO por condição de visibilidade.`);
+        return; // Sai se a condição de visibilidade não for atendida
+    }
+    console.log(` -> Item ID ${item.id} está VISÍVEL.`);
+    // --- FIM DO BLOCO DE DEBUG ---
+
     const dadosCompletos = Auditoria.getDadosCompletosPergunta(item.id);
+    if (!dadosCompletos || !dadosCompletos.modelo) {
+        console.error(` -> ERRO: Não foi possível obter dados completos para o item ID ${item.id}.`);
+        return;
+    }
+
     const { modelo } = dadosCompletos;
+
+    // --- MAIS DEBUG ---
+    console.log(` -> Tipo_Item do modelo: "${modelo.Tipo_Item}"`);
+
     if (modelo.Tipo_Item === 'Secao' || modelo.Tipo_Item === 'secao') {
+        console.log(` -> Renderizando como SEÇÃO.`);
         if (modelo.Repetivel === 'SIM') {
             const contagemInstancias = Auditoria.getContagemInstancias(modelo.id);
             for (let i = 1; i <= contagemInstancias; i++) {
@@ -225,8 +244,13 @@ function renderizarItem(item, containerPai, checklistCompleto, instanciaInfo = n
         } else {
             renderizarSecaoNaoRepetivel(modelo, containerPai, checklistCompleto);
         }
-    } else if (modelo.Tipo_Item === 'Pergunta') {
+    } 
+    else if (modelo.Tipo_Item === 'Pergunta' || modelo.Tipo_Item === 'resultado_calculado') {
+        console.log(` -> Renderizando como PERGUNTA ou RESULTADO_CALCULADO.`);
         renderizarPergunta(dadosCompletos, containerPai, instanciaInfo);
+    } else {
+        // --- LOG FINAL DE FALHA ---
+        console.warn(` -> AVISO: Item ID ${item.id} não correspondeu a nenhum tipo de renderização conhecido. Tipo_Item: "${modelo.Tipo_Item}"`);
     }
 }
 
@@ -243,85 +267,93 @@ function ajustarAlturaTextareas() {
     });
 }
 
-// SUBSTITUA A FUNÇÃO 'renderizarPergunta' INTEIRA POR ESTE BLOCO
+
 function renderizarPergunta(dadosCompletos, containerPai, instanciaInfo) {
     const { modelo, grupo, opcoes } = dadosCompletos;
     const perguntaCard = document.createElement('div');
     perguntaCard.className = 'pergunta-card';
     const idUnico = instanciaInfo ? `${modelo.id}-${instanciaInfo.numero}` : String(modelo.id);
-    perguntaCard.dataset.itemId = idUnico;
 
-    const pontoAberto = Auditoria.getPontoEmAberto(idUnico);
-    if (pontoAberto) {
-        perguntaCard.classList.add('ponto-em-aberto-card');
+    if (modelo.Tipo_Item === 'resultado_calculado') {
+		        // --- LOGS DE VERIFICAÇÃO ---
+        console.log(`[renderizarPergunta] Encontrou pergunta de resultado: ID ${idUnico} ("${modelo.Texto_Pergunta}")`);
+        console.log(` -> Fórmula a ser usada: "${modelo.Formula_Calculo}"`);
+        console.log(` -> Informação da Instância:`, instanciaInfo);
+        perguntaCard.classList.add('resultado-calculado-card');
+        const resultadoNumerico = Auditoria.executarCalculo(modelo.Formula, instanciaInfo);
+		console.log(` -> Resultado retornado pelo 'executarCalculo':`, resultadoNumerico);
+        Auditoria.salvarResposta(idUnico, resultadoNumerico);
+        
+        let displayHTML = '<div class="resultado-placeholder">Aguardando preenchimento...</div>';
+        if (resultadoNumerico !== null && resultadoNumerico !== undefined) {
+            if (modelo.FAIXA_CALCULADA) { 
+                const faixa = Auditoria.getDescricaoDaFaixa(modelo.FAIXA_CALCULADA, resultadoNumerico);
+				console.log(` -> Procurando faixa para valor ${resultadoNumerico}. Faixa encontrada:`, faixa);
+                if (faixa) {
+                    displayHTML = `<div class="resultado-badge" style="background-color: ${faixa.Cor_Fundo}; color: ${faixa.Cor_Texto};">${faixa.Descricao_Saida}<span class="resultado-valor-numerico">(${resultadoNumerico})</span></div>`;
+                } else {
+                    displayHTML = `<div class="resultado-badge">${resultadoNumerico}</div>`;
+                }
+            } else {
+                displayHTML = `<div class="resultado-badge">${resultadoNumerico}</div>`;
+            }
+        }
+
+        perguntaCard.innerHTML = `
+            <p class="texto-pergunta">${modelo.Texto_Pergunta}</p>
+            <div class="resultado-container">${displayHTML}</div>`;
+
+    } else { // CASO SEJA UMA PERGUNTA NORMAL
+        perguntaCard.dataset.itemId = idUnico;
+
+        const pontoAberto = Auditoria.getPontoEmAberto(idUnico);
+        if (pontoAberto) {
+            perguntaCard.classList.add('ponto-em-aberto-card');
+        }
+
+        const anotacaoSalva = Auditoria.getAnotacao(idUnico);
+        const temAnotacao = anotacaoSalva.trim() !== '';
+        const classeAnotacao = temAnotacao ? 'com-conteudo' : '';
+        const contadorAnotacaoHTML = temAnotacao ? '(' + anotacaoSalva.split('\n').length + ' l)' : '';
+
+        const midiasAnexadas = Auditoria.getMidias(idUnico);
+        const temMidia = midiasAnexadas.length > 0;
+        const classeMidia = temMidia ? 'com-conteudo' : '';
+        const contadorMidiaHTML = temMidia ? '(' + midiasAnexadas.length + ')' : '';
+
+        const iconeAnotacao = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z"/><path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z"/></svg>';
+        const iconeMidia = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M1 5.25A2.25 2.25 0 013.25 3h13.5A2.25 2.25 0 0119 5.25v9.5A2.25 2.25 0 0116.75 17H3.25A2.25 2.25 0 011 14.75v-9.5zm1.5 5.81v3.69c0 .414.336.75.75.75h13.5a.75.75 0 00.75-.75v-3.69l-2.76-2.76a.75.75 0 00-1.06 0l-2.22 2.22a.75.75 0 000 1.06l-2.22-2.22a.75.75 0 00-1.06 0l-2.22 2.22a.75.75 0 000 1.06l-1.47-1.47a.75.75 0 00-1.06 0L2.5 11.06zM6.25 7a.75.75 0 100-1.5.75.75 0 000 1.5z" clip-rule="evenodd"/></svg>';
+        const iconePontoAberto = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 6a3 3 0 013-3h10a1 1 0 01.8 1.6L14.25 8l2.55 3.4A1 1 0 0116 13H6a1 1 0 00-1 1v3a1 1 0 11-2 0V6z" clip-rule="evenodd" /></svg>';
+        
+        let respostasHTML = '';
+        const tipoApresentacao = grupo?.Tipo_Apresentacao || 'botoes'; 
+        const valorSalvo = Auditoria.getResposta(idUnico);
+
+        switch (tipoApresentacao) {
+            case 'dropdown':
+                const optionsHTML = opcoes.map(opt => `<option value="${opt.id}" ${String(valorSalvo) === String(opt.id) ? 'selected' : ''}>${opt.Texto_Opcao}</option>`).join('');
+                respostasHTML = `<select class="resposta-dropdown" data-pergunta-id="${idUnico}"><option value="">Selecione...</option>${optionsHTML}</select>`;
+                break;
+            case 'textolivre':
+                respostasHTML = `<textarea class="resposta-texto" data-pergunta-id="${idUnico}" placeholder="Digite sua observação..." rows="2">${valorSalvo || ''}</textarea>`;
+                break;
+            case 'botoes':
+            default:
+                respostasHTML = opcoes.map(opt => `<button class="botao-resposta ${String(valorSalvo) === String(opt.id) ? 'selecionado' : ''}" data-pergunta-id="${idUnico}" data-valor="${opt.id}" style="${String(valorSalvo) === String(opt.id) ? `background-color:${opt.Fundo}; color:${opt.Fonte}; border-color:${opt.Fundo};` : ''}">${opt.Texto_Opcao}</button>`).join('');
+                break;
+        }
+
+        perguntaCard.innerHTML = `
+            <p class="texto-pergunta">${modelo.Texto_Pergunta}</p>
+            <div class="respostas-container">${respostasHTML}</div>
+            <div class="acoes-container">
+                <div class="acao-item"><button class="botao-acao botao-anotacao ${classeAnotacao}" title="Anotações">${iconeAnotacao}</button><span class="contador-conteudo">${contadorAnotacaoHTML}</span></div>
+                <div class="acao-item"><button class="botao-acao botao-midia ${classeMidia}" title="Mídias">${iconeMidia}</button><span class="contador-conteudo">${contadorMidiaHTML}</span></div>
+                <div class="acao-item"><button class="botao-acao botao-ponto-aberto ${pontoAberto ? 'com-conteudo' : ''}" title="${pontoAberto ? `Pendência: ${pontoAberto.pendencia}` : 'Marcar como Ponto em Aberto'}">${iconePontoAberto}</button></div>
+            </div>`;
     }
-
-    const anotacaoSalva = Auditoria.getAnotacao(idUnico);
-    const temAnotacao = anotacaoSalva.trim() !== '';
-    const classeAnotacao = temAnotacao ? 'com-conteudo' : '';
-    const contadorAnotacaoHTML = temAnotacao ? '(' + anotacaoSalva.split('\n').length + ' l)' : '';
-
-    const midiasAnexadas = Auditoria.getMidias(idUnico);
-    const temMidia = midiasAnexadas.length > 0;
-    const classeMidia = temMidia ? 'com-conteudo' : '';
-    const contadorMidiaHTML = temMidia ? '(' + midiasAnexadas.length + ')' : '';
-
-const iconeAnotacao = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z"/><path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z"/></svg>';
-const iconeMidia = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M1 5.25A2.25 2.25 0 013.25 3h13.5A2.25 2.25 0 0119 5.25v9.5A2.25 2.25 0 0116.75 17H3.25A2.25 2.25 0 011 14.75v-9.5zm1.5 5.81v3.69c0 .414.336.75.75.75h13.5a.75.75 0 00.75-.75v-3.69l-2.76-2.76a.75.75 0 00-1.06 0l-2.22 2.22a.75.75 0 000 1.06l-2.22-2.22a.75.75 0 00-1.06 0l-2.22 2.22a.75.75 0 000 1.06l-1.47-1.47a.75.75 0 00-1.06 0L2.5 11.06zM6.25 7a.75.75 0 100-1.5.75.75 0 000 1.5z" clip-rule="evenodd"/></svg>';
-const iconePontoAberto = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 6a3 3 0 013-3h10a1 1 0 01.8 1.6L14.25 8l2.55 3.4A1 1 0 0116 13H6a1 1 0 00-1 1v3a1 1 0 11-2 0V6z" clip-rule="evenodd" /></svg>';
-    
-    const tooltipTexto = pontoAberto ? `Pendência: ${pontoAberto.pendencia}` : 'Marcar como Ponto em Aberto';
-    
-    let respostasHTML = '';
-    // Assume 'botoes' como padrão se a propriedade não existir no JSON
-    const tipoApresentacao = grupo?.Tipo_Apresentacao || 'botoes'; 
-    const valorSalvo = Auditoria.getResposta(idUnico);
-
-    switch (tipoApresentacao) {
-        case 'dropdown':
-            // Adiciona uma classe CSS específica para o dropdown
-            const optionsHTML = opcoes.map(opt => {
-                const isSelecionado = String(valorSalvo) === String(opt.id);
-                return `<option value="${opt.id}" ${isSelecionado ? 'selected' : ''}>${opt.Texto_Opcao}</option>`;
-            }).join('');
-            respostasHTML = `<select class="resposta-dropdown" data-pergunta-id="${idUnico}"><option value="">Selecione...</option>${optionsHTML}</select>`;
-            break;
-
-        case 'textolivre':
-            respostasHTML = `<textarea class="resposta-texto" data-pergunta-id="${idUnico}" placeholder="Digite sua observação..." rows="2">${valorSalvo || ''}</textarea>`;
-            break;
-
-        case 'botoes':
-        default:
-            respostasHTML = opcoes.map(opt => {
-                const isSelecionado = String(valorSalvo) === String(opt.id);
-                const estilo = isSelecionado ? `style="background-color:${opt.Fundo}; color:${opt.Fonte}; border-color:${opt.Fundo};"` : '';
-                // CRUCIAL: data-valor agora salva o ID da opção (opt.id)
-                return `<button class="botao-resposta ${isSelecionado ? 'selecionado' : ''}" data-pergunta-id="${idUnico}" data-valor="${opt.id}" ${estilo}>${opt.Texto_Opcao}</button>`;
-            }).join('');
-            break;
-    }
-
-
-    perguntaCard.innerHTML = `
-        <p class="texto-pergunta">${modelo.Texto_Pergunta}</p>
-        <div class="respostas-container">${respostasHTML}</div>
-        <div class="acoes-container">
-            <div class="acao-item">
-                <button class="botao-acao botao-anotacao ${classeAnotacao}" title="Anotações">${iconeAnotacao}</button>
-                <span class="contador-conteudo">${contadorAnotacaoHTML}</span>
-            </div>
-            <div class="acao-item">
-                <button class="botao-acao botao-midia ${classeMidia}" title="Mídias">${iconeMidia}</button>
-                <span class="contador-conteudo">${contadorMidiaHTML}</span>
-            </div>
-            <div class="acao-item">
-                <button class="botao-acao botao-ponto-aberto ${pontoAberto ? 'com-conteudo' : ''}" title="${pontoAberto ? `Pendência: ${pontoAberto.pendencia}` : 'Marcar como Ponto em Aberto'}">${iconePontoAberto}</button>
-            </div>
-        </div>`;
 
     containerPai.appendChild(perguntaCard);
-
 }
 
 function renderizarSecaoNaoRepetivel(modeloSecao, containerPai, checklistCompleto) {
@@ -336,8 +368,8 @@ function renderizarSecaoNaoRepetivel(modeloSecao, containerPai, checklistComplet
         secaoCard.querySelector('.icone-toggle').classList.add('expandido');
     }
     const corpo = secaoCard.querySelector('.secao-body');
-    const filhos = checklistCompleto.filter(filho => filho.ID_Pai == modeloSecao.id).sort((a,b) => a.Ordem - b.Ordem);
-    filhos.forEach(filho => renderizarItem(filho, corpo, checklistCompleto));
+    const filhos = checklistCompleto.filter(filho => String(filho.ID_Pai) == String(modeloSecao.id)).sort((a,b) => a.Ordem - b.Ordem);
+	filhos.forEach(filho => renderizarItem(filho, corpo, checklistCompleto));
 }
 
 function renderizarBotaoAdicionar(modeloSecao, containerPai) {
@@ -366,7 +398,8 @@ function renderizarInstanciaSecao(modeloSecao, containerPai, checklistCompleto, 
     }
     containerPai.appendChild(instanciaCard);
     const corpo = instanciaCard.querySelector('.secao-instancia-body');
-    const filhos = checklistCompleto.filter(filho => filho.ID_Pai == modeloSecao.id).sort((a,b) => a.Ordem - b.Ordem);
+    const filhos = checklistCompleto.filter(filho => String(filho.ID_Pai) == String(modeloSecao.id)).sort((a,b) => a.Ordem - b.Ordem);
+	console.log(`Filhos da Seção "${modeloSecao.Texto_Pergunta}":`, filhos);
     filhos.forEach(filho => renderizarItem(filho, corpo, checklistCompleto, { numero: numeroInstancia }));
 }
 
