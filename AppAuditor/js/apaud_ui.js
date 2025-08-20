@@ -2,9 +2,32 @@
 
 import * as Auditoria from './apaud_auditoria.js';
 
+
 export const estadoUI = {
     secoesExpandidas: new Set()
 };
+
+export function renderizarTelaSelecaoPacotes(pacotes, onPacoteSelecionado) {
+    const container = document.getElementById('lista-pacotes-container');
+    container.innerHTML = ''; // Limpa a lista antiga
+
+    if (pacotes.length === 0) {
+        container.innerHTML = '<p class="aviso-lista-vazia">Nenhum pacote de auditoria carregado. Use o botão abaixo para carregar um novo.</p>';
+        return;
+    }
+
+    const ul = document.createElement('ul');
+    ul.className = 'lista-pacotes';
+    pacotes.forEach(pacote => {
+        const li = document.createElement('li');
+        li.textContent = pacote.nome;
+        li.dataset.pacoteId = pacote.id;
+        li.className = 'item-pacote';
+        li.addEventListener('click', () => onPacoteSelecionado(pacote.id));
+        ul.appendChild(li);
+    });
+    container.appendChild(ul);
+}
 
 export function mostrarTela(idDaTela) {
     document.querySelectorAll('.tela').forEach(tela => tela.classList.remove('ativa'));

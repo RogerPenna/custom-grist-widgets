@@ -7,138 +7,130 @@
     <link rel="stylesheet" href="apaud_style.css">
 </head>
 <body>
-
-    <!-- TELA 1: CARREGAMENTO -->
-<div id="tela-carregamento" class="tela ativa">
-    <div class="container">
-        <h1>App de Auditoria</h1>
-        <p>Carregue o "Pacote de Auditoria" (.json) para começar.</p>
-        
-        <!-- REMOVIDO a textarea e o botão. ADICIONADO o input de arquivo estilizado como um botão. -->
-        <label for="json-file-input" class="btn-primario btn-carregar-arquivo">
-            Selecionar Arquivo de Auditoria
-        </label>
-        <input type="file" id="json-file-input" accept=".json,application/json" style="display: none;">
-        
-        <div id="status-carregamento"></div>
-    </div>
-</div>
-
-    <!-- TELA 2: SELEÇÃO DA AUDITORIA -->
-    <div id="tela-selecao" class="tela">
+<!-- TELA MASTER: SELEÇÃO DE PACOTES DE AUDITORIA -->
+    <div id="tela-selecao-pacote" class="tela ativa">
         <div class="container">
+            <h1>Meus Pacotes de Auditoria</h1>
+            <div id="lista-pacotes-container">
+                <!-- A lista de pacotes será populada via JS -->
+            </div>
+            <div class="botoes-confirmacao" style="margin-top: 2rem;">
+                 <label for="json-file-input" class="btn-primario btn-carregar-arquivo" style="width: 100%;">
+                    Carregar Novo Pacote
+                </label>
+                <input type="file" id="json-file-input" accept=".json,application/json" style="display: none;">
+            </div>
+            <div id="status-carregamento"></div>
+        </div>
+    </div>
+
+    <!-- TELA DASHBOARD INTERNO (ANTIGA TELA DE SELEÇÃO) -->
+    <div id="tela-dashboard-auditoria" class="tela">
+        <div class="container">
+            <button id="btn-voltar-para-selecao-pacotes" class="btn-secundario" style="margin-bottom: 1rem;">&lt; Voltar para Pacotes</button>
             <h2 id="titulo-auditoria"></h2>
             <h3>Selecione a auditoria que deseja iniciar:</h3>
             <div class="filtros-container">
-    <div class="filtro-grupo">
-        <label for="filtro-status">Status</label>
-        <select id="filtro-status">
-            <option value="todos">Todos</option>
-            <option value="a_iniciar">A Iniciar</option>
-            <option value="em_progresso">Em Andamento</option>
-            <option value="finalizada">Finalizada</option>
-        </select>
-    </div>
-    <div class="filtro-grupo">
-        <label for="filtro-auditor">Auditor</label>
-        <select id="filtro-auditor">
-            <option value="todos">Todos</option>
-            <!-- Auditores serão populados por JS -->
-        </select>
-    </div>
-    <div class="filtro-grupo">
-        <label for="ordenacao">Ordenar por</label>
-        <select id="ordenacao">
-            <option value="data">Data</option>
-            <option value="departamento">Departamento</option>
-            <option value="status">Status</option>
-        </select>
-    </div>
-</div>
-			<div id="lista-planejamentos"></div>
+                <div class="filtro-grupo">
+                    <label for="filtro-status">Status</label>
+                    <select id="filtro-status">
+                        <option value="todos">Todos</option>
+                        <option value="a_iniciar">A Iniciar</option>
+                        <option value="em_progresso">Em Andamento</option>
+                        <option value="finalizada">Finalizada</option>
+                    </select>
+                </div>
+                <div class="filtro-grupo">
+                    <label for="filtro-auditor">Auditor</label>
+                    <select id="filtro-auditor">
+                        <option value="todos">Todos</option>
+                    </select>
+                </div>
+                <div class="filtro-grupo">
+                    <label for="ordenacao">Ordenar por</label>
+                    <select id="ordenacao">
+                        <option value="data">Data</option>
+                        <option value="departamento">Departamento</option>
+                        <option value="status">Status</option>
+                    </select>
+                </div>
+            </div>
+            <div id="lista-planejamentos"></div>
         </div>
     </div>
-	
-	<!-- NOVA TELA 2.5: CONFIRMAÇÃO DA AUDITORIA -->
-<div id="tela-confirmacao" class="tela">
-    <div class="container">
-        <h2 id="confirmacao-titulo">Preparar Auditoria</h2>
-        <div id="confirmacao-departamento"></div>
+    
+    <!-- TELA DE CONFIRMAÇÃO -->
+    <div id="tela-confirmacao" class="tela">
+        <div class="container">
+            <h2 id="confirmacao-titulo">Preparar Auditoria</h2>
+            <div id="confirmacao-departamento"></div>
+            <div class="form-grupo">
+                <label for="data-auditoria">Data da Realização:</label>
+                <input type="date" id="data-auditoria">
+            </div>
+            <div class="form-grupo">
+                <label for="auditor-lider-select">Auditor Líder:</label>
+                <select id="auditor-lider-select"></select>
+            </div>
+            <div class="form-grupo">
+                <label for="auditor-acomp-select">Auditor Acompanhante:</label>
+                <select id="auditor-acomp-select"></select>
+            </div>
+            <div class="botoes-confirmacao">
+                <button id="btn-voltar-selecao" class="btn-secundario">Voltar</button>
+                <button id="btn-confirmar-iniciar" class="btn-primario">Confirmar e Iniciar</button>
+            </div>
+        </div>
+    </div>
 
-        <div class="form-grupo">
-            <label for="data-auditoria">Data da Realização:</label>
-            <input type="date" id="data-auditoria">
+    <!-- TELA DE EXECUÇÃO DO CHECKLIST -->
+    <div id="tela-checklist" class="tela">
+        <div id="checklist-header">
+            <button id="btn-voltar-principal" class="btn-header">&lt; Voltar</button>
+            <div id="header-titulo">Auditoria</div>
+            <div id="header-progresso">0 / 0 (0%)</div>
         </div>
-        
-        <div class="form-grupo">
-            <label for="auditor-lider-select">Auditor Líder:</label>
-            <select id="auditor-lider-select"></select>
-        </div>
+        <div id="checklist-container" class="container"></div>
+    </div>
 
-        <div class="form-grupo">
-            <label for="auditor-acomp-select">Auditor Acompanhante:</label>
-            <select id="auditor-acomp-select"></select>
-        </div>
-
-        <div class="botoes-confirmacao">
-            <button id="btn-voltar-selecao" class="btn-secundario">Voltar</button>
-            <button id="btn-confirmar-iniciar" class="btn-primario">Confirmar e Iniciar</button>
+    <!-- MODAIS E INPUTS ESCONDIDOS (COM CONTEÚDO COMPLETO) -->
+    <div id="modal-finalizar" class="modal-finalizar-overlay">
+        <div class="modal-finalizar-conteudo">
+            <span class="fechar-modal-finalizar">&times;</span>
+            <h2>Auditoria Finalizada</h2>
+            <p>O arquivo com os resultados da auditoria está pronto para ser baixado. Envie este arquivo para o responsável.</p>
+            <button id="btn-baixar-resultado" class="btn-primario btn-grande">Baixar Arquivo de Resultado (.json)</button>
         </div>
     </div>
-</div>
 
-    <!-- TELA 3: EXECUÇÃO DO CHECKLIST -->
-<div id="tela-checklist" class="tela">
-    <div id="checklist-header">
-        <!-- NOVO BOTÃO DE VOLTAR -->
-        <button id="btn-voltar-principal" class="btn-header">&lt; Voltar</button>
-        <div id="header-titulo">Auditoria</div>
-        <div id="header-progresso">0 / 0 (0%)</div>
-    </div>
-    <div id="checklist-container" class="container">
-        <!-- O checklist será renderizado aqui -->
-    </div>
-</div>
-
-<div id="modal-finalizar" class="modal-finalizar-overlay">
-    <div class="modal-finalizar-conteudo">
-        <span class="fechar-modal-finalizar">&times;</span>
-        <h2>Auditoria Finalizada</h2>
-        <p>O arquivo com os resultados da auditoria está pronto para ser baixado. Envie este arquivo para o responsável.</p>
-        
-        <!-- REMOVIDA a textarea. O botão agora tem outra função. -->
-        <button id="btn-baixar-resultado" class="btn-primario btn-grande">Baixar Arquivo de Resultado (.json)</button>
-    </div>
-</div>
-
-<div id="modal-ponto-aberto" class="modal-ponto-aberto-overlay">
-    <div class="modal-ponto-aberto-conteudo">
-        <h3>Adicionar Ponto em Aberto</h3>
-        <p>Descreva a pendência ou a evidência que precisa ser verificada posteriormente.</p>
-        <textarea id="ponto-aberto-textarea" placeholder="Ex: Verificar documentos de fulano e ciclano na matriz..."></textarea>
-        <div class="modal-ponto-aberto-botoes">
-            <button id="btn-cancelar-ponto-aberto" class="btn-secundario">Cancelar</button>
-            <button id="btn-salvar-ponto-aberto" class="btn-primario">Salvar Ponto em Aberto</button>
+    <div id="modal-ponto-aberto" class="modal-ponto-aberto-overlay">
+        <div class="modal-ponto-aberto-conteudo">
+            <h3>Adicionar Ponto em Aberto</h3>
+            <p>Descreva a pendência ou a evidência que precisa ser verificada posteriormente.</p>
+            <textarea id="ponto-aberto-textarea" placeholder="Ex: Verificar documentos de fulano e ciclano na matriz..."></textarea>
+            <div class="modal-ponto-aberto-botoes">
+                <button id="btn-cancelar-ponto-aberto" class="btn-secundario">Cancelar</button>
+                <button id="btn-salvar-ponto-aberto" class="btn-primario">Salvar Ponto em Aberto</button>
+            </div>
         </div>
     </div>
-</div>
-	<!-- Input escondido para upload de arquivos -->
-<input type="file" id="media-input" style="display: none;" multiple>
+    
+    <input type="file" id="media-input" style="display: none;" multiple>
 
-<div id="modal-gerenciar-midia" class="modal-finalizar-overlay">
-    <div class="modal-finalizar-conteudo">
-        <span class="fechar-modal-finalizar" id="fechar-modal-midia">&times;</span>
-        <h3>Gerenciar Mídias</h3>
-        <p id="modal-midia-pergunta-texto"></p>
-        <div id="lista-midias-container">
-            <!-- Mídias serão listadas aqui -->
-        </div>
-        <div class="botoes-confirmacao" style="justify-content: flex-start;">
-            <label for="adicionar-nova-midia-input" class="btn-primario">Adicionar Nova Mídia</label>
-            <input type="file" id="adicionar-nova-midia-input" style="display: none;" multiple>
+    <div id="modal-gerenciar-midia" class="modal-finalizar-overlay">
+        <div class="modal-finalizar-conteudo">
+            <span class="fechar-modal-finalizar" id="fechar-modal-midia">&times;</span>
+            <h3>Gerenciar Mídias</h3>
+            <p id="modal-midia-pergunta-texto"></p>
+            <div id="lista-midias-container">
+                <!-- Mídias serão listadas aqui -->
+            </div>
+            <div class="botoes-confirmacao" style="justify-content: flex-start;">
+                <label for="adicionar-nova-midia-input" class="btn-primario">Adicionar Nova Mídia</label>
+                <input type="file" id="adicionar-nova-midia-input" style="display: none;" multiple>
+            </div>
         </div>
     </div>
-</div>
 
     <script type="module" src="js/apaud_main.js"></script>
 </body>

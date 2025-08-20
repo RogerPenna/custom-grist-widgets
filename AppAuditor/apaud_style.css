@@ -564,3 +564,41 @@ textarea { width: 95%; height: 250px; margin-top: 1rem; padding: 10px; border: 1
     overflow: visible;
     flex-shrink: 1; /* Permite que ele encolha se necessário, mas quebre a linha */
 }
+/* --- Estilos para a Nova Tela de Seleção de Pacotes --- */
+#lista-pacotes-container {
+    margin-top: 1.5rem;
+}
+
+#lista-pacotes-container .aviso-lista-vazia {
+    text-align: center;
+    color: var(--cor-texto-secundario);
+    padding: 2rem;
+    background-color: var(--cor-fundo-card);
+    border: 1px dashed var(--cor-borda);
+    border-radius: 0.75rem;
+}
+
+.lista-pacotes {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.item-pacote {
+    background-color: var(--cor-fundo-card);
+    border: 1px solid var(--cor-borda);
+    border-left: 5px solid var(--cor-primaria);
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.item-pacote:hover {
+    border-color: var(--cor-primaria);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}

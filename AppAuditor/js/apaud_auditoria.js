@@ -1,28 +1,55 @@
-// js/apaud_auditoria.js (v5.1 - Lógica de Apresentação e Visibilidade)
+// js/apaud_auditoria.js (v6.0 - Multi-Pacote)
 
+import * as StorageManager from './storageManager.js';
 import { mostrarStatusCarregamento } from './apaud_ui.js';
 
-const STATE_STORAGE_KEY = 'auditoriasEmProgressoState';
-let pacoteDeAuditoria = null;
+// --- GERENCIADOR DE ESTADO GLOBAL ---
+const STORAGE_KEY = 'APAUD_DATA';
+let gerenciadorDePacotes = {}; // Objeto "guarda-chuva" com todos os pacotes.
+
+// --- VARIÁVEIS DE ESTADO ATIVO (A "FACHADA") ---
+// Apontam para os dados do pacote ATUALMENTE em uso.
+let pacoteDeAuditoria = null; 
 let auditoriasEmProgresso = new Map();
-let currentAuditoriaId = null; // ID do planejamento que está sendo editado no momento
+let idPacoteAtivo = null;
+
+// Variáveis de estado da SESSÃO de auditoria ATIVA.
+let currentAuditoriaId = null; 
 let ultimaInstanciaAdicionada = null;
 
-// --- Funções de Persistência ---
-function _saveStateToLocalStorage() {
-    const serializableState = Array.from(auditoriasEmProgresso.entries());
-    localStorage.setItem(STATE_STORAGE_KEY, JSON.stringify(serializableState));
+
+// --- NOVAS FUNÇÕES DE GERENCIAMENTO DE PACOTES ---
+function _salvarGerenciador() {
+  StorageManager.salvar(STORAGE_KEY, gerenciadorDePacotes);
 }
-export function loadStateFromLocalStorage() {
-    const savedStateJSON = localStorage.getItem(STATE_STORAGE_KEY);
-    if (savedStateJSON) {
-        try {
-            auditoriasEmProgresso = new Map(JSON.parse(savedStateJSON));
-        } catch(e) {
-            console.error("Erro ao carregar estado do localStorage:", e);
-            auditoriasEmProgresso = new Map();
-        }
-    }
+
+export function inicializarGerenciador() {
+  gerenciadorDePacotes = StorageManager.carregar(STORAGE_KEY) || {};
+  console.log("Gerenciador de pacotes inicializado.", gerenciadorDePacotes);
+}
+
+export function getListaDePacotes() {
+  return Object.keys(gerenciadorDePacotes).map(id => ({
+    id: id,
+    nome: gerenciadorDePacotes[id].pacote.auditoria_geral.IdAud || id
+  }));
+}
+
+export function definirPacoteAtivo(id) {
+  if (gerenciadorDePacotes[id]) {
+    idPacoteAtivo = id;
+    pacoteDeAuditoria = gerenciadorDePacotes[id].pacote;
+    auditoriasEmProgresso = gerenciadorDePacotes[id].progresso;
+    
+    // Reseta o estado da sessão para evitar "vazamento" entre pacotes
+    currentAuditoriaId = null;
+    ultimaInstanciaAdicionada = null;
+
+    console.log(`Pacote "${id}" definido como ativo.`);
+    return true;
+  }
+  console.error(`Pacote com ID "${id}" não encontrado.`);
+  return false;
 }
 
 // --- Funções de Gerenciamento de Múltiplos Estados ---
@@ -33,22 +60,39 @@ export function getCurrentAuditoriaId() {
     return currentAuditoriaId;
 }
 // --- Funções de Carregamento ---
-export function carregarPacoteJSON(textoJSON) {
-    if (!textoJSON || !textoJSON.trim()) {
-        mostrarStatusCarregamento("Erro: O arquivo está vazio ou é inválido.", 'erro');
-        return false;
+export function adicionarNovoPacote(textoJSON) {
+  if (!textoJSON || !textoJSON.trim()) {
+    mostrarStatusCarregamento("Erro: O arquivo está vazio ou é inválido.", 'erro');
+    return null;
+  }
+  try {
+    const pacoteJson = JSON.parse(textoJSON);
+    const idPacote = pacoteJson?.auditoria_geral?.IdAud;
+
+    if (!idPacote) {
+      throw new Error("O arquivo de pacote é inválido ou não contém 'auditoria_geral.IdAud'.");
     }
-    try {
-        pacoteDeAuditoria = JSON.parse(textoJSON);
-        if (!pacoteDeAuditoria.versao_pacote || !pacoteDeAuditoria.dados_suporte) {
-            throw new Error("O JSON parece ser inválido ou não é um Pacote de Auditoria.");
-        }
-        mostrarStatusCarregamento("Pacote carregado com sucesso!", 'sucesso');
-        return true;
-    } catch (error) {
-        mostrarStatusCarregamento(`Erro ao processar o JSON: ${error.message}`, 'erro');
-        return false;
+    
+    if (gerenciadorDePacotes[idPacote]) {
+      if (!confirm(`Um pacote com o ID "${idPacote}" já existe. Deseja substituí-lo? O progresso anterior será perdido.`)) {
+          mostrarStatusCarregamento("Carregamento cancelado pelo usuário.", 'info');
+          return null;
+      }
     }
+
+    gerenciadorDePacotes[idPacote] = {
+      pacote: pacoteJson,
+      progresso: new Map() // Inicia um progresso novo e vazio
+    };
+    
+    _salvarGerenciador();
+    mostrarStatusCarregamento(`Pacote "${idPacote}" carregado com sucesso!`, 'sucesso');
+    return idPacote;
+
+  } catch (error) {
+    mostrarStatusCarregamento(`Erro ao processar o JSON: ${error.message}`, 'erro');
+    return null;
+  }
 }
 
 // --- Funções de Gerenciamento da Auditoria ---
@@ -64,6 +108,17 @@ export function iniciarAuditoriaParaArea(areaId, planejamentoId) {
     });
     _saveStateToLocalStorage();
 }
+
+function _saveStateToLocalStorage() {
+    if (!idPacoteAtivo || !gerenciadorDePacotes[idPacoteAtivo]) return;
+
+    // Atualiza o progresso do pacote ativo dentro da estrutura principal
+    gerenciadorDePacotes[idPacoteAtivo].progresso = auditoriasEmProgresso;
+    
+    // Salva o objeto "guarda-chuva" inteiro
+    _salvarGerenciador();
+}
+
 export function salvarDetalhesExecucao(detalhes) {
     const state = _getCurrentState();
     if (!state) return;

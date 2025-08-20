@@ -3,7 +3,7 @@
 import * as Auditoria from './apaud_auditoria.js';
 import * as UI from './apaud_ui.js';
 
-// --- Funções Auxiliares para o Novo Fluxo ---
+// --- Funções Auxiliares do Dashboard Interno ---
 function getFiltrosAtuais() {
     return {
         status: document.getElementById('filtro-status').value,
@@ -13,41 +13,79 @@ function getFiltrosAtuais() {
 function getOrdenacaoAtual() {
     return document.getElementById('ordenacao').value;
 }
-function atualizarLista() {
+function atualizarListaDashboard() {
     UI.renderizarListaDePlanejamentos(Auditoria.getPlanejamentos(), getFiltrosAtuais(), getOrdenacaoAtual());
 }
 
 // --- Função Principal de Inicialização ---
-function main() {
-    Auditoria.loadStateFromLocalStorage();
-    const fileInput = document.getElementById('json-file-input');
-    if (fileInput) {
-        fileInput.addEventListener('change', (event) => {
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                if (Auditoria.carregarPacoteJSON(e.target.result)) {
-                    UI.popularFiltroAuditores(Auditoria.getAuditores());
-                    atualizarLista();
-                    UI.mostrarTela('tela-selecao');
-                }
-                fileInput.value = '';
-            };
-            reader.readAsText(file);
-        });
+document.addEventListener("DOMContentLoaded", inicializarApp);
+
+function inicializarApp() {
+    Auditoria.inicializarGerenciador();
+    configurarListenersGlobais();
+    exibirTelaSelecaoPacotes();
+}
+
+// --- Funções de Navegação e Renderização Principal ---
+
+function exibirTelaSelecaoPacotes() {
+    const pacotes = Auditoria.getListaDePacotes();
+    // A função renderizarTelaSelecaoPacotes ainda não existe, criaremos em apaud_ui.js
+    UI.renderizarTelaSelecaoPacotes(pacotes, selecionarEIniciarPacote);
+    UI.mostrarTela('tela-selecao-pacote');
+}
+
+function selecionarEIniciarPacote(idPacote) {
+    const sucesso = Auditoria.definirPacoteAtivo(idPacote);
+    if (sucesso) {
+        // Agora que o pacote está ativo, prepare e mostre o dashboard interno dele
+        UI.popularFiltroAuditores(Auditoria.getAuditores());
+        document.getElementById('titulo-auditoria').textContent = Auditoria.getInfoAuditoriaPrincipal().Nome_Auditoria;
+        atualizarListaDashboard(); // Exibe a lista de planejamentos do pacote ativo
+        UI.mostrarTela('tela-dashboard-auditoria');
     }
-    adicionarListenersDeConteudo();
 }
 
 // --- Função Central de Listeners de Eventos ---
+function configurarListenersGlobais() {
+    // Listener para carregar um novo arquivo de pacote
+    const fileInput = document.getElementById('json-file-input');
+    fileInput.addEventListener('change', async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        try {
+            const fileContent = await file.text();
+            // Note que agora usamos a nova função de `apaud_auditoria.js`
+            const novoId = Auditoria.adicionarNovoPacote(fileContent); 
+            if (novoId) {
+                // Atualiza a tela de seleção para mostrar o novo pacote
+                exibirTelaSelecaoPacotes(); 
+            }
+        } catch (error) {
+            console.error("Erro ao carregar ou processar o arquivo:", error);
+            UI.mostrarStatusCarregamento("Falha ao carregar o arquivo.", 'erro');
+        } finally {
+            fileInput.value = ''; // Limpa o input
+        }
+    });
+
+    // Listener para o botão de voltar do Dashboard para a seleção de pacotes
+    document.getElementById('btn-voltar-para-selecao-pacotes').addEventListener('click', exibirTelaSelecaoPacotes);
+
+    // Mantém os listeners de conteúdo que já existiam
+    adicionarListenersDeConteudo();
+}
+
+
+// --- Função Central de Listeners de Conteúdo (praticamente inalterada) ---
 function adicionarListenersDeConteudo() {
-    // Listeners para os novos filtros
-    document.getElementById('filtro-status').addEventListener('change', atualizarLista);
-    document.getElementById('filtro-auditor').addEventListener('change', atualizarLista);
-    document.getElementById('ordenacao').addEventListener('change', atualizarLista);
+    // Listeners para os filtros do dashboard interno
+    document.getElementById('filtro-status').addEventListener('change', atualizarListaDashboard);
+    document.getElementById('filtro-auditor').addEventListener('change', atualizarListaDashboard);
+    document.getElementById('ordenacao').addEventListener('change', atualizarListaDashboard);
     
-    // Listener principal para a tela de seleção (Dashboard)
+    // Listener principal para o Dashboard de Auditorias (antiga 'tela-selecao')
     document.getElementById('lista-planejamentos').addEventListener('click', (event) => {
         const cardClicado = event.target.closest('.planejamento-item');
         if (!cardClicado) return;
@@ -71,7 +109,7 @@ function adicionarListenersDeConteudo() {
         }
         else if (target.classList.contains('btn-reabrir')) {
             Auditoria.reabrirAuditoria(planejamentoId);
-            atualizarLista();
+            atualizarListaDashboard(); // <--- MUDANÇA AQUI
         }
         else if (target.classList.contains('btn-exportar-json')) {
             const resultado = Auditoria.gerarJsonDeResultado(planejamentoId);
@@ -87,7 +125,7 @@ function adicionarListenersDeConteudo() {
                 a.click();
                 URL.revokeObjectURL(url);
                 Auditoria.marcarComoExportado(planejamentoId, 'json');
-                atualizarLista();
+                atualizarListaDashboard();
             }
         }
         else if (target.classList.contains('btn-exportar-pdf')) {
@@ -102,7 +140,7 @@ function adicionarListenersDeConteudo() {
             if (confirmacao === 'deletar') {
                 if (Auditoria.resetarAuditoria(idParaResetar)) {
                     alert("Progresso da auditoria resetado com sucesso!");
-                    atualizarLista(); // Essencial para atualizar a UI
+                    atualizarListaDashboard(); // Essencial para atualizar a UI
                 } else {
                     alert("Erro ao tentar resetar a auditoria.");
                 }
@@ -128,7 +166,7 @@ function adicionarListenersDeConteudo() {
             UI.mostrarTela('tela-checklist');
         }
         if (event.target.id === 'btn-voltar-selecao') {
-            UI.mostrarTela('tela-selecao');
+            UI.mostrarTela('tela-dashboard-auditoria');
         }
     });
 
@@ -136,8 +174,8 @@ function adicionarListenersDeConteudo() {
     document.getElementById('checklist-header').addEventListener('click', (event) => {
         const target = event.target;
         if(target.id === 'btn-voltar-principal') {
-            atualizarLista();
-            UI.mostrarTela('tela-selecao');
+            atualizarListaDashboard();
+            UI.mostrarTela('tela-dashboard-auditoria');
         } 
         else if (target.id === 'header-titulo') {
             // Lógica para expandir/recolher o título
@@ -156,8 +194,8 @@ function adicionarListenersDeConteudo() {
             if (target.id === 'btn-finalizar-auditoria') {
                 if(confirm("Tem certeza que deseja finalizar esta auditoria?")) {
                     Auditoria.finalizarAuditoria();
-                    atualizarLista();
-                    UI.mostrarTela('tela-selecao');
+                    atualizarListaDashboard();
+                    UI.mostrarTela('tela-dashboard-auditoria');;
                 }
                 return; // Encerra a execução aqui
             }
@@ -341,4 +379,3 @@ document.getElementById('adicionar-nova-midia-input').addEventListener('change',
     // agora é feita na tela de seleção.
 }
 
-document.addEventListener("DOMContentLoaded", main);
