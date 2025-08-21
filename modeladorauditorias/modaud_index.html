@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Modelador de Auditorias</title>
+    <link rel="stylesheet" href="modaud_style.css">
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <h1>Modelador de Auditorias</h1>
+            <p>Arraste e solte os cards para reordenar as perguntas. Use as áreas de recuo para definir a hierarquia.</p>
+            <button id="btn-salvar-alteracoes" class="btn-primario" disabled>Salvar Alterações</button>
+        </header>
+        <main>
+            <div id="lista-perguntas" class="lista-sortable">
+                <!-- Os cards das perguntas serão renderizados aqui pelo JS -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Carregando a biblioteca SortableJS -->
+    <script src="js/lib/sortable.min.js"></script>
+    <!-- Carregando nosso script principal como módulo -->
+    <script type="module" src="js/modaud_main.js"></script>
+</body>
+</html>
