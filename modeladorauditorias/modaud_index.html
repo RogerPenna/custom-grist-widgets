@@ -13,6 +13,8 @@
     <div id="app-container">
         <div id="header">
             <h1>Modelador de Perguntas</h1>
+			        <button id="btn-novo-item" disabled>+ Novo Item</button>
+        <button id="btn-salvar" disabled>Salvar Alterações</button>
             <button id="btn-salvar" disabled>Salvar Alterações</button>
         </div>
         
@@ -38,5 +40,20 @@
 
     <script src="./js/lib/sortable.min.js"></script>
     <script type="module" src="./js/modaud_main.js"></script>
+	
+	<div id="drawer" class="drawer">
+    <div class="drawer-header">
+        <h2 id="drawer-title">Editar Item</h2>
+        <button id="drawer-close-btn">&times;</button>
+    </div>
+    <div id="drawer-content" class="drawer-content">
+        <!-- O formulário de edição será inserido aqui pelo JS -->
+    </div>
+    <div class="drawer-footer">
+        <button id="drawer-delete-btn" class="delete">Excluir</button>
+        <button id="drawer-save-btn" class="primary">Salvar e Fechar</button>
+    </div>
+</div>
+<div id="drawer-overlay" class="drawer-overlay"></div>
 </body>
 </html>

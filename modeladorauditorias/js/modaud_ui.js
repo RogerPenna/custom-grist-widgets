@@ -9,16 +9,15 @@ export function renderizarPerguntas(container, records) {
     container.innerHTML = ''; // Limpa o conteúdo antigo
 
     if (!records || records.length === 0) {
-        container.innerHTML = '<p>Nenhuma pergunta encontrada neste modelo.</p>';
+        container.innerHTML = '<p>Nenhuma pergunta encontrada para este contexto.</p>';
         return;
     }
     
-    // 1. Mapear registros por ID e preparar a estrutura de árvore
     const recordsMap = new Map(records.map(r => [r.id, {...r, children: []}]));
     const rootRecords = [];
 
     for (const record of recordsMap.values()) {
-        const parentId = record.ID_Pai; // ID_Pai pode ser 0 ou null/undefined
+        const parentId = record.ID_Pai;
         if (parentId && recordsMap.has(parentId)) {
             recordsMap.get(parentId).children.push(record);
         } else {
@@ -26,7 +25,6 @@ export function renderizarPerguntas(container, records) {
         }
     }
     
-    // 2. Ordenar os nós em cada nível
     const sortFn = (a, b) => (a.Ordem || 0) - (b.Ordem || 0);
     rootRecords.sort(sortFn);
     for (const record of recordsMap.values()) {
@@ -35,30 +33,46 @@ export function renderizarPerguntas(container, records) {
         }
     }
     
-    // 3. Função recursiva para criar os elementos no DOM
-    function criarHierarquiaDOM(items, parentElement) {
+    /**
+     * Função recursiva para criar os elementos no DOM.
+     * @param {Array} items - Os itens a serem renderizados neste nível.
+     * @param {HTMLElement} parentDomElement - O elemento do DOM onde os novos itens serão anexados.
+     */
+    function criarHierarquiaDOM(items, parentDomElement) {
         for (const item of items) {
-            // Cria o card principal
+            const cardWrapper = document.createElement('div');
+            cardWrapper.className = 'card-wrapper';
+            
             const card = document.createElement('div');
             card.className = 'pergunta-card';
             card.dataset.id = item.id;
-            
             card.innerHTML = `
                 <span class="drag-handle">::</span>
                 <span class="pergunta-texto">${item.Texto_Pergunta || '(Pergunta sem texto)'}</span>
+                <span class="item-tipo">${item.Tipo_Item || ''}</span>
+                <button class="add-child-btn" title="Adicionar sub-item">+</button>
+                <button class="edit-btn" title="Editar detalhes">⚙️</button>
             `;
-            parentElement.appendChild(card);
+            cardWrapper.appendChild(card);
             
-            // Se o item tem filhos, cria um sub-container para eles
+            const subContainer = document.createElement('div');
+            subContainer.className = 'sub-perguntas-container sortable-list';
+            if (item.children.length === 0) {
+                subContainer.classList.add('empty');
+            }
+            subContainer.dataset.parentId = item.id;
+            cardWrapper.appendChild(subContainer);
+    
+            parentDomElement.appendChild(cardWrapper);
+            
             if (item.children.length > 0) {
-                const subContainer = document.createElement('div');
-                subContainer.className = 'sub-perguntas-container sortable-list';
-                subContainer.dataset.parentId = item.id; // Identifica o pai deste container
-                parentElement.appendChild(subContainer);
-                // Chama a função recursivamente para os filhos
                 criarHierarquiaDOM(item.children, subContainer);
             }
         }
+        
+        // CORREÇÃO: Adiciona o botão "+" de irmão ao final do container pai correto.
+        // A variável 'parentDomElement' está sempre definida dentro desta função.
+        parentDomElement.insertAdjacentHTML('beforeend', '<button class="add-sibling-btn" title="Adicionar item neste nível">+</button>');
     }
     
     // Inicia a renderização a partir dos itens raiz no container principal
