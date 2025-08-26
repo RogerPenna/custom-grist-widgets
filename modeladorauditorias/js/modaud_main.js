@@ -28,6 +28,13 @@ const modalCloseBtn = document.getElementById('modal-close-btn');
 const modalCancelBtn = document.getElementById('modal-cancel-btn');
 const modalConfirmCopyBtn = document.getElementById('modal-confirm-copy-btn');
 const modalBody = document.getElementById('modal-body');
+const btnAbrirClonador = document.getElementById('btn-abrir-clonador');
+const modalClonador = document.getElementById('modal-clonador');
+const clonadorCloseBtn = document.getElementById('clonador-close-btn');
+const clonadorCancelBtn = document.getElementById('clonador-cancel-btn');
+const clonadorConfirmBtn = document.getElementById('clonador-confirm-btn');
+const clonadorSelectOrigem = document.getElementById('clonador-select-origem');
+const clonadorSelectDestino = document.getElementById('clonador-select-destino');
 let editingRecordId = null;
 
 // Estado da Aplicação
@@ -86,6 +93,10 @@ async function inicializarApp() {
 		btnCopiarChecklist.addEventListener('click', iniciarCopia);
         modalCloseBtn.addEventListener('click', fecharModalAreas);
         modalCancelBtn.addEventListener('click', fecharModalAreas);
+		btnAbrirClonador.addEventListener('click', abrirModalClonador);
+        clonadorCloseBtn.addEventListener('click', () => modalClonador.style.display = 'none');
+        clonadorCancelBtn.addEventListener('click', () => modalClonador.style.display = 'none');
+        clonadorConfirmBtn.addEventListener('click', executarClonagem);
 		
 		        const auditorias = await getTableData('Auditoria');
         popularSelectAuditoria(auditorias);
@@ -201,6 +212,7 @@ function popularSelectModeloMestre() {
 async function onModeloMestreChange() {
     const modeloId = parseInt(selectModeloMestre.value, 10);
     resetarContextoEPerguntas();
+	btnAbrirClonador.disabled = !modeloId;
 
     if (!modeloId) {
         modeloMestreSelecionado = null;
@@ -255,6 +267,7 @@ function resetarContextoEPerguntas() {
     containerPerguntas.innerHTML = '<p>Selecione um Modelo e um Contexto para começar.</p>';
     estadoOriginalPerguntas = [];
     btnNovoItem.disabled = true; 
+	btnAbrirClonador.disabled = true;
 	checkMultiplasAreas.checked = false;
     checkMultiplasAreas.disabled = true;
 }
@@ -913,4 +926,139 @@ async function executarCopia(listaDeAreas, listaDePerguntasFonte) {
 // E adicione esta função para fechar o modal
 function fecharModalAreas() {
     modalAreas.style.display = 'none';
+}
+
+async function abrirModalClonador() {
+    if (!modeloMestreSelecionado) return;
+    
+    clonadorSelectOrigem.innerHTML = '<option value="">Carregando...</option>';
+    clonadorSelectDestino.innerHTML = '';
+    modalClonador.style.display = 'flex';
+
+    try {
+        const colunaFiltro = modeloMestreSelecionado.Coluna_Filtro_Perguntas;
+        const { contextRecords, displayColId } = await discoverContextInfo(colunaFiltro);
+
+        clonadorSelectOrigem.innerHTML = '<option value="">-- Selecione a Origem --</option>';
+        contextRecords.forEach(area => {
+            clonadorSelectOrigem.add(new Option(area[displayColId], area.id));
+            clonadorSelectDestino.add(new Option(area[displayColId], area.id));
+        });
+    } catch (e) {
+        console.error("Erro ao popular modal de clonagem:", e);
+        clonadorSelectOrigem.innerHTML = `<option value="">Erro</option>`;
+    }
+}
+
+async function executarClonagem() {
+    const origemId = parseInt(clonadorSelectOrigem.value, 10);
+    const destinosIds = Array.from(clonadorSelectDestino.selectedOptions).map(opt => parseInt(opt.value, 10));
+
+    if (!origemId || destinosIds.length === 0) {
+        alert("Por favor, selecione um contexto de origem e pelo menos um de destino.");
+        return;
+    }
+    if (destinosIds.includes(origemId)) {
+        alert("O contexto de origem não pode estar na lista de destinos.");
+        return;
+    }
+    if (!confirm("Isso criará uma cópia de todas as perguntas do contexto de origem para os destinos. Deseja continuar?")) {
+        return;
+    }
+
+    modalClonador.style.display = 'none';
+    console.log(`Iniciando clonagem de ${origemId} para ${destinosIds.join(', ')}...`);
+
+    try {
+        const colunaFiltro = modeloMestreSelecionado.Coluna_Filtro_Perguntas;
+        
+        const todasAsPerguntasDoModelo = await getTableData('Modelos_Perguntas', {
+            Ref_Modelo_Mestre: [modeloMestreSelecionado.id]
+        });
+
+        const perguntasOrigem = todasAsPerguntasDoModelo.filter(p => 
+            String(p[colunaFiltro]) === String(origemId)
+        );
+        
+        console.log(`[DEBUG] Total de perguntas no modelo: ${todasAsPerguntasDoModelo.length}. Perguntas do contexto de origem (ID ${origemId}): ${perguntasOrigem.length}`);
+        
+        if (perguntasOrigem.length === 0) {
+            alert("O contexto de origem selecionado não tem perguntas para clonar.");
+            return;
+        }
+
+        const { allColumns, allTables } = _schemaCache;
+        const perguntasTableMeta = allTables.find(t => t.tableId === 'Modelos_Perguntas');
+        const colunasMeta = allColumns.filter(c => String(c.parentId) === String(perguntasTableMeta.id));
+        const colunasParaCopiar = colunasMeta
+            .filter(c => !c.isFormula && c.colId !== 'id' && c.colId !== 'manualSort')
+            .map(c => c.colId);
+
+        for (const destinoId of destinosIds) {
+            console.log(`Clonando ${perguntasOrigem.length} perguntas para o destino ID: ${destinoId}`);
+            
+            const mapaIds = new Map();
+            const novasPerguntasParaCriar = [];
+
+            perguntasOrigem.forEach(pOrigem => {
+                const novaPergunta = {};
+                for (const colId of colunasParaCopiar) {
+                    novaPergunta[colId] = pOrigem[colId];
+                }
+                novaPergunta[colunaFiltro] = destinoId;
+                novasPerguntasParaCriar.push(novaPergunta);
+            });
+            
+            const acoesAdicionar = novasPerguntasParaCriar.map(p => ['AddRecord', 'Modelos_Perguntas', null, p]);
+            const novosIds = await grist.docApi.applyUserActions(acoesAdicionar);
+            
+            perguntasOrigem.forEach((p, index) => {
+                mapaIds.set(p.id, novosIds[index]);
+            });
+
+            // ==========================================================
+            // INÍCIO DA CORREÇÃO
+            // ==========================================================
+            const acoesAtualizar = [];
+            perguntasOrigem.forEach((pOrigem) => {
+                const idNovo = mapaIds.get(pOrigem.id);
+                const updates = {};
+                let precisaAtualizar = false;
+
+                // Traduz o ID_Pai
+                if (pOrigem.ID_Pai && mapaIds.has(pOrigem.ID_Pai)) {
+                    updates.ID_Pai = mapaIds.get(pOrigem.ID_Pai);
+                    precisaAtualizar = true;
+                }
+                
+                // CORREÇÃO: Traduz o Visibilidade_DependeDe
+                if (pOrigem.Visibilidade_DependeDe && mapaIds.has(pOrigem.Visibilidade_DependeDe)) {
+                    updates.Visibilidade_DependeDe = mapaIds.get(pOrigem.Visibilidade_DependeDe);
+                    precisaAtualizar = true;
+                }
+                
+                if (precisaAtualizar) {
+                    acoesAtualizar.push(['UpdateRecord', 'Modelos_Perguntas', idNovo, updates]);
+                }
+            });
+            // ==========================================================
+            // FIM DA CORREÇÃO
+            // ==========================================================
+
+            if (acoesAtualizar.length > 0) {
+                console.log(`[DEBUG] Atualizando ${acoesAtualizar.length} referências para o destino ID ${destinoId}...`);
+                await grist.docApi.applyUserActions(acoesAtualizar);
+            }
+            console.log(`Clonagem para o destino ID ${destinoId} concluída.`);
+        }
+
+        alert("Clonagem concluída com sucesso! Recarregue o contexto de destino para ver as novas perguntas.");
+        if (destinosIds.includes(contextoSelecionadoId)) {
+            await carregarPerguntas();
+        }
+
+    } catch (err) {
+        console.error("Erro durante a clonagem:", err);
+        alert("Falha ao clonar: " + err.message);
+    }
 }

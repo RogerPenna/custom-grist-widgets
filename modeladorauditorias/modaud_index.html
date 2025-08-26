@@ -14,6 +14,7 @@
 <div id="header">
     <h1>Modelador de Perguntas</h1>
     <div>
+	 <button id="btn-abrir-clonador" class="secondary small-btn" disabled>Clonar Contexto...</button>
         <button id="btn-novo-item" disabled>+ Novo Item</button>
         <!-- O botão Salvar foi removido -->
         <span id="save-status" class="save-status"></span> 
@@ -85,6 +86,30 @@
         <div class="modal-footer">
             <button id="modal-cancel-btn">Cancelar</button>
             <button id="modal-confirm-copy-btn" class="primary">Copiar Selecionadas</button>
+        </div>
+    </div>
+</div>
+
+<div id="modal-clonador" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Clonar Checklist de um Contexto para Outro</h2>
+            <button id="clonador-close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p>Selecione um contexto de origem para copiar todas as suas perguntas para um ou mais contextos de destino.</p>
+            <div class="form-group">
+                <label for="clonador-select-origem">Copiar de:</label>
+                <select id="clonador-select-origem"></select>
+            </div>
+            <div class="form-group">
+                <label for="clonador-select-destino">Para (selecione um ou mais):</label>
+                <select id="clonador-select-destino" multiple size="8"></select>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button id="clonador-cancel-btn">Cancelar</button>
+            <button id="clonador-confirm-btn" class="primary">Clonar</button>
         </div>
     </div>
 </div>
