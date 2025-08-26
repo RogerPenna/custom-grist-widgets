@@ -20,6 +20,8 @@ const drawerCloseBtn = document.getElementById('drawer-close-btn');
 const drawerSaveBtn = document.getElementById('drawer-save-btn');
 const drawerDeleteBtn = document.getElementById('drawer-delete-btn');
 const saveStatusEl = document.getElementById('save-status');
+const selectAuditoriaDestino = document.getElementById('select-auditoria-destino');
+const btnCopiarChecklist = document.getElementById('btn-copiar-checklist');
 let editingRecordId = null;
 
 // Estado da Aplicação
@@ -75,6 +77,10 @@ async function inicializarApp() {
         drawerOverlayEl.addEventListener('click', closeDrawer);
         drawerSaveBtn.addEventListener('click', saveDrawerChanges);
         drawerDeleteBtn.addEventListener('click', deleteRecordFromDrawer);
+		btnCopiarChecklist.addEventListener('click', copiarChecklistParaResultados);
+		
+		        const auditorias = await getTableData('Auditoria');
+        popularSelectAuditoria(auditorias);
 
     } catch (e) {
         console.error("Erro fatal na inicialização:", e);
@@ -241,9 +247,15 @@ function resetarContextoEPerguntas() {
     btnNovoItem.disabled = true; 
 }
 
+// AÇÃO: Substitua a sua função carregarPerguntas inteira por esta.
+// AÇÃO: Substitua a sua função carregarPerguntas inteira por esta.
 async function carregarPerguntas() {
+    // CORREÇÃO: Buscando a referência ao botão aqui dentro
+    const btnSalvar = document.getElementById('btn-salvar');
+    
     if (!modeloMestreSelecionado) return;
     containerPerguntas.innerHTML = '<p>Carregando perguntas...</p>';
+    if (btnSalvar) btnSalvar.disabled = true;
 
     try {
         // Lógica de filtragem que já está funcionando
@@ -256,23 +268,17 @@ async function carregarPerguntas() {
             perguntasFiltradas = todasAsPerguntasDoModelo.filter(p => String(p[colunaFiltro]) === String(contextoSelecionadoId));
         }
         
-        // ==========================================================
-        // INÍCIO DA CORREÇÃO: Busca os dados para o "dicionário"
-        // ==========================================================
         const tiposDeResposta = await getTableData('Tipos_Respostas_Grupos');
         const mapaTiposResposta = new Map(tiposDeResposta.map(tipo => [tipo.id, tipo.Tipo_Resposta]));
-        // ==========================================================
         
         estadoOriginalPerguntas = JSON.parse(JSON.stringify(perguntasFiltradas));
         
-        // Passa o mapa para a função de renderização
         renderizarPerguntas(containerPerguntas, perguntasFiltradas, {
             mapaTiposResposta: mapaTiposResposta
         });
         
         configurarSortable();
 
-        // Conecta o listener para o botão de edição (engrenagem)
         containerPerguntas.querySelectorAll('.edit-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const card = e.target.closest('.pergunta-card');
@@ -281,23 +287,21 @@ async function carregarPerguntas() {
             });
         });
 
-        // Conecta os listeners para os botões "+" de adicionar filho
         containerPerguntas.querySelectorAll('.add-child-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const parentId = parseInt(e.target.closest('.pergunta-card').dataset.id, 10);
-                criarNovoItem(parentId); // Não passa o evento 'e'
+                criarNovoItem(parentId);
             });
         });
 
-        // Conecta os listeners para os botões "+" de adicionar irmão
         containerPerguntas.querySelectorAll('.add-sibling-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const parentContainer = e.target.closest('.sortable-list');
                 const parentId = parseInt(parentContainer.dataset.parentId, 10) || 0;
-                criarNovoItem(parentId); // Não passa o evento 'e'
+                criarNovoItem(parentId);
             });
         });
-        // Lógica para destacar a dependência de visibilidade no hover
+
         containerPerguntas.querySelectorAll('.visibility-capsule').forEach(capsule => {
             const cardWrapper = capsule.closest('.card-wrapper');
             if (!cardWrapper) return;
@@ -320,9 +324,10 @@ async function carregarPerguntas() {
                 }
             }
         });
-        // ==========================================================
-        // FIM DO BLOCO
-        // ==========================================================
+
+        const hasPerguntas = perguntasFiltradas.length > 0;
+        selectAuditoriaDestino.disabled = !hasPerguntas;
+        btnCopiarChecklist.disabled = !hasPerguntas;
 
     } catch (e) {
         console.error("Erro ao carregar perguntas:", e);
@@ -728,5 +733,59 @@ async function popularSelectDeReferencia(selectElement, refTableId, selectedId, 
     } catch (e) {
         console.error(`Falha ao popular select para a tabela ${refTableId}`, e);
         selectElement.innerHTML = `<option value="">Erro ao carregar</option>`;
+    }
+}
+
+function popularSelectAuditoria(auditorias) {
+    selectAuditoriaDestino.innerHTML = '<option value="">-- Selecione uma Auditoria --</option>';
+    // Presumindo que a tabela Auditoria tem uma coluna "IdAud" para display
+    for (const auditoria of auditorias) {
+        selectAuditoriaDestino.add(new Option(auditoria.IdAud, auditoria.id));
+    }
+}
+
+async function copiarChecklistParaResultados() {
+    // Validação
+    if (!modeloMestreSelecionado || estadoOriginalPerguntas.length === 0) {
+        alert("Por favor, selecione um modelo mestre e um contexto com perguntas para copiar.");
+        return;
+    }
+    const auditoriaDestinoId = parseInt(selectAuditoriaDestino.value, 10);
+    if (!auditoriaDestinoId) {
+        alert("Por favor, selecione uma auditoria de destino.");
+        return;
+    }
+
+    if (!confirm(`Você tem certeza que deseja copiar ${estadoOriginalPerguntas.length} perguntas para a auditoria selecionada?`)) {
+        return;
+    }
+    
+    btnCopiarChecklist.disabled = true;
+    btnCopiarChecklist.textContent = 'Copiando...';
+
+    // Construção dos novos registros para a tabela 'Resultados'
+    const novosResultados = estadoOriginalPerguntas.map(pergunta => {
+        return {
+            Auditoria: auditoriaDestinoId,
+            // CORREÇÃO CRÍTICA: Copia o ID da pergunta, não o texto.
+            Pergunta: pergunta.id,
+            // A Referencia_Area deve vir da pergunta original, não do filtro global
+            Referencia_Area: pergunta.Referencia_Area || contextoSelecionadoId,
+        };
+    });
+
+    try {
+        // Usa AddRecord para criar os novos registros na tabela Resultados
+        await grist.docApi.applyUserActions(
+            novosResultados.map(r => ['AddRecord', 'Resultados', null, r])
+        );
+        alert(`${novosResultados.length} perguntas copiadas com sucesso para a tabela Resultados!`);
+
+    } catch (err) {
+        console.error("Erro ao copiar checklist:", err);
+        alert("Falha ao copiar o checklist: " + err.message);
+    } finally {
+        btnCopiarChecklist.disabled = false;
+        btnCopiarChecklist.textContent = 'Copiar Checklist para a Auditoria';
     }
 }
