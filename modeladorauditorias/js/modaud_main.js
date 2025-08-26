@@ -22,6 +22,12 @@ const drawerDeleteBtn = document.getElementById('drawer-delete-btn');
 const saveStatusEl = document.getElementById('save-status');
 const selectAuditoriaDestino = document.getElementById('select-auditoria-destino');
 const btnCopiarChecklist = document.getElementById('btn-copiar-checklist');
+const checkMultiplasAreas = document.getElementById('check-multiplas-areas');
+const modalAreas = document.getElementById('modal-areas');
+const modalCloseBtn = document.getElementById('modal-close-btn');
+const modalCancelBtn = document.getElementById('modal-cancel-btn');
+const modalConfirmCopyBtn = document.getElementById('modal-confirm-copy-btn');
+const modalBody = document.getElementById('modal-body');
 let editingRecordId = null;
 
 // Estado da Aplicação
@@ -77,7 +83,9 @@ async function inicializarApp() {
         drawerOverlayEl.addEventListener('click', closeDrawer);
         drawerSaveBtn.addEventListener('click', saveDrawerChanges);
         drawerDeleteBtn.addEventListener('click', deleteRecordFromDrawer);
-		btnCopiarChecklist.addEventListener('click', copiarChecklistParaResultados);
+		btnCopiarChecklist.addEventListener('click', iniciarCopia);
+        modalCloseBtn.addEventListener('click', fecharModalAreas);
+        modalCancelBtn.addEventListener('click', fecharModalAreas);
 		
 		        const auditorias = await getTableData('Auditoria');
         popularSelectAuditoria(auditorias);
@@ -204,10 +212,12 @@ async function onModeloMestreChange() {
     const colunaFiltroId = modeloMestreSelecionado.Coluna_Filtro_Perguntas;
 
     if (!colunaFiltroId) {
+		checkMultiplasAreas.disabled = true; // Desabilita se não houver contexto
         labelContexto.textContent = "Contexto:";
         selectContexto.disabled = true;
         await carregarPerguntas();
     } else {
+		checkMultiplasAreas.disabled = false; // Habilita se houver contexto
         try {
             const { contextRecords, displayColId, label } = await discoverContextInfo(colunaFiltroId);
             
@@ -245,6 +255,8 @@ function resetarContextoEPerguntas() {
     containerPerguntas.innerHTML = '<p>Selecione um Modelo e um Contexto para começar.</p>';
     estadoOriginalPerguntas = [];
     btnNovoItem.disabled = true; 
+	checkMultiplasAreas.checked = false;
+    checkMultiplasAreas.disabled = true;
 }
 
 // AÇÃO: Substitua a sua função carregarPerguntas inteira por esta.
@@ -744,48 +756,161 @@ function popularSelectAuditoria(auditorias) {
     }
 }
 
-async function copiarChecklistParaResultados() {
-    // Validação
-    if (!modeloMestreSelecionado || estadoOriginalPerguntas.length === 0) {
-        alert("Por favor, selecione um modelo mestre e um contexto com perguntas para copiar.");
+// AÇÃO: Cole este bloco de 4 funções no seu main.js
+
+// 1. A NOVA FUNÇÃO PRINCIPAL (ROTEADOR)
+async function iniciarCopia() {
+    if (checkMultiplasAreas.checked) {
+        await abrirModalSelecaoAreas();
+    } else {
+        await copiarAreaUnica();
+    }
+}
+
+// 2. FUNÇÃO PARA ABRIR O MODAL
+async function abrirModalSelecaoAreas() {
+    if (!modeloMestreSelecionado) {
+        alert("Selecione um Modelo Mestre.");
         return;
     }
+    
+    modalBody.innerHTML = '<p>Carregando áreas e contando perguntas...</p>';
+    modalAreas.style.display = 'flex';
+
+    try {
+        const colunaFiltro = modeloMestreSelecionado.Coluna_Filtro_Perguntas;
+        if (!colunaFiltro) {
+            throw new Error("O modelo selecionado não tem uma coluna de filtro de contexto definida.");
+        }
+
+        // ==========================================================
+        // INÍCIO DA CORREÇÃO: Usa a lógica de descoberta que já funciona
+        // ==========================================================
+        
+        // 1. Descobre a tabela de contexto e a coluna de display
+        const { contextRecords: areas, displayColId } = await discoverContextInfo(colunaFiltro);
+        
+        // 2. Busca todas as perguntas do modelo para fazer a contagem
+        const todasPerguntasDoModelo = await getTableData('Modelos_Perguntas', { Ref_Modelo_Mestre: [modeloMestreSelecionado.id] });
+
+        // ==========================================================
+        // FIM DA CORREÇÃO
+        // ==========================================================
+
+        modalBody.innerHTML = '';
+        if (areas.length === 0) {
+            modalBody.innerHTML = '<p>Nenhuma área de contexto encontrada.</p>';
+            return;
+        }
+
+        areas.forEach(area => {
+            const count = todasPerguntasDoModelo.filter(p => String(p[colunaFiltro]) === String(area.id)).length;
+            
+            // Só mostra áreas que realmente têm perguntas associadas neste modelo
+            if (count > 0) {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'modal-area-item';
+                itemDiv.innerHTML = `
+                    <input type="checkbox" id="area-${area.id}" value="${area.id}" data-areatexto="${area[displayColId]}">
+                    <label for="area-${area.id}">${area[displayColId]}</label>
+                    <span class="count">(${count} perguntas)</span>
+                `;
+                modalBody.appendChild(itemDiv);
+            }
+        });
+
+        modalConfirmCopyBtn.onclick = () => copiarMultiplasAreas(todasPerguntasDoModelo);
+
+    } catch(e) {
+        console.error("Erro ao abrir modal de áreas:", e);
+        modalBody.innerHTML = `<p style="color:red">Erro ao carregar áreas: ${e.message}</p>`;
+    }
+}
+
+// 3. FUNÇÕES PARA OS DOIS CENÁRIOS DE CÓPIA
+async function copiarAreaUnica() {
+    if (!contextoSelecionadoId) {
+        alert("Por favor, selecione uma área no dropdown para copiar.");
+        return;
+    }
+    const areaTexto = selectContexto.options[selectContexto.selectedIndex].text;
+    await executarCopia(
+        [{ id: contextoSelecionadoId, texto: areaTexto }], 
+        estadoOriginalPerguntas // Usa as perguntas já filtradas na tela
+    );
+}
+
+async function copiarMultiplasAreas(todasPerguntasDoModelo) {
+    const areasSelecionadas = [];
+    modalBody.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
+        areasSelecionadas.push({
+            id: parseInt(cb.value, 10),
+            texto: cb.dataset.areatexto
+        });
+    });
+
+    if (areasSelecionadas.length === 0) {
+        alert("Selecione pelo menos uma área para copiar.");
+        return;
+    }
+    
+    await executarCopia(areasSelecionadas, todasPerguntasDoModelo);
+    fecharModalAreas();
+}
+
+// 4. FUNÇÃO CENTRAL DE EXECUÇÃO
+async function executarCopia(listaDeAreas, listaDePerguntasFonte) {
     const auditoriaDestinoId = parseInt(selectAuditoriaDestino.value, 10);
     if (!auditoriaDestinoId) {
         alert("Por favor, selecione uma auditoria de destino.");
         return;
     }
 
-    if (!confirm(`Você tem certeza que deseja copiar ${estadoOriginalPerguntas.length} perguntas para a auditoria selecionada?`)) {
+    const areasTexto = listaDeAreas.map(a => a.texto).join(', ');
+    if (!confirm(`Copiar perguntas das áreas [${areasTexto}] para a auditoria selecionada?`)) {
         return;
     }
-    
+
     btnCopiarChecklist.disabled = true;
     btnCopiarChecklist.textContent = 'Copiando...';
+    
+    const colunaFiltro = modeloMestreSelecionado.Coluna_Filtro_Perguntas;
+    const novosResultados = [];
 
-    // Construção dos novos registros para a tabela 'Resultados'
-    const novosResultados = estadoOriginalPerguntas.map(pergunta => {
-        return {
-            Auditoria: auditoriaDestinoId,
-            // CORREÇÃO CRÍTICA: Copia o ID da pergunta, não o texto.
-            Pergunta: pergunta.id,
-            // A Referencia_Area deve vir da pergunta original, não do filtro global
-            Referencia_Area: pergunta.Referencia_Area || contextoSelecionadoId,
-        };
+    listaDeAreas.forEach(area => {
+        const perguntasParaEstaArea = listaDePerguntasFonte.filter(p => String(p[colunaFiltro]) === String(area.id));
+        
+        perguntasParaEstaArea.forEach(pergunta => {
+            novosResultados.push({
+                Auditoria: auditoriaDestinoId,
+                Pergunta: pergunta.id,
+                Referencia_Area: area.id,
+            });
+        });
     });
 
+    if (novosResultados.length === 0) {
+        alert("Nenhuma pergunta correspondente encontrada para as áreas selecionadas.");
+        btnCopiarChecklist.disabled = false;
+        btnCopiarChecklist.textContent = 'Copiar Checklist...';
+        return;
+    }
+
     try {
-        // Usa AddRecord para criar os novos registros na tabela Resultados
         await grist.docApi.applyUserActions(
             novosResultados.map(r => ['AddRecord', 'Resultados', null, r])
         );
-        alert(`${novosResultados.length} perguntas copiadas com sucesso para a tabela Resultados!`);
-
+        alert(`${novosResultados.length} perguntas de ${listaDeAreas.length} área(s) copiadas com sucesso!`);
     } catch (err) {
-        console.error("Erro ao copiar checklist:", err);
+        console.error("Erro ao executar a cópia:", err);
         alert("Falha ao copiar o checklist: " + err.message);
     } finally {
         btnCopiarChecklist.disabled = false;
-        btnCopiarChecklist.textContent = 'Copiar Checklist para a Auditoria';
+        btnCopiarChecklist.textContent = 'Copiar Checklist...';
     }
+}
+
+// E adicione esta função para fechar o modal
+function fecharModalAreas() {
+    modalAreas.style.display = 'none';
 }
