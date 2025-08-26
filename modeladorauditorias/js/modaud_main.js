@@ -11,7 +11,6 @@ const selectModeloMestre = document.getElementById('select-modelo-mestre');
 const selectContexto = document.getElementById('select-contexto');
 const labelContexto = document.getElementById('label-contexto');
 const containerPerguntas = document.getElementById('lista-perguntas');
-const btnSalvar = document.getElementById('btn-salvar');
 const btnNovoItem = document.getElementById('btn-novo-item');
 const drawerEl = document.getElementById('drawer');
 const drawerOverlayEl = document.getElementById('drawer-overlay');
@@ -20,6 +19,7 @@ const drawerContentEl = document.getElementById('drawer-content');
 const drawerCloseBtn = document.getElementById('drawer-close-btn');
 const drawerSaveBtn = document.getElementById('drawer-save-btn');
 const drawerDeleteBtn = document.getElementById('drawer-delete-btn');
+const saveStatusEl = document.getElementById('save-status');
 let editingRecordId = null;
 
 // Estado da Aplicação
@@ -66,8 +66,7 @@ async function inicializarApp() {
         
         selectModeloMestre.addEventListener('change', onModeloMestreChange);
         selectContexto.addEventListener('change', onContextoChange);
-        btnSalvar.addEventListener('click', salvarAlteracoes);
-        
+                
         // CORREÇÃO: Chama a função 'criarNovoItem' sem passar o objeto de evento.
         // O valor padrão parentId=0 será usado, que é o correto para este botão.
         btnNovoItem.addEventListener('click', () => criarNovoItem());
@@ -238,40 +237,39 @@ function resetarContextoEPerguntas() {
     selectContexto.innerHTML = '<option value="">-- Selecione --</option>';
     selectContexto.disabled = true;
     containerPerguntas.innerHTML = '<p>Selecione um Modelo e um Contexto para começar.</p>';
-    btnSalvar.disabled = true;
-	btnNovoItem.disabled = true;
     estadoOriginalPerguntas = [];
+    btnNovoItem.disabled = true; 
 }
 
 async function carregarPerguntas() {
     if (!modeloMestreSelecionado) return;
     containerPerguntas.innerHTML = '<p>Carregando perguntas...</p>';
-    btnSalvar.disabled = true;
-
-    const modeloMestreId = modeloMestreSelecionado.id;
-    const colunaFiltro = modeloMestreSelecionado.Coluna_Filtro_Perguntas;
-
-    if (colunaFiltro && !contextoSelecionadoId) {
-        containerPerguntas.innerHTML = `<p>Selecione um contexto para ver as perguntas.</p>`;
-        return;
-    }
 
     try {
-        // PASSO 1: Busca TODAS as perguntas que pertencem ao Modelo Mestre.
+        // Lógica de filtragem que já está funcionando
+        const modeloMestreId = modeloMestreSelecionado.id;
+        const colunaFiltro = modeloMestreSelecionado.Coluna_Filtro_Perguntas;
         const filtroMestre = { Ref_Modelo_Mestre: [modeloMestreId] };
         const todasAsPerguntasDoModelo = await getTableData('Modelos_Perguntas', filtroMestre);
-
-        // PASSO 2: Aplicamos o filtro de contexto AQUI, no lado do cliente.
         let perguntasFiltradas = todasAsPerguntasDoModelo;
         if (colunaFiltro && contextoSelecionadoId) {
             perguntasFiltradas = todasAsPerguntasDoModelo.filter(p => String(p[colunaFiltro]) === String(contextoSelecionadoId));
         }
         
-        console.log(`[DEBUG] Recebidas ${perguntasFiltradas.length} perguntas após o filtro do cliente.`);
+        // ==========================================================
+        // INÍCIO DA CORREÇÃO: Busca os dados para o "dicionário"
+        // ==========================================================
+        const tiposDeResposta = await getTableData('Tipos_Respostas_Grupos');
+        const mapaTiposResposta = new Map(tiposDeResposta.map(tipo => [tipo.id, tipo.Tipo_Resposta]));
+        // ==========================================================
         
         estadoOriginalPerguntas = JSON.parse(JSON.stringify(perguntasFiltradas));
         
-        renderizarPerguntas(containerPerguntas, perguntasFiltradas);
+        // Passa o mapa para a função de renderização
+        renderizarPerguntas(containerPerguntas, perguntasFiltradas, {
+            mapaTiposResposta: mapaTiposResposta
+        });
+        
         configurarSortable();
 
         // Conecta o listener para o botão de edição (engrenagem)
@@ -299,6 +297,32 @@ async function carregarPerguntas() {
                 criarNovoItem(parentId); // Não passa o evento 'e'
             });
         });
+        // Lógica para destacar a dependência de visibilidade no hover
+        containerPerguntas.querySelectorAll('.visibility-capsule').forEach(capsule => {
+            const cardWrapper = capsule.closest('.card-wrapper');
+            if (!cardWrapper) return;
+            const card = cardWrapper.querySelector('.pergunta-card');
+            if (!card) return;
+            
+            const recordId = parseInt(card.dataset.id, 10);
+            const record = estadoOriginalPerguntas.find(p => p.id === recordId);
+            
+            if (record && record.Visibilidade_DependeDe) {
+                const parentQuestionCard = containerPerguntas.querySelector(`.pergunta-card[data-id="${record.Visibilidade_DependeDe}"]`);
+                if (parentQuestionCard) {
+                    capsule.addEventListener('mouseenter', () => {
+                        parentQuestionCard.style.outline = '2px solid #f97316';
+                        parentQuestionCard.style.outlineOffset = '2px';
+                    });
+                    capsule.addEventListener('mouseleave', () => {
+                        parentQuestionCard.style.outline = 'none';
+                    });
+                }
+            }
+        });
+        // ==========================================================
+        // FIM DO BLOCO
+        // ==========================================================
 
     } catch (e) {
         console.error("Erro ao carregar perguntas:", e);
@@ -309,42 +333,82 @@ async function carregarPerguntas() {
 function configurarSortable() {
     sortableInstances.forEach(s => s.destroy());
     sortableInstances = [];
+
     document.querySelectorAll('.sortable-list').forEach(container => {
         sortableInstances.push(new Sortable(container, {
-            group: 'perguntas', animation: 150, handle: '.drag-handle', onEnd: () => { btnSalvar.disabled = false; }
+            group: 'perguntas',
+            animation: 150,
+            handle: '.drag-handle',
+            onEnd: (evt) => {
+                // Evento disparado ao soltar um card.
+                console.log('Movimento detectado, acionando auto-save.');
+                salvarEstruturaAtual();
+            }
         }));
     });
 }
 
-async function salvarAlteracoes() {
-    btnSalvar.disabled = true; btnSalvar.textContent = 'Salvando...';
-    const updates = []; const estadoAtualMap = new Map();
+async function salvarEstruturaAtual() {
+    saveStatusEl.textContent = 'Salvando...';
+
+    const updates = [];
+    
+    // Mapeia o estado atual da UI (DOM)
+    const estadoAtualMap = new Map();
     document.querySelectorAll('.pergunta-card').forEach(card => {
         const recordId = parseInt(card.dataset.id, 10);
         const parentContainer = card.closest('.sortable-list');
         const novoPaiId = parseInt(parentContainer.dataset.parentId, 10) || 0;
-        const siblings = Array.from(parentContainer.children).filter(el => el.classList.contains('pergunta-card'));
-        const novaOrdem = siblings.indexOf(card);
+        
+        // A ordem é a posição do card dentro do seu container pai
+        const siblings = Array.from(parentContainer.children).filter(el => el.classList.contains('card-wrapper'));
+        const novaOrdem = siblings.findIndex(wrapper => wrapper.contains(card));
+
         estadoAtualMap.set(recordId, { ID_Pai: novoPaiId, Ordem: novaOrdem });
     });
-    for (const originalRecord of estadoOriginalPerguntas) {
-        const estadoAtual = estadoAtualMap.get(originalRecord.id);
-        if (estadoAtual) {
-            const mudouPai = (originalRecord.ID_Pai || 0) !== estadoAtual.ID_Pai;
-            const mudouOrdem = (originalRecord.Ordem || 0) !== estadoAtual.Ordem;
-            if (mudouPai || mudouOrdem) { updates.push({ id: originalRecord.id, fields: { ID_Pai: estadoAtual.ID_Pai, Ordem: estadoAtual.Ordem } }); }
+
+    // Compara o estado original com o atual para encontrar o que mudou
+    // Itera sobre o estado atual, pois pode haver novos itens não presentes no original
+    for (const [recordId, estadoAtual] of estadoAtualMap.entries()) {
+        const originalRecord = estadoOriginalPerguntas.find(p => p.id === recordId);
+        
+        // Se não encontrar o registro original, é um item novo, não precisa de update de estrutura.
+        if (!originalRecord) continue;
+
+        const mudouPai = (originalRecord.ID_Pai || 0) !== estadoAtual.ID_Pai;
+        const mudouOrdem = (originalRecord.Ordem || 0) !== estadoAtual.Ordem;
+
+        if (mudouPai || mudouOrdem) {
+            updates.push({
+                id: recordId,
+                fields: {
+                    ID_Pai: estadoAtual.ID_Pai,
+                    Ordem: estadoAtual.Ordem
+                }
+            });
         }
     }
-    if (updates.length === 0) { alert("Nenhuma alteração para salvar."); btnSalvar.textContent = 'Salvar Alterações'; return; }
-    try { 
-        await updateQuestions(updates); 
-        alert('Alterações salvas com sucesso!'); 
-        await carregarPerguntas(); 
-    } catch (err) { 
-        alert(`Falha ao salvar: ${err.message}`); 
-        btnSalvar.disabled = false; 
-    } finally { 
-        btnSalvar.textContent = 'Salvar Alterações'; 
+
+    if (updates.length === 0) {
+        saveStatusEl.textContent = 'Tudo salvo!';
+        setTimeout(() => saveStatusEl.textContent = '', 2000);
+        return;
+    }
+
+    try {
+        await updateQuestions(updates);
+        saveStatusEl.textContent = 'Salvo!';
+        
+        // IMPORTANTE: Após salvar, precisamos recarregar os dados para que 
+        // o 'estadoOriginalPerguntas' seja atualizado para a próxima comparação.
+        await carregarPerguntas();
+
+    } catch (err) {
+        console.error("Erro no auto-save:", err);
+        saveStatusEl.textContent = 'Erro ao salvar!';
+        alert(`Falha ao salvar automaticamente: ${err.message}`);
+    } finally {
+        setTimeout(() => saveStatusEl.textContent = '', 2000);
     }
 }
 
@@ -609,13 +673,25 @@ async function saveDrawerChanges() {
 async function deleteRecordFromDrawer() {
     if (!editingRecordId) return;
 
-    if (confirm(`Tem certeza que deseja EXCLUIR o item #${editingRecordId} e todos os seus sub-itens? Esta ação não pode ser desfeita.`)) {
+    // A lógica recursiva original agora é segura porque o estado está sincronizado.
+    const findAllDescendants = (parentId, allItems) => {
+        let idsToDelete = [parentId];
+        const directChildren = allItems.filter(item => item.ID_Pai === parentId);
+        for (const child of directChildren) {
+            idsToDelete = idsToDelete.concat(findAllDescendants(child.id, allItems));
+        }
+        return idsToDelete;
+    };
+
+    if (confirm(`Tem certeza que deseja EXCLUIR o item #${editingRecordId} e todos os seus sub-itens?`)) {
         try {
-            // Nota: Excluir um pai no Grist não exclui os filhos automaticamente.
-            // Esta é uma simplificação. Uma versão completa precisaria encontrar e excluir todos os filhos recursivamente.
-            await grist.docApi.removeRecords('Modelos_Perguntas', [editingRecordId]);
+            const allIdsToDelete = findAllDescendants(editingRecordId, estadoOriginalPerguntas);
+            if (allIdsToDelete.length > 0) {
+                const removeActions = allIdsToDelete.map(id => ['RemoveRecord', 'Modelos_Perguntas', id]);
+                await grist.docApi.applyUserActions(removeActions);
+            }
             closeDrawer();
-            await carregarPerguntas(); // Força o recarregamento
+            await carregarPerguntas();
         } catch(err) {
             alert("Falha ao excluir item: " + err.message);
         }
