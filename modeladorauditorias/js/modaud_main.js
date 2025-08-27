@@ -6,28 +6,15 @@ import { renderizarPerguntas } from './modaud_ui.js';
 // ---- CONSTANTES E ESTADO ----
 const TABELA_MESTRES = 'Modelos_Auditoria_Mestres';
 
-// Elementos do DOM
+// Elementos do DOM - FILTROS E BOTÕES PRINCIPAIS
 const selectModeloMestre = document.getElementById('select-modelo-mestre');
 const selectContexto = document.getElementById('select-contexto');
 const labelContexto = document.getElementById('label-contexto');
 const containerPerguntas = document.getElementById('lista-perguntas');
+const btnSalvar = document.getElementById('btn-salvar');
 const btnNovoItem = document.getElementById('btn-novo-item');
-const drawerEl = document.getElementById('drawer');
-const drawerOverlayEl = document.getElementById('drawer-overlay');
-const drawerTitleEl = document.getElementById('drawer-title');
-const drawerContentEl = document.getElementById('drawer-content');
-const drawerCloseBtn = document.getElementById('drawer-close-btn');
-const drawerSaveBtn = document.getElementById('drawer-save-btn');
-const drawerDeleteBtn = document.getElementById('drawer-delete-btn');
-const saveStatusEl = document.getElementById('save-status');
-const selectAuditoriaDestino = document.getElementById('select-auditoria-destino');
-const btnCopiarChecklist = document.getElementById('btn-copiar-checklist');
-const checkMultiplasAreas = document.getElementById('check-multiplas-areas');
-const modalAreas = document.getElementById('modal-areas');
-const modalCloseBtn = document.getElementById('modal-close-btn');
-const modalCancelBtn = document.getElementById('modal-cancel-btn');
-const modalConfirmCopyBtn = document.getElementById('modal-confirm-copy-btn');
-const modalBody = document.getElementById('modal-body');
+
+// Elementos do DOM - MODAL DE CLONAGEM
 const btnAbrirClonador = document.getElementById('btn-abrir-clonador');
 const modalClonador = document.getElementById('modal-clonador');
 const clonadorCloseBtn = document.getElementById('clonador-close-btn');
@@ -35,7 +22,27 @@ const clonadorCancelBtn = document.getElementById('clonador-cancel-btn');
 const clonadorConfirmBtn = document.getElementById('clonador-confirm-btn');
 const clonadorSelectOrigem = document.getElementById('clonador-select-origem');
 const clonadorSelectDestino = document.getElementById('clonador-select-destino');
-let editingRecordId = null;
+
+// Elementos do DOM - MODAL DE CÓPIA PARA AUDITORIA
+const btnAbrirCopiador = document.getElementById('btn-abrir-copiador');
+const modalCopiador = document.getElementById('modal-copiador');
+const copiadorCloseBtn = document.getElementById('copiador-close-btn');
+const copiadorCancelBtn = document.getElementById('copiador-cancel-btn');
+const copiadorConfirmBtn = document.getElementById('copiador-confirm-btn');
+const copiadorSelectAuditoria = document.getElementById('copiador-select-auditoria');
+const copiadorCheckMultiplas = document.getElementById('copiador-check-multiplas');
+const copiadorAreaUnicaContainer = document.getElementById('copiador-area-unica-container');
+const copiadorSelectAreaUnica = document.getElementById('copiador-select-area-unica');
+const copiadorAreasMultiplasContainer = document.getElementById('copiador-areas-multiplas-container');
+
+// Elementos do DOM - DRAWER DE EDIÇÃO
+const drawerEl = document.getElementById('drawer');
+const drawerOverlayEl = document.getElementById('drawer-overlay');
+const drawerTitleEl = document.getElementById('drawer-title');
+const drawerContentEl = document.getElementById('drawer-content');
+const drawerCloseBtn = document.getElementById('drawer-close-btn');
+const drawerSaveBtn = document.getElementById('drawer-save-btn');
+const drawerDeleteBtn = document.getElementById('drawer-delete-btn');
 
 // Estado da Aplicação
 let todosModelosMestres = [];
@@ -81,25 +88,25 @@ async function inicializarApp() {
         
         selectModeloMestre.addEventListener('change', onModeloMestreChange);
         selectContexto.addEventListener('change', onContextoChange);
-                
-        // CORREÇÃO: Chama a função 'criarNovoItem' sem passar o objeto de evento.
-        // O valor padrão parentId=0 será usado, que é o correto para este botão.
+        
         btnNovoItem.addEventListener('click', () => criarNovoItem());
 
         drawerCloseBtn.addEventListener('click', closeDrawer);
         drawerOverlayEl.addEventListener('click', closeDrawer);
         drawerSaveBtn.addEventListener('click', saveDrawerChanges);
         drawerDeleteBtn.addEventListener('click', deleteRecordFromDrawer);
-		btnCopiarChecklist.addEventListener('click', iniciarCopia);
-        modalCloseBtn.addEventListener('click', fecharModalAreas);
-        modalCancelBtn.addEventListener('click', fecharModalAreas);
-		btnAbrirClonador.addEventListener('click', abrirModalClonador);
+
+        // Listeners para os novos modais
+        btnAbrirClonador.addEventListener('click', abrirModalClonador);
         clonadorCloseBtn.addEventListener('click', () => modalClonador.style.display = 'none');
         clonadorCancelBtn.addEventListener('click', () => modalClonador.style.display = 'none');
         clonadorConfirmBtn.addEventListener('click', executarClonagem);
-		
-		        const auditorias = await getTableData('Auditoria');
-        popularSelectAuditoria(auditorias);
+
+        btnAbrirCopiador.addEventListener('click', abrirModalCopiador);
+        copiadorCloseBtn.addEventListener('click', () => modalCopiador.style.display = 'none');
+        copiadorCancelBtn.addEventListener('click', () => modalCopiador.style.display = 'none');
+        copiadorConfirmBtn.addEventListener('click', executarCopia);
+        copiadorCheckMultiplas.addEventListener('change', alternarModoCopia);
 
     } catch (e) {
         console.error("Erro fatal na inicialização:", e);
@@ -212,7 +219,6 @@ function popularSelectModeloMestre() {
 async function onModeloMestreChange() {
     const modeloId = parseInt(selectModeloMestre.value, 10);
     resetarContextoEPerguntas();
-	btnAbrirClonador.disabled = !modeloId;
 
     if (!modeloId) {
         modeloMestreSelecionado = null;
@@ -221,18 +227,16 @@ async function onModeloMestreChange() {
     modeloMestreSelecionado = todosModelosMestres.find(m => m.id === modeloId);
     if (!modeloMestreSelecionado) return;
     
+    btnAbrirClonador.disabled = false; // Habilita o botão de clonar
     const colunaFiltroId = modeloMestreSelecionado.Coluna_Filtro_Perguntas;
 
     if (!colunaFiltroId) {
-		checkMultiplasAreas.disabled = true; // Desabilita se não houver contexto
         labelContexto.textContent = "Contexto:";
         selectContexto.disabled = true;
         await carregarPerguntas();
     } else {
-		checkMultiplasAreas.disabled = false; // Habilita se houver contexto
         try {
             const { contextRecords, displayColId, label } = await discoverContextInfo(colunaFiltroId);
-            
             labelContexto.textContent = `${label}:`;
             popularSelectContexto(contextRecords, displayColId);
             selectContexto.disabled = false;
@@ -265,15 +269,13 @@ function resetarContextoEPerguntas() {
     selectContexto.innerHTML = '<option value="">-- Selecione --</option>';
     selectContexto.disabled = true;
     containerPerguntas.innerHTML = '<p>Selecione um Modelo e um Contexto para começar.</p>';
+    btnSalvar.disabled = true;
     estadoOriginalPerguntas = [];
-    btnNovoItem.disabled = true; 
-	btnAbrirClonador.disabled = true;
-	checkMultiplasAreas.checked = false;
-    checkMultiplasAreas.disabled = true;
+    btnAbrirClonador.disabled = true;
+    btnAbrirCopiador.disabled = true;
+    btnNovoItem.disabled = true;
 }
 
-// AÇÃO: Substitua a sua função carregarPerguntas inteira por esta.
-// AÇÃO: Substitua a sua função carregarPerguntas inteira por esta.
 async function carregarPerguntas() {
     // CORREÇÃO: Buscando a referência ao botão aqui dentro
     const btnSalvar = document.getElementById('btn-salvar');
@@ -350,9 +352,6 @@ async function carregarPerguntas() {
             }
         });
 
-        const hasPerguntas = perguntasFiltradas.length > 0;
-        selectAuditoriaDestino.disabled = !hasPerguntas;
-        btnCopiarChecklist.disabled = !hasPerguntas;
 
     } catch (e) {
         console.error("Erro ao carregar perguntas:", e);
@@ -517,6 +516,7 @@ async function criarNovoItem(parentId = 0) {
 async function onContextoChange() {
     contextoSelecionadoId = parseInt(selectContexto.value, 10) || null;
     // Habilita o botão se um contexto for selecionado
+    btnAbrirCopiador.disabled = !contextoSelecionadoId;
     btnNovoItem.disabled = !contextoSelecionadoId;
     await carregarPerguntas();
 }
@@ -761,101 +761,6 @@ async function popularSelectDeReferencia(selectElement, refTableId, selectedId, 
     }
 }
 
-function popularSelectAuditoria(auditorias) {
-    selectAuditoriaDestino.innerHTML = '<option value="">-- Selecione uma Auditoria --</option>';
-    // Presumindo que a tabela Auditoria tem uma coluna "IdAud" para display
-    for (const auditoria of auditorias) {
-        selectAuditoriaDestino.add(new Option(auditoria.IdAud, auditoria.id));
-    }
-}
-
-// AÇÃO: Cole este bloco de 4 funções no seu main.js
-
-// 1. A NOVA FUNÇÃO PRINCIPAL (ROTEADOR)
-async function iniciarCopia() {
-    if (checkMultiplasAreas.checked) {
-        await abrirModalSelecaoAreas();
-    } else {
-        await copiarAreaUnica();
-    }
-}
-
-// 2. FUNÇÃO PARA ABRIR O MODAL
-async function abrirModalSelecaoAreas() {
-    if (!modeloMestreSelecionado) {
-        alert("Selecione um Modelo Mestre.");
-        return;
-    }
-    
-    modalBody.innerHTML = '<p>Carregando áreas e contando perguntas...</p>';
-    modalAreas.style.display = 'flex';
-
-    try {
-        const colunaFiltro = modeloMestreSelecionado.Coluna_Filtro_Perguntas;
-        
-        // Usa a função de descoberta para obter a tabela de contexto e a coluna de display
-        const { contextRecords: areas, displayColId } = await discoverContextInfo(colunaFiltro);
-        
-        // Busca todas as perguntas do modelo de uma vez para fazer a contagem
-        const todasPerguntasDoModelo = await getTableData('Modelos_Perguntas', { Ref_Modelo_Mestre: [modeloMestreSelecionado.id] });
-
-        // Limpa o corpo do modal e adiciona o container para a lista
-        modalBody.innerHTML = `
-            <div class="modal-area-item select-all-container">
-                <input type="checkbox" id="check-select-all-areas">
-                <label for="check-select-all-areas"><strong>Selecionar/Desselecionar Todos</strong></label>
-            </div>
-            <div id="areas-list-container"></div>
-        `;
-
-        const listContainer = document.getElementById('areas-list-container');
-        
-        areas.forEach(area => {
-            const count = todasPerguntasDoModelo.filter(p => String(p[colunaFiltro]) === String(area.id)).length;
-            
-            // Só mostra áreas que realmente têm perguntas associadas neste modelo
-            if (count > 0) {
-                const itemDiv = document.createElement('div');
-                itemDiv.className = 'modal-area-item';
-                itemDiv.innerHTML = `
-                    <input type="checkbox" class="area-checkbox" id="area-${area.id}" value="${area.id}" data-areatexto="${area[displayColId]}">
-                    <label for="area-${area.id}">${area[displayColId]}</label>
-                    <span class="count">(${count} perguntas)</span>
-                `;
-                listContainer.appendChild(itemDiv);
-            }
-        });
-        
-        // Adiciona o event listener para a checkbox "Selecionar Todos"
-        const selectAllCheckbox = document.getElementById('check-select-all-areas');
-        selectAllCheckbox.addEventListener('change', (e) => {
-            // Seleciona apenas as checkboxes de área, não ela mesma
-            listContainer.querySelectorAll('.area-checkbox').forEach(cb => {
-                cb.checked = e.target.checked;
-            });
-        });
-
-        // Reconfigura o botão de confirmação para chamar a cópia múltipla
-        modalConfirmCopyBtn.onclick = () => copiarMultiplasAreas(todasPerguntasDoModelo);
-
-    } catch(e) {
-        console.error("Erro ao abrir modal de seleção de áreas:", e);
-        modalBody.innerHTML = `<p style="color:red">Erro ao carregar áreas: ${e.message}</p>`;
-    }
-}
-
-// 3. FUNÇÕES PARA OS DOIS CENÁRIOS DE CÓPIA
-async function copiarAreaUnica() {
-    if (!contextoSelecionadoId) {
-        alert("Por favor, selecione uma área no dropdown para copiar.");
-        return;
-    }
-    const areaTexto = selectContexto.options[selectContexto.selectedIndex].text;
-    await executarCopia(
-        [{ id: contextoSelecionadoId, texto: areaTexto }], 
-        estadoOriginalPerguntas // Usa as perguntas já filtradas na tela
-    );
-}
 
 async function copiarMultiplasAreas(todasPerguntasDoModelo) {
     const areasSelecionadas = [];
@@ -876,54 +781,75 @@ async function copiarMultiplasAreas(todasPerguntasDoModelo) {
 }
 
 // 4. FUNÇÃO CENTRAL DE EXECUÇÃO
-async function executarCopia(listaDeAreas, listaDePerguntasFonte) {
-    const auditoriaDestinoId = parseInt(selectAuditoriaDestino.value, 10);
+async function executarCopia() {
+    const auditoriaDestinoId = parseInt(copiadorSelectAuditoria.value, 10);
     if (!auditoriaDestinoId) {
         alert("Por favor, selecione uma auditoria de destino.");
         return;
     }
 
-    const areasTexto = listaDeAreas.map(a => a.texto).join(', ');
+    let areasParaCopiar = [];
+    if (copiadorCheckMultiplas.checked) {
+        document.querySelectorAll('#areas-list-container .area-checkbox:checked').forEach(cb => {
+            areasParaCopiar.push({ id: parseInt(cb.value, 10), texto: cb.dataset.areatexto });
+        });
+    } else {
+        const areaId = parseInt(copiadorSelectAreaUnica.value, 10);
+        if (areaId) {
+            areasParaCopiar.push({ id: areaId, texto: copiadorSelectAreaUnica.options[copiadorSelectAreaUnica.selectedIndex].text });
+        }
+    }
+
+    if (areasParaCopiar.length === 0) {
+        alert("Selecione pelo menos uma área para copiar.");
+        return;
+    }
+    
+    // Agora que coletamos os dados, a lógica de salvamento começa aqui.
+    // Isso substitui a chamada à função antiga.
+    
+    const areasTexto = areasParaCopiar.map(a => a.texto).join(', ');
     if (!confirm(`Copiar perguntas das áreas [${areasTexto}] para a auditoria selecionada?`)) {
         return;
     }
 
-    btnCopiarChecklist.disabled = true;
-    btnCopiarChecklist.textContent = 'Copiando...';
+    modalCopiador.style.display = 'none'; // Fecha o modal
+    btnAbrirCopiador.disabled = true;
+    btnAbrirCopiador.textContent = 'Copiando...';
     
-    const colunaFiltro = modeloMestreSelecionado.Coluna_Filtro_Perguntas;
-    const novosResultados = [];
-
-    listaDeAreas.forEach(area => {
-        const perguntasParaEstaArea = listaDePerguntasFonte.filter(p => String(p[colunaFiltro]) === String(area.id));
+    try {
+        const colunaFiltro = modeloMestreSelecionado.Coluna_Filtro_Perguntas;
+        const todasAsPerguntasDoModelo = await getTableData('Modelos_Perguntas', { Ref_Modelo_Mestre: [modeloMestreSelecionado.id] });
         
-        perguntasParaEstaArea.forEach(pergunta => {
-            novosResultados.push({
-                Auditoria: auditoriaDestinoId,
-                Pergunta: pergunta.id,
-                Referencia_Area: area.id,
+        const novosResultados = [];
+
+        areasParaCopiar.forEach(area => {
+            const perguntasParaEstaArea = todasAsPerguntasDoModelo.filter(p => String(p[colunaFiltro]) === String(area.id));
+            
+            perguntasParaEstaArea.forEach(pergunta => {
+                novosResultados.push({
+                    Auditoria: auditoriaDestinoId,
+                    Pergunta: pergunta.id,
+                    Referencia_Area: area.id,
+                });
             });
         });
-    });
 
-    if (novosResultados.length === 0) {
-        alert("Nenhuma pergunta correspondente encontrada para as áreas selecionadas.");
-        btnCopiarChecklist.disabled = false;
-        btnCopiarChecklist.textContent = 'Copiar Checklist...';
-        return;
-    }
+        if (novosResultados.length === 0) {
+            throw new Error("Nenhuma pergunta correspondente encontrada para as áreas selecionadas.");
+        }
 
-    try {
         await grist.docApi.applyUserActions(
             novosResultados.map(r => ['AddRecord', 'Resultados', null, r])
         );
-        alert(`${novosResultados.length} perguntas de ${listaDeAreas.length} área(s) copiadas com sucesso!`);
+        alert(`${novosResultados.length} perguntas de ${areasParaCopiar.length} área(s) copiadas com sucesso!`);
+
     } catch (err) {
         console.error("Erro ao executar a cópia:", err);
         alert("Falha ao copiar o checklist: " + err.message);
     } finally {
-        btnCopiarChecklist.disabled = false;
-        btnCopiarChecklist.textContent = 'Copiar Checklist...';
+        btnAbrirCopiador.disabled = false;
+        btnAbrirCopiador.textContent = 'Copiar para Auditoria...';
     }
 }
 
@@ -1091,3 +1017,87 @@ async function executarClonagem(origemId, destinosIds) {
         alert("Falha ao clonar: " + err.message);
     }
 }
+
+async function abrirModalCopiador() {
+    if (!modeloMestreSelecionado || !contextoSelecionadoId) return;
+    
+    modalCopiador.style.display = 'flex';
+    copiadorSelectAuditoria.innerHTML = '<option>Carregando...</option>';
+    copiadorSelectAreaUnica.innerHTML = '<option>Carregando...</option>';
+    copiadorAreasMultiplasContainer.innerHTML = '';
+    
+    // Inicia a busca por auditorias e áreas ao mesmo tempo
+    try {
+        const [auditorias, areasDoModelo] = await Promise.all([
+            getTableData('Auditoria'),
+            getAllAreasForCurrentModel()
+        ]);
+        
+        // Popula o dropdown de auditorias
+        copiadorSelectAuditoria.innerHTML = '<option value="">-- Selecione uma Auditoria --</option>';
+        auditorias.forEach(auditoria => {
+            copiadorSelectAuditoria.add(new Option(auditoria.IdAud, auditoria.id));
+        });
+
+        // Popula os seletores de área (única e múltipla)
+        copiadorSelectAreaUnica.innerHTML = '';
+        copiadorAreasMultiplasContainer.innerHTML = `
+            <div class="modal-area-item select-all-container">
+                <input type="checkbox" id="check-select-all-areas">
+                <label for="check-select-all-areas"><strong>Selecionar/Desselecionar Todos</strong></label>
+            </div>
+            <div id="areas-list-container"></div>`;
+            
+        const listContainer = document.getElementById('areas-list-container');
+        areasDoModelo.forEach(area => {
+            // Para o dropdown de área única
+            const isSelected = area.id === contextoSelecionadoId;
+            copiadorSelectAreaUnica.add(new Option(area.texto, area.id, false, isSelected));
+
+            // Para a lista de múltiplas áreas
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'modal-area-item';
+            itemDiv.innerHTML = `<input type="checkbox" class="area-checkbox" id="area-${area.id}" value="${area.id}" data-areatexto="${area.texto}" ${isSelected ? 'checked' : ''}><label for="area-${area.id}">${area.texto}</label><span class="count">(${area.count}p)</span>`;
+            listContainer.appendChild(itemDiv);
+        });
+
+        // Adiciona listener para o "Selecionar Todos"
+        document.getElementById('check-select-all-areas').addEventListener('change', e => {
+            listContainer.querySelectorAll('.area-checkbox').forEach(cb => cb.checked = e.target.checked);
+        });
+
+        // Define o estado inicial da UI do modal
+        copiadorCheckMultiplas.checked = false;
+        alternarModoCopia();
+
+    } catch (e) {
+        console.error("Erro ao abrir modal de cópia:", e);
+    }
+}
+
+// Controla qual seletor de área (único ou múltiplo) é exibido
+function alternarModoCopia() {
+    if (copiadorCheckMultiplas.checked) {
+        copiadorAreaUnicaContainer.style.display = 'none';
+        copiadorAreasMultiplasContainer.style.display = 'block';
+    } else {
+        copiadorAreaUnicaContainer.style.display = 'block';
+        copiadorAreasMultiplasContainer.style.display = 'none';
+    }
+}
+
+// Função auxiliar para buscar todas as áreas e contar as perguntas em um modelo
+async function getAllAreasForCurrentModel() {
+    const colunaFiltro = modeloMestreSelecionado.Coluna_Filtro_Perguntas;
+    const { contextRecords: areas, displayColId } = await discoverContextInfo(colunaFiltro);
+    const todasPerguntas = await getTableData('Modelos_Perguntas', { Ref_Modelo_Mestre: [modeloMestreSelecionado.id] });
+    
+    return areas
+        .map(area => ({
+            id: area.id,
+            texto: area[displayColId],
+            count: todasPerguntas.filter(p => String(p[colunaFiltro]) === String(area.id)).length
+        }))
+        .filter(area => area.count > 0); // Só retorna áreas que têm perguntas
+}
+
