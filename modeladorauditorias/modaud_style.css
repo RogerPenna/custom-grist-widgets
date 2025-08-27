@@ -441,7 +441,7 @@ body {
 .header-buttons {
     display: flex;
     align-items: center; /* Alinha o botão de clonar com o grupo de botões principais */
-    gap: 15px;
+    gap: 10px;
 }
 
 .button-group-vertical {
@@ -455,3 +455,45 @@ body {
     border-bottom: 2px solid #e5e7eb;
     font-weight: bold;
 }
+
+.header-buttons button {
+    padding: 8px 14px;
+    font-size: 0.9em;
+    font-weight: bold;
+    white-space: nowrap; /* Impede que o texto quebre a linha */
+    border: 1px solid transparent; /* Adiciona uma borda transparente para manter o tamanho consistente */
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s;
+    line-height: 1.5; /* Ajuda a centralizar o texto verticalmente */
+}
+
+.header-buttons button:disabled {
+    background-color: #cccccc;
+    border-color: #cccccc;
+    color: #666666;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+/* Estilos específicos para cada botão (apenas cores) */
+#btn-salvar {
+    background-color: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+#btn-salvar:hover:not(:disabled) { background-color: #0056b3; }
+
+#btn-novo-item {
+    background-color: #e9ecef;
+    color: #333;
+    border-color: #ced4da;
+}
+#btn-novo-item:hover:not(:disabled) { background-color: #dee2e6; }
+
+button.secondary { /* Para o botão Clonar */
+    background-color: #6c757d;
+    color: white;
+    border-color: #6c757d;
+}
+button.secondary:hover:not(:disabled) { background-color: #5a6268; }

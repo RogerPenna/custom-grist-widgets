@@ -218,63 +218,104 @@ export function atualizarHeaderProgresso() {
 
 export function renderizarChecklistCompleto() {
     const container = document.getElementById('checklist-container');
-    container.innerHTML = '';
-    const checklist = Auditoria.getChecklistParaAreaAtiva();
-    if (!checklist || checklist.length === 0) {
+    if (!container) return;
+    container.innerHTML = ''; // Limpa a tela
+    
+    const checklistDaArea = Auditoria.getChecklistParaAreaAtiva();
+    if (!checklistDaArea || checklistDaArea.length === 0) {
         container.innerHTML = '<h3>Nenhuma pergunta para esta auditoria.</h3>';
         return;
     }
-    const itensRaiz = checklist.filter(item => !item.ID_Pai || item.ID_Pai === 0).sort((a, b) => a.Ordem - b.Ordem);
-    itensRaiz.forEach(item => renderizarItem(item, container, checklist));
-    ajustarAlturaTextareas(); // Garante que todos os textareas tenham a altura correta no carregamento
-    // Adiciona o botão de finalizar no final
+
+    // 1. Pega TODOS os modelos de pergunta para construir a árvore completa
+    const todosOsModelos = Auditoria.getTodosOsModelosDePerguntas();
+    const mapaDeItens = new Map(todosOsModelos.map(item => [item.id, { ...item, children: [] }]));
+
+    // 2. Constrói a árvore aninhando os filhos em seus pais
+    const itensRaizGeral = [];
+    for (const item of mapaDeItens.values()) {
+        if (item.ID_Pai && mapaDeItens.has(item.ID_Pai)) {
+            mapaDeItens.get(item.ID_Pai).children.push(item);
+        } else {
+            itensRaizGeral.push(item);
+        }
+    }
+
+    // 3. Filtra a árvore para manter apenas os itens que pertencem à área atual
+    const idsRelevantesDaArea = new Set(checklistDaArea.map(item => item.id));
+    const arvoreFiltrada = filtrarArvorePorRelevancia(itensRaizGeral, idsRelevantesDaArea);
+
+    // 4. Ordena a árvore filtrada em todos os níveis
+    ordenarArvore(arvoreFiltrada);
+
+    // 5. Inicia a renderização recursiva
+    arvoreFiltrada.forEach(item => renderizarItemRecursivo(item, container));
+
+    // 6. Adiciona o botão de finalizar no final
     const finalizarDiv = document.createElement('div');
     finalizarDiv.className = 'finalizar-container';
     finalizarDiv.innerHTML = `<button id="btn-finalizar-auditoria">Finalizar Auditoria</button>`;
     container.appendChild(finalizarDiv);
+
+    ajustarAlturaTextareas();
 }
 
-function renderizarItem(item, containerPai, checklistCompleto, instanciaInfo = null) {
-    // --- INÍCIO DO BLOCO DE DEBUG ---
-    console.log(`[renderizarItem] Processando item ID: ${item.id} ("${item.Texto_Pergunta}")`);
-    
-    if (!Auditoria.avaliarCondicao(item)) {
-        console.log(` -> Item ID ${item.id} está OCULTO por condição de visibilidade.`);
-        return; // Sai se a condição de visibilidade não for atendida
-    }
-    console.log(` -> Item ID ${item.id} está VISÍVEL.`);
-    // --- FIM DO BLOCO DE DEBUG ---
-
-    const dadosCompletos = Auditoria.getDadosCompletosPergunta(item.id);
-    if (!dadosCompletos || !dadosCompletos.modelo) {
-        console.error(` -> ERRO: Não foi possível obter dados completos para o item ID ${item.id}.`);
-        return;
+/**
+ * Função recursiva principal que decide qual tipo de item renderizar.
+ * @param {object} item - O nó da árvore a ser renderizado.
+ * @param {HTMLElement} containerPai - O elemento DOM onde o item será inserido.
+ */
+function renderizarItemRecursivo(item, containerPai, instanciaInfo = null) {
+    if (!Auditoria.avaliarCondicao(item, instanciaInfo)) {
+        return; // Pula a renderização se a condição de visibilidade não for atendida
     }
 
-    const { modelo } = dadosCompletos;
-
-    // --- MAIS DEBUG ---
-    console.log(` -> Tipo_Item do modelo: "${modelo.Tipo_Item}"`);
+    const { modelo } = Auditoria.getDadosCompletosPergunta(item.id);
 
     if (modelo.Tipo_Item === 'Secao' || modelo.Tipo_Item === 'secao') {
-        console.log(` -> Renderizando como SEÇÃO.`);
         if (modelo.Repetivel === 'SIM') {
             const contagemInstancias = Auditoria.getContagemInstancias(modelo.id);
             for (let i = 1; i <= contagemInstancias; i++) {
-                renderizarInstanciaSecao(modelo, containerPai, checklistCompleto, i);
+                renderizarInstanciaSecao(modelo, containerPai, item.children, i);
             }
             renderizarBotaoAdicionar(modelo, containerPai);
         } else {
-            renderizarSecaoNaoRepetivel(modelo, containerPai, checklistCompleto);
+            renderizarSecaoNaoRepetivel(modelo, containerPai, item.children);
         }
-    } 
-    else if (modelo.Tipo_Item === 'Pergunta' || modelo.Tipo_Item === 'resultado_calculado') {
-        console.log(` -> Renderizando como PERGUNTA ou RESULTADO_CALCULADO.`);
-        renderizarPergunta(dadosCompletos, containerPai, instanciaInfo);
-    } else {
-        // --- LOG FINAL DE FALHA ---
-        console.warn(` -> AVISO: Item ID ${item.id} não correspondeu a nenhum tipo de renderização conhecido. Tipo_Item: "${modelo.Tipo_Item}"`);
+    } else if (modelo.Tipo_Item === 'Pergunta' || modelo.Tipo_Item === 'resultado_calculado') {
+        renderizarPergunta(Auditoria.getDadosCompletosPergunta(item.id), containerPai, instanciaInfo);
     }
+}
+
+
+// --- FUNÇÕES AUXILIARES PARA PREPARAR A ÁRVORE ---
+
+/**
+ * Filtra uma árvore de nós, mantendo apenas os nós que estão na lista de IDs relevantes
+ * ou que são pais de nós relevantes.
+ */
+function filtrarArvorePorRelevancia(nodes, idsRelevantes) {
+    return nodes.map(node => {
+        if (node.children && node.children.length > 0) {
+            node.children = filtrarArvorePorRelevancia(node.children, idsRelevantes);
+        }
+        if (idsRelevantes.has(node.id) || (node.children && node.children.length > 0)) {
+            return node;
+        }
+        return null;
+    }).filter(Boolean);
+}
+
+/**
+ * Ordena recursivamente uma árvore de nós com base na coluna 'Ordem'.
+ */
+function ordenarArvore(nodes) {
+    nodes.sort((a, b) => a.Ordem - b.Ordem);
+    nodes.forEach(node => {
+        if (node.children && node.children.length > 0) {
+            ordenarArvore(node.children);
+        }
+    });
 }
 
 function ajustarAlturaTextareas() {
@@ -379,22 +420,37 @@ function renderizarPergunta(dadosCompletos, containerPai, instanciaInfo) {
     containerPai.appendChild(perguntaCard);
 }
 
-function renderizarSecaoNaoRepetivel(modeloSecao, containerPai, checklistCompleto) {
+function renderizarSecaoNaoRepetivel(modeloSecao, containerPai, filhos) { // <-- Garante que 'filhos' é recebido
     const secaoCard = document.createElement('div');
     secaoCard.className = 'secao-nao-repetivel';
     const idUnicoSecao = `secao-${modeloSecao.id}`;
     const iconeToggle = `<svg class="icone-toggle" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd"/></svg>`;
-    const deveExpandir = true;
-    secaoCard.innerHTML = `<div class="secao-header" data-id-unico="${idUnicoSecao}"><div class="titulo-container">${iconeToggle} <h4>${modeloSecao.Texto_Pergunta}</h4></div></div><div class="secao-body ${deveExpandir ? 'expandido' : ''}"></div>`;
+    
+    // As seções normais começam expandidas por padrão
+    const deveExpandir = true; 
+    
+    // A classe do corpo da seção agora é 'secao-body' para ser compatível com o novo CSS de grid
+    secaoCard.innerHTML = `
+        <div class="secao-header" data-id-unico="${idUnicoSecao}">
+            <div class="titulo-container">${iconeToggle} <h4>${modeloSecao.Texto_Pergunta}</h4></div>
+        </div>
+        <div class="secao-body ${deveExpandir ? 'expandido' : ''}">
+            <div class="secao-body-content"></div>
+        </div>`;
+
     containerPai.appendChild(secaoCard);
+
     if (deveExpandir) {
         secaoCard.querySelector('.icone-toggle').classList.add('expandido');
     }
-    const corpo = secaoCard.querySelector('.secao-body');
-    const filhos = checklistCompleto.filter(filho => String(filho.ID_Pai) == String(modeloSecao.id)).sort((a,b) => a.Ordem - b.Ordem);
-	filhos.forEach(filho => renderizarItem(filho, corpo, checklistCompleto));
+    
+    // Seleciona o contêiner interno para os filhos
+    const corpo = secaoCard.querySelector('.secao-body-content');
+    
+    // A linha que buscava 'filhos' foi removida.
+    // Agora, simplesmente percorremos a lista de 'filhos' que foi passada como parâmetro.
+    filhos.forEach(filho => renderizarItemRecursivo(filho, corpo));
 }
-
 function renderizarBotaoAdicionar(modeloSecao, containerPai) {
     const cardAdicionar = document.createElement('div');
     cardAdicionar.className = 'secao-adicionar-card';
@@ -403,27 +459,40 @@ function renderizarBotaoAdicionar(modeloSecao, containerPai) {
     containerPai.appendChild(cardAdicionar);
 }
 
-function renderizarInstanciaSecao(modeloSecao, containerPai, checklistCompleto, numeroInstancia) {
+function renderizarInstanciaSecao(modeloSecao, containerPai, filhos, numeroInstancia) {
     const instanciaCard = document.createElement('div');
     instanciaCard.className = 'secao-instancia-card';
     instanciaCard.dataset.secaoModeloId = modeloSecao.id;
     const idUnicoSecao = `${modeloSecao.id}-${numeroInstancia}`;
     const iconeToggle = `<svg class="icone-toggle" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd"/></svg>`;
     const iconeLixeira = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.58.22-2.365.468a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.576l.84-10.518.149.022a.75.75 0 10.23-1.482A41.03 41.03 0 0014 4.193v-.443A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25-.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clip-rule="evenodd"/></svg>`;
+    
     const recemAdicionada = Auditoria.verificarUltimaInstanciaAdicionada(modeloSecao.id, numeroInstancia);
     if (recemAdicionada) {
         estadoUI.secoesExpandidas.add(idUnicoSecao);
     }
     const deveExpandir = estadoUI.secoesExpandidas.has(idUnicoSecao);
-    instanciaCard.innerHTML = `<div class="secao-header secao-instancia-header" data-id-unico="${idUnicoSecao}"><div class="titulo-container"><span class="icone-toggle-container">${iconeToggle}</span><h4>${modeloSecao.Texto_Pergunta} ${numeroInstancia}</h4></div><button class="botao-remover-secao" data-secao-id="${modeloSecao.id}" data-instancia-numero="${numeroInstancia}">${iconeLixeira}</button></div><div class="secao-instancia-body ${deveExpandir ? 'expandido' : ''}"></div>`;
+    
+    // A classe do corpo da instância agora é 'secao-body' para ser compatível com o novo CSS de grid
+    instanciaCard.innerHTML = `<div class="secao-header secao-instancia-header" data-id-unico="${idUnicoSecao}"><div class="titulo-container"><span class="icone-toggle-container">${iconeToggle}</span><h4>${modeloSecao.Texto_Pergunta} ${numeroInstancia}</h4></div><button class="botao-remover-secao" data-secao-id="${modeloSecao.id}" data-instancia-numero="${numeroInstancia}">${iconeLixeira}</button></div><div class="secao-body ${deveExpandir ? 'expandido' : ''}"><div class="secao-body-content"></div></div>`;
+    
     if (deveExpandir) {
         instanciaCard.querySelector('.icone-toggle').classList.add('expandido');
     }
+    
     containerPai.appendChild(instanciaCard);
-    const corpo = instanciaCard.querySelector('.secao-instancia-body');
-    const filhos = checklistCompleto.filter(filho => String(filho.ID_Pai) == String(modeloSecao.id)).sort((a,b) => a.Ordem - b.Ordem);
-	console.log(`Filhos da Seção "${modeloSecao.Texto_Pergunta}":`, filhos);
-    filhos.forEach(filho => renderizarItem(filho, corpo, checklistCompleto, { numero: numeroInstancia }));
+    
+    // IMPORTANTE: Selecionamos um contêiner interno para os filhos.
+    // Isso é necessário por causa do novo layout de grid para a animação.
+    const corpo = instanciaCard.querySelector('.secao-body-content');
+    
+    // A linha 'const filhos = checklistCompleto.filter(...)' foi REMOVIDA.
+    console.log(`Renderizando filhos da instância "${modeloSecao.Texto_Pergunta} #${numeroInstancia}":`, filhos);
+    
+    // O forEach agora está completo e chama a função correta.
+    filhos.forEach(filho => {
+        renderizarPergunta(Auditoria.getDadosCompletosPergunta(filho.id), corpo, { numero: numeroInstancia }); 
+    });
 }
 
 export function expandirAnotacaoParaFullscreen(textoAtual, callbackSalvar) {

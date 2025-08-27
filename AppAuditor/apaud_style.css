@@ -63,8 +63,21 @@ textarea { width: 95%; height: 250px; margin-top: 1rem; padding: 10px; border: 1
 .secao-header .icone-toggle { width: 24px; height: 24px; transition: transform 0.2s; }
 .secao-header .icone-toggle.expandido { transform: rotate(90deg); }
 .secao-header h4 { margin: 0; font-weight: 600; }
-.secao-body { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-in-out; }
-.secao-body.expandido { max-height: 5000px; /* Altura grande o suficiente */ }
+.secao-body {
+    display: grid;
+    grid-template-rows: 0fr; /* Começa com altura zero */
+    overflow: hidden;
+    transition: grid-template-rows 0.3s ease-in-out;
+}
+
+.secao-body.expandido {
+    grid-template-rows: 1fr; /* Expande para a altura total do conteúdo */
+}
+
+/* Adicione esta regra para o conteúdo interno da seção */
+.secao-body > div {
+    min-height: 0;
+}
 
 /* NOVO: Indentação para perguntas dentro de seções */
 .secao-body .pergunta-card { margin-left: 2rem; }

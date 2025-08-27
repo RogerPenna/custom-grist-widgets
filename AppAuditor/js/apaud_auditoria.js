@@ -256,27 +256,32 @@ export function getPlanejamentoPorId(planejamentoId) { if (!pacoteDeAuditoria) r
 export function getChecklistParaAreaAtiva() { const s = _getCurrentState(); if (!s || !pacoteDeAuditoria) return []; return pacoteDeAuditoria.dados_suporte.perguntas.filter(p => p.Referencia_Area == s.areaId); }
 
 // <-- MODIFICADO --- Lógica de Visibilidade Condicional
-export function avaliarCondicao(pergunta) {
-    const idPerguntaMae = pergunta.Visibilidade_DependeDe;
-    if (!idPerguntaMae || idPerguntaMae === 0) {
-        return true;
+export function avaliarCondicao(pergunta, instanciaInfo = null) {
+    const idPerguntaMaeOriginal = pergunta.Visibilidade_DependeDe;
+    if (!idPerguntaMaeOriginal || idPerguntaMaeOriginal === 0) {
+        return true; // Sempre visível se não depende de ninguém.
     }
+
+    // Constrói o ID da pergunta mãe considerando o contexto da instância.
+    // Ex: Se a pergunta mãe é a 10 e estamos na instância 2, o ID a ser buscado é "10-2".
+    const idPerguntaMae = instanciaInfo 
+        ? `${idPerguntaMaeOriginal}-${instanciaInfo.numero}` 
+        : String(idPerguntaMaeOriginal);
 
     const valoresEsperados = pergunta.Visibilidade_Valor;
-    const valorAtual = getResposta(String(idPerguntaMae)); // Garante que o ID da resposta seja string para comparação
+    const valorAtual = getResposta(idPerguntaMae);
 
-    if (valorAtual === undefined || valorAtual === null) {
-        return false;
+    if (valorAtual === undefined || valorAtual === null || valorAtual === '') {
+        return false; // Invisível se a pergunta mãe não foi respondida.
     }
     
-    // Se for uma RefList (formato ["L", id1, id2...])
+    // Lógica para respostas do tipo "Reference List" (ex: ["L", 1, 5, 9])
     if (Array.isArray(valoresEsperados) && valoresEsperados[0] === 'L') {
-        // Remove o "L" e compara os IDs. Converte valorAtual para número para a comparação.
         const idsEsperados = valoresEsperados.slice(1);
         return idsEsperados.includes(Number(valorAtual));
     }
     
-    // Lógica antiga para compatibilidade (texto simples)
+    // Comparação padrão para outros tipos de valor
     return String(valorAtual) === String(valoresEsperados);
 }
 
@@ -533,4 +538,9 @@ export function getDescricaoDaFaixa(idDaFaixaRef, valor) {
     console.warn("AVISO: Nenhuma faixa correspondente foi encontrada.");
     console.log(`--- Fim da Busca de Faixa ---`);
     return null;
+}
+
+export function getTodosOsModelosDePerguntas() {
+    if (!pacoteDeAuditoria) return [];
+    return pacoteDeAuditoria.dados_suporte.perguntas;
 }

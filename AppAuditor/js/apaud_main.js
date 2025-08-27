@@ -1,9 +1,99 @@
-// js/apaud_main.js (v10.1 - Gerenciamento Completo - Corrigido)
+// js/apaud_main.js (v12.0 - Handshake e SAF)
 
 import * as Auditoria from './apaud_auditoria.js';
 import * as UI from './apaud_ui.js';
 
-// --- Funções Auxiliares do Dashboard Interno ---
+/**
+ * Função que aguarda o sinal 'android-ready' do Kotlin para confirmar
+ * que a ponte window.Android está pronta. Tem um tempo limite para segurança.
+ */
+function esperarPonteAndroid(timeoutMs = 2000) {
+    return new Promise((resolve) => {
+        // Se a ponte NÃO existe (Grist/Browser), resolvemos imediatamente.
+        if (typeof window.Android === 'undefined') {
+            console.log("Ambiente não-Android detectado. Continuando a inicialização.");
+            return resolve(true);
+        }
+
+        // Se a ponte existe, aguardamos o sinal 'android-ready' do Kotlin.
+        console.log("Ambiente Android detectado. Aguardando o sinal 'android-ready'...");
+        const timer = setTimeout(() => {
+            console.warn("Tempo limite esperando pelo sinal 'android-ready'. Continuando de qualquer forma.");
+            resolve(true); // Continua mesmo em caso de timeout
+        }, timeoutMs);
+
+        document.addEventListener('android-ready', () => {
+            clearTimeout(timer);
+            console.log("Sinal 'android-ready' recebido do Kotlin.");
+            resolve(true);
+        }, { once: true });
+    });
+}
+
+/**
+ * Ponto de entrada principal do aplicativo.
+ * Espera o DOM e a ponte Android estarem prontos antes de iniciar a UI.
+ */
+async function inicializarApp() {
+    console.log("DOM carregado. Aguardando a ponte Android...");
+    await esperarPonteAndroid();
+
+    console.log("Ponte pronta. Inicializando o gerenciador e a UI.");
+    Auditoria.inicializarGerenciador();
+    configurarListenersGlobais();
+    exibirTelaSelecaoPacotes(); // Agora é seguro renderizar a UI
+}
+
+// O listener que inicia tudo.
+document.addEventListener('DOMContentLoaded', inicializarApp);
+
+
+// --- Funções de Navegação e Renderização Principal (sem alteração) ---
+function exibirTelaSelecaoPacotes() {
+    const pacotes = Auditoria.getListaDePacotes();
+    UI.renderizarTelaSelecaoPacotes(pacotes, selecionarEIniciarPacote);
+    UI.mostrarTela('tela-selecao-pacote');
+}
+
+function selecionarEIniciarPacote(idPacote) {
+    const sucesso = Auditoria.definirPacoteAtivo(idPacote);
+    if (sucesso) {
+        UI.popularFiltroAuditores(Auditoria.getAuditores());
+        document.getElementById('titulo-auditoria').textContent = Auditoria.getInfoAuditoriaPrincipal().Nome_Auditoria;
+        atualizarListaDashboard();
+        UI.mostrarTela('tela-dashboard-auditoria');
+    }
+}
+
+// --- Gerenciamento de Eventos (sem alteração, exceto pela remoção do listener de teste) ---
+function configurarListenersGlobais() {
+    const fileInput = document.getElementById('json-file-input');
+    fileInput.addEventListener('change', async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        try {
+            const fileContent = await file.text();
+            const novoId = Auditoria.adicionarNovoPacote(fileContent);
+            if (novoId) {
+                exibirTelaSelecaoPacotes();
+            }
+        } catch (error) {
+            console.error("Erro ao carregar ou processar o arquivo:", error);
+            UI.mostrarStatusCarregamento("Falha ao carregar o arquivo.", 'erro');
+        } finally {
+            fileInput.value = '';
+        }
+    });
+
+    document.getElementById('btn-voltar-para-selecao-pacotes').addEventListener('click', exibirTelaSelecaoPacotes);
+
+    adicionarListenersDeConteudo();
+}
+
+
+// --- Funções Auxiliares do Dashboard (sem alteração) ---
+// --- Funções Auxiliares do Dashboard ---
 function getFiltrosAtuais() {
     return {
         status: document.getElementById('filtro-status').value,
@@ -14,67 +104,8 @@ function getOrdenacaoAtual() {
     return document.getElementById('ordenacao').value;
 }
 function atualizarListaDashboard() {
+    // Esta é a linha que faltava, que de fato renderiza a lista!
     UI.renderizarListaDePlanejamentos(Auditoria.getPlanejamentos(), getFiltrosAtuais(), getOrdenacaoAtual());
-}
-
-// --- Função Principal de Inicialização ---
-document.addEventListener("DOMContentLoaded", inicializarApp);
-
-function inicializarApp() {
-    Auditoria.inicializarGerenciador();
-    configurarListenersGlobais();
-    exibirTelaSelecaoPacotes();
-}
-
-// --- Funções de Navegação e Renderização Principal ---
-
-function exibirTelaSelecaoPacotes() {
-    const pacotes = Auditoria.getListaDePacotes();
-    // A função renderizarTelaSelecaoPacotes ainda não existe, criaremos em apaud_ui.js
-    UI.renderizarTelaSelecaoPacotes(pacotes, selecionarEIniciarPacote);
-    UI.mostrarTela('tela-selecao-pacote');
-}
-
-function selecionarEIniciarPacote(idPacote) {
-    const sucesso = Auditoria.definirPacoteAtivo(idPacote);
-    if (sucesso) {
-        // Agora que o pacote está ativo, prepare e mostre o dashboard interno dele
-        UI.popularFiltroAuditores(Auditoria.getAuditores());
-        document.getElementById('titulo-auditoria').textContent = Auditoria.getInfoAuditoriaPrincipal().Nome_Auditoria;
-        atualizarListaDashboard(); // Exibe a lista de planejamentos do pacote ativo
-        UI.mostrarTela('tela-dashboard-auditoria');
-    }
-}
-
-// --- Função Central de Listeners de Eventos ---
-function configurarListenersGlobais() {
-    // Listener para carregar um novo arquivo de pacote
-    const fileInput = document.getElementById('json-file-input');
-    fileInput.addEventListener('change', async (event) => {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        try {
-            const fileContent = await file.text();
-            // Note que agora usamos a nova função de `apaud_auditoria.js`
-            const novoId = Auditoria.adicionarNovoPacote(fileContent); 
-            if (novoId) {
-                // Atualiza a tela de seleção para mostrar o novo pacote
-                exibirTelaSelecaoPacotes(); 
-            }
-        } catch (error) {
-            console.error("Erro ao carregar ou processar o arquivo:", error);
-            UI.mostrarStatusCarregamento("Falha ao carregar o arquivo.", 'erro');
-        } finally {
-            fileInput.value = ''; // Limpa o input
-        }
-    });
-
-    // Listener para o botão de voltar do Dashboard para a seleção de pacotes
-    document.getElementById('btn-voltar-para-selecao-pacotes').addEventListener('click', exibirTelaSelecaoPacotes);
-
-    // Mantém os listeners de conteúdo que já existiam
-    adicionarListenersDeConteudo();
 }
 
 
