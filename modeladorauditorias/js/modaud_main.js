@@ -792,30 +792,24 @@ async function abrirModalSelecaoAreas() {
 
     try {
         const colunaFiltro = modeloMestreSelecionado.Coluna_Filtro_Perguntas;
-        if (!colunaFiltro) {
-            throw new Error("O modelo selecionado não tem uma coluna de filtro de contexto definida.");
-        }
-
-        // ==========================================================
-        // INÍCIO DA CORREÇÃO: Usa a lógica de descoberta que já funciona
-        // ==========================================================
         
-        // 1. Descobre a tabela de contexto e a coluna de display
+        // Usa a função de descoberta para obter a tabela de contexto e a coluna de display
         const { contextRecords: areas, displayColId } = await discoverContextInfo(colunaFiltro);
         
-        // 2. Busca todas as perguntas do modelo para fazer a contagem
+        // Busca todas as perguntas do modelo de uma vez para fazer a contagem
         const todasPerguntasDoModelo = await getTableData('Modelos_Perguntas', { Ref_Modelo_Mestre: [modeloMestreSelecionado.id] });
 
-        // ==========================================================
-        // FIM DA CORREÇÃO
-        // ==========================================================
+        // Limpa o corpo do modal e adiciona o container para a lista
+        modalBody.innerHTML = `
+            <div class="modal-area-item select-all-container">
+                <input type="checkbox" id="check-select-all-areas">
+                <label for="check-select-all-areas"><strong>Selecionar/Desselecionar Todos</strong></label>
+            </div>
+            <div id="areas-list-container"></div>
+        `;
 
-        modalBody.innerHTML = '';
-        if (areas.length === 0) {
-            modalBody.innerHTML = '<p>Nenhuma área de contexto encontrada.</p>';
-            return;
-        }
-
+        const listContainer = document.getElementById('areas-list-container');
+        
         areas.forEach(area => {
             const count = todasPerguntasDoModelo.filter(p => String(p[colunaFiltro]) === String(area.id)).length;
             
@@ -824,18 +818,28 @@ async function abrirModalSelecaoAreas() {
                 const itemDiv = document.createElement('div');
                 itemDiv.className = 'modal-area-item';
                 itemDiv.innerHTML = `
-                    <input type="checkbox" id="area-${area.id}" value="${area.id}" data-areatexto="${area[displayColId]}">
+                    <input type="checkbox" class="area-checkbox" id="area-${area.id}" value="${area.id}" data-areatexto="${area[displayColId]}">
                     <label for="area-${area.id}">${area[displayColId]}</label>
                     <span class="count">(${count} perguntas)</span>
                 `;
-                modalBody.appendChild(itemDiv);
+                listContainer.appendChild(itemDiv);
             }
         });
+        
+        // Adiciona o event listener para a checkbox "Selecionar Todos"
+        const selectAllCheckbox = document.getElementById('check-select-all-areas');
+        selectAllCheckbox.addEventListener('change', (e) => {
+            // Seleciona apenas as checkboxes de área, não ela mesma
+            listContainer.querySelectorAll('.area-checkbox').forEach(cb => {
+                cb.checked = e.target.checked;
+            });
+        });
 
+        // Reconfigura o botão de confirmação para chamar a cópia múltipla
         modalConfirmCopyBtn.onclick = () => copiarMultiplasAreas(todasPerguntasDoModelo);
 
     } catch(e) {
-        console.error("Erro ao abrir modal de áreas:", e);
+        console.error("Erro ao abrir modal de seleção de áreas:", e);
         modalBody.innerHTML = `<p style="color:red">Erro ao carregar áreas: ${e.message}</p>`;
     }
 }
@@ -930,29 +934,54 @@ function fecharModalAreas() {
 
 async function abrirModalClonador() {
     if (!modeloMestreSelecionado) return;
+
+    // VERIFICA SE UM CONTEXTO DE ORIGEM ESTÁ SELECIONADO NA TELA PRINCIPAL
+    if (!contextoSelecionadoId) {
+        alert("Por favor, primeiro selecione um contexto (Área) na tela principal para usar como origem da clonagem.");
+        return;
+    }
     
-    clonadorSelectOrigem.innerHTML = '<option value="">Carregando...</option>';
-    clonadorSelectDestino.innerHTML = '';
+    // Zera os selects do modal e o exibe
+    clonadorSelectDestino.innerHTML = '<option value="">Carregando...</option>';
     modalClonador.style.display = 'flex';
+    
+    // Esconde o select de origem, pois não é mais necessário
+    document.getElementById('clonador-select-origem').style.display = 'none';
 
     try {
         const colunaFiltro = modeloMestreSelecionado.Coluna_Filtro_Perguntas;
         const { contextRecords, displayColId } = await discoverContextInfo(colunaFiltro);
 
-        clonadorSelectOrigem.innerHTML = '<option value="">-- Selecione a Origem --</option>';
+        // ATUALIZA O HTML DO MODAL PARA MOSTRAR A ORIGEM SELECIONADA
+        const origemSelecionada = contextRecords.find(area => area.id === contextoSelecionadoId);
+        const origemLabel = document.querySelector('label[for="clonador-select-origem"]');
+        if (origemLabel) {
+            origemLabel.innerHTML = `Copiar de: <strong>${origemSelecionada[displayColId]}</strong>`;
+        }
+        
+        // Popula apenas a lista de destinos, excluindo a origem
+        clonadorSelectDestino.innerHTML = '';
         contextRecords.forEach(area => {
-            clonadorSelectOrigem.add(new Option(area[displayColId], area.id));
-            clonadorSelectDestino.add(new Option(area[displayColId], area.id));
+            if (area.id !== contextoSelecionadoId) { // Não deixa clonar para si mesmo
+                clonadorSelectDestino.add(new Option(area[displayColId], area.id));
+            }
         });
+        
+        // O botão de confirmação agora só precisa do ID dos destinos
+        clonadorConfirmBtn.onclick = () => {
+            const destinosIds = Array.from(clonadorSelectDestino.selectedOptions).map(opt => parseInt(opt.value, 10));
+            // Passa o ID da origem (do contexto principal) para a função de execução
+            executarClonagem(contextoSelecionadoId, destinosIds);
+        };
+
     } catch (e) {
         console.error("Erro ao popular modal de clonagem:", e);
-        clonadorSelectOrigem.innerHTML = `<option value="">Erro</option>`;
+        // Trata erro no corpo do modal
     }
 }
 
-async function executarClonagem() {
-    const origemId = parseInt(clonadorSelectOrigem.value, 10);
-    const destinosIds = Array.from(clonadorSelectDestino.selectedOptions).map(opt => parseInt(opt.value, 10));
+
+async function executarClonagem(origemId, destinosIds) {
 
     if (!origemId || destinosIds.length === 0) {
         alert("Por favor, selecione um contexto de origem e pelo menos um de destino.");

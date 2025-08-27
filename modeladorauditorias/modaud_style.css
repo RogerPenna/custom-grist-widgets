@@ -55,6 +55,7 @@ body {
     background-color: #ebecf0;
     border-radius: 4px;
     padding: 8px;
+    border-top: 2px solid #007bff;
 }
 
 .pergunta-card {
@@ -83,11 +84,6 @@ body {
     flex-grow: 1;
 }
 
-.sub-perguntas-container {
-    /* Este container agrupa os filhos de um card */
-    min-height: 10px; /* Área de drop para itens filhos */
-    padding-left: 30px;
-}
 
 #filtros-container {
     display: flex;
@@ -121,20 +117,11 @@ body {
     background-color: #f8f9fa;
 }
 
-#lista-perguntas {
-    /* ... estilos existentes ... */
-    border-top: 2px solid #007bff; /* Destaque visual */
-}
 .card-wrapper {
     /* Este novo wrapper agrupa um card e seu container de filhos */
     margin-bottom: 2px;
 }
 
-.pergunta-card {
-    /* ... estilos existentes ... */
-    display: flex;
-    align-items: center;
-}
 
 .item-tipo {
     margin-left: auto; /* Joga para a direita */
@@ -449,4 +436,22 @@ body {
 .small-btn {
     padding: 8px 12px; /* Padding menor para um botão mais compacto */
     font-size: 0.9em;
+}
+
+.header-buttons {
+    display: flex;
+    align-items: center; /* Alinha o botão de clonar com o grupo de botões principais */
+    gap: 15px;
+}
+
+.button-group-vertical {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.select-all-container {
+    background-color: #f3f4f6;
+    border-bottom: 2px solid #e5e7eb;
+    font-weight: bold;
 }
