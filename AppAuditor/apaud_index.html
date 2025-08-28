@@ -85,13 +85,24 @@
 
     <!-- TELA DE EXECUÇÃO DO CHECKLIST -->
     <div id="tela-checklist" class="tela">
-        <div id="checklist-header">
-            <button id="btn-voltar-principal" class="btn-header">&lt; Voltar</button>
-            <div id="header-titulo">Auditoria</div>
-            <div id="header-progresso">0 / 0 (0%)</div>
-        </div>
-        <div id="checklist-container" class="container"></div>
+    <div id="checklist-header">
+        <button id="btn-voltar-principal" class="btn-header">&lt; Voltar</button>
+        <div id="header-titulo">Auditoria</div>
+        <div id="header-progresso">0 / 0 (0%)</div>
     </div>
+
+    <!-- NOVO ELEMENTO AQUI -->
+    <div id="checklist-options">
+        <label>
+            <input type="checkbox" id="modo-compacto-checkbox">
+            Modo Compacto
+        </label>
+    </div>
+    
+    <div id="checklist-container" class="container">
+        <!-- O checklist será renderizado aqui -->
+    </div>
+</div>
 
     <!-- MODAIS E INPUTS ESCONDIDOS (COM CONTEÚDO COMPLETO) -->
     <div id="modal-finalizar" class="modal-finalizar-overlay">
@@ -132,6 +143,12 @@
         </div>
     </div>
 
+    
+	<script src="js/lib/jszip.min.js"></script>
+	<script src="js/lib/FileSaver.min.js"></script>
+	<script src="js/lib/jspdf.umd.min.js"></script>
     <script type="module" src="js/apaud_main.js"></script>
+
+
 </body>
 </html>

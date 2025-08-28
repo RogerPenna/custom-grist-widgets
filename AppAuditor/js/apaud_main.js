@@ -1,7 +1,10 @@
 // js/apaud_main.js (v12.0 - Handshake e SAF)
 
+import * as ReportGenerator from './reportGenerator.js';
+import { env } from './environment.js';
 import * as Auditoria from './apaud_auditoria.js';
 import * as UI from './apaud_ui.js';
+
 
 /**
  * Função que aguarda o sinal 'android-ready' do Kotlin para confirmar
@@ -42,6 +45,13 @@ async function inicializarApp() {
     Auditoria.inicializarGerenciador();
     configurarListenersGlobais();
     exibirTelaSelecaoPacotes(); // Agora é seguro renderizar a UI
+	const statusDiv = document.getElementById('status-carregamento');
+    if (statusDiv) {
+        const envDisplay = document.createElement('p');
+        envDisplay.className = 'environment-display';
+        envDisplay.textContent = `Ambiente: ${env.name}`;
+        statusDiv.appendChild(envDisplay);
+    }
 }
 
 // O listener que inicia tudo.
@@ -69,24 +79,50 @@ function selecionarEIniciarPacote(idPacote) {
 function configurarListenersGlobais() {
     const fileInput = document.getElementById('json-file-input');
     fileInput.addEventListener('change', async (event) => {
-        const file = event.target.files[0];
-        if (!file) return;
+    const file = event.target.files[0];
+    if (!file) return;
 
-        try {
-            const fileContent = await file.text();
-            const novoId = Auditoria.adicionarNovoPacote(fileContent);
-            if (novoId) {
-                exibirTelaSelecaoPacotes();
+    let fileContent = '';
+    UI.mostrarStatusCarregamento('Processando arquivo...', 'info');
+
+    try {
+        // A lógica de descompactação agora é universal e roda no JS
+        if (file.name.endsWith('.zip')) {
+            console.log("Arquivo ZIP detectado. Descompactando com JSZip...");
+            const jszip = new JSZip(); // JSZip está globalmente disponível
+            const zip = await jszip.loadAsync(file);
+            
+            const jsonFileInZip = Object.values(zip.files).find(f => !f.dir && f.name.endsWith('.json'));
+
+            if (jsonFileInZip) {
+                fileContent = await jsonFileInZip.async('string');
+            } else {
+                throw new Error("Nenhum arquivo .json encontrado dentro do ZIP.");
             }
-        } catch (error) {
-            console.error("Erro ao carregar ou processar o arquivo:", error);
-            UI.mostrarStatusCarregamento("Falha ao carregar o arquivo.", 'erro');
-        } finally {
-            fileInput.value = '';
+        } else { // Assume que é .json
+            fileContent = await file.text();
         }
-    });
+
+        // O resto do fluxo é o mesmo, chamando o "cérebro"
+        const novoId = Auditoria.adicionarNovoPacote(fileContent);
+        if (novoId) {
+            exibirTelaSelecaoPacotes();
+        }
+
+    } catch (error) {
+        console.error("Erro ao carregar ou processar o arquivo:", error);
+        UI.mostrarStatusCarregamento(`Falha: ${error.message}`, 'erro');
+    } finally {
+        event.target.value = ''; // Limpa o input
+    }
+});
 
     document.getElementById('btn-voltar-para-selecao-pacotes').addEventListener('click', exibirTelaSelecaoPacotes);
+	document.getElementById('modo-compacto-checkbox').addEventListener('change', (event) => {
+    // Quando o checkbox mudar, simplesmente re-renderiza o checklist.
+    // A função de renderização em apaud_ui.js lerá o estado do checkbox.
+    UI.renderizarChecklistCompleto();
+});
 
     adicionarListenersDeConteudo();
 }
@@ -143,25 +179,75 @@ function adicionarListenersDeConteudo() {
             atualizarListaDashboard(); // <--- MUDANÇA AQUI
         }
         else if (target.classList.contains('btn-exportar-json')) {
-            const resultado = Auditoria.gerarJsonDeResultado(planejamentoId);
-            if(resultado) {
-                const jsonString = JSON.stringify(resultado, null, 2);
-                const blob = new Blob([jsonString], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                const nomeAuditoria = Auditoria.getInfoAuditoriaPrincipal().Nome_Auditoria.replace(/[\s/]/g, '_');
-                const depto = Auditoria.getPlanejamentoPorId(planejamentoId)?.Departamento_Departamento.replace(/[\s/]/g, '_');
-                a.download = `Resultado_${nomeAuditoria}_${depto}.json`;
-                a.href = url;
-                a.click();
-                URL.revokeObjectURL(url);
-                Auditoria.marcarComoExportado(planejamentoId, 'json');
-                atualizarListaDashboard();
-            }
-        }
+			 Auditoria.setCurrentAuditoriaId(planejamentoId);
+    const resultado = Auditoria.gerarJsonDeResultado(planejamentoId);
+    if (!resultado) return;
+
+    // Prepara os nomes dos arquivos
+    const nomeAuditoria = Auditoria.getInfoAuditoriaPrincipal().Nome_Auditoria.replace(/[\s/]/g, '_');
+    const depto = Auditoria.getPlanejamentoPorId(planejamentoId)?.Departamento_Departamento.replace(/[\s/]/g, '_');
+    const nomeArquivoJson = `Resultado_${nomeAuditoria}_${depto}.json`;
+    const nomeArquivoZip = `Resultado_${nomeAuditoria}_${depto}.zip`;
+
+    // Converte o resultado para uma string JSON
+    const jsonString = JSON.stringify(resultado, null, 2);
+
+    // --- LÓGICA DE DETECÇÃO DE AMBIENTE ---
+    if (env.isAndroid) {
+        // No Android, chamamos a ponte nativa para compartilhar
+        console.log("Ambiente Android detectado. Solicitando compartilhamento nativo...");
+        // O `window.Android.shareFile` é uma nova função que criaremos no Kotlin.
+        // Ela receberá o nome do arquivo e o conteúdo em Base64.
+        const jsonBase64 = btoa(unescape(encodeURIComponent(jsonString)));
+        window.Android.shareFile(nomeArquivoJson, jsonBase64, 'application/json');
+    
+    } else {
+        // No Browser/Grist, criamos um ZIP para download
+        console.log("Ambiente Browser/Grist detectado. Gerando ZIP para download...");
+        const zip = new JSZip();
+        zip.file(nomeArquivoJson, jsonString); // Adiciona o JSON ao ZIP
+
+        zip.generateAsync({ type: "blob", compression: "DEFLATE" })
+            .then(function (content) {
+                // Usa a biblioteca FileSaver.js (ver passo 2) para um download robusto
+                saveAs(content, nomeArquivoZip); 
+            });
+    }
+    
+    // Marca como exportado, independentemente do ambiente
+    Auditoria.marcarComoExportado(planejamentoId, 'json');
+    atualizarListaDashboard();
+}
         else if (target.classList.contains('btn-exportar-pdf')) {
-            alert("Funcionalidade de exportar PDF ainda não implementada.");
+    // --- ADICIONE ESTA LINHA CRUCIAL ---
+    Auditoria.setCurrentAuditoriaId(planejamentoId);
+    
+    const pdfBlob = ReportGenerator.gerarPDF(planejamentoId);
+    if (!pdfBlob) return;
+
+    // Prepara os nomes dos arquivos
+    const nomeAuditoria = Auditoria.getInfoAuditoriaPrincipal().Nome_Auditoria.replace(/[\s/]/g, '_');
+    const depto = Auditoria.getPlanejamentoPorId(planejamentoId)?.Departamento_Departamento.replace(/[\s/]/g, '_');
+    const nomeArquivoPdf = `Relatorio_${nomeAuditoria}_${depto}.pdf`;
+
+    if (env.isAndroid) {
+        // No Android, usamos a ponte para compartilhar
+        const reader = new FileReader();
+        reader.readAsDataURL(pdfBlob); 
+        reader.onloadend = function() {
+            const base64data = reader.result;
+            // Remove o prefixo "data:application/pdf;base64,"
+            const base64Content = base64data.substr(base64data.indexOf(',') + 1);
+            window.Android.shareFile(nomeArquivoPdf, base64Content, 'application/pdf');
         }
+    } else {
+        // No Browser/Grist, usamos o FileSaver para download
+        saveAs(pdfBlob, nomeArquivoPdf);
+    }
+
+    Auditoria.marcarComoExportado(planejamentoId, 'pdf');
+    atualizarListaDashboard();
+}
 		        else if (target.closest('.btn-resetar-auditoria')) {
             // O target pode ser o SVG, então buscamos o botão pai
             const botaoReset = target.closest('.btn-resetar-auditoria');
@@ -253,12 +339,23 @@ function adicionarListenersDeConteudo() {
             
             // --- Ação de responder com botão ---
             if (target.matches('.botao-resposta')) {
-                console.log('Botão de resposta clicado! Acionando recálculo e re-renderização.'); // LOG DE DIAGNÓSTICO
-                Auditoria.salvarResposta(target.dataset.perguntaId, target.dataset.valor);
-                UI.renderizarChecklistCompleto();
-                UI.atualizarHeaderProgresso();
-                return; // Adicionado para garantir que o fluxo pare aqui
-            }
+    const isModoCompacto = document.getElementById('modo-compacto-checkbox').checked;
+    const perguntaId = target.dataset.perguntaId;
+
+    // Se o botão não tem um 'data-valor', significa que é o botão 'Selecionar Resposta'
+    // ou um botão de resposta já selecionada no modo compacto.
+    if (isModoCompacto && !target.dataset.valor || target.classList.contains('selecionado')) {
+        // Lógica para expandir: re-renderiza apenas este card em modo normal
+        UI.expandirRespostasParaCard(target.closest('.pergunta-card'));
+        return;
+    }
+
+    // Lógica de salvamento normal
+    Auditoria.salvarResposta(perguntaId, target.dataset.valor);
+    UI.renderizarChecklistCompleto(); // Re-renderiza tudo para voltar ao modo compacto
+    UI.atualizarHeaderProgresso();
+    return;
+}
 
             // --- Ações dentro de um card de pergunta (anotação, mídia, etc.) ---
             if (cardPergunta) {

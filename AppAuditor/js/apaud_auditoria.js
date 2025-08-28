@@ -61,38 +61,61 @@ export function getCurrentAuditoriaId() {
 }
 // --- Funções de Carregamento ---
 export function adicionarNovoPacote(textoJSON) {
-  if (!textoJSON || !textoJSON.trim()) {
-    mostrarStatusCarregamento("Erro: O arquivo está vazio ou é inválido.", 'erro');
-    return null;
-  }
-  try {
-    const pacoteJson = JSON.parse(textoJSON);
-    const idPacote = pacoteJson?.auditoria_geral?.IdAud;
+    try {
+        const pacoteJsonNovo = JSON.parse(textoJSON);
+        const idPacote = pacoteJsonNovo?.auditoria_geral?.IdAud;
+        if (!idPacote) {
+            throw new Error("Pacote inválido: 'auditoria_geral.IdAud' não encontrado.");
+        }
 
-    if (!idPacote) {
-      throw new Error("O arquivo de pacote é inválido ou não contém 'auditoria_geral.IdAud'.");
+        const pacoteExistente = gerenciadorDePacotes[idPacote];
+
+        if (pacoteExistente) {
+            // --- INÍCIO DA LÓGICA DE MERGE ---
+            const confirmacao = confirm(`O pacote "${idPacote}" já existe. Deseja ATUALIZÁ-LO com os novos dados? O progresso existente será mantido.`);
+            if (!confirmacao) {
+                mostrarStatusCarregamento("Atualização cancelada pelo usuário.", 'info');
+                return null;
+            }
+
+            console.log("Iniciando a atualização do pacote. Progresso antigo será mantido.");
+
+            // Mantém o progresso antigo
+            const progressoAntigo = pacoteExistente.progresso;
+            
+            // Atualiza a estrutura do pacote com a nova versão
+            gerenciadorDePacotes[idPacote] = {
+                pacote: pacoteJsonNovo,
+                progresso: progressoAntigo // REUTILIZA O PROGRESSO!
+            };
+            
+            // Opcional: Lógica de limpeza. Se um planejamento foi removido do novo JSON,
+            // podemos remover seu progresso do Map para manter os dados limpos.
+            const idsPlanejamentosNovos = new Set(pacoteJsonNovo.dados_suporte.planejamento_pai.map(p => p.id));
+            for (const idPlanejamentoAntigo of progressoAntigo.keys()) {
+                if (!idsPlanejamentosNovos.has(idPlanejamentoAntigo)) {
+                    console.log(`Removendo progresso do planejamento obsoleto: ${idPlanejamentoAntigo}`);
+                    progressoAntigo.delete(idPlanejamentoAntigo);
+                }
+            }
+
+        } else {
+            // --- LÓGICA DE NOVO PACOTE (como era antes) ---
+            console.log("Adicionando um novo pacote.");
+            gerenciadorDePacotes[idPacote] = {
+                pacote: pacoteJsonNovo,
+                progresso: new Map() // Começa com um progresso vazio
+            };
+        }
+
+        _salvarGerenciador();
+        mostrarStatusCarregamento(`Pacote "${idPacote}" ${pacoteExistente ? 'atualizado' : 'carregado'} com sucesso!`, 'sucesso');
+        return idPacote;
+
+    } catch (error) {
+        mostrarStatusCarregamento(`Erro ao processar o JSON: ${error.message}`, 'erro');
+        return null;
     }
-    
-    if (gerenciadorDePacotes[idPacote]) {
-      if (!confirm(`Um pacote com o ID "${idPacote}" já existe. Deseja substituí-lo? O progresso anterior será perdido.`)) {
-          mostrarStatusCarregamento("Carregamento cancelado pelo usuário.", 'info');
-          return null;
-      }
-    }
-
-    gerenciadorDePacotes[idPacote] = {
-      pacote: pacoteJson,
-      progresso: new Map() // Inicia um progresso novo e vazio
-    };
-    
-    _salvarGerenciador();
-    mostrarStatusCarregamento(`Pacote "${idPacote}" carregado com sucesso!`, 'sucesso');
-    return idPacote;
-
-  } catch (error) {
-    mostrarStatusCarregamento(`Erro ao processar o JSON: ${error.message}`, 'erro');
-    return null;
-  }
 }
 
 // --- Funções de Gerenciamento da Auditoria ---

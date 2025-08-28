@@ -332,27 +332,24 @@ function ajustarAlturaTextareas() {
 }
 
 
+// CÓDIGO COMPLETO E FINAL PARA A FUNÇÃO renderizarPergunta
+
 function renderizarPergunta(dadosCompletos, containerPai, instanciaInfo) {
     const { modelo, grupo, opcoes } = dadosCompletos;
     const perguntaCard = document.createElement('div');
     perguntaCard.className = 'pergunta-card';
     const idUnico = instanciaInfo ? `${modelo.id}-${instanciaInfo.numero}` : String(modelo.id);
 
+    // Se a pergunta for um resultado calculado, renderiza o badge e encerra.
     if (modelo.Tipo_Item === 'resultado_calculado') {
-		        // --- LOGS DE VERIFICAÇÃO ---
-        console.log(`[renderizarPergunta] Encontrou pergunta de resultado: ID ${idUnico} ("${modelo.Texto_Pergunta}")`);
-        console.log(` -> Fórmula a ser usada: "${modelo.Formula_Calculo}"`);
-        console.log(` -> Informação da Instância:`, instanciaInfo);
         perguntaCard.classList.add('resultado-calculado-card');
         const resultadoNumerico = Auditoria.executarCalculo(modelo.Formula, instanciaInfo);
-		console.log(` -> Resultado retornado pelo 'executarCalculo':`, resultadoNumerico);
         Auditoria.salvarResposta(idUnico, resultadoNumerico);
         
         let displayHTML = '<div class="resultado-placeholder">Aguardando preenchimento...</div>';
         if (resultadoNumerico !== null && resultadoNumerico !== undefined) {
             if (modelo.FAIXA_CALCULADA) { 
                 const faixa = Auditoria.getDescricaoDaFaixa(modelo.FAIXA_CALCULADA, resultadoNumerico);
-				console.log(` -> Procurando faixa para valor ${resultadoNumerico}. Faixa encontrada:`, faixa);
                 if (faixa) {
                     displayHTML = `<div class="resultado-badge" style="background-color: ${faixa.Cor_Fundo}; color: ${faixa.Cor_Texto};">${faixa.Descricao_Saida}<span class="resultado-valor-numerico">(${resultadoNumerico})</span></div>`;
                 } else {
@@ -366,33 +363,34 @@ function renderizarPergunta(dadosCompletos, containerPai, instanciaInfo) {
         perguntaCard.innerHTML = `
             <p class="texto-pergunta">${modelo.Texto_Pergunta}</p>
             <div class="resultado-container">${displayHTML}</div>`;
-
-    } else { // CASO SEJA UMA PERGUNTA NORMAL
-        perguntaCard.dataset.itemId = idUnico;
-
-        const pontoAberto = Auditoria.getPontoEmAberto(idUnico);
-        if (pontoAberto) {
-            perguntaCard.classList.add('ponto-em-aberto-card');
-        }
-
-        const anotacaoSalva = Auditoria.getAnotacao(idUnico);
-        const temAnotacao = anotacaoSalva.trim() !== '';
-        const classeAnotacao = temAnotacao ? 'com-conteudo' : '';
-        const contadorAnotacaoHTML = temAnotacao ? '(' + anotacaoSalva.split('\n').length + ' l)' : '';
-
-        const midiasAnexadas = Auditoria.getMidias(idUnico);
-        const temMidia = midiasAnexadas.length > 0;
-        const classeMidia = temMidia ? 'com-conteudo' : '';
-        const contadorMidiaHTML = temMidia ? '(' + midiasAnexadas.length + ')' : '';
-
-        const iconeAnotacao = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z"/><path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z"/></svg>';
-        const iconeMidia = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M1 5.25A2.25 2.25 0 013.25 3h13.5A2.25 2.25 0 0119 5.25v9.5A2.25 2.25 0 0116.75 17H3.25A2.25 2.25 0 011 14.75v-9.5zm1.5 5.81v3.69c0 .414.336.75.75.75h13.5a.75.75 0 00.75-.75v-3.69l-2.76-2.76a.75.75 0 00-1.06 0l-2.22 2.22a.75.75 0 000 1.06l-2.22-2.22a.75.75 0 00-1.06 0l-2.22 2.22a.75.75 0 000 1.06l-1.47-1.47a.75.75 0 00-1.06 0L2.5 11.06zM6.25 7a.75.75 0 100-1.5.75.75 0 000 1.5z" clip-rule="evenodd"/></svg>';
-        const iconePontoAberto = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 6a3 3 0 013-3h10a1 1 0 01.8 1.6L14.25 8l2.55 3.4A1 1 0 0116 13H6a1 1 0 00-1 1v3a1 1 0 11-2 0V6z" clip-rule="evenodd" /></svg>';
         
-        let respostasHTML = '';
-        const tipoApresentacao = grupo?.Tipo_Apresentacao || 'botoes'; 
-        const valorSalvo = Auditoria.getResposta(idUnico);
+        containerPai.appendChild(perguntaCard);
+        return; // Encerra a função aqui para perguntas calculadas
+    }
+    
+    // Continua para perguntas normais
+    perguntaCard.dataset.itemId = idUnico;
 
+    const pontoAberto = Auditoria.getPontoEmAberto(idUnico);
+    if (pontoAberto) {
+        perguntaCard.classList.add('ponto-em-aberto-card');
+    }
+
+    // --- LÓGICA DE RENDERIZAÇÃO DAS RESPOSTAS (INCLUINDO MODO COMPACTO) ---
+    const isModoCompacto = document.getElementById('modo-compacto-checkbox')?.checked || false;
+    const valorSalvo = Auditoria.getResposta(idUnico);
+    const tipoApresentacao = grupo?.Tipo_Apresentacao || 'botoes';
+    let respostasHTML = '';
+
+    if (isModoCompacto && tipoApresentacao === 'botoes') {
+        const opcaoSelecionada = opcoes.find(opt => String(opt.id) === String(valorSalvo));
+        if (opcaoSelecionada) {
+            respostasHTML = `<button class="botao-resposta selecionado" data-pergunta-id="${idUnico}" data-valor="${opcaoSelecionada.id}" style="background-color:${opcaoSelecionada.Fundo}; color:${opcaoSelecionada.Fonte}; border-color:${opcaoSelecionada.Fundo};">${opcaoSelecionada.Texto_Opcao}</button>`;
+        } else {
+            respostasHTML = `<button class="botao-resposta" data-pergunta-id="${idUnico}">Selecionar Resposta...</button>`;
+        }
+    } else {
+        // Renderização normal (não compacta ou para tipos diferentes de 'botoes')
         switch (tipoApresentacao) {
             case 'dropdown':
                 const optionsHTML = opcoes.map(opt => `<option value="${opt.id}" ${String(valorSalvo) === String(opt.id) ? 'selected' : ''}>${opt.Texto_Opcao}</option>`).join('');
@@ -406,18 +404,57 @@ function renderizarPergunta(dadosCompletos, containerPai, instanciaInfo) {
                 respostasHTML = opcoes.map(opt => `<button class="botao-resposta ${String(valorSalvo) === String(opt.id) ? 'selecionado' : ''}" data-pergunta-id="${idUnico}" data-valor="${opt.id}" style="${String(valorSalvo) === String(opt.id) ? `background-color:${opt.Fundo}; color:${opt.Fonte}; border-color:${opt.Fundo};` : ''}">${opt.Texto_Opcao}</button>`).join('');
                 break;
         }
-
-        perguntaCard.innerHTML = `
-            <p class="texto-pergunta">${modelo.Texto_Pergunta}</p>
-            <div class="respostas-container">${respostasHTML}</div>
-            <div class="acoes-container">
-                <div class="acao-item"><button class="botao-acao botao-anotacao ${classeAnotacao}" title="Anotações">${iconeAnotacao}</button><span class="contador-conteudo">${contadorAnotacaoHTML}</span></div>
-                <div class="acao-item"><button class="botao-acao botao-midia ${classeMidia}" title="Mídias">${iconeMidia}</button><span class="contador-conteudo">${contadorMidiaHTML}</span></div>
-                <div class="acao-item"><button class="botao-acao botao-ponto-aberto ${pontoAberto ? 'com-conteudo' : ''}" title="${pontoAberto ? `Pendência: ${pontoAberto.pendencia}` : 'Marcar como Ponto em Aberto'}">${iconePontoAberto}</button></div>
-            </div>`;
     }
 
+    // --- LÓGICA DE RENDERIZAÇÃO DA ANOTAÇÃO (COMO NO iAUDITOR) ---
+    const anotacaoSalva = Auditoria.getAnotacao(idUnico);
+    const temAnotacao = anotacaoSalva.trim() !== '';
+    const classeAnotacao = temAnotacao ? 'com-conteudo' : '';
+    
+    // O contêiner da anotação é sempre criado, mas seu conteúdo muda.
+    // O CSS controlará a borda e o padding apenas quando houver conteúdo.
+    let anotacaoDisplayHTML = temAnotacao 
+        ? `<div class="anotacao-display">${anotacaoSalva}</div>`
+        : ''; // Se não há anotação, o div interno não é criado.
+
+    const anotacaoContainerHTML = `<div class="anotacao-container">${anotacaoDisplayHTML}</div>`;
+
+
+    // --- LÓGICA PARA OS BOTÕES DE AÇÃO ---
+    const midiasAnexadas = Auditoria.getMidias(idUnico);
+    const temMidia = midiasAnexadas.length > 0;
+    const classeMidia = temMidia ? 'com-conteudo' : '';
+    const contadorMidiaHTML = temMidia ? `(${midiasAnexadas.length})` : '';
+
+    const iconeAnotacao = '<svg>...</svg>'; // (seu svg aqui)
+    const iconeMidia = '<svg>...</svg>'; // (seu svg aqui)
+    const iconePontoAberto = '<svg>...</svg>'; // (seu svg aqui)
+
+    // --- MONTAGEM FINAL DO HTML DO CARD ---
+    perguntaCard.innerHTML = `
+        <p class="texto-pergunta">${modelo.Texto_Pergunta}</p>
+        <div class="respostas-container">${respostasHTML}</div>
+        
+        ${anotacaoContainerHTML}
+        
+        <div class="acoes-container">
+            <div class="acao-item"><button class="botao-acao botao-anotacao ${classeAnotacao}" title="Anotações">${iconeAnotacao} ${temAnotacao ? 'Editar' : 'Adicionar'} anotação</button></div>
+            <div class="acao-item"><button class="botao-acao botao-midia ${classeMidia}" title="Mídias">${iconeMidia} Mídia <span class="contador-conteudo">${contadorMidiaHTML}</span></button></div>
+            <div class="acao-item"><button class="botao-acao botao-ponto-aberto ${pontoAberto ? 'com-conteudo' : ''}" title="${pontoAberto ? `Pendência: ${pontoAberto.pendencia}` : 'Marcar como Ponto em Aberto'}">${iconePontoAberto} Ação</button></div>
+        </div>`;
+    
     containerPai.appendChild(perguntaCard);
+
+    // Adiciona o listener de evento para o contêiner de anotação, se ele existir
+    const anotacaoContainer = perguntaCard.querySelector('.anotacao-container');
+    if (anotacaoContainer) {
+        anotacaoContainer.addEventListener('click', () => {
+            UI.expandirAnotacaoParaFullscreen(Auditoria.getAnotacao(idUnico), (novoTexto) => {
+                Auditoria.salvarAnotacao(idUnico, novoTexto);
+                UI.renderizarChecklistCompleto(); 
+            });
+        });
+    }
 }
 
 function renderizarSecaoNaoRepetivel(modeloSecao, containerPai, filhos) { // <-- Garante que 'filhos' é recebido
@@ -590,4 +627,21 @@ export function fecharModalGerenciarMidia() {
     const modal = document.getElementById('modal-gerenciar-midia');
     modal.style.display = 'none';
     delete modal.dataset.perguntaId;
+}
+
+export function expandirRespostasParaCard(cardElemento) {
+    if (!cardElemento) return;
+    const idUnico = cardElemento.dataset.itemId;
+    const dadosCompletos = Auditoria.getDadosCompletosPergunta(idUnico.split('-')[0]);
+    const { grupo, opcoes } = dadosCompletos;
+    
+    // Gera o HTML de todos os botões de resposta
+    const valorSalvo = Auditoria.getResposta(idUnico);
+    const respostasHTML = opcoes.map(opt => `<button class="botao-resposta ${String(valorSalvo) === String(opt.id) ? 'selecionado' : ''}" data-pergunta-id="${idUnico}" data-valor="${opt.id}" style="${String(valorSalvo) === String(opt.id) ? `background-color:${opt.Fundo}; color:${opt.Fonte}; border-color:${opt.Fundo};` : ''}">${opt.Texto_Opcao}</button>`).join('');
+
+    // Substitui o conteúdo do contêiner de respostas
+    const containerRespostas = cardElemento.querySelector('.respostas-container');
+    if (containerRespostas) {
+        containerRespostas.innerHTML = respostasHTML;
+    }
 }
