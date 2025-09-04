@@ -73,12 +73,16 @@ export function renderizarPerguntas(container, records, options = {}) {
             }
 
             card.innerHTML = `
-                <span class="drag-handle">::</span>
+            <div class="drag-handle"></div>
+            <div class="card-content">
                 <span class="pergunta-texto">${item.Texto_Pergunta || '(Pergunta sem texto)'}</span>
                 <div class="capsules-container">${infoCapsulesHTML}</div>
+            </div>
+            <div class="card-actions">
                 <button class="add-child-btn" title="Adicionar sub-item">+</button>
                 <button class="edit-btn" title="Editar detalhes">⚙️</button>
-            `;
+            </div>
+        `;
             
             cardWrapper.appendChild(card);
             

@@ -61,12 +61,14 @@ body {
 .pergunta-card {
     background-color: #ffffff;
     border-radius: 3px;
-    padding: 10px;
     margin-bottom: 8px;
     box-shadow: 0 1px 2px rgba(9,30,66,.25);
     display: flex;
-    align-items: center;
-    cursor: grab;
+    /* CORREÇÃO: Alinha os itens pelo topo para um início consistente */
+    align-items: flex-start; 
+    min-height: 42px;
+    padding: 0;
+    cursor: default;
 }
 
 .pergunta-card.sortable-ghost {
@@ -75,15 +77,75 @@ body {
 }
 
 .drag-handle {
+    display: flex;
+    align-items: center; /* Centraliza os pontinhos verticalmente */
+    justify-content: center;
+    width: 30px;
+    flex-shrink: 0;
+    /* CORREÇÃO: Faz o handle esticar para a altura total do card */
+    align-self: stretch; 
+    border-top-left-radius: 3px;
+    border-bottom-left-radius: 3px;
     cursor: grab;
-    margin-right: 10px;
-    color: #7a869a;
+}
+.drag-handle:active { cursor: grabbing; }
+
+.drag-handle::before {
+    content: '::';
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 1.2em;
+    font-weight: bold;
+    text-shadow: 0 1px 1px rgba(0,0,0,0.3);
+}
+
+.card-content {
+    flex-grow: 1;
+    display: flex;
+    /* CORREÇÃO: Volta a alinhar na horizontal */
+    align-items: center; 
+    padding: 8px 12px;
+    min-width: 0;
 }
 
 .pergunta-texto {
-    flex-grow: 1;
+    cursor: text;
+    /* CORREÇÃO: Permite quebra de linha */
+    white-space: normal;
+    word-break: break-word;
+    /* O texto ocupa o espaço disponível, mas não empurra as cápsulas */
+    flex-grow: 1; 
 }
 
+.capsules-container {
+    margin-top: 6px; /* Espaço entre o texto e as cápsulas */
+}
+/* Esconde o container de cápsulas se ele estiver vazio */
+.capsules-container:empty {
+    display: none;
+}
+
+.card-actions {
+    display: flex;
+    /* CORREÇÃO: Faz o contêiner de ações esticar para a altura total */
+    align-self: stretch; 
+    align-items: center;
+    padding: 0 8px;
+    border-left: 1px solid #dfe1e6;
+}
+
+.card-actions button {
+    flex-shrink: 0;
+    font-size: 1.2em;
+    opacity: 0.4;
+    transition: opacity 0.2s;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+}
+.pergunta-card:hover .card-actions button {
+    opacity: 1;
+}
 
 #filtros-container {
     display: flex;
@@ -236,36 +298,31 @@ body {
 .drawer-footer button.primary { background-color: #007bff; color: white; }
 .drawer-footer button.delete { background-color: #dc3545; color: white; }
 
-.pergunta-card.tipo-pergunta {
-    background-color: #ffffff;
-    border-left: 4px solid #6b7280; /* Borda cinza sutil */
+.pergunta-card.tipo-pergunta .drag-handle {
+    background-color: #6b7280; /* Cor da borda agora é o fundo do handle */
 }
 
-/* Estilo para Seções */
 .pergunta-card.tipo-secao {
-    background-color: #f3f4f6; /* Fundo cinza claro */
-    border-left: 4px solid #9ca3af;
+    background-color: #f3f4f6;
+}
+.pergunta-card.tipo-secao .drag-handle {
+    background-color: #9ca3af;
 }
 
-/* Estilo para Quebras de Página */
 .pergunta-card.tipo-quebra_pagina {
-    background-color: #e0f2fe; /* Fundo azul claro */
-    color: #0c4a6e; /* Fonte azul escuro */
-    border-left: 4px solid #38bdf8;
+    background-color: #e0f2fe;
+    color: #0c4a6e;
+}
+.pergunta-card.tipo-quebra_pagina .drag-handle {
+    background-color: #38bdf8;
 }
 
-/* Estilo para Resultado Calculado */
 .pergunta-card.tipo-resultado_calculado {
-    background-color: #dcfce7; /* Fundo verde claro */
-    color: #166534; /* Fonte verde escuro */
-    border-left: 4px solid #4ade80;
+    background-color: #dcfce7;
+    color: #166534;
 }
-
-/* Ajustes finos para os elementos internos herdarem a cor */
-.pergunta-card.tipo-quebra_pagina .drag-handle,
 .pergunta-card.tipo-resultado_calculado .drag-handle {
-    color: inherit;
-    opacity: 0.7;
+    background-color: #4ade80;
 }
 .save-status {
     margin-left: 15px;
@@ -279,11 +336,13 @@ body {
 
 /* Container para as novas cápsulas */
 .capsules-container {
-    margin-left: auto; /* Joga para a direita */
+    margin-left: auto;
     display: flex;
     align-items: center;
     gap: 6px;
-    margin-right: 10px;
+    /* Impede que as cápsulas encolham */
+    flex-shrink: 0; 
+    padding-left: 10px; /* Adiciona um espaço entre o texto e as cápsulas */
 }
 
 /* Estilo base para todas as cápsulas */
@@ -325,6 +384,7 @@ body {
 .visibility-capsule {
     background-color: #ffedd5;
     color: #9a3412;
+	cursor: help;
 }
 
 /* Estilo para fórmula */
@@ -497,3 +557,36 @@ button.secondary { /* Para o botão Clonar */
     border-color: #6c757d;
 }
 button.secondary:hover:not(:disabled) { background-color: #5a6268; }
+
+body.selection-mode .pergunta-card {
+    cursor: pointer;
+    transition: background-color 0.2s, border-left-color 0.2s;
+}
+
+body.selection-mode .pergunta-card:hover {
+    background-color: #e7f3ff; /* Azul claro no hover */
+}
+
+/* Estilo para um card selecionado */
+.pergunta-card.selected {
+    background-color: #d1e7fd; /* Azul mais forte */
+    border-left-color: #0d6efd !important; /* Borda azul destacada */
+}
+
+.pergunta-card.tipo_pergunta { background-color: #ffffff; }
+.pergunta-card.tipo_pergunta .drag-handle { background-color: #6b7280; }
+
+/* Seção */
+.pergunta-card.tipo_secao { background-color: #f3f4f6; }
+.pergunta-card.tipo_secao .drag-handle { background-color: #9ca3af; }
+
+/* Quebra de Página */
+.pergunta-card.tipo_quebra_pagina { background-color: #e0f2fe; color: #0c4a6e; }
+.pergunta-card.tipo_quebra_pagina .drag-handle { background-color: #38bdf8; }
+.pergunta-card.tipo_quebra_pagina .drag-handle::before { color: rgba(12, 74, 110, 0.7); text-shadow: none; }
+
+
+/* Resultado Calculado */
+.pergunta-card.tipo_resultado_calculado { background-color: #dcfce7; color: #166534; }
+.pergunta-card.tipo_resultado_calculado .drag-handle { background-color: #4ade80; }
+.pergunta-card.tipo_resultado_calculado .drag-handle::before { color: rgba(22, 101, 52, 0.7); text-shadow: none; }

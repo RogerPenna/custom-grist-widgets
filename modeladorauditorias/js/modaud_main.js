@@ -51,6 +51,8 @@ let contextoSelecionadoId = null;
 let estadoOriginalPerguntas = [];
 let sortableInstances = [];
 let _schemaCache = { allTables: null, allColumns: null };
+let editingRecordId = null;
+let mapaTiposResposta = new Map();
 
  /**
  * @param {string} colId - O ID da coluna (ex: "Tipo_Item").
@@ -86,28 +88,32 @@ async function inicializarApp() {
         todosModelosMestres = await getTableData(TABELA_MESTRES);
         popularSelectModeloMestre();
         
+        // Listeners da UI Principal
         selectModeloMestre.addEventListener('change', onModeloMestreChange);
         selectContexto.addEventListener('change', onContextoChange);
-        
+        btnSalvar.addEventListener('click', salvarAlteracoes); // <-- LINHA RESTAURADA
         btnNovoItem.addEventListener('click', () => criarNovoItem());
 
+        // Listeners do Drawer de Edição
         drawerCloseBtn.addEventListener('click', closeDrawer);
         drawerOverlayEl.addEventListener('click', closeDrawer);
         drawerSaveBtn.addEventListener('click', saveDrawerChanges);
         drawerDeleteBtn.addEventListener('click', deleteRecordFromDrawer);
 
-        // Listeners para os novos modais
+        // Listeners do Modal de Clonagem
         btnAbrirClonador.addEventListener('click', abrirModalClonador);
         clonadorCloseBtn.addEventListener('click', () => modalClonador.style.display = 'none');
         clonadorCancelBtn.addEventListener('click', () => modalClonador.style.display = 'none');
-        clonadorConfirmBtn.addEventListener('click', executarClonagem);
-
+        // A linha 'clonadorConfirmBtn.addEventListener' foi REMOVIDA daqui. Ela é a causa do erro de PointerEvent.
+        // A lógica de clique deste botão é definida DENTRO de 'abrirModalClonador'.
+        
+        // Listeners do Modal de Cópia
         btnAbrirCopiador.addEventListener('click', abrirModalCopiador);
         copiadorCloseBtn.addEventListener('click', () => modalCopiador.style.display = 'none');
         copiadorCancelBtn.addEventListener('click', () => modalCopiador.style.display = 'none');
-        copiadorConfirmBtn.addEventListener('click', executarCopia);
+        copiadorConfirmBtn.addEventListener('click', executarCopia); // A função de cópia correta
         copiadorCheckMultiplas.addEventListener('change', alternarModoCopia);
-
+        
     } catch (e) {
         console.error("Erro fatal na inicialização:", e);
         containerPerguntas.innerHTML = `<p style="color:red; padding: 10px;">${e.message}</p>`;
@@ -276,8 +282,9 @@ function resetarContextoEPerguntas() {
     btnNovoItem.disabled = true;
 }
 
+// AÇÃO: Substitua a sua função carregarPerguntas inteira por esta.
+// AÇÃO: Substitua a sua função carregarPerguntas inteira por esta.
 async function carregarPerguntas() {
-    // CORREÇÃO: Buscando a referência ao botão aqui dentro
     const btnSalvar = document.getElementById('btn-salvar');
     
     if (!modeloMestreSelecionado) return;
@@ -285,42 +292,105 @@ async function carregarPerguntas() {
     if (btnSalvar) btnSalvar.disabled = true;
 
     try {
-        // Lógica de filtragem que já está funcionando
         const modeloMestreId = modeloMestreSelecionado.id;
         const colunaFiltro = modeloMestreSelecionado.Coluna_Filtro_Perguntas;
-        const filtroMestre = { Ref_Modelo_Mestre: [modeloMestreId] };
-        const todasAsPerguntasDoModelo = await getTableData('Modelos_Perguntas', filtroMestre);
+        
+        // CORREÇÃO: Busca os tipos de resposta JUNTO com as perguntas para garantir que os dados de suporte estão sempre atualizados.
+        const [todasAsPerguntasDoModelo, tiposDeResposta] = await Promise.all([
+            getTableData('Modelos_Perguntas', { Ref_Modelo_Mestre: [modeloMestreId] }),
+            getTableData('Tipos_Respostas_Grupos')
+        ]);
+        
+        // Cria o mapa atualizado com os dados frescos.
+        const mapaTiposResposta = new Map(tiposDeResposta.map(tipo => [tipo.id, tipo.Tipo_Resposta]));
+
         let perguntasFiltradas = todasAsPerguntasDoModelo;
         if (colunaFiltro && contextoSelecionadoId) {
             perguntasFiltradas = todasAsPerguntasDoModelo.filter(p => String(p[colunaFiltro]) === String(contextoSelecionadoId));
         }
         
-        const tiposDeResposta = await getTableData('Tipos_Respostas_Grupos');
-        const mapaTiposResposta = new Map(tiposDeResposta.map(tipo => [tipo.id, tipo.Tipo_Resposta]));
-        
         estadoOriginalPerguntas = JSON.parse(JSON.stringify(perguntasFiltradas));
         
-        renderizarPerguntas(containerPerguntas, perguntasFiltradas, {
-            mapaTiposResposta: mapaTiposResposta
-        });
-        
+        // Passa o mapa FRESCO para a função de renderização.
+        renderizarPerguntas(containerPerguntas, perguntasFiltradas, { mapaTiposResposta });
         configurarSortable();
 
-        containerPerguntas.querySelectorAll('.edit-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const card = e.target.closest('.pergunta-card');
-                const recordId = parseInt(card.dataset.id, 10);
-                openDrawerForRecord(recordId);
-            });
-        });
+        // Anexa todos os event listeners necessários após a renderização.
+        containerPerguntas.querySelectorAll('.pergunta-card').forEach(card => {
+            const recordId = parseInt(card.dataset.id, 10);
+            
+            card.querySelector('.edit-btn')?.addEventListener('click', () => { openDrawerForRecord(recordId); });
+            card.querySelector('.add-child-btn')?.addEventListener('click', () => { criarNovoItem(recordId); });
 
-        containerPerguntas.querySelectorAll('.add-child-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const parentId = parseInt(e.target.closest('.pergunta-card').dataset.id, 10);
-                criarNovoItem(parentId);
-            });
-        });
+            const textoEl = card.querySelector('.pergunta-texto');
+            if (textoEl) {
+                textoEl.addEventListener('click', () => {
+                    if (document.querySelector('.inline-edit-container')) return;
 
+                    const originalText = textoEl.textContent;
+                    
+                    const container = document.createElement('div');
+                    container.className = 'inline-edit-container';
+                    
+                    const inputEl = document.createElement('input');
+                    inputEl.type = 'text';
+                    inputEl.value = originalText;
+                    inputEl.className = 'inline-edit';
+
+                    const actionsEl = document.createElement('div');
+                    actionsEl.className = 'inline-edit-actions';
+                    actionsEl.innerHTML = `
+                        <button class="inline-confirm" title="Salvar (Enter)">✔️</button>
+                        <button class="inline-cancel" title="Cancelar (Escape)">❌</button>
+                    `;
+                    
+                    container.appendChild(inputEl);
+                    container.appendChild(actionsEl);
+
+                    textoEl.style.display = 'none';
+                    textoEl.parentElement.insertBefore(container, textoEl);
+                    inputEl.focus();
+                    inputEl.select();
+
+                    const finalizarEdicao = async (salvar = false) => {
+                        if (!container.parentElement) return;
+
+                        const newText = inputEl.value;
+                        container.remove();
+                        textoEl.style.display = '';
+
+                        if (!salvar || newText === originalText) {
+                            textoEl.textContent = originalText;
+                            return;
+                        }
+
+                        textoEl.textContent = newText;
+                        try {
+                            await updateQuestions([{ id: recordId, fields: { Texto_Pergunta: newText } }]);
+                            const recordInState = estadoOriginalPerguntas.find(p => p.id === recordId);
+                            if (recordInState) recordInState.Texto_Pergunta = newText;
+                        } catch (err) {
+                            alert('Falha ao salvar: ' + err.message);
+                            textoEl.textContent = originalText;
+                        }
+                    };
+                    
+                    actionsEl.querySelector('.inline-confirm').onclick = () => finalizarEdicao(true);
+                    actionsEl.querySelector('.inline-cancel').onclick = () => finalizarEdicao(false);
+
+                    inputEl.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            finalizarEdicao(true);
+                        } else if (e.key === 'Escape') {
+                            e.preventDefault();
+                            finalizarEdicao(false);
+                        }
+                    });
+                });
+            }
+        });
+        
         containerPerguntas.querySelectorAll('.add-sibling-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const parentContainer = e.target.closest('.sortable-list');
@@ -330,15 +400,13 @@ async function carregarPerguntas() {
         });
 
         containerPerguntas.querySelectorAll('.visibility-capsule').forEach(capsule => {
-            const cardWrapper = capsule.closest('.card-wrapper');
-            if (!cardWrapper) return;
-            const card = cardWrapper.querySelector('.pergunta-card');
+            const card = capsule.closest('.pergunta-card');
             if (!card) return;
             
             const recordId = parseInt(card.dataset.id, 10);
             const record = estadoOriginalPerguntas.find(p => p.id === recordId);
             
-            if (record && record.Visibilidade_DependeDe) {
+            if (record && record.Visibilidade_DependeDe > 0) {
                 const parentQuestionCard = containerPerguntas.querySelector(`.pergunta-card[data-id="${record.Visibilidade_DependeDe}"]`);
                 if (parentQuestionCard) {
                     capsule.addEventListener('mouseenter', () => {
@@ -352,7 +420,6 @@ async function carregarPerguntas() {
             }
         });
 
-
     } catch (e) {
         console.error("Erro ao carregar perguntas:", e);
         containerPerguntas.innerHTML = `<p style="color:red; padding: 10px;">${e.message}</p>`;
@@ -364,16 +431,17 @@ function configurarSortable() {
     sortableInstances = [];
 
     document.querySelectorAll('.sortable-list').forEach(container => {
-        sortableInstances.push(new Sortable(container, {
+        const instance = new Sortable(container, {
             group: 'perguntas',
             animation: 150,
             handle: '.drag-handle',
-            onEnd: (evt) => {
-                // Evento disparado ao soltar um card.
-                console.log('Movimento detectado, acionando auto-save.');
-                salvarEstruturaAtual();
+            onEnd: function (evt) {
+                // Habilita o botão 'Salvar Alterações' quando um movimento é completado.
+                console.log("Movimento de drag-and-drop concluído. Habilitando o botão Salvar.");
+                btnSalvar.disabled = false;
             }
-        }));
+        });
+        sortableInstances.push(instance);
     });
 }
 
@@ -692,9 +760,16 @@ async function saveDrawerChanges() {
     }
 
     try {
+        // 1. Envia a atualização para o Grist.
         await updateQuestions([{ id: editingRecordId, fields: updates }]);
+        
+        // 2. Fecha o drawer para o usuário ver a UI principal.
         closeDrawer();
+        
+        // 3. RECARREGA e RENDERIZA tudo com os dados mais recentes do Grist.
+        //    Esta é a linha que corrige o problema de sincronização de estado.
         await carregarPerguntas();
+
     } catch(err) {
         alert("Falha ao salvar alterações: " + err.message);
     }
@@ -859,57 +934,78 @@ function fecharModalAreas() {
 }
 
 async function abrirModalClonador() {
-    if (!modeloMestreSelecionado) return;
-
-    // VERIFICA SE UM CONTEXTO DE ORIGEM ESTÁ SELECIONADO NA TELA PRINCIPAL
-    if (!contextoSelecionadoId) {
-        alert("Por favor, primeiro selecione um contexto (Área) na tela principal para usar como origem da clonagem.");
+    if (!modeloMestreSelecionado || !contextoSelecionadoId) {
+        alert("Por favor, primeiro selecione um contexto para usar como origem.");
         return;
     }
     
-    // Zera os selects do modal e o exibe
-    clonadorSelectDestino.innerHTML = '<option value="">Carregando...</option>';
     modalClonador.style.display = 'flex';
-    
-    // Esconde o select de origem, pois não é mais necessário
     document.getElementById('clonador-select-origem').style.display = 'none';
+    clonadorSelectDestino.innerHTML = '<option value="">Carregando...</option>';
 
     try {
         const colunaFiltro = modeloMestreSelecionado.Coluna_Filtro_Perguntas;
         const { contextRecords, displayColId } = await discoverContextInfo(colunaFiltro);
-
-        // ATUALIZA O HTML DO MODAL PARA MOSTRAR A ORIGEM SELECIONADA
         const origemSelecionada = contextRecords.find(area => area.id === contextoSelecionadoId);
         const origemLabel = document.querySelector('label[for="clonador-select-origem"]');
-        if (origemLabel) {
-            origemLabel.innerHTML = `Copiar de: <strong>${origemSelecionada[displayColId]}</strong>`;
-        }
         
-        // Popula apenas a lista de destinos, excluindo a origem
+        origemLabel.innerHTML = `Copiar de: <strong>${origemSelecionada[displayColId]}</strong>
+            <div class="checkbox-group" style="margin-top: 10px;">
+                <input type="checkbox" id="clonador-selecionar-itens">
+                <label for="clonador-selecionar-itens">Selecionar Itens Específicos</label>
+            </div>
+        `;
+        
         clonadorSelectDestino.innerHTML = '';
         contextRecords.forEach(area => {
-            if (area.id !== contextoSelecionadoId) { // Não deixa clonar para si mesmo
+            if (area.id !== contextoSelecionadoId) {
                 clonadorSelectDestino.add(new Option(area[displayColId], area.id));
             }
         });
         
-        // O botão de confirmação agora só precisa do ID dos destinos
+        // ==========================================================
+        // CORREÇÃO DA LÓGICA DO BOTÃO
+        // ==========================================================
         clonadorConfirmBtn.onclick = () => {
             const destinosIds = Array.from(clonadorSelectDestino.selectedOptions).map(opt => parseInt(opt.value, 10));
-            // Passa o ID da origem (do contexto principal) para a função de execução
-            executarClonagem(contextoSelecionadoId, destinosIds);
+            const selecionarItens = document.getElementById('clonador-selecionar-itens').checked;
+
+            if (destinosIds.length === 0) {
+                alert("Por favor, selecione pelo menos um contexto de destino.");
+                return;
+            }
+
+            if (selecionarItens) {
+                // Chama a função que entra no modo de seleção
+                iniciarModoSelecao(contextoSelecionadoId, destinosIds);
+            } else {
+                // Chama a função que executa a clonagem total
+                executarClonagem(contextoSelecionadoId, destinosIds, null);
+            }
         };
+        // ==========================================================
 
     } catch (e) {
         console.error("Erro ao popular modal de clonagem:", e);
-        // Trata erro no corpo do modal
+        // Tratar erro
     }
 }
 
 
-async function executarClonagem(origemId, destinosIds) {
 
-    if (!origemId || destinosIds.length === 0) {
+
+// Substitua esta função inteira no seu arquivo modaud_main.js original
+
+// Substitua esta função inteira no seu arquivo modaud_main.js original
+
+// Substitua esta função inteira no seu arquivo modaud_main.js original
+
+// Substitua esta função inteira no seu arquivo modaud_main.js original
+
+// Substitua esta função inteira no seu arquivo modaud_main.js original
+
+async function executarClonagem(origemId, destinosIds, idsParaClonar = null) {
+    if (!origemId || !destinosIds || destinosIds.length === 0) {
         alert("Por favor, selecione um contexto de origem e pelo menos um de destino.");
         return;
     }
@@ -917,31 +1013,35 @@ async function executarClonagem(origemId, destinosIds) {
         alert("O contexto de origem não pode estar na lista de destinos.");
         return;
     }
-    if (!confirm("Isso criará uma cópia de todas as perguntas do contexto de origem para os destinos. Deseja continuar?")) {
+
+    const itemText = idsParaClonar ? `${idsParaClonar.length} itens selecionados` : "todas as perguntas";
+    if (!confirm(`Isso criará uma cópia de ${itemText} para os destinos selecionados. Deseja continuar?`)) {
         return;
     }
 
     modalClonador.style.display = 'none';
-    console.log(`Iniciando clonagem de ${origemId} para ${destinosIds.join(', ')}...`);
 
     try {
+        btnAbrirClonador.disabled = true;
+        btnAbrirClonador.textContent = 'Clonando...';
+        
         const colunaFiltro = modeloMestreSelecionado.Coluna_Filtro_Perguntas;
-        
-        const todasAsPerguntasDoModelo = await getTableData('Modelos_Perguntas', {
-            Ref_Modelo_Mestre: [modeloMestreSelecionado.id]
-        });
-
-        const perguntasOrigem = todasAsPerguntasDoModelo.filter(p => 
-            String(p[colunaFiltro]) === String(origemId)
-        );
-        
-        console.log(`[DEBUG] Total de perguntas no modelo: ${todasAsPerguntasDoModelo.length}. Perguntas do contexto de origem (ID ${origemId}): ${perguntasOrigem.length}`);
-        
-        if (perguntasOrigem.length === 0) {
-            alert("O contexto de origem selecionado não tem perguntas para clonar.");
-            return;
+        if (!colunaFiltro) {
+            throw new Error("Não foi possível determinar a 'Coluna_Filtro_Perguntas' a partir do Modelo Mestre.");
         }
 
+        const todasAsPerguntasDoModelo = await getTableData('Modelos_Perguntas', { Ref_Modelo_Mestre: [modeloMestreSelecionado.id] });
+        let perguntasOrigem = todasAsPerguntasDoModelo.filter(p => String(p[colunaFiltro]) === String(origemId));
+        if (idsParaClonar && idsParaClonar.length > 0) {
+            const idSet = new Set(idsParaClonar);
+            perguntasOrigem = perguntasOrigem.filter(p => idSet.has(p.id));
+        }
+        
+        if (perguntasOrigem.length === 0) {
+            alert("O contexto de origem (ou sua seleção) não tem perguntas para clonar.");
+            return;
+        }
+        
         const { allColumns, allTables } = _schemaCache;
         const perguntasTableMeta = allTables.find(t => t.tableId === 'Modelos_Perguntas');
         const colunasMeta = allColumns.filter(c => String(c.parentId) === String(perguntasTableMeta.id));
@@ -950,45 +1050,63 @@ async function executarClonagem(origemId, destinosIds) {
             .map(c => c.colId);
 
         for (const destinoId of destinosIds) {
-            console.log(`Clonando ${perguntasOrigem.length} perguntas para o destino ID: ${destinoId}`);
-            
-            const mapaIds = new Map();
-            const novasPerguntasParaCriar = [];
+            // PASSO 1 (Antes): Obter todos os IDs existentes no destino ANTES da operação.
+            const idsAntesDaCopia = new Set(
+                todasAsPerguntasDoModelo
+                    .filter(p => String(p[colunaFiltro]) === String(destinoId))
+                    .map(p => p.id)
+            );
 
+            // PASSO 2 (Ação): Preparar e enviar um único lote de criação.
+            const acoesAdicionar = [];
             perguntasOrigem.forEach(pOrigem => {
                 const novaPergunta = {};
                 for (const colId of colunasParaCopiar) {
-                    novaPergunta[colId] = pOrigem[colId];
+                    if (colId !== 'ID_Pai' && colId !== 'Visibilidade_DependeDe') {
+                        novaPergunta[colId] = pOrigem[colId];
+                    }
                 }
                 novaPergunta[colunaFiltro] = destinoId;
-                novasPerguntasParaCriar.push(novaPergunta);
-            });
-            
-            const acoesAdicionar = novasPerguntasParaCriar.map(p => ['AddRecord', 'Modelos_Perguntas', null, p]);
-            const novosIds = await grist.docApi.applyUserActions(acoesAdicionar);
-            
-            perguntasOrigem.forEach((p, index) => {
-                mapaIds.set(p.id, novosIds[index]);
+                acoesAdicionar.push(['AddRecord', 'Modelos_Perguntas', null, novaPergunta]);
             });
 
-            // ==========================================================
-            // INÍCIO DA CORREÇÃO
-            // ==========================================================
+            await grist.docApi.applyUserActions(acoesAdicionar);
+
+            // PASSO 3 (Depois): Rebuscar todos os dados para obter o novo estado.
+            const perguntasDepoisDaCopia = await getTableData('Modelos_Perguntas', { Ref_Modelo_Mestre: [modeloMestreSelecionado.id] });
+
+            // PASSO 4 (Mapeamento): Isolar os novos IDs e construir o mapa.
+            const novosIdsEncontrados = perguntasDepoisDaCopia
+                .filter(p => String(p[colunaFiltro]) === String(destinoId) && !idsAntesDaCopia.has(p.id))
+                .map(p => p.id);
+
+            const mapaIds = new Map();
+            if (novosIdsEncontrados.length === perguntasOrigem.length) {
+                perguntasOrigem.forEach((pOrigem, index) => {
+                    mapaIds.set(pOrigem.id, novosIdsEncontrados[index]);
+                });
+            } else {
+                throw new Error("A contagem de novos registros não corresponde à contagem de origem. A clonagem foi abortada para evitar dados corrompidos.");
+            }
+
+            // PASSO 5 (Atualização): Com o mapa correto, atualizar os relacionamentos.
             const acoesAtualizar = [];
             perguntasOrigem.forEach((pOrigem) => {
                 const idNovo = mapaIds.get(pOrigem.id);
+                if (!idNovo) return;
+
                 const updates = {};
                 let precisaAtualizar = false;
 
-                // Traduz o ID_Pai
-                if (pOrigem.ID_Pai && mapaIds.has(pOrigem.ID_Pai)) {
-                    updates.ID_Pai = mapaIds.get(pOrigem.ID_Pai);
+                const oldParentId = pOrigem.ID_Pai;
+                if (oldParentId && mapaIds.has(oldParentId)) {
+                    updates.ID_Pai = mapaIds.get(oldParentId);
                     precisaAtualizar = true;
                 }
-                
-                // CORREÇÃO: Traduz o Visibilidade_DependeDe
-                if (pOrigem.Visibilidade_DependeDe && mapaIds.has(pOrigem.Visibilidade_DependeDe)) {
-                    updates.Visibilidade_DependeDe = mapaIds.get(pOrigem.Visibilidade_DependeDe);
+
+                const oldVisibilidadeId = pOrigem.Visibilidade_DependeDe;
+                if (oldVisibilidadeId && mapaIds.has(oldVisibilidadeId)) {
+                    updates.Visibilidade_DependeDe = mapaIds.get(oldVisibilidadeId);
                     precisaAtualizar = true;
                 }
                 
@@ -996,25 +1114,24 @@ async function executarClonagem(origemId, destinosIds) {
                     acoesAtualizar.push(['UpdateRecord', 'Modelos_Perguntas', idNovo, updates]);
                 }
             });
-            // ==========================================================
-            // FIM DA CORREÇÃO
-            // ==========================================================
-
+            
             if (acoesAtualizar.length > 0) {
-                console.log(`[DEBUG] Atualizando ${acoesAtualizar.length} referências para o destino ID ${destinoId}...`);
                 await grist.docApi.applyUserActions(acoesAtualizar);
             }
-            console.log(`Clonagem para o destino ID ${destinoId} concluída.`);
         }
 
-        alert("Clonagem concluída com sucesso! Recarregue o contexto de destino para ver as novas perguntas.");
-        if (destinosIds.includes(contextoSelecionadoId)) {
+        alert("Clonagem concluída com sucesso!");
+        
+        if (destinosIds.includes(parseInt(contextoSelecionadoId,10))) {
             await carregarPerguntas();
         }
 
     } catch (err) {
         console.error("Erro durante a clonagem:", err);
         alert("Falha ao clonar: " + err.message);
+    } finally {
+        btnAbrirClonador.disabled = false;
+        btnAbrirClonador.textContent = 'Clonar Contexto...';
     }
 }
 
@@ -1101,3 +1218,159 @@ async function getAllAreasForCurrentModel() {
         .filter(area => area.count > 0); // Só retorna áreas que têm perguntas
 }
 
+function iniciarModoSelecao(origemId, destinosIds) {
+    modalClonador.style.display = 'none';
+    document.body.classList.add('selection-mode');
+
+    // Desabilita drag-and-drop para permitir cliques
+    sortableInstances.forEach(s => s.option("disabled", true));
+
+    // Esconde os botões normais e cria os botões de confirmação/cancelamento
+    const headerButtons = document.querySelector('.header-buttons');
+    headerButtons.querySelectorAll('button').forEach(btn => btn.style.display = 'none');
+    
+    const btnConfirmar = document.createElement('button');
+    btnConfirmar.id = 'btn-confirmar-clone';
+    btnConfirmar.textContent = 'Confirmar e Clonar Itens';
+    
+    const btnCancelar = document.createElement('button');
+    btnCancelar.id = 'btn-cancelar-clone';
+    btnCancelar.textContent = 'Cancelar';
+    btnCancelar.className = 'secondary';
+
+    headerButtons.prepend(btnCancelar);
+    headerButtons.prepend(btnConfirmar);
+
+    // Lógica de cancelamento
+    btnCancelar.onclick = sairModoSelecao;
+
+    // Lógica de confirmação
+    btnConfirmar.onclick = () => {
+        const selectedIds = new Set();
+        containerPerguntas.querySelectorAll('.pergunta-card.selected').forEach(card => {
+            selectedIds.add(parseInt(card.dataset.id, 10));
+        });
+
+        if (selectedIds.size === 0) {
+            alert("Nenhum item foi selecionado.");
+            return;
+        }
+        
+        executarClonagem(origemId, destinosIds, Array.from(selectedIds));
+        sairModoSelecao();
+    };
+
+    // Adiciona o evento de clique nos cards
+    containerPerguntas.querySelectorAll('.pergunta-card').forEach(card => {
+        card.addEventListener('click', toggleSelecaoItem);
+    });
+}
+
+function sairModoSelecao() {
+    document.body.classList.remove('selection-mode');
+    
+    // Habilita drag-and-drop novamente
+    sortableInstances.forEach(s => s.option("disabled", false));
+    
+    // Restaura os botões originais
+    const headerButtons = document.querySelector('.header-buttons');
+    headerButtons.querySelectorAll('button').forEach(btn => btn.style.display = ''); // Mostra os botões originais
+    
+    // Remove os botões temporários
+    document.getElementById('btn-confirmar-clone')?.remove();
+    document.getElementById('btn-cancelar-clone')?.remove();
+
+    // Remove os listeners de clique e a classe 'selected' dos cards
+    containerPerguntas.querySelectorAll('.pergunta-card').forEach(card => {
+        card.removeEventListener('click', toggleSelecaoItem);
+        card.classList.remove('selected');
+    });
+}
+
+function toggleSelecaoItem(event) {
+    // Impede que o clique no botão de edição/add acione a seleção
+    if (event.target.closest('button')) {
+        return;
+    }
+
+    const card = event.currentTarget;
+    const isSelected = card.classList.toggle('selected');
+    
+    // Lógica de seleção em cascata para os filhos
+    const wrapper = card.closest('.card-wrapper');
+    const subContainer = wrapper.querySelector('.sub-perguntas-container');
+    if (subContainer) {
+        subContainer.querySelectorAll('.pergunta-card').forEach(childCard => {
+            childCard.classList.toggle('selected', isSelected);
+        });
+    }
+}
+
+async function salvarAlteracoes() {
+    const btnSalvar = document.getElementById('btn-salvar');
+    if (!btnSalvar) return;
+
+    btnSalvar.disabled = true;
+    btnSalvar.textContent = 'Salvando...';
+
+    const updates = [];
+    const estadoAtualMap = new Map();
+    
+    // Percorre todos os wrappers para manter a estrutura correta
+    function analisarEstrutura(container, parentId) {
+        const children = Array.from(container.children).filter(el => el.classList.contains('card-wrapper'));
+        children.forEach((wrapper, index) => {
+            const card = wrapper.querySelector('.pergunta-card');
+            if (!card) return;
+
+            const recordId = parseInt(card.dataset.id, 10);
+            const novaOrdem = index;
+            
+            estadoAtualMap.set(recordId, { ID_Pai: parentId, Ordem: novaOrdem });
+
+            // Analisa os filhos deste item recursivamente
+            const subContainer = wrapper.querySelector('.sub-perguntas-container');
+            if (subContainer) {
+                analisarEstrutura(subContainer, recordId);
+            }
+        });
+    }
+
+    analisarEstrutura(containerPerguntas, 0); // Começa na raiz
+
+    // Compara o estado original com o atual para encontrar mudanças
+    for (const originalRecord of estadoOriginalPerguntas) {
+        const estadoAtual = estadoAtualMap.get(originalRecord.id);
+        if (estadoAtual) {
+            const mudouPai = (originalRecord.ID_Pai || 0) !== estadoAtual.ID_Pai;
+            const mudouOrdem = (originalRecord.Ordem || 0) !== estadoAtual.Ordem;
+            
+            if (mudouPai || mudouOrdem) {
+                updates.push({
+                    id: originalRecord.id,
+                    fields: {
+                        ID_Pai: estadoAtual.ID_Pai,
+                        Ordem: estadoAtual.Ordem
+                    }
+                });
+            }
+        }
+    }
+
+    if (updates.length === 0) {
+        alert("Nenhuma alteração de ordem ou hierarquia para salvar.");
+        btnSalvar.textContent = 'Salvar Alterações';
+        return;
+    }
+
+    try {
+        await updateQuestions(updates);
+        alert('Alterações de ordem e hierarquia salvas com sucesso!');
+        await carregarPerguntas(); // Recarrega para refletir o estado salvo
+    } catch (err) {
+        alert(`Falha ao salvar: ${err.message}`);
+        btnSalvar.disabled = false; // Reabilita em caso de erro
+    } finally {
+        btnSalvar.textContent = 'Salvar Alterações';
+    }
+}

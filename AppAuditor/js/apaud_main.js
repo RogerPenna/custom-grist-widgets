@@ -124,6 +124,30 @@ function configurarListenersGlobais() {
     UI.renderizarChecklistCompleto();
 });
 
+const btnAjuda = document.getElementById('btn-ajuda');
+const btnFecharAjuda = document.getElementById('btn-fechar-ajuda');
+let ultimaTelaAtiva = 'tela-selecao-pacote';
+
+if (btnAjuda && btnFecharAjuda) {
+    btnAjuda.addEventListener('click', async () => { // Adiciona 'async'
+        const telaAtual = document.querySelector('.tela.ativa');
+        if (telaAtual) {
+            ultimaTelaAtiva = telaAtual.id;
+        }
+
+        // Agora esperamos a função de depuração terminar
+        await UI.renderizarConteudoAjuda();
+
+        UI.mostrarTela('tela-ajuda');
+        btnAjuda.style.display = 'none';
+    });
+
+    btnFecharAjuda.addEventListener('click', () => {
+        UI.mostrarTela(ultimaTelaAtiva);
+        btnAjuda.style.display = 'flex';
+    });
+}
+
     adicionarListenersDeConteudo();
 }
 

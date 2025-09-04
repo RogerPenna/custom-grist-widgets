@@ -649,3 +649,101 @@ textarea { width: 95%; height: 250px; margin-top: 1rem; padding: 10px; border: 1
     margin-top: 1rem;
     text-align: center;
 }
+
+/* --- CORREÇÕES DE LAYOUT PARA DISPOSITIVOS MÓVEIS --- */
+
+/* Garante que o aplicativo nunca seja mais largo que a tela */
+body, .tela, .container {
+    width: 100%;
+    box-sizing: border-box; /* Inclui padding e borda no cálculo da largura */
+    overflow-x: hidden; /* Impede a barra de rolagem horizontal */
+}
+
+/* Força a quebra de linha em todos os textos para evitar que estourem */
+p, h1, h2, h3, h4, span, div {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+/* Ajuste específico para os cards de pergunta para serem mais flexíveis */
+.pergunta-card {
+    /* Garante que o flexbox possa quebrar a linha se necessário */
+    flex-wrap: wrap;
+}
+
+.texto-pergunta {
+    /* Garante que o texto da pergunta ocupe a largura total antes de forçar outros elementos para baixo */
+    width: 100%;
+}
+
+/* Garante que o contêiner das respostas se adapte */
+.respostas-container {
+    width: 100%;
+}
+
+.btn-ajuda-flutuante {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 50px;
+    height: 50px;
+    background-color: var(--cor-primaria);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    z-index: 999;
+    transition: transform 0.2s;
+}
+
+.btn-ajuda-flutuante:hover {
+    transform: scale(1.1);
+}
+
+#tela-ajuda .container {
+    padding-top: 1rem;
+}
+
+.ajuda-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--cor-borda);
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.ajuda-header h1 {
+    margin: 0;
+    font-size: 1.5rem;
+}
+
+.btn-fechar-ajuda {
+    background: none;
+    border: none;
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--cor-texto-secundario);
+    cursor: pointer;
+}
+
+.conteudo-ajuda h2 {
+    color: var(--cor-primaria);
+    margin-top: 1.5rem;
+    border-bottom: 2px solid var(--cor-fundo-secao-repetivel);
+    padding-bottom: 0.25rem;
+}
+
+.conteudo-ajuda p, .conteudo-ajuda li {
+    line-height: 1.6;
+    color: var(--cor-texto-padrao);
+}
+
+.conteudo-ajuda ul {
+    padding-left: 20px;
+}

@@ -1,6 +1,7 @@
 // js/apaud_ui.js (v6.0 - Com workflow de arquivos)
-
 import * as Auditoria from './apaud_auditoria.js';
+
+
 
 
 export const estadoUI = {
@@ -643,5 +644,48 @@ export function expandirRespostasParaCard(cardElemento) {
     const containerRespostas = cardElemento.querySelector('.respostas-container');
     if (containerRespostas) {
         containerRespostas.innerHTML = respostasHTML;
+    }
+}
+
+export async function renderizarConteudoAjuda() {
+    const container = document.getElementById('conteudo-ajuda');
+    if (!container) return;
+
+    if (container.dataset.loaded === 'true') {
+        console.log("Conteúdo da ajuda já processado.");
+        return;
+    }
+
+    console.log("Iniciando a tentativa de carregamento dinâmico do módulo de ajuda...");
+
+    try {
+        // Tenta importar o módulo dinamicamente. O caminho é o ponto de falha.
+        // O await aqui é crucial.
+        const ajudaModulo = await import('../help/ajuda.js');
+
+        // Se a linha acima funcionou, o módulo foi encontrado e carregado.
+        console.log("SUCESSO: O módulo 'ajuda.js' foi importado com sucesso.", ajudaModulo);
+
+        if (ajudaModulo.ajudaHTML) {
+            console.log("A variável 'ajudaHTML' foi encontrada dentro do módulo.");
+            container.innerHTML = ajudaModulo.ajudaHTML;
+            container.dataset.loaded = 'true'; // Marca como carregado
+        } else {
+            throw new Error("O módulo 'ajuda.js' foi carregado, mas não exporta 'ajudaHTML'.");
+        }
+
+    } catch (error) {
+        // Se a importação falhou, o 'catch' será executado.
+        console.error("ERRO CRÍTICO AO IMPORTAR O MÓDULO DE AJUDA:", error);
+
+        // Exibe o erro diretamente na tela para fácil visualização.
+        container.innerHTML = `
+            <div style="color: red; font-family: monospace; padding: 10px; border: 1px solid red; background-color: #ffeeee;">
+                <p><strong>Falha ao carregar o módulo de ajuda.</strong></p>
+                <p><strong>Caminho testado:</strong> <code>../help/ajuda.js</code></p>
+                <p><strong>Erro:</strong> ${error.message}</p>
+                <p>Verifique o console (F12) para o stack trace completo.</p>
+            </div>
+        `;
     }
 }
