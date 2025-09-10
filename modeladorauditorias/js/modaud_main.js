@@ -958,9 +958,8 @@ async function abrirModalClonador() {
         
         clonadorSelectDestino.innerHTML = '';
         contextRecords.forEach(area => {
-            if (area.id !== contextoSelecionadoId) {
-                clonadorSelectDestino.add(new Option(area[displayColId], area.id));
-            }
+            // Agora adicionamos TODAS as áreas à lista de destinos, incluindo a de origem.
+            clonadorSelectDestino.add(new Option(area[displayColId], area.id));
         });
         
         // ==========================================================
@@ -1007,10 +1006,6 @@ async function abrirModalClonador() {
 async function executarClonagem(origemId, destinosIds, idsParaClonar = null) {
     if (!origemId || !destinosIds || destinosIds.length === 0) {
         alert("Por favor, selecione um contexto de origem e pelo menos um de destino.");
-        return;
-    }
-    if (destinosIds.includes(origemId)) {
-        alert("O contexto de origem não pode estar na lista de destinos.");
         return;
     }
 
