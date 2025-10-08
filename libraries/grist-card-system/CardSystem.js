@@ -1,4 +1,4 @@
-import { getFieldStyle } from '../grist-field-renderer/grist-field-renderer.js';
+import { getFieldStyle, renderField } from '../grist-field-renderer/grist-field-renderer.js';
 import { publish } from '../grist-event-bus/grist-event-bus.js';
 
 /*******************************************************************
@@ -215,13 +215,21 @@ export const CardSystem = (() => {
             fieldBox.appendChild(labelEl);
           }
 
-          const valueEl = document.createElement("div");
-          valueEl.style.textAlign = fieldStyle.dataJustify;
+          const valueContainer = document.createElement("div");
+          // The renderer will handle justification, but we can keep height limits if needed.
           if (fieldStyle.heightLimited) {
-            valueEl.style.cssText += `overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: ${fieldStyle.maxHeightRows}; -webkit-box-orient: vertical;`;
+            valueContainer.style.cssText += `overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: ${fieldStyle.maxHeightRows}; -webkit-box-orient: vertical;`;
           }
-          valueEl.textContent = String(record[f.colId] ?? "");
-          fieldBox.appendChild(valueEl);
+          
+          // Delegate rendering to the field renderer
+          renderField({
+            container: valueContainer,
+            colSchema: schema ? schema[f.colId] : null,
+            record: record,
+            isEditing: false
+          });
+
+          fieldBox.appendChild(valueContainer);
           cardEl.appendChild(fieldBox);
         }
       });

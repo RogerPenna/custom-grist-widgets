@@ -1,0 +1,167 @@
+
+This is a summary of the folders in this directory.
+
+### `AppAuditor`
+
+Contains a web application named "App do Auditor" (Auditor's App).
+
+*   **Audit Management:** It allows users to load "audit packages" (in `.json` or `.zip` format) which contain the structure for different audits.
+*   **Checklist Execution:** Auditors can perform audits using a checklist-based interface. They can answer questions, add notes, and attach media files as evidence.
+*   **Progress Saving:** The application saves the audit progress locally in the browser, allowing auditors to continue their work later.
+*   **Report Generation:** It can generate and export audit results as `.json` files and create summary reports in `.pdf` format.
+*   **Cross-Platform:** The code is designed to work both in a standard web browser and within an Android application.
+
+In essence, it's a complete tool for conducting and managing audits.
+
+### `cards-widget`
+
+Contains a Grist custom widget that displays data records as "cards".
+
+*   **Card-Based Display:** It takes data from a Grist table and renders each row as a card.
+*   **Customizable Layout:** Users can configure the layout of the cards, including which fields to display, their position, and how many columns the card grid should have.
+*   **Extensive Styling:** The widget offers a detailed styling configuration panel. Users can customize:
+    *   Background colors (for the widget and individual cards).
+    *   Borders, fonts, and colors.
+    *   A "handle" area on the side of each card.
+    *   A special "top bar" for titles.
+*   **Interaction Modes:** It supports two modes for viewing more details:
+    *   **Click Mode:** Clicking anywhere on the card opens a side panel.
+    *   **Burger Mode:** Clicking a "burger" icon (☰) on the card opens the side panel.
+*   **Configuration UI:** It includes a comprehensive, multi-tabbed configuration screen for all the layout and styling options.
+
+In short, it's a powerful and highly customizable widget for creating visually appealing card-based layouts for Grist data.
+
+### `ConfigManager`
+
+Contains a Grist widget that acts as a central hub for managing the configurations of other custom widgets.
+
+*   **Centralized Configuration:** Instead of each widget having its own configuration screen, this tool provides a single, unified interface to create, edit, and manage settings for various components.
+*   **Configuration Storage:** It uses a dedicated Grist table (named `_grf_config`) to store all the configuration data as JSON. It even provides instructions on how to create this table if it's missing.
+*   **Component-Specific Editors:** The manager is extensible. The `editors` subfolder contains JavaScript files for building the specific configuration UI for different widgets:
+    *   `config-cards.js`: Provides the editor for the `cards-widget`.
+    *   `config-drawer.js`: Provides the editor for a "Drawer" component.
+*   **Reusable Component:** `ConfigManagerComponent.js` is a reusable modal window that other widgets can use to allow users to select a configuration.
+
+In short, it's a framework-level tool designed to make managing complex, multi-widget Grist documents easier and more organized.
+
+### `data-fetcher`
+
+Contains a single file, `datafetcher.html`, which is a Grist custom widget designed for developers.
+
+Its purpose is to be a **testing and debugging tool** for the Grist API. Here's what it does:
+
+*   **API Exploration:** It runs a series of tests to demonstrate different ways of fetching data and metadata from a Grist document.
+*   **Logs Output:** It logs the results of various Grist API calls directly to the screen, showing the developer exactly what data is returned.
+*   **Functionality Tested:**
+    *   Listing all tables.
+    *   Fetching data from a table.
+    *   Reading Grist's internal metadata tables to determine column types.
+    *   Mapping column names between user-friendly labels and internal IDs.
+
+In short, this is not a widget for end-users but a utility for developers to understand and troubleshoot how data is structured and accessed within Grist.
+
+### `kanban-widget`
+
+Contains a full-featured and highly customizable Kanban board widget for Grist.
+
+*   **Kanban Board:** It transforms Grist data into a classic Kanban board with columns (lanes) and cards.
+*   **Drag & Drop:** Users can move cards between lanes to update their status, and the changes are saved back to the Grist table.
+*   **Detailed Configuration:** It includes a comprehensive, multi-tab configuration panel where users can customize:
+    *   **Fields:** Which fields are displayed on the cards and in the detailed "drawer" view.
+    *   **Visuals:** Colors for columns and cards, background gradients, and layout options.
+    *   **WIP Limits:** Set "Work In Progress" limits for each lane to control workflow.
+    *   **Sorting:** Define criteria for sorting cards within each lane.
+    *   **Rules Engine:** Create automation rules, such as moving a card to another lane automatically if a condition is met, or creating a new record in a different table when a card enters a specific lane.
+*   **Card Detail "Drawer":** Clicking a card opens a side panel (a "drawer") to view and edit all the details of that record.
+*   **Internationalization (i18n):** The `i18n` subfolder contains `en.json` (English) and `pt.json` (Portuguese) files, allowing the widget's interface to be translated.
+
+In essence, this is a sophisticated and powerful tool for project management and workflow visualization directly within Grist.
+
+### `kanbanwidget modular`
+
+This folder appears to be a refactored or alternative version of the `kanban-widget`.
+
+*   **`index.html` and `kanban.html`:** Both of these files contain the full HTML structure for a Kanban board widget, nearly identical to the one in the `kanban-widget` folder.
+*   **`script.js`:** This file contains the complete JavaScript logic for the Kanban board.
+*   **"Modular" in Name Only:** Despite the "modular" name, the code itself doesn't appear to be significantly more modular in its file structure. The `script.js` is still a single, monolithic file.
+*   **Almost Identical Functionality:** The features described in the code are the same as the other `kanban-widget`.
+
+In conclusion, this folder contains another, very similar, implementation of the powerful Kanban board widget.
+
+### `libraries`
+
+This folder is the heart of your custom widget framework. It contains all the shared, reusable JavaScript modules and components.
+
+*   **`grist-card-system`:** Contains the core logic for rendering data as cards.
+*   **`grist-config-manager`:** A reusable version of the `ConfigManager` component.
+*   **`grist-drawer-component`:** A reusable component for creating "drawer" side panels.
+*   **`grist-event-bus`:** A utility for managing custom events between components.
+*   **`grist-field-renderer`:** A component for rendering different Grist column types as form inputs.
+*   **`grist-modal` & `grist-modal-component`:** Reusable components for creating modal dialogs.
+*   **`grist-style-utils`:** Helper functions for managing CSS styles.
+*   **`grist-table-lens`:** A data access library that simplifies fetching data from Grist.
+*   **`icons`:** Contains SVG icons.
+*   **`framework-config.js`:** A central configuration file for the framework.
+*   **`grist-data-writer.js`:** A utility for writing data back to Grist.
+
+### `MainViewWidget`
+
+Contains a Grist widget that acts as a dynamic "viewer" for configurations created by the `ConfigManager`.
+
+*   **Purpose:** To load and display a view that is entirely defined by a configuration.
+*   **Dynamic Rendering:** It uses the `CardSystem` library to render its view based on a specified configuration ID.
+*   **Configuration Switching:** A settings gear allows a user to paste in a configuration ID or open the main `ConfigManagerComponent` to browse, create, or edit configurations.
+
+In essence, this is a flexible "meta-widget" that can become any `CardSystem`-based view on the fly.
+
+### `modeladorauditorias`
+
+Contains a Grist widget named "Modelador de Perguntas" (Question Modeler). This is a design-time tool for the auditing framework.
+
+*   **Checklist Design:** It provides a visual, hierarchical interface for creating and organizing the questions and sections of an audit.
+*   **Drag-and-Drop Interface:** Users can reorder questions and change their hierarchy.
+*   **Context-Based Modeling:** Allows designing different checklist structures for different "contexts" (e.g., different departments).
+*   **Item Properties:** A detailed "drawer" panel allows editing properties like item type, response type, and conditional visibility.
+*   **Cloning and Copying:** It can clone the structure from one context to another and copy the final design into a live "Audit" table for use by the `AppAuditor`.
+
+### `riscos`
+
+Contains a sophisticated Grist widget for risk management.
+
+*   **Risk Matrix Visualization:** The primary feature is a risk matrix that plots risks based on their **probability** and **impact**.
+*   **Interactive Filtering:** Users can filter the view by department and by clicking on cells in the matrix.
+*   **Card/List View:** Below the matrix, a detailed list view of risks is shown.
+*   **Detailed Side Panel:** Clicking on a risk opens a side panel with multiple tabs to show comprehensive information.
+*   **Modular Code:** The JavaScript code is well-organized into modules for the matrix, cards, side panel, Grist API service, and configuration.
+
+### `TesteDebug`
+
+Contains a Grist widget named "Grist TableLens Debug Widget" for developers.
+
+*   **Purpose:** To provide a developer with a clear, detailed view of the raw data and schema of any table in a Grist document.
+*   **Table Inspector:** It includes a dropdown to select any table.
+*   **Schema View:** Shows a detailed table of the selected table's schema, listing properties for each column.
+*   **Record View:** Displays all the raw data from the selected table and applies conditional formatting rules for debugging.
+*   **Drawer Testing:** Includes a feature to test `grist-drawer-component` configurations.
+
+### `ultra-kanban-widget`
+
+This folder is yet another implementation of the Kanban board widget, very similar in functionality to `kanban-widget` and `kanbanwidget modular`.
+
+*   **Core Functionality:** It provides the same rich feature set: a drag-and-drop Kanban board, a detailed configuration panel, and a "drawer" for editing card details.
+*   **Code Structure:** It consists of a main `index.html` file and a large `script.js` file containing all the logic.
+*   **"Ultra" Name:** The "ultra" prefix doesn't seem to correspond to a significantly different feature set compared to the other Kanban versions.
+
+### `widgets`
+
+This folder contains two simple, focused "viewer" widgets that work with the `ConfigManager` and the event bus system.
+
+*   **`CardViewer.html` & `CardViewer.js`:**
+    *   **Purpose:** This widget's sole job is to display a set of cards based on a configuration ID.
+    *   **Event-Driven:** When a card is clicked, it publishes an event (`grf-card-clicked`) to the event bus.
+
+*   **`DrawerViewer.html` & `DrawerViewer.js`:**
+    *   **Purpose:** This widget listens for `grf-card-clicked` events and opens a "drawer" (side panel) when it hears an event intended for it.
+    *   **How it Works:** This widget is invisible to the end-user. It subscribes to the event bus and acts when its specific `configId` is called.
+
+This demonstrates a decoupled, event-driven architecture where the `CardViewer` and `DrawerViewer` communicate without needing to know about each other directly.

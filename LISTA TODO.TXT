@@ -1,0 +1,26 @@
+# GRF - Framework de Componentes Grist - TODO
+
+## Fase Final: Estilização e Refatoração
+
+### Tarefas Concluídas
+
+- [DONE] **Resolver Inconsistência de UI na Configuração:**
+  - Desabilitar os seletores de cor de "Label Style" and "Data Style" na configuração da "Top Bar" quando a opção "Também aplicar cor de texto do campo" está marcada.
+  - Arquivo modificado: `ConfigManager/editors/config-cards.js`.
+
+- [DONE] **Refatorar o `CardSystem` para usar o `grist-field-renderer` (Tarefa 3):**
+  - O objetivo era unificar a formatação de dados (datas, números, etc.) e a aparência dos campos.
+  - O `CardSystem.js` foi modificado para delegar a renderização de cada campo para a biblioteca `grist-field-renderer.js`.
+  - Arquivo modificado: `libraries/grist-card-system/CardSystem.js`.
+
+### Próximas Tarefas
+
+- [ ] **Revisão e Testes:**
+  - Testar o `CardViewer` para garantir que todos os tipos de campo (Data, Escolha, Referência, etc.) estão sendo renderizados corretamente nos cards após a refatoração.
+  - Verificar se a UI de configuração da "Top Bar" se comporta como esperado.
+
+- [ ] **Limpeza de Código (Opcional):**
+  - Revisar os múltiplos widgets de Kanban (`kanban-widget`, `kanbanwidget modular`, `ultra-kanban-widget`) e decidir se devem ser unificados ou removidos.
+
+- [ ] **Documentação:**
+  - Atualizar a documentação interna ou `README.md` para refletir as novas capacidades do `grist-field-renderer` e as mudanças no `CardSystem`.

@@ -169,6 +169,36 @@ window.CardConfigEditor = (() => {
         const noBarTitleFieldset = tabEl.querySelector('[data-title-mode="no-bar"]');
         const toggleTitleControls = () => { const isEnabled = topBarCheckbox.checked; topBarConfigDiv.style.display = isEnabled ? 'flex' : 'none'; noBarTitleFieldset.disabled = isEnabled; noBarTitleFieldset.style.opacity = isEnabled ? '0.5' : '1'; };
         topBarCheckbox.addEventListener('change', toggleTitleControls);
+
+        // Handle enabling/disabling of Top Bar color controls based on "Apply text color"
+        const topBarApplyTextCheckbox = tabEl.querySelector('#cs-st-topbar-apply-text');
+        const topBarModeRadios = tabEl.querySelectorAll('input[name="topbarmode"]');
+        const lblColorInput = tabEl.querySelector('#cs-st-topbar-lblcolor');
+        const dataColorInput = tabEl.querySelector('#cs-st-topbar-datacolor');
+
+        const updateTopBarColorInputsState = () => {
+            const isConditional = tabEl.querySelector('input[name="topbarmode"][value="conditional"]').checked;
+            const applyTextColor = topBarApplyTextCheckbox.checked;
+            const shouldDisable = isConditional && applyTextColor;
+
+            // The inputs are inside a div with other elements, so let's target the parent div to style it.
+            const lblContainer = lblColorInput.closest('div');
+            const dataContainer = dataColorInput.closest('div');
+
+            if (lblContainer) {
+                lblColorInput.disabled = shouldDisable;
+                lblContainer.style.opacity = shouldDisable ? 0.5 : 1;
+                lblContainer.style.pointerEvents = shouldDisable ? 'none' : 'auto';
+            }
+            if (dataContainer) {
+                dataColorInput.disabled = shouldDisable;
+                dataContainer.style.opacity = shouldDisable ? 0.5 : 1;
+                dataContainer.style.pointerEvents = shouldDisable ? 'none' : 'auto';
+            }
+        };
+
+        topBarApplyTextCheckbox.addEventListener('change', updateTopBarColorInputsState);
+        topBarModeRadios.forEach(radio => radio.addEventListener('change', updateTopBarColorInputsState));
         const allFields = state.fields.map(f => f.colId);
         populateFieldSelect(tabEl.querySelector("#cs-st-cardscolorfield"), allFields);
         populateFieldSelect(tabEl.querySelector("#cs-st-border-field"), allFields);
