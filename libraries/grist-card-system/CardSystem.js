@@ -262,6 +262,13 @@ export const CardSystem = (() => {
           fieldBox.style.gridRow = `${f.row + 1}`;
           fieldBox.style.gridColumn = `${f.col + 1} / span ${f.colSpan || 1}`;
           fieldBox.style.padding = "4px";
+
+if (styling.fieldBackground?.enabled) {
+    const cardBaseColor = resolveStyle(record, schema, styling.cardsColorMode, styling.cardsColorSolidColor, null, styling.cardsColorField);
+    fieldBox.style.backgroundColor = lightenHexColor(cardBaseColor, styling.fieldBackground.lightenPercentage || 15);
+    fieldBox.style.borderRadius = '4px';
+}
+
           fieldBox.style.display = "flex";
           fieldBox.style.flexDirection = (fieldStyle.labelPosition === 'left' ? "row" : "column");
           fieldBox.style.gap = (fieldStyle.labelPosition === 'left' ? "8px" : "2px");
@@ -331,6 +338,23 @@ export const CardSystem = (() => {
         return fieldStyle.fillColor || solidColor;
     }
     return solidColor;
+  }
+
+  function lightenHexColor(hex, percent) {
+    if (!hex || !hex.startsWith('#')) return hex;
+
+    let r = parseInt(hex.slice(1, 3), 16);
+    let g = parseInt(hex.slice(3, 5), 16);
+    let b = parseInt(hex.slice(5, 7), 16);
+
+    const p = percent / 100;
+
+    r = Math.round(Math.min(255, r + (255 - r) * p));
+    g = Math.round(Math.min(255, g + (255 - g) * p));
+    b = Math.round(Math.min(255, b + (255 - b) * p));
+
+    const toHex = c => c.toString(16).padStart(2, '0');
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
   }
 
   return { renderCards };

@@ -33,14 +33,16 @@
   - **Passo 2: Implementação da Renderização (`CardSystem.js`)**: Botões de ação são renderizados nos cards e publicam eventos `grf-navigation-action-triggered` ao serem clicados.
   - **Passo 3: O Orquestrador (`CardViewer.js`) se Torna Mais Inteligente**: `CardViewer.js` escuta eventos de navegação e executa as ações configuradas (navegar para página Grist, abrir URL, atualizar registro).
 
+- [DONE] **Implementar Fundo de Campo Customizável:**
+  - Adicionado opções na aba "Styling" para habilitar um fundo para os campos.
+  - A cor do fundo deve ser uma versão mais clara (15%, 30%, 50%) da cor de fundo do card.
+  - A caixa de fundo deve envolver o rótulo e o valor do campo.
+
 ### Próximas Tarefas
 
-- [ ] **Revisão e Testes:**
-  - Testar o `CardViewer` para garantir que todos os tipos de campo (Data, Escolha, Referência, etc.) estão sendo renderizados corretamente nos cards após a refatoraçaão.
-  - Verificar se a UI de configuração da "Top Bar" se comporta como esperado.
-
-- [ ] **Limpeza de Código (Opcional):**
-  - Revisar os múltiplos widgets de Kanban (`kanban-widget`, `kanbanwidget modular`, `ultra-kanban-widget`) e decidir se devem ser unificados ou removidos.
-
-- [ ] **Documentação:**
-  - Atualizar a documentação interna ou `README.md` para refletir as novas capacidades do `grist-field-renderer` e as mudanças no `CardSystem`.
+- [ ] **Implementar "Group Boxes" no Layout:**
+  - Criar uma segunda grade de layout na aba "Fields Layout", exclusiva para "Group Boxes".
+  - Permitir a criação de "Group Boxes" que podem ser arrastados e posicionados nesta nova grade.
+  - Quando um "Group Box" é posicionado, as células correspondentes na grade de campos principal devem ser visualmente marcadas (ex: fundo cinza).
+  - "Group Boxes" devem ser configuráveis (nome, cor de fundo) e redimensionáveis.
+  - "Group Boxes" devem se expandir verticalmente para acomodar o conteúdo dos campos que estão em sua área.
