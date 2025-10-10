@@ -19,6 +19,7 @@ export const CardSystem = (() => {
   };
 
   const DEFAULT_STYLING = {
+    actionButtons: [],
     widgetBackgroundMode: "solid", widgetBackgroundSolidColor: "#f9f9f9", widgetBackgroundGradientType: "linear-gradient(to right, {c1}, {c2})", widgetBackgroundGradientColor1: "#f9f9f9", widgetBackgroundGradientColor2: "#e9e9e9",
     cardsColorMode: "solid", cardsColorSolidColor: "#ffffff", cardsColorGradientType: "linear-gradient(to right, {c1}, {c2})", cardsColorGradientColor1: "#ffffff", cardsColorGradientColor2: "#f0f0f0",
     cardsColorApplyText: false, // <-- NOVA PROPRIEDADE
@@ -34,13 +35,35 @@ export const CardSystem = (() => {
   const DEFAULT_NUM_ROWS = 1;
   const NUM_COLS = 10;
 
+  // Helper to load icons.svg
+  let iconsLoaded = false;
+  async function loadIcons() {
+      if (iconsLoaded) return;
+      try {
+          const response = await fetch('../libraries/icons/icons.svg');
+          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+          const svgText = await response.text();
+          const div = document.createElement('div');
+          div.style.display = 'none';
+          div.innerHTML = svgText;
+          document.body.insertBefore(div, document.body.firstChild);
+          iconsLoaded = true;
+      } catch (error) {
+          console.error('Falha ao carregar o arquivo de \u00edcones:', error);
+      }
+  }
+  const getIcon = (id) => `<svg class="icon"><use href="#${id}"></use></svg>`;
+
   //--------------------------------------------------------------------
   // 2) Public renderCards(container, records, options, schema)
   //--------------------------------------------------------------------
-  function renderCards(container, records, options, schema) {
+  async function renderCards(container, records, options, schema) { // Added async
+    await loadIcons(); // Call loadIcons here
     const currentOptions = options || {};
+    const tableLens = currentOptions.tableLens; // Extract tableLens
     const styling = { ...DEFAULT_STYLING, ...currentOptions.styling, selectedCard: { ...DEFAULT_STYLING.selectedCard, ...(currentOptions.styling?.selectedCard || {}) } };
     const layout = currentOptions.layout || [];
+    console.log("DEBUG: CardSystem received layout:", JSON.stringify(layout, null, 2));
     const viewMode = currentOptions.viewMode || 'click';
     const numRows = currentOptions.numRows || DEFAULT_NUM_ROWS;
 
@@ -112,11 +135,11 @@ export const CardSystem = (() => {
         burger.innerHTML = "☰";
         burger.style.cssText = "position: absolute; left: 8px; top: 8px; font-size: 18px; color: #555; cursor: pointer; z-index: 2;";
         handleEl.appendChild(burger);
-        burger.addEventListener("click", (e) => { e.stopPropagation(); openSidePanel(record, currentOptions); });
+        burger.addEventListener("click", (e) => { e.stopPropagation(); handleCardClick(record, currentOptions); });
         cardEl.style.cursor = "default";
       } else {
         cardEl.style.cursor = "pointer";
-        cardEl.addEventListener("click", () => { openSidePanel(record, currentOptions); });
+        cardEl.addEventListener("click", () => { handleCardClick(record, currentOptions); });
       }
 
       if (styling.selectedCard?.enabled) {
@@ -182,7 +205,54 @@ export const CardSystem = (() => {
         });
       }
 
+
+
       layout.forEach(f => {
+        if (f.isActionButton) {
+            const buttonConfig = f.buttonConfig;
+            if (!buttonConfig) return;
+
+            const fieldBox = document.createElement("div");
+            fieldBox.style.gridRow = `${f.row + 1}`;
+            fieldBox.style.gridColumn = `${f.col + 1} / span ${f.colSpan || 1}`;
+            fieldBox.style.padding = "4px";
+            fieldBox.style.display = "flex";
+            fieldBox.style.justifyContent = "center";
+            fieldBox.style.alignItems = "center";
+
+            const actionButton = document.createElement("button");
+            actionButton.className = "cs-action-button";
+            actionButton.innerHTML = getIcon(buttonConfig.icon || 'icon-link');
+            actionButton.title = buttonConfig.tooltip || '';
+            actionButton.style.width = "32px";
+            actionButton.style.height = "32px";
+            actionButton.style.border = "1px solid #ccc";
+            actionButton.style.background = "#f0f0f0";
+            actionButton.style.borderRadius = "5px";
+            actionButton.style.cursor = "pointer";
+            actionButton.style.padding = "4px";
+            actionButton.style.display = "flex";
+            actionButton.style.justifyContent = "center";
+            actionButton.style.alignItems = "center";
+            actionButton.style.transition = "background-color 0.2s";
+
+            actionButton.addEventListener('mouseenter', () => actionButton.style.background = '#e0e0e0');
+            actionButton.addEventListener('mouseleave', () => actionButton.style.background = '#f0f0f0');
+
+            actionButton.addEventListener("click", (e) => {
+                e.stopPropagation();
+                publish('grf-navigation-action-triggered', {
+                    config: buttonConfig,
+                    sourceRecord: record,
+                    tableId: currentOptions.tableId
+                });
+            });
+            
+            fieldBox.appendChild(actionButton);
+            cardEl.appendChild(fieldBox);
+            return;
+        }
+
         const fieldStyle = { ...DEFAULT_FIELD_STYLE, ...f.style };
         if (!record.hasOwnProperty(f.colId)) return;
         if (styling.cardTitleTopBarEnabled && fieldStyle.isTitleField) return;
@@ -226,7 +296,9 @@ export const CardSystem = (() => {
             container: valueContainer,
             colSchema: schema ? schema[f.colId] : null,
             record: record,
-            isEditing: false
+            isEditing: false,
+            tableLens: tableLens,
+            refListConfig: fieldStyle.refListConfig
           });
 
           fieldBox.appendChild(valueContainer);
@@ -237,11 +309,11 @@ export const CardSystem = (() => {
     });
   }
 
-  function openSidePanel(record, options) {
+  function handleCardClick(record, options) {
     const drawerConfigId = options?.sidePanel?.drawerConfigId;
     const tableId = options?.tableId;
     if (!drawerConfigId || !tableId) {
-        console.warn("Nenhuma ação de clique configurada. Verifique a aba 'Actions' na configuração do card.", {options});
+        console.warn("Nenhuma a\u00e7\u00e3o de clique configurada. Verifique a aba 'Actions' na configura\u00e7\u00e3o do card.", {options});
         return;
     }
     publish('grf-card-clicked', {

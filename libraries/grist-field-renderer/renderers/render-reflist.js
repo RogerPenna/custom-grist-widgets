@@ -55,7 +55,7 @@ async function handleEdit(tableId, recordId, onUpdate, dataWriter, tableLens, fi
 async function handleDelete(tableId, recordId, onUpdate, dataWriter) { if (confirm(`Tem certeza?`)) { await dataWriter.deleteRecords(tableId, [recordId]); onUpdate(); } }
 
 export async function renderRefList(options) {
-    const { container, record, colSchema, tableLens, isLocked, fieldConfig, ruleIdToColIdMap } = options;
+    const { container, record, colSchema, tableLens, isLocked, fieldConfig, ruleIdToColIdMap, refListConfig } = options;
     const dataWriter = new GristDataWriter(grist);
     const iconPath = '../libraries/icons/icons.svg';
     container.innerHTML = '';
@@ -71,6 +71,11 @@ export async function renderRefList(options) {
         let relatedRecords = await tableLens.fetchRelatedRecords(record, colSchema.colId);
         relatedRecords.sort((a, b) => { const vA = a[sortColumn], vB = b[sortColumn]; if (vA < vB) return sortDirection === 'asc' ? -1 : 1; if (vA > vB) return sortDirection === 'asc' ? 1 : -1; return 0; });
 
+        // Apply maxRows limit from refListConfig
+        if (refListConfig && refListConfig.maxRows > 0) {
+            relatedRecords = relatedRecords.slice(0, refListConfig.maxRows);
+        }
+
         const relatedSchema = await tableLens.getTableSchema(referencedTableId);
         const ruleMap = ruleIdToColIdMap || new Map();
         
@@ -79,10 +84,12 @@ export async function renderRefList(options) {
         header.className = 'grf-reflist-header';
         header.innerHTML = `
             <span class="item-count">(${relatedRecords.length} itens)</span>
-            <button class="add-btn" ${isLocked ? 'disabled title="Este campo está travado."' : ''}>
+            ${options.isEditing ? `
+            <button class="add-btn" ${isLocked ? 'disabled title="Este campo est\u00e1 travado."' : ''}>
                 <svg class="icon"><use href="${iconPath}#icon-add"></use></svg>
                 Adicionar
             </button>
+            ` : ''}
         `;
         container.appendChild(header);
 
@@ -96,7 +103,11 @@ export async function renderRefList(options) {
         const allPossibleCols = Object.values(relatedSchema).filter(c => c && !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos');
         let columnsToDisplay;
 
-        if (fieldConfig && typeof fieldConfig === 'object') {
+        // Apply column filter from refListConfig, with fallback to fieldConfig
+        if (refListConfig && refListConfig.columns && refListConfig.columns.length > 0) {
+            const visibleColIds = new Set(refListConfig.columns);
+            columnsToDisplay = allPossibleCols.filter(col => visibleColIds.has(col.colId));
+        } else if (fieldConfig && typeof fieldConfig === 'object') {
             columnsToDisplay = allPossibleCols.filter(col => fieldConfig[col.colId]?.showInTable === true);
         } else {
             columnsToDisplay = allPossibleCols;

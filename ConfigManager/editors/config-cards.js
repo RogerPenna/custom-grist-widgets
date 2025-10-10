@@ -2,7 +2,28 @@ window.CardConfigEditor = (() => {
     let state = {};
     let _mainContainer = null;
     let _fieldStylePopup = null;
+    let _iconPickerPopup = null;
     let allConfigs = []; // Moved from state to module scope for persistence
+    
+    // Lista de ícones extraída de icons.svg para uso no seletor 
+    const AVAILABLE_ICONS = [
+        "icon-link", "icon-link-broken", "icon-settings", "icon-edit", "icon-save", "icon-save-alt",
+        "icon-adjustments", "icon-adjustments-vert", "icon-annotation", "icon-badge-check", "icon-barcode",
+        "icon-bars", "icon-bell", "icon-bell-active", "icon-bookmark", "icon-calendar-edit", "icon-chart",
+        "icon-chart-mixed", "icon-chart-pie", "icon-check", "icon-check-circle", "icon-check-circle-alt",
+        "icon-minus-circle", "icon-minus-circle-alt", "icon-plus-circle", "icon-plus-circle-alt", "icon-clipboard",
+        "icon-clipboard-check", "icon-clipboard-list", "icon-clock-arrow", "icon-close-circle", "icon-close-sidebar",
+        "icon-column", "icon-download", "icon-exclamation", "icon-expand", "icon-eye", "icon-file",
+        "icon-file-chart", "icon-file-check", "icon-file-clone", "icon-file-search", "icon-filter", "icon-flag",
+        "icon-folder", "icon-forward", "icon-globe", "icon-grid", "icon-hourglass", "icon-info-circle",
+        "icon-lightbulb", "icon-lifesaver", "icon-lock", "icon-unlock", "icon-microscope", "icon-pen",
+        "icon-printer", "icon-profile-card", "icon-rectangle-list", "icon-tools", "icon-trashbin", "icon-truck",
+        "icon-zoom-in", "icon-zoom-out", "icon-chart-up", "icon-arrow-move", "icon-bar-chart", "icon-bar-chart-line",
+        "icon-bullseye", "icon-card-checklist", "icon-compass", "icon-cone", "icon-cone-striped", "icon-diagram-2",
+        "icon-diagram-3", "icon-exclamation-triangle", "icon-exclamation-diamond", "icon-globe-americas", "icon-lightning",
+        "icon-pen-alt", "icon-speedometer", "icon-traffic-light", "icon-wrench", "icon-search", "icon-process-cogs",
+        "icon-process"
+    ]; // 
 
     function updateDebugJson() {
         if (!_mainContainer) return;
@@ -35,10 +56,17 @@ window.CardConfigEditor = (() => {
             tableId: tableId
         };
         state.layout.forEach(field => { if (!field.style) field.style = { ...DEFAULT_FIELD_STYLE }; });
+
+        // Re-populate actionButtons from the layout configuration on load
+        const buttonsFromLayout = state.layout
+            .filter(item => item.isActionButton && item.buttonConfig)
+            .map(item => item.buttonConfig);
+        state.styling.actionButtons = buttonsFromLayout;
+
         container.innerHTML = "";
         const tabsRow = document.createElement("div");
         tabsRow.className = 'config-tabs';
-        [createTabButton("Styling", "sty", container), createTabButton("Fields Layout", "fld", container), createTabButton("Actions", "sid", container)].forEach(t => tabsRow.appendChild(t));
+        [createTabButton("Styling", "sty", container), createTabButton("Fields Layout", "fld", container), createTabButton("Actions & Nav", "actions", container)].forEach(t => tabsRow.appendChild(t));
         container.appendChild(tabsRow);
         const debugSection = document.createElement("div");
         debugSection.innerHTML = `<details class="config-debugger"><summary>Ver Configuração JSON (Debug)</summary><pre><code id="config-json-output">{}</code></pre></details>`;
@@ -49,7 +77,7 @@ window.CardConfigEditor = (() => {
         container.appendChild(contentArea);
         buildStylingTab(contentArea);
         buildFieldsLayoutTab(contentArea);
-        buildSidePanelTab(contentArea);
+        buildActionsTab(contentArea);
         updateDebugJson();
         switchTab("sty", container);
         container.addEventListener('change', updateDebugJson);
@@ -57,22 +85,213 @@ window.CardConfigEditor = (() => {
     }
 
     function read(container) {
+        // Before saving, ensure the buttonConfig in the layout is up-to-date.
+        state.layout.forEach(layoutItem => {
+            if (layoutItem.isActionButton) {
+                const latestButtonConfig = (state.styling.actionButtons || []).find(b => b.id === layoutItem.colId);
+                if (latestButtonConfig) {
+                    layoutItem.buttonConfig = latestButtonConfig;
+                }
+            }
+        });
+
         const newStyling = readStylingTab(container);
         const layoutTab = container.querySelector("[data-tab-section='fld']");
         const viewMode = layoutTab.querySelector("#cs-vm-click").checked ? "click" : "burger";
         const numRows = parseInt(layoutTab.querySelector("#cs-num-rows").value, 10) || DEFAULT_NUM_ROWS;
-        const sidePanelTab = container.querySelector("[data-tab-section='sid']");
+        const sidePanelTab = container.querySelector("[data-tab-section='actions']");
         const sidePanel = { size: sidePanelTab.querySelector("#cs-sp-size").value, drawerConfigId: sidePanelTab.querySelector("#cs-sp-drawer-config").value || null };
         return { tableId: state.tableId, styling: newStyling, sidePanel, layout: state.layout, viewMode, numRows };
     }
 
     const DEFAULT_FIELD_STYLE = { labelVisible: true, labelPosition: 'above', labelFont: 'inherit', labelFontSize: 'inherit', labelColor: 'inherit', labelOutline: false, labelOutlineColor: '#ffffff', dataJustify: 'left', heightLimited: false, maxHeightRows: 1, isTitleField: false };
-    const DEFAULT_STYLING = { widgetBackgroundMode: "solid", widgetBackgroundSolidColor: "#f9f9f9", widgetBackgroundGradientType: "linear-gradient(to right, {c1}, {c2})", widgetBackgroundGradientColor1: "#f9f9f9", widgetBackgroundGradientColor2: "#e9e9e9", cardsColorMode: "solid", cardsColorSolidColor: "#ffffff", cardsColorGradientType: "linear-gradient(to right, {c1}, {c2})", cardsColorGradientColor1: "#ffffff", cardsColorGradientColor2: "#f0f0f0", cardsColorApplyText: false, cardBorderThickness: 0, cardBorderMode: "solid", cardBorderSolidColor: "#cccccc", cardTitleFontColor: "#000000", cardTitleFontStyle: "Calibri", cardTitleFontSize: "20px", cardTitleTopBarEnabled: false, cardTitleTopBarMode: "solid", cardTitleTopBarSolidColor: "#dddddd", cardTitleTopBarGradientType: "linear-gradient(to right, {c1}, {c2})", cardTitleTopBarGradientColor1: "#dddddd", cardTitleTopBarGradientColor2: "#cccccc", cardTitleTopBarLabelFontColor: "#000000", cardTitleTopBarLabelFontStyle: "Calibri", cardTitleTopBarLabelFontSize: "16px", cardTitleTopBarDataFontColor: "#333333", cardTitleTopBarDataFontStyle: "Calibri", cardTitleTopBarDataFontSize: "16px", handleAreaWidth: "8px", handleAreaMode: "solid", handleAreaSolidColor: "#40E0D0", widgetPadding: "10px", cardsSpacing: "15px", selectedCard: { enabled: false, scale: 1.05, cardTitleTopBarApplyText: false, colorEffect: "none" } };
+    const DEFAULT_STYLING = { actionButtons: [], widgetBackgroundMode: "solid", widgetBackgroundSolidColor: "#f9f9f9", widgetBackgroundGradientType: "linear-gradient(to right, {c1}, {c2})", widgetBackgroundGradientColor1: "#f9f9f9", widgetBackgroundGradientColor2: "#e9e9e9", cardsColorMode: "solid", cardsColorSolidColor: "#ffffff", cardsColorGradientType: "linear-gradient(to right, {c1}, {c2})", cardsColorGradientColor1: "#ffffff", cardsColorGradientColor2: "#f0f0f0", cardsColorApplyText: false, cardBorderThickness: 0, cardBorderMode: "solid", cardBorderSolidColor: "#cccccc", cardTitleFontColor: "#000000", cardTitleFontStyle: "Calibri", cardTitleFontSize: "20px", cardTitleTopBarEnabled: false, cardTitleTopBarMode: "solid", cardTitleTopBarSolidColor: "#dddddd", cardTitleTopBarGradientType: "linear-gradient(to right, {c1}, {c2})", cardTitleTopBarGradientColor1: "#dddddd", cardTitleTopBarGradientColor2: "#cccccc", cardTitleTopBarLabelFontColor: "#000000", cardTitleTopBarLabelFontStyle: "Calibri", cardTitleTopBarLabelFontSize: "16px", cardTitleTopBarDataFontColor: "#333333", cardTitleTopBarDataFontStyle: "Calibri", cardTitleTopBarDataFontSize: "16px", handleAreaWidth: "8px", handleAreaMode: "solid", handleAreaSolidColor: "#40E0D0", widgetPadding: "10px", cardsSpacing: "15px", selectedCard: { enabled: false, scale: 1.05, cardTitleTopBarApplyText: false, colorEffect: "none" } };
     const DEFAULT_NUM_ROWS = 1; const NUM_COLS = 10; const CONFIG_WIDTH = 700; const COL_WIDTH = CONFIG_WIDTH / NUM_COLS;
     
     function createTabButton(label, tabId, container) { const btn = document.createElement("button"); btn.type = "button"; btn.textContent = label; btn.className = 'config-tab-button'; btn.addEventListener("click", () => switchTab(tabId, container)); btn.dataset.tabId = tabId; return btn; }
     function switchTab(tabId, container) { const contentDiv = container.querySelector("#card-config-contents"); if (!contentDiv) return; contentDiv.querySelectorAll("[data-tab-section]").forEach(t => (t.style.display = "none")); container.querySelectorAll("[data-tab-id]").forEach(b => b.classList.remove('active')); const newActiveTab = contentDiv.querySelector(`[data-tab-section='${tabId}']`); if (newActiveTab) newActiveTab.style.display = "block"; const activeBtn = container.querySelector(`[data-tab-id='${tabId}']`); if (activeBtn) activeBtn.classList.add('active'); }
     
+    // Helper function to render the UI for all action buttons
+    function renderActionButtonsUI(container, actionButtons) {
+        container.innerHTML = ''; // Clear previous content
+        if (!actionButtons || actionButtons.length === 0) {
+            container.innerHTML = '<p class="help-text">Nenhum bot\u00e3o de a\u00e7\u00e3o configurado. Clique em \"+ Add Action Button\" para adicionar um.</p>';
+            return;
+        }
+
+        actionButtons.forEach((buttonConfig, index) => {
+            const buttonEl = document.createElement('div');
+            buttonEl.className = 'action-button-item';
+            buttonEl.dataset.index = index;
+            buttonEl.innerHTML = `
+                <div class="action-button-item-header">
+                    <strong>Bot\u00e3o de A\u00e7\u00e3o #${index + 1}</strong>
+                    <button type="button" class="btn-remove-item" data-index="${index}">Remover</button>
+                </div>
+                <div class="form-group">
+                    <label>\u00cdcone:</label>
+                    <div class="icon-picker-display">
+                        <span class="current-icon">${buttonConfig.icon ? `<svg class="icon"><use href="#${buttonConfig.icon}"></use></svg>` : 'Nenhum'}</span>
+                        <button type="button" class="btn-open-icon-picker" data-index="${index}">Selecionar \u00cdcone</button>
+                    </div>
+                    <input type="hidden" class="action-icon" value="${buttonConfig.icon || ''}">
+                </div>
+                <div class="form-group">
+                    <label>Tooltip:</label>
+                    <input type="text" class="action-tooltip" data-prop="tooltip" value="${buttonConfig.tooltip || ''}" placeholder="ex: Ver Planos de A\u00e7\u00e3o">
+                </div>
+                <div class="form-group">
+                    <label>Tipo de A\u00e7\u00e3o:</label>
+                    <select class="action-type" data-prop="actionType">
+                        <option value="navigateToGristPage" ${buttonConfig.actionType === 'navigateToGristPage' ? 'selected' : ''}>Navegar para P\u00e1gina Grist</option>
+                        <option value="openUrlFromColumn" ${buttonConfig.actionType === 'openUrlFromColumn' ? 'selected' : ''}>Abrir URL de uma Coluna</option>
+                        <option value="updateRecord" ${buttonConfig.actionType === 'updateRecord' ? 'selected' : ''}>Atualizar Registro (Grist)</option>
+                    </select>
+                </div>
+                <div class="action-specific-config" data-index="${index}">
+                    </div>
+            `;
+            container.appendChild(buttonEl);
+
+            // --- NEW UNIFIED EVENT HANDLING ---
+            buttonEl.addEventListener('change', (e) => {
+                if (e.target.dataset.prop) {
+                    const prop = e.target.dataset.prop;
+                    buttonConfig[prop] = e.target.value;
+
+                    // If the actionType changed, we need to re-render the specific config section
+                    if (prop === 'actionType') {
+                        renderActionSpecificConfig(buttonEl.querySelector('.action-specific-config'), buttonConfig, index);
+                    }
+                    updateDebugJson();
+                }
+            });
+
+            // Adicionar event listener para o seletor de ícones
+            const iconPickerBtn = buttonEl.querySelector('.btn-open-icon-picker');
+            iconPickerBtn.addEventListener('click', (e) => {
+                const iconInput = e.currentTarget.closest('.action-button-item').querySelector('.action-icon');
+                const iconDisplay = e.currentTarget.closest('.icon-picker-display').querySelector('.current-icon');
+                openIconPicker(iconInput, iconDisplay, buttonConfig);
+            });
+
+            // Initial render of action-specific config
+            renderActionSpecificConfig(buttonEl.querySelector('.action-specific-config'), buttonConfig, index);
+        });
+    }
+
+    // Helper function to render action-specific configuration fields
+    async function renderActionSpecificConfig(container, buttonConfig, index) {
+        container.innerHTML = ''; // Clear previous content
+        const allGristPages = await state.lens.listAllTables(); // Assuming state.lens is available
+        const allGristColumns = (state.fields || []).map(f => f.colId); // Assuming state.fields is available
+
+        if (buttonConfig.actionType === 'navigateToGristPage') {
+            container.innerHTML = `
+                <div class="form-group">
+                    <label>P\u00e1gina de Destino:</label>
+                    <select class="action-target-page" data-prop="targetPageId">
+                        <option value="">-- Selecione uma P\u00e1gina --</option>
+                        ${allGristPages.map(p => `<option value="${p.id}" ${buttonConfig.targetPageId === p.id ? 'selected' : ''}>${p.name}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Coluna de Filtro na P\u00e1gina de Destino:</label>
+                    <input type="text" class="action-target-filter-column" data-prop="targetFilterColumn" value="${buttonConfig.targetFilterColumn || ''}" placeholder="ex: id_risco">
+                </div>
+                <div class="form-group">
+                    <label>Valor do Filtro (deste Card):</label>
+                    <select class="action-source-value-column" data-prop="sourceValueColumn">
+                        <option value="">-- Selecione uma Coluna --</option>
+                        ${allGristColumns.map(col => `<option value="${col}" ${buttonConfig.sourceValueColumn === col ? 'selected' : ''}>${col}</option>`).join('')}
+                    </select>
+                </div>
+            `;
+        } else if (buttonConfig.actionType === 'openUrlFromColumn') {
+            container.innerHTML = `
+                <div class="form-group">
+                    <label>Coluna com a URL:</label>
+                    <select class="action-url-column" data-prop="urlColumn">
+                        <option value="">-- Selecione uma Coluna --</option>
+                        ${allGristColumns.map(col => `<option value="${col}" ${buttonConfig.urlColumn === col ? 'selected' : ''}>${col}</option>`).join('')}
+                    </select>
+                </div>
+            `;
+        } else if (buttonConfig.actionType === 'updateRecord') {
+            container.innerHTML = `
+                <div class="form-group">
+                    <label>Campo a Atualizar:</label>
+                    <select class="action-update-field" data-prop="updateField">
+                        <option value="">-- Selecione um Campo --</option>
+                        ${allGristColumns.map(col => `<option value="${col}" ${buttonConfig.updateField === col ? 'selected' : ''}>${col}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Novo Valor:</label>
+                    <input type="text" class="action-update-value" data-prop="updateValue" value="${buttonConfig.updateValue || ''}" placeholder="ex: Completo">
+                </div>
+            `;
+        }
+    }
+
+    // NOVA FUNÇÃO: Seletor de Ícones
+    function openIconPicker(inputElement, displayElement, buttonConfig) {
+        if (_iconPickerPopup && _iconPickerPopup.parentNode) { _iconPickerPopup.parentNode.removeChild(_iconPickerPopup); }
+
+        _iconPickerPopup = document.createElement("div");
+        _iconPickerPopup.className = 'icon-picker-popup';
+        _iconPickerPopup.style.cssText = `
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+            z-index: 1070; padding: 15px; background: white; border: 1px solid #ccc; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-width: 600px; max-height: 500px; 
+            overflow-y: auto; border-radius: 5px;
+        `;
+
+        const iconsHtml = AVAILABLE_ICONS.map(iconId => `
+            <div class="icon-option" data-icon-id="${iconId}" title="${iconId}">
+                <svg class="icon"><use href="#${iconId}"></use></svg>
+            </div>
+        `).join('');
+
+        _iconPickerPopup.innerHTML = `
+            <h4 style="margin-top: 0;">Selecione um Ícone</h4>
+            <div class="icon-grid" style="display: flex; flex-wrap: wrap; gap: 10px;">
+                ${iconsHtml}
+            </div>
+            <div style="text-align: right; margin-top: 15px;">
+                <button id="icon-picker-cancel" type="button" class="btn btn-secondary">Cancelar</button>
+            </div>
+        `;
+        
+        _mainContainer.appendChild(_iconPickerPopup);
+
+        _iconPickerPopup.querySelectorAll('.icon-option').forEach(iconEl => {
+            iconEl.addEventListener('click', () => {
+                const selectedIcon = iconEl.dataset.iconId;
+                
+                // 1. Atualizar o valor no campo de entrada oculto
+                inputElement.value = selectedIcon;
+                
+                // 2. Atualizar o display visual
+                displayElement.innerHTML = `<svg class="icon"><use href="#${selectedIcon}"></use></svg>`;
+                
+                // 3. Atualizar a configuração interna
+                buttonConfig.icon = selectedIcon;
+                updateDebugJson();
+
+                // 4. Fechar o pop-up
+                _iconPickerPopup.parentNode.removeChild(_iconPickerPopup);
+                _iconPickerPopup = null;
+            });
+        });
+
+        _iconPickerPopup.querySelector('#icon-picker-cancel').addEventListener('click', () => {
+            _iconPickerPopup.parentNode.removeChild(_iconPickerPopup);
+            _iconPickerPopup = null;
+        });
+    }
+
+
     function buildStylingTab(contentArea) {
         const tabEl = document.createElement("div");
         tabEl.dataset.tabSection = "sty";
@@ -134,15 +353,13 @@ window.CardConfigEditor = (() => {
             </div>
             <div class="style-control-group" data-mode="conditional" style="display:none;">
                 <select id="cs-st-topbar-field"><option value="">-- field --</option></select>
-                <!-- INÍCIO DA ADIÇÃO -->
                 <div class="sub-option" style="margin-top: 8px;">
                     <label>
                         <input type="checkbox" id="cs-st-topbar-apply-text">
                         Também aplicar cor de texto do campo
                     </label>
                 </div>
-                <!-- FIM DA ADIÇÃO -->
-            </div>
+                </div>
         </div>
         <div>
             <b>Label Style:</b> <br>
@@ -285,21 +502,165 @@ window.CardConfigEditor = (() => {
     s.widgetPadding = `${parseInt(tabEl.querySelector("#cs-st-padding").value, 10) || 0}px`;
     s.cardsSpacing = `${parseInt(tabEl.querySelector("#cs-st-spacing").value, 10) || 0}px`;
     s.selectedCard = { enabled: tabEl.querySelector("#cs-st-sel-enabled").checked, scale: 1 + ((parseInt(tabEl.querySelector("#cs-st-sel-scale").value, 10) || 0) / 100), colorEffect: "none" };
+
     return s;
 }
     function buildFieldsLayoutTab(contentArea) { const tabEl = document.createElement("div"); tabEl.dataset.tabSection = "fld"; tabEl.style.display = "none"; tabEl.innerHTML = ` <h3>Fields & Layout</h3> <div class="layout-controls"> <label>View Mode:</label> <label><input type="radio" name="cs-viewmode" id="cs-vm-click" value="click" /> Click Card</label> <label><input type="radio" name="cs-viewmode" id="cs-vm-burger" value="burger" /> Burger Icon</label> <span class="spacer"></span> <label>Number of Rows:</label> <input type="number" id="cs-num-rows" value="${state.numRows}" min="1" max="20" /> </div> <p class="help-text">Drag fields onto the grid below. Resize by dragging the right edge.</p> <div id="cs-layout-grid" class="layout-grid" style="--col-width: ${COL_WIDTH}px; --num-cols: ${NUM_COLS};"></div> <div class="available-fields-container"> <b>Available Fields:</b> <div id="cs-layout-fields" class="available-fields-list"></div> </div>`; contentArea.appendChild(tabEl); if (state.viewMode === "burger") { tabEl.querySelector("#cs-vm-burger").checked = true; } else { tabEl.querySelector("#cs-vm-click").checked = true; } const rowInput = tabEl.querySelector("#cs-num-rows"); rowInput.addEventListener("change", () => { state.numRows = parseInt(rowInput.value, 10) || 1; buildGridUI(tabEl.querySelector("#cs-layout-grid"), tabEl); }); buildGridUI(tabEl.querySelector("#cs-layout-grid"), tabEl); buildAvailableFieldsList(tabEl.querySelector("#cs-layout-fields")); }
-    function buildGridUI(gridEl, tabEl) { gridEl.innerHTML = ""; for (let r = 0; r < state.numRows; r++) { const rowDiv = document.createElement("div"); rowDiv.className = 'layout-grid-row'; rowDiv.dataset.rowIndex = String(r); rowDiv.addEventListener("dragover", e => e.preventDefault()); rowDiv.addEventListener("drop", e => { e.preventDefault(); const colId = e.dataTransfer.getData("text/colid"); if (!colId) return; const rect = rowDiv.getBoundingClientRect(); const col = Math.floor((e.clientX - rect.left) / COL_WIDTH); state.layout.push({ colId, row: r, col, colSpan: 2, style: {...DEFAULT_FIELD_STYLE} }); buildGridUI(gridEl, tabEl); buildAvailableFieldsList(tabEl.querySelector("#cs-layout-fields")); }); state.layout.filter(f => f.row === r).forEach(f => { rowDiv.appendChild(createFieldBoxInConfigUI(f, gridEl, tabEl)); }); gridEl.appendChild(rowDiv); } }
-    function createFieldBoxInConfigUI(fieldDef, gridEl, tabEl) { const fieldSchema = state.fields.find(field => field.colId === fieldDef.colId); const box = document.createElement("div"); box.className = 'layout-field-box'; box.textContent = fieldSchema ? (fieldSchema.label || fieldSchema.colId) : fieldDef.colId; box.style.left = (fieldDef.col * COL_WIDTH) + "px"; box.style.width = (fieldDef.colSpan * COL_WIDTH) + "px"; const gearIcon = document.createElement("div"); gearIcon.innerHTML = "⚙️"; gearIcon.className = 'field-box-icon gear'; gearIcon.addEventListener("click", e => { e.stopPropagation(); openFieldStylePopup(fieldDef); }); box.appendChild(gearIcon); const removeIcon = document.createElement("div"); removeIcon.innerHTML = "✕"; removeIcon.className = 'field-box-icon remove'; removeIcon.addEventListener("click", e => { e.stopPropagation(); const idx = state.layout.indexOf(fieldDef); if (idx > -1) state.layout.splice(idx, 1); buildGridUI(gridEl, tabEl); buildAvailableFieldsList(tabEl.querySelector("#cs-layout-fields")); }); box.appendChild(removeIcon); box.draggable = true; box.addEventListener("dragstart", e => { e.dataTransfer.setData("text/colid", fieldDef.colId); const idx = state.layout.indexOf(fieldDef); if (idx > -1) state.layout.splice(idx, 1); }); const handle = document.createElement("div"); handle.className = 'resize-handle'; box.appendChild(handle); handle.addEventListener("mousedown", e => { e.stopPropagation(); e.preventDefault(); box.draggable = false; const startX = e.clientX, origW = parseFloat(box.style.width); const onMouseMove = moveEvt => { let newWidth = origW + (moveEvt.clientX - startX); box.style.width = newWidth + "px"; }; const onMouseUp = () => { document.removeEventListener("mousemove", onMouseMove); document.removeEventListener("mouseup", onMouseUp); let newSpan = Math.round(parseFloat(box.style.width) / COL_WIDTH); fieldDef.colSpan = Math.max(1, Math.min(NUM_COLS - fieldDef.col, newSpan)); box.draggable = true; buildGridUI(gridEl, tabEl); }; document.addEventListener("mousemove", onMouseMove); document.addEventListener("mouseup", onMouseUp); }); return box; }
-    function buildAvailableFieldsList(container) { container.innerHTML = ""; const usedCols = state.layout.map(l => l.colId); const availableCols = state.fields.filter(f => !usedCols.includes(f.colId)); if (!availableCols.length) { container.innerHTML = "<i>All fields placed.</i>"; return; } availableCols.forEach(field => { const el = document.createElement("div"); el.className = 'available-field'; el.textContent = field.label || field.colId; el.dataset.colid = field.colId; el.draggable = true; el.addEventListener("dragstart", e => e.dataTransfer.setData("text/colid", field.colId)); container.appendChild(el); }); }
-    function buildSidePanelTab(contentArea) {
-        const tabEl = document.createElement("div");
-        tabEl.dataset.tabSection = "sid";
+    function buildGridUI(gridEl, tabEl) { gridEl.innerHTML = ""; for (let r = 0; r < state.numRows; r++) { const rowDiv = document.createElement("div"); rowDiv.className = 'layout-grid-row'; rowDiv.dataset.rowIndex = String(r); rowDiv.addEventListener("dragover", e => e.preventDefault()); rowDiv.addEventListener("drop", e => {
+                e.preventDefault();
+                const colId = e.dataTransfer.getData("text/colid");
+                if (!colId) return;
+
+                const isActionButton = e.dataTransfer.getData("text/isActionButton") === "true";
+                const rect = rowDiv.getBoundingClientRect();
+                const col = Math.floor((e.clientX - rect.left) / COL_WIDTH);
+                
+                const newLayoutItem = {
+                    colId,
+                    row: r,
+                    col,
+                    colSpan: isActionButton ? 1 : 2, // Buttons can be smaller by default
+                    style: { ...DEFAULT_FIELD_STYLE }
+                };
+
+                if (isActionButton) {
+                    newLayoutItem.isActionButton = true;
+                    // Find the full button config and embed it
+                    const buttonConfig = (state.styling.actionButtons || []).find(b => b.id === colId);
+                    if (buttonConfig) {
+                        newLayoutItem.buttonConfig = buttonConfig;
+                    }
+                }
+
+                state.layout.push(newLayoutItem);
+                buildGridUI(gridEl, tabEl);
+                buildAvailableFieldsList(_mainContainer.querySelector("#cs-layout-fields"));
+                updateDebugJson();
+            }); state.layout.filter(f => f.row === r).forEach(f => { rowDiv.appendChild(createFieldBoxInConfigUI(f, gridEl, tabEl)); }); gridEl.appendChild(rowDiv); } }
+    function createFieldBoxInConfigUI(fieldDef, gridEl, tabEl) {
+        let fieldLabel;
+        let fieldSchema;
+
+        if (fieldDef.isActionButton) {
+            fieldLabel = `[Botão] ${fieldDef.buttonConfig?.tooltip || fieldDef.colId}`;
+        } else {
+            fieldSchema = state.fields.find(field => field.colId === fieldDef.colId);
+            fieldLabel = fieldSchema ? (fieldSchema.label || fieldSchema.colId) : fieldDef.colId;
+        }
+
+        const box = document.createElement("div");
+        box.className = 'layout-field-box';
+        box.textContent = fieldLabel;
+        box.style.left = (fieldDef.col * COL_WIDTH) + "px";
+        box.style.width = (fieldDef.colSpan * COL_WIDTH) + "px";
+        
+        if (!fieldDef.isActionButton) {
+            const gearIcon = document.createElement("div");
+            gearIcon.innerHTML = "⚙️";
+            gearIcon.className = 'field-box-icon gear';
+            gearIcon.addEventListener("click", e => {
+                e.stopPropagation();
+                openFieldStylePopup(fieldDef, fieldSchema);
+            });
+            box.appendChild(gearIcon);
+        }
+
+        const removeIcon = document.createElement("div");
+        removeIcon.innerHTML = "✕";
+        removeIcon.className = 'field-box-icon remove';
+        removeIcon.addEventListener("click", e => {
+            e.stopPropagation();
+            const idx = state.layout.indexOf(fieldDef);
+            if (idx > -1) state.layout.splice(idx, 1);
+            buildGridUI(gridEl, tabEl);
+            buildAvailableFieldsList(_mainContainer.querySelector("#cs-layout-fields"));
+            updateDebugJson();
+        });
+        box.appendChild(removeIcon);
+
+        box.draggable = true;
+        box.addEventListener("dragstart", e => {
+            e.dataTransfer.setData("text/colid", fieldDef.colId);
+            if (fieldDef.isActionButton) {
+                e.dataTransfer.setData("text/isActionButton", "true");
+            }
+            const idx = state.layout.indexOf(fieldDef);
+            if (idx > -1) state.layout.splice(idx, 1);
+        });
+
+        const handle = document.createElement("div");
+        handle.className = 'resize-handle';
+        box.appendChild(handle);
+        handle.addEventListener("mousedown", e => {
+            e.stopPropagation();
+            e.preventDefault();
+            box.draggable = false;
+            const startX = e.clientX,
+                origW = parseFloat(box.style.width);
+            const onMouseMove = moveEvt => {
+                let newWidth = origW + (moveEvt.clientX - startX);
+                box.style.width = newWidth + "px";
+            };
+            const onMouseUp = () => {
+                document.removeEventListener("mousemove", onMouseMove);
+                document.removeEventListener("mouseup", onMouseUp);
+                let newSpan = Math.round(parseFloat(box.style.width) / COL_WIDTH);
+                fieldDef.colSpan = Math.max(1, Math.min(NUM_COLS - fieldDef.col, newSpan));
+                box.draggable = true;
+                buildGridUI(gridEl, tabEl);
+                updateDebugJson();
+            };
+            document.addEventListener("mousemove", onMouseMove);
+            document.addEventListener("mouseup", onMouseUp);
+        });
+        return box;
+    }
+    function buildAvailableFieldsList(container) {
+        if (!container) return;
+        container.innerHTML = "";
+        const usedCols = state.layout.map(l => l.colId);
+
+        // Real fields from the table
+        const availableRealFields = state.fields.filter(f => !usedCols.includes(f.colId));
+
+        // Virtual fields for action buttons
+        const availableButtonFields = (state.styling.actionButtons || [])
+            .filter(btn => !usedCols.includes(btn.id))
+            .map(btn => ({
+                colId: btn.id,
+                label: `[Botão] ${btn.tooltip || 'Nova Ação'}`,
+                isActionButton: true
+            }));
+
+        const availableCols = [...availableRealFields, ...availableButtonFields];
+
+        if (!availableCols.length) {
+            container.innerHTML = "<i>All fields placed.</i>";
+            return;
+        }
+
+        availableCols.forEach(field => {
+            const el = document.createElement("div");
+            el.className = 'available-field';
+            el.textContent = field.label || field.colId;
+            el.dataset.colid = field.colId;
+            el.draggable = true;
+            el.addEventListener("dragstart", e => {
+                e.dataTransfer.setData("text/colid", field.colId);
+                if (field.isActionButton) {
+                    e.dataTransfer.setData("text/isActionButton", "true");
+                }
+            });
+            container.appendChild(el);
+        });
+    }
+    function buildActionsTab(contentArea) { const tabEl = document.createElement("div"); tabEl.dataset.tabSection = "actions";
         tabEl.style.display = "none";
         tabEl.innerHTML = `
-            <h3>Side Panel & Actions</h3>
-            <p>Configure what happens when a user clicks on a card.</p>
+            <h3>Card Actions & Navigation</h3>
+            <p>Configure what happens when a user interacts with a card.</p>
             <fieldset>
-                <legend>Action on Click</legend>
+                <legend>Primary Action (On Card Click)</legend>
                 <div class="form-group">
                     <label for="cs-sp-drawer-config">Open Details Panel (Drawer):</label>
                     <select id="cs-sp-drawer-config">
@@ -318,6 +679,11 @@ window.CardConfigEditor = (() => {
                     </select>
                 </div>
             </fieldset>
+            <fieldset>
+                <legend>Secondary Action Buttons (Icons on Card)</legend>
+                <div id="cs-action-buttons-container"></div>
+                <button type="button" id="cs-add-action-button" class="btn-add-item">+ Add Action Button</button>
+            </fieldset>
         `;
         contentArea.appendChild(tabEl);
         const drawerSelect = tabEl.querySelector("#cs-sp-drawer-config");
@@ -332,9 +698,116 @@ window.CardConfigEditor = (() => {
         }
         if (state.sidePanel && state.sidePanel.drawerConfigId) { drawerSelect.value = state.sidePanel.drawerConfigId; }
         const spSizeSel = tabEl.querySelector("#cs-sp-size");
-        spSizeSel.value = state.sidePanel.size || "35%";
+        const actionButtonsContainer = tabEl.querySelector("#cs-action-buttons-container");
+        
+        // Initial render of action buttons
+        renderActionButtonsUI(actionButtonsContainer, state.styling.actionButtons || []);
+
+        tabEl.querySelector('#cs-add-action-button').addEventListener('click', () => {
+            if (!Array.isArray(state.styling.actionButtons)) {
+                state.styling.actionButtons = [];
+            }
+            const newButton = {
+                id: `action-button-${Date.now()}`,
+                icon: 'icon-link',
+                tooltip: 'Nova Ação',
+                actionType: 'navigateToGristPage',
+            };
+            state.styling.actionButtons.push(newButton);
+
+            renderActionButtonsUI(actionButtonsContainer, state.styling.actionButtons);
+            buildAvailableFieldsList(_mainContainer.querySelector("#cs-layout-fields"));
+            updateDebugJson();
+        });
+
+        // Add event listener for remove buttons (delegated to the container)
+        actionButtonsContainer.addEventListener('click', (e) => {
+            if (e.target.classList.contains('btn-remove-item')) {
+                const index = parseInt(e.target.dataset.index, 10);
+                const buttonToRemove = state.styling.actionButtons[index];
+                if (!buttonToRemove) return;
+
+                const buttonIdToRemove = buttonToRemove.id;
+
+                state.styling.actionButtons.splice(index, 1);
+
+                state.layout = state.layout.filter(item => item.colId !== buttonIdToRemove);
+
+                renderActionButtonsUI(actionButtonsContainer, state.styling.actionButtons);
+                buildGridUI(_mainContainer.querySelector("#cs-layout-grid"), _mainContainer.querySelector("[data-tab-section='fld']"));
+                buildAvailableFieldsList(_mainContainer.querySelector("#cs-layout-fields"));
+                updateDebugJson();
+            }
+        });
     }
-    function openFieldStylePopup(fieldDef) { if (_fieldStylePopup && _fieldStylePopup.parentNode) { _fieldStylePopup.parentNode.removeChild(_fieldStylePopup); } _fieldStylePopup = document.createElement("div"); _fieldStylePopup.style.cssText = ` position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1060; `; _fieldStylePopup.className = 'field-style-popup'; _fieldStylePopup.innerHTML = ` <div class="field-style-popup-content"> <h3 style="margin-top:0;">Style: ${fieldDef.colId}</h3> <div><label><input type="checkbox" id="fs-lv"> Show Label</label></div> <div>Label Position: <label><input type="radio" name="fs-lp" value="above"> Above</label> <label><input type="radio" name="fs-lp" value="left"> Left</label> </div> <div>Data Justification: <select id="fs-dj"><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select> </div> <div><label><input type="checkbox" id="fs-hl"> Limit Height</label></div> <div id="fs-hl-rows" style="display:none;"><label>Max Rows: <input type="number" id="fs-hr" min="1" style="width:50px;"></label></div> <hr> <div><label><input type="checkbox" id="fs-itf"> Is a Title Field</label></div> <p class="help-text">Title Fields appear in the Top Bar if it's enabled.</p> <div class="popup-actions"> <button id="fs-cancel" type="button" class="btn btn-secondary">Cancel</button> <button id="fs-save" type="button" class="btn btn-primary">Save</button> </div> </div> `; _mainContainer.appendChild(_fieldStylePopup); const s = { ...DEFAULT_FIELD_STYLE, ...fieldDef.style }; _fieldStylePopup.querySelector('#fs-lv').checked = s.labelVisible; _fieldStylePopup.querySelector(`input[name='fs-lp'][value='${s.labelPosition}']`).checked = true; _fieldStylePopup.querySelector('#fs-dj').value = s.dataJustify; _fieldStylePopup.querySelector('#fs-hl').checked = s.heightLimited; _fieldStylePopup.querySelector('#fs-hl-rows').style.display = s.heightLimited ? 'block' : 'none'; _fieldStylePopup.querySelector('#fs-hr').value = s.maxHeightRows; _fieldStylePopup.querySelector('#fs-itf').checked = s.isTitleField; _fieldStylePopup.querySelector('#fs-hl').addEventListener('change', e => { _fieldStylePopup.querySelector('#fs-hl-rows').style.display = e.target.checked ? 'block' : 'none'; }); const closePopup = () => { if (_fieldStylePopup && _fieldStylePopup.parentNode) { _fieldStylePopup.parentNode.removeChild(_fieldStylePopup); } _fieldStylePopup = null; }; _fieldStylePopup.querySelector('#fs-cancel').addEventListener('click', closePopup); _fieldStylePopup.querySelector('#fs-save').addEventListener('click', () => { const newStyle = { labelVisible: _fieldStylePopup.querySelector('#fs-lv').checked, labelPosition: _fieldStylePopup.querySelector('input[name="fs-lp"]:checked').value, dataJustify: _fieldStylePopup.querySelector('#fs-dj').value, heightLimited: _fieldStylePopup.querySelector('#fs-hl').checked, maxHeightRows: parseInt(_fieldStylePopup.querySelector('#fs-hr').value, 10) || 1, isTitleField: _fieldStylePopup.querySelector('#fs-itf').checked }; fieldDef.style = { ...DEFAULT_FIELD_STYLE, ...newStyle }; closePopup(); updateDebugJson(); }); }
+    async function openFieldStylePopup(fieldDef, fieldSchema) { // Added fieldSchema and async
+        if (_fieldStylePopup && _fieldStylePopup.parentNode) { _fieldStylePopup.parentNode.removeChild(_fieldStylePopup); }
+        _fieldStylePopup = document.createElement("div");
+        _fieldStylePopup.style.cssText = ` position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1060; background: white; `;
+        _fieldStylePopup.className = 'field-style-popup';
+        
+        const isRefList = fieldSchema && fieldSchema.type.startsWith('RefList:');
+        let refListOptionsHtml = '';
+        if (isRefList) {
+            const referencedTableId = fieldSchema.type.split(':')[1];
+            const relatedSchema = await state.lens.getTableSchema(referencedTableId);
+            const currentRefListConfig = fieldDef.style.refListConfig || {};
+
+            refListOptionsHtml = `
+                <hr>
+                <h4>RefList Display Options</h4>
+                <div class="form-group">
+                    <label>Max Rows to Display:</label>
+                    <input type="number" id="fs-reflist-max-rows" min="0" value="${currentRefListConfig.maxRows || 0}" style="width:80px;">
+                    <p class="help-text">0 para exibir todos os registros relacionados.</p>
+                </div>
+                <div class="form-group">
+                    <label>Colunas da Tabela Relacionada:</label>
+                    <div id="fs-reflist-columns-config">
+                        ${Object.values(relatedSchema).filter(c => !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos').map(c => `
+                            <div>
+                                <label>
+                                    <input type="checkbox" class="fs-reflist-col-checkbox" value="${c.colId}" ${currentRefListConfig.columns && currentRefListConfig.columns.includes(c.colId) ? 'checked' : ''}>
+                                    ${c.label || c.colId} (${c.type})
+                                </label>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        _fieldStylePopup.innerHTML = ` <div class="field-style-popup-content"> <h3 style="margin-top:0;">Style: ${fieldDef.colId}</h3> <div><label><input type="checkbox" id="fs-lv"> Show Label</label></div> <div>Label Position: <label><input type="radio" name="fs-lp" value="above"> Above</label> <label><input type="radio" name="fs-lp" value="left"> Left</label> </div> <div>Data Justification: <select id="fs-dj"><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select> </div> <div><label><input type="checkbox" id="fs-hl"> Limit Height</label></div> <div id="fs-hl-rows" style="display:none;"><label>Max Rows: <input type="number" id="fs-hr" min="1" style="width:50px;"></label></div> <hr> <div><label><input type="checkbox" id="fs-itf"> Is a Title Field</label></div> <p class="help-text">Title Fields appear in the Top Bar if it's enabled.</p> ${refListOptionsHtml} <div class="popup-actions"> <button id="fs-cancel" type="button" class="btn btn-secondary">Cancel</button> <button id="fs-save" type="button" class="btn btn-primary">Save</button> </div> </div> `; _mainContainer.appendChild(_fieldStylePopup); const s = { ...DEFAULT_FIELD_STYLE, ...fieldDef.style }; _fieldStylePopup.querySelector('#fs-lv').checked = s.labelVisible; _fieldStylePopup.querySelector(`input[name='fs-lp'][value='${s.labelPosition}']`).checked = true; _fieldStylePopup.querySelector('#fs-dj').value = s.dataJustify; _fieldStylePopup.querySelector('#fs-hl').checked = s.heightLimited; _fieldStylePopup.querySelector('#fs-hl-rows').style.display = s.heightLimited ? 'block' : 'none'; _fieldStylePopup.querySelector('#fs-hr').value = s.maxHeightRows; _fieldStylePopup.querySelector('#fs-itf').checked = s.isTitleField; _fieldStylePopup.querySelector('#fs-hl').addEventListener('change', e => { _fieldStylePopup.querySelector('#fs-hl-rows').style.display = e.target.checked ? 'block' : 'none'; }); const closePopup = () => { if (_fieldStylePopup && _fieldStylePopup.parentNode) { _fieldStylePopup.parentNode.removeChild(_fieldStylePopup); } _fieldStylePopup = null; }; _fieldStylePopup.querySelector('#fs-cancel').addEventListener('click', closePopup); _fieldStylePopup.querySelector('#fs-save').addEventListener('click', () => { 
+        const newStyle = { 
+            labelVisible: _fieldStylePopup.querySelector('#fs-lv').checked, 
+            labelPosition: _fieldStylePopup.querySelector('input[name="fs-lp"]:checked').value, 
+            dataJustify: _fieldStylePopup.querySelector('#fs-dj').value, 
+            heightLimited: _fieldStylePopup.querySelector('#fs-hl').checked, 
+            maxHeightRows: parseInt(_fieldStylePopup.querySelector('#fs-hr').value, 10) || 1, 
+            isTitleField: _fieldStylePopup.querySelector('#fs-itf').checked 
+        }; 
+        fieldDef.style = { ...DEFAULT_FIELD_STYLE, ...newStyle }; 
+
+        // INÍCIO DA LÓGICA DE SALVAMENTO DO REFLIST (CORREÇÃO)
+        if (isRefList && _fieldStylePopup) {
+            fieldDef.style.refListConfig = fieldDef.style.refListConfig || {};
+
+            const maxRowsInput = _fieldStylePopup.querySelector('#fs-reflist-max-rows');
+            if (maxRowsInput) {
+                fieldDef.style.refListConfig.maxRows = parseInt(maxRowsInput.value, 10);
+            }
+
+            const selectedCols = [];
+            const colCheckboxes = _fieldStylePopup.querySelectorAll('input.fs-reflist-col-checkbox:checked');
+            colCheckboxes.forEach(checkbox => selectedCols.push(checkbox.value));
+            fieldDef.style.refListConfig.columns = selectedCols;
+        }
+        // FIM DA LÓGICA DE SALVAMENTO DO REFLIST
+        
+        closePopup(); 
+        updateDebugJson(); 
+        }); 
+    }
     function populateFieldSelect(selectEl, fieldList) { if(!selectEl) return; while (selectEl.options.length > 1) { selectEl.remove(1); } fieldList.forEach(f => { const opt = document.createElement("option"); opt.value = f; opt.textContent = f; selectEl.appendChild(opt); }); }
     return { render, read };
 })();

@@ -8,6 +8,7 @@ import { open as openConfigManager } from '../libraries/grist-config-manager/Con
 import { CardSystem } from '../libraries/grist-card-system/CardSystem.js';
 import { subscribe } from '../libraries/grist-event-bus/grist-event-bus.js';
 import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js';
+import { GristDataWriter } from '../libraries/grist-data-writer.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
     
@@ -89,7 +90,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.log("[7] Dados carregados com sucesso:", { recordsCount: records.length, schemaKeys: Object.keys(schema).length });
             
             appContainer.innerHTML = '';
-            CardSystem.renderCards(appContainer, records, currentConfig, schema);
+            CardSystem.renderCards(appContainer, records, { ...currentConfig, tableLens: tableLens }, schema);
             addSettingsGear();
             console.log("[8] Renderização concluída.");
 
@@ -101,10 +102,49 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     function renderStatus(message) {
-        let gearBtn = document.getElementById('settings-gear-btn');
         appContainer.innerHTML = `<div class="status-placeholder">${message}</div>`;
-        if (gearBtn) {
-            appContainer.appendChild(gearBtn);
+        // The gear button will be added by addSettingsGear() after the content is set.
+    }
+    
+    async function handleNavigationAction(config, sourceRecord, currentTableId) {
+        console.log("Executando a\u00e7\u00e3o de navega\u00e7\u00e3o:", config, sourceRecord);
+        if (!config || !config.actionType || !sourceRecord) {
+            console.error("Configura\u00e7\u00e3o de a\u00e7\u00e3o inv\u00e1lida ou registro de origem ausente.");
+            return;
+        }
+
+        if (config.actionType === 'navigateToGristPage') {
+            const filterValue = sourceRecord[config.sourceValueColumn];
+            if (!config.targetPageId || !config.targetFilterColumn || !filterValue) {
+                alert("Configura\u00e7\u00e3o de navega\u00e7\u00e3o para p\u00e1gina Grist incompleta.");
+                return;
+            }
+            // Grist API does not directly support navigating to a specific page by ID with a filter.
+            // The best we can do for now is to inform the user about the intended action.
+            alert(`A\u00e7\u00e3o: Navegar para a p\u00e1gina '${config.targetPageId}' e aplicar filtro '${config.targetFilterColumn}' = '${filterValue}'.\n\nPor favor, navegue manualmente para a p\u00e1gina desejada e aplique o filtro.`);
+
+        } else if (config.actionType === 'openUrlFromColumn') {
+            const url = sourceRecord[config.urlColumn];
+            if (url) {
+                window.open(url, '_blank');
+            } else {
+                alert(`A coluna '${config.urlColumn}' do card n\u00e3o cont\u00e9m uma URL.`);
+            }
+        } else if (config.actionType === 'updateRecord') {
+            const dataWriter = new GristDataWriter(grist);
+            if (!config.updateField || config.updateValue === undefined) {
+                alert("Configura\u00e7\u00e3o de atualiza\u00e7\u00e3o de registro incompleta.");
+                return;
+            }
+            try {
+                await dataWriter.updateRecord(currentTableId, sourceRecord.id, {
+                    [config.updateField]: config.updateValue
+                });
+                alert(`Registro atualizado: Campo '${config.updateField}' definido como '${config.updateValue}'.`);
+            } catch (e) {
+                console.error("Erro ao atualizar registro:", e);
+                alert("Erro ao tentar atualizar o registro.");
+            }
         }
     }
     
@@ -115,7 +155,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         gearBtn.innerHTML = getIcon('icon-settings');
         gearBtn.title = 'Configurações do Widget';
         gearBtn.onclick = openSettingsPopover;
-        appContainer.appendChild(gearBtn);
+        document.body.appendChild(gearBtn); // <--- CHANGED TO document.body
     }
 
     function openSettingsPopover(event) {
@@ -191,7 +231,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    // Lógica para o clique do card
+    // L\u00f3gica para o clique do card
     subscribe('grf-card-clicked', async (eventData) => {
         if (!eventData.drawerConfigId) return;
         console.log("Card clicado! Tentando abrir drawer com config:", eventData.drawerConfigId);
@@ -201,12 +241,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const drawerConfigData = JSON.parse(drawerConfigRecord.configJson);
                 openDrawer(eventData.tableId, eventData.recordId, drawerConfigData);
             } else {
-                console.error(`Configuração de Drawer com ID "${eventData.drawerConfigId}" não encontrada.`);
-                alert(`Erro: A configuração para o painel de detalhes não foi encontrada.`);
+                console.error(`Configura\u00e7\u00e3o de Drawer com ID "${eventData.drawerConfigId}" n\u00e3o encontrada.`);
+                alert(`Erro: A configura\u00e7\u00e3o para o painel de detalhes n\u00e3o foi encontrada.`);
             }
         } catch(e) {
             console.error("Erro ao buscar ou abrir o Drawer:", e);
         }
+    });
+
+    // L\u00f3gica para a\u00e7\u00f5es de navega\u00e7\u00e3o (bot\u00f5es de a\u00e7\u00e3o secund\u00e1ria)
+    subscribe('grf-navigation-action-triggered', async (eventData) => {
+        console.log("A\u00e7\u00e3o de navega\u00e7\u00e3o disparada:", eventData);
+        await handleNavigationAction(eventData.config, eventData.sourceRecord, eventData.tableId);
     });
 });
 

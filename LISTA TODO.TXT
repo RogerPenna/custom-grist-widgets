@@ -4,6 +4,21 @@
 
 ### Tarefas Concluídas
 
+- [DONE] **Corrigir bugs no popup de configuração de campo:**
+  - Adicionado fundo branco ao popup de estilo de campo para corrigir fundo transparente.
+  - Corrigido erro de TypeError que impedia a abertura da configuração para campos do tipo RefList.
+
+- [DONE] **Implementar configurações de exibição para campos RefList:**
+  - A renderização de campos RefList agora respeita as configurações de "máximo de linhas" e "colunas visíveis" definidas no popup de estilo.
+
+- [DONE] **Refatorar "Action Buttons" para serem Posicionáveis (Virtual Fields):**
+  - Botões de ação agora são tratados como "campos virtuais" no editor de configuração.
+  - Eles aparecem na lista de "Available Fields" e podem ser arrastados e posicionados no grid de layout.
+  - A lógica de renderização no `CardSystem.js` foi alterada para desenhar os botões de acordo com sua posição no layout.
+  - A lógica de estado no `config-cards.js` foi extensivamente modificada para suportar a criação, posicionamento, salvamento e exclusão dos botões como parte do layout.
+
+- [DONE] **Testar a funcionalidade dos novos "Action Buttons" (configuração, renderização e execução das ações).**
+
 - [DONE] **Resolver Inconsistência de UI na Configuração:**
   - Desabilitar os seletores de cor de "Label Style" and "Data Style" na configuração da "Top Bar" quando a opção "Também aplicar cor de texto do campo" está marcada.
   - Arquivo modificado: `ConfigManager/editors/config-cards.js`.
@@ -13,10 +28,15 @@
   - O `CardSystem.js` foi modificado para delegar a renderização de cada campo para a biblioteca `grist-field-renderer.js`.
   - Arquivo modificado: `libraries/grist-card-system/CardSystem.js`.
 
+- [DONE] **Implementar "Action Buttons" no `CardSystem` (Ação Primária):**
+  - **Passo 1: Expansão da Configuração (`config-cards.js`)**: Adicionada UI para configurar botões de ação secundária (ícone, tooltip, tipo de ação, configuração específica).
+  - **Passo 2: Implementação da Renderização (`CardSystem.js`)**: Botões de ação são renderizados nos cards e publicam eventos `grf-navigation-action-triggered` ao serem clicados.
+  - **Passo 3: O Orquestrador (`CardViewer.js`) se Torna Mais Inteligente**: `CardViewer.js` escuta eventos de navegação e executa as ações configuradas (navegar para página Grist, abrir URL, atualizar registro).
+
 ### Próximas Tarefas
 
 - [ ] **Revisão e Testes:**
-  - Testar o `CardViewer` para garantir que todos os tipos de campo (Data, Escolha, Referência, etc.) estão sendo renderizados corretamente nos cards após a refatoração.
+  - Testar o `CardViewer` para garantir que todos os tipos de campo (Data, Escolha, Referência, etc.) estão sendo renderizados corretamente nos cards após a refatoraçaão.
   - Verificar se a UI de configuração da "Top Bar" se comporta como esperado.
 
 - [ ] **Limpeza de Código (Opcional):**

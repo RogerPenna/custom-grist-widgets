@@ -532,3 +532,38 @@ textarea {
     display: none;
 }
 */
+
+/* ============================================= */
+/* === Estilos para o Pop-up de Campo        === */
+/* ============================================= */
+
+.field-style-popup {
+  background-color: #ffffff;
+  border: 1px solid #cccccc;
+  border-radius: 8px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  width: 400px; /* Largura fixa para consistência */
+}
+
+.field-style-popup-content {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px; /* Espaçamento entre os itens */
+}
+
+.field-style-popup-content .help-text {
+  font-size: 0.8em;
+  color: #6c757d;
+  margin-top: -10px;
+  font-style: italic;
+}
+
+.field-style-popup-content .popup-actions {
+  display: flex;
+  justify-content: flex-end; /* Alinha os botões à direita */
+  gap: 10px;
+  margin-top: 10px;
+  border-top: 1px solid #eeeeee;
+  padding-top: 15px;
+}

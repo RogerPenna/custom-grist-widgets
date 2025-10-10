@@ -116,7 +116,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (configId) {
             render(); // Mostra "loading"
             try {
-                const configRecord = await tableLens.findRecord('Grf_config', { configId: configId });
+                const configRecord = await tableLens.findRecord('_grf_config', { configId: configId });
                 currentConfig = configRecord ? JSON.parse(configRecord.configJson) : null;
                 if (!currentConfig) throw new Error(`Configuração "${configId}" não encontrada.`);
             } catch (e) {
