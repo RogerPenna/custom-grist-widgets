@@ -1,0 +1,3 @@
+[submodule "ultra-kanban-widget"]
+    path = ultra-kanban-widget
+    url = https://github.com/RogerPenna/ultra-kanban-widget
