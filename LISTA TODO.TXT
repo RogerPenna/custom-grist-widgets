@@ -45,8 +45,26 @@
 ### Próximas Tarefas
 
 - [ ] **Implementar "Group Boxes" no Layout:**
-  - Criar uma segunda grade de layout na aba "Fields Layout", exclusiva para "Group Boxes".
-  - Permitir a criação de "Group Boxes" que podem ser arrastados e posicionados nesta nova grade.
-  - Quando um "Group Box" é posicionado, as células correspondentes na grade de campos principal devem ser visualmente marcadas (ex: fundo cinza).
-  - "Group Boxes" devem ser configuráveis (nome, cor de fundo) e redimensionáveis.
-  - "Group Boxes" devem se expandir verticalmente para acomodar o conteúdo dos campos que estão em sua área.
+  - **Plano de Implementação:**
+    - **Parte 1: `config-cards.js` (UI de Configuração)**
+      - [ ] Adicionar `groupBoxes: []` ao `DEFAULT_STYLING`.
+      - [ ] Em `buildFieldsLayoutTab`, adicionar o HTML para o grid das group boxes (`#cs-group-box-grid`), a lista de disponíveis (`#cs-group-box-list`) e o botão de adicionar (`#cs-add-group-box-btn`), garantindo a ordem correta dos elementos.
+      - [ ] Implementar a lógica do botão de adicionar para criar um novo objeto `groupBox` no array `state.styling.groupBoxes`.
+      - [ ] Criar a função `buildAvailableGroupBoxesList` para renderizar as caixas na lista de disponíveis.
+      - [ ] Implementar a funcionalidade de arrastar e soltar (drag-and-drop) da lista de disponíveis para o grid das group boxes.
+      - [ ] Implementar a lógica de redimensionamento das caixas no grid.
+      - [ ] Criar um popup de configuração para permitir a alteração do nome (`name`) e da cor de fundo (`backgroundColor`) de uma group box.
+      - [ ] Em `readStylingTab`, garantir que o array `groupBoxes` seja salvo na configuração final.
+    - **Parte 2: `CardSystem.js` (Renderização)**
+      - [ ] Em `renderCards`, fazer um loop por `styling.groupBoxes` e renderizar os elementos `div` correspondentes no fundo do card.
+      - [ ] Implementar a lógica para que a caixa se expanda verticalmente para conter todos os campos que estão dentro de sua área de layout.
+      - [ ] No editor, marcar visualmente (ex: fundo cinza) as células do grid de campos que estão "atrás" de uma group box.
+
+- [ ] **RefList: Paginação nos Cards:**
+  - Adicionar uma opção de configuração para que tabelas de RefList com muitas linhas possam ser paginadas diretamente na interface do card, em vez de mostrar uma lista longa ou truncada.
+
+- [ ] **RefList: Colapsar/Expandir nos Cards:**
+  - Permitir que uma tabela de RefList renderizada em um card possa ser "colapsada" para ocupar menos espaço e "expandida" pelo usuário para ver todos os dados.
+
+- [ ] **RefList: Expansão Vertical no Layout:**
+  - Possibilitar que um campo de RefList no grid de layout possa ser expandido verticalmente (aumentar seu `rowSpan`) para acomodar mais linhas da tabela, permitindo layouts mais flexíveis onde outros campos podem ocupar o espaço ao lado.
