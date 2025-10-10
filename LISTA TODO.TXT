@@ -38,6 +38,10 @@
   - A cor do fundo deve ser uma versão mais clara (15%, 30%, 50%) da cor de fundo do card.
   - A caixa de fundo deve envolver o rótulo e o valor do campo.
 
+- [DONE] **Corrigir Lógica de Configuração do Drawer:**
+  - A configuração do Drawer agora salva o `tableId` para o qual foi criada.
+  - O Gerenciador de Configurações agora pré-seleciona a tabela correta ao editar uma configuração de Drawer, tornando o processo mais intuitivo.
+
 ### Próximas Tarefas
 
 - [ ] **Implementar "Group Boxes" no Layout:**

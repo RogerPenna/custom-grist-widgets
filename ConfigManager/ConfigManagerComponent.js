@@ -195,10 +195,21 @@ const ConfigManagerComponent = (() => {
                     </select>`;
                 
                 const tableSelector = editorContentEl.querySelector('#cm-table-selector');
+
+                // Adicionado para pré-selecionar a tabela e renderizar o editor
+                const parsedConfigData = JSON.parse(config.configData || '{}');
+                if (parsedConfigData.tableId) {
+                    tableSelector.value = parsedConfigData.tableId;
+                }
+
                 tableSelector.onchange = () => {
-                    // --- MODIFICAÇÃO ---: Passando config.configData
                     currentEditorModule.render(specializedEditor, JSON.parse(config.configData || '{}'), tableLens, tableSelector.value);
                 };
+
+                // Dispara o evento se a tabela já estiver selecionada
+                if (tableSelector.value) {
+                    tableSelector.dispatchEvent(new Event('change'));
+                }
             };
 
             const loadList = async () => {
