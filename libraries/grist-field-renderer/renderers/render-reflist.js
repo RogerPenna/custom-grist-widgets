@@ -69,6 +69,10 @@ export async function renderRefList(options) {
     const closeAllMenus = () => { document.querySelectorAll('.reflist-action-menu-dropdown.is-open').forEach(d => d.classList.remove('is-open')); };
 
     const renderContent = async () => {
+        console.log("--- DEBUG: renderRefList ---");
+        console.log("Rendering RefList for field:", colSchema.colId);
+        console.log("Received fieldConfig:", JSON.parse(JSON.stringify(fieldConfig || {})));
+        console.log("Received refListConfig:", JSON.parse(JSON.stringify(refListConfig || {})));
         // Collapsed state rendering
         if (refListConfig?.collapsible && isCollapsed) {
             container.innerHTML = '';
@@ -174,6 +178,8 @@ export async function renderRefList(options) {
         } else {
             columnsToDisplay = allPossibleCols;
         }
+        console.log("DEBUG: All possible columns:", allPossibleCols.map(c => c.colId));
+        console.log("DEBUG: Calculated columnsToDisplay:", columnsToDisplay.map(c => c.colId));
 
         const thActions = document.createElement('th'); thActions.textContent = 'Ações'; thead.appendChild(thActions);
         columnsToDisplay.forEach(c => {
@@ -209,7 +215,7 @@ export async function renderRefList(options) {
             actionsCell.appendChild(dropdown);
             for (const c of columnsToDisplay) {
                 const td = tr.insertCell();
-                renderField({ container: td, colSchema: c, record: relRec, tableLens, ruleIdToColIdMap: ruleMap });
+                renderField({ container: td, colSchema: c, record: relRec, tableLens, ruleIdToColIdMap: ruleMap, fieldConfig: fieldConfig });
             }
         }
         tableContainer.appendChild(table);

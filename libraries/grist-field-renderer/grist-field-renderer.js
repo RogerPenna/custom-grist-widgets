@@ -141,10 +141,44 @@ function _applyStyles(element, colSchema, record, ruleIdToColIdMap, isLabel = fa
  * FUNÇÃO PRINCIPAL DO RENDERER: Nenhuma mudança necessária aqui.
  * Ela despacha para os renderers específicos de cada tipo.
  */
+function renderSimpleText(options) {
+    const { container, colSchema, record, styling } = options;
+    const cellValue = record ? record[colSchema.colId] : null;
+    
+    container.innerHTML = '';
+    const textSpan = document.createElement('span');
+
+    let displayText = cellValue;
+    if (Array.isArray(cellValue) && cellValue[0] === 'L') {
+        displayText = `[${cellValue.length - 1} items]`;
+    } else if (typeof cellValue === 'number' && (colSchema.type.startsWith('Ref:'))) {
+        displayText = `[Ref: ${cellValue}]`;
+    }
+
+    textSpan.textContent = String(displayText ?? '');
+    
+    if (styling) {
+        textSpan.style.color = styling.simpleTextColor || '#000000';
+        textSpan.style.fontFamily = styling.simpleTextFont || 'Calibri';
+        textSpan.style.fontSize = styling.simpleTextSize || '14px';
+    }
+    
+    container.appendChild(textSpan);
+}
+
 export async function renderField(options) {
-    const { container, colSchema, record, isEditing = false, labelElement, styleOverride } = options;
+    const { container, colSchema, record, isEditing = false, labelElement, styleOverride, fieldStyle, styling } = options;
+
     if (!colSchema) { 
         container.textContent = String(record[options.colId] ?? '');
+        return;
+    }
+
+    // Default to using Grist style if the option is not provided.
+    const useGristStyle = fieldStyle?.useGristStyle ?? true;
+
+    if (!useGristStyle) {
+        renderSimpleText({ container, colSchema, record, styling });
         return;
     }
 
@@ -163,7 +197,8 @@ export async function renderField(options) {
         _applyStyles(container, colSchema, record, options.ruleIdToColIdMap, false, styleOverride);
     }
 
-    const callOptions = { ...options, container, cellValue };
+    // Correctly pass refListConfig to the callOptions from the fieldStyle object
+    const callOptions = { ...options, container, cellValue, refListConfig: fieldStyle?.refListConfig };
 
     const type = colSchema.type || '';
     if (type.startsWith('RefList:')) {

@@ -313,7 +313,8 @@ if (styling.fieldBackground?.enabled) {
             record: record,
             isEditing: false,
             tableLens: tableLens,
-            refListConfig: fieldStyle.refListConfig
+            fieldStyle: fieldStyle, // Pass the whole field style object
+            styling: styling // Pass the global styling object
           });
 
           fieldBox.appendChild(valueContainer);
