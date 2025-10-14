@@ -55,6 +55,8 @@ async function handleEdit(tableId, recordId, onUpdate, dataWriter, tableLens, fi
 async function handleDelete(tableId, recordId, onUpdate, dataWriter) { if (confirm(`Tem certeza?`)) { await dataWriter.deleteRecords(tableId, [recordId]); onUpdate(); } }
 
 export async function renderRefList(options) {
+    let currentPage = 1;
+    let isCollapsed = options.refListConfig?.collapsible; // Start collapsed if option is enabled
     const { container, record, colSchema, tableLens, isLocked, fieldConfig, ruleIdToColIdMap, refListConfig } = options;
     const dataWriter = new GristDataWriter(grist);
     const iconPath = '../libraries/icons/icons.svg';
@@ -67,13 +69,45 @@ export async function renderRefList(options) {
     const closeAllMenus = () => { document.querySelectorAll('.reflist-action-menu-dropdown.is-open').forEach(d => d.classList.remove('is-open')); };
 
     const renderContent = async () => {
+        // Collapsed state rendering
+        if (refListConfig?.collapsible && isCollapsed) {
+            container.innerHTML = '';
+            const expandButton = document.createElement('div');
+            expandButton.className = 'reflist-expand-button';
+            expandButton.style.cssText = `
+                display: flex; justify-content: space-between; align-items: center;
+                padding: 8px; background-color: #f0f0f0; border: 1px solid #ccc;
+                border-radius: 4px; cursor: pointer;
+            `;
+            expandButton.innerHTML = `
+                <span style="font-size: 16px;">▶️</span>
+                <span style="font-size: 16px;">◀️</span>
+            `;
+            expandButton.onclick = (e) => {
+                e.stopPropagation();
+                isCollapsed = false;
+                renderContent();
+            };
+            container.appendChild(expandButton);
+            return;
+        }
+
+        // Expanded state rendering
         container.innerHTML = '<p>Carregando...</p>';
         let relatedRecords = await tableLens.fetchRelatedRecords(record, colSchema.colId);
         relatedRecords.sort((a, b) => { const vA = a[sortColumn], vB = b[sortColumn]; if (vA < vB) return sortDirection === 'asc' ? -1 : 1; if (vA > vB) return sortDirection === 'asc' ? 1 : -1; return 0; });
 
-        // Apply maxRows limit from refListConfig
-        if (refListConfig && refListConfig.maxRows > 0) {
-            relatedRecords = relatedRecords.slice(0, refListConfig.maxRows);
+        const totalRecords = relatedRecords.length;
+        let recordsToRender = relatedRecords;
+
+        if (refListConfig && refListConfig.paginate && refListConfig.pageSize > 0) {
+            const pageSize = refListConfig.pageSize;
+            const totalPages = Math.ceil(totalRecords / pageSize);
+            currentPage = Math.max(1, Math.min(currentPage, totalPages || 1));
+            const startIndex = (currentPage - 1) * pageSize;
+            recordsToRender = relatedRecords.slice(startIndex, startIndex + pageSize);
+        } else if (refListConfig && refListConfig.maxRows > 0) {
+            recordsToRender = relatedRecords.slice(0, refListConfig.maxRows);
         }
 
         const relatedSchema = await tableLens.getTableSchema(referencedTableId);
@@ -82,17 +116,46 @@ export async function renderRefList(options) {
         container.innerHTML = '';
         const header = document.createElement('div');
         header.className = 'grf-reflist-header';
-        header.innerHTML = `
-            <span class="item-count">(${relatedRecords.length} itens)</span>
-            ${options.isEditing ? `
-            <button class="add-btn" ${isLocked ? 'disabled title="Este campo est\u00e1 travado."' : ''}>
-                <svg class="icon"><use href="${iconPath}#icon-add"></use></svg>
-                Adicionar
-            </button>
-            ` : ''}
-        `;
         container.appendChild(header);
 
+        // Expanded Header (acts as collapse button)
+        if (refListConfig && refListConfig.collapsible) {
+            header.style.cssText = `
+                display: flex; justify-content: space-between; align-items: center;
+                padding: 4px 8px; background-color: #f0f0f0; border: 1px solid #ccc;
+                border-radius: 4px; cursor: pointer; margin-bottom: 5px;
+            `;
+            header.innerHTML = `
+                <span style="font-size: 16px;">🔽</span>
+                <span style="font-size: 16px;">🔽</span>
+            `;
+            header.onclick = (e) => {
+                e.stopPropagation();
+                isCollapsed = true;
+                renderContent();
+            };
+        }
+
+        if (options.isEditing) {
+            const addButton = document.createElement('button');
+            addButton.className = 'add-btn';
+            addButton.style.marginBottom = '5px';
+            if(isLocked) {
+                addButton.disabled = true;
+                addButton.title = 'Este campo está travado.';
+            }
+            addButton.innerHTML = `<svg class="icon"><use href="${iconPath}#icon-add"></use></svg> Adicionar`;
+            
+            if (refListConfig && refListConfig.collapsible) {
+                header.insertAdjacentElement('afterend', addButton);
+            } else {
+                const actionsDiv = document.createElement('div');
+                actionsDiv.style.textAlign = 'right';
+                actionsDiv.appendChild(addButton);
+                header.appendChild(actionsDiv);
+            }
+        }
+        
         const tableContainer = document.createElement('div');
         tableContainer.className = 'grf-reflist-table-container';
         const table = document.createElement('table');
@@ -103,7 +166,6 @@ export async function renderRefList(options) {
         const allPossibleCols = Object.values(relatedSchema).filter(c => c && !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos');
         let columnsToDisplay;
 
-        // Apply column filter from refListConfig, with fallback to fieldConfig
         if (refListConfig && refListConfig.columns && refListConfig.columns.length > 0) {
             const visibleColIds = new Set(refListConfig.columns);
             columnsToDisplay = allPossibleCols.filter(col => visibleColIds.has(col.colId));
@@ -122,14 +184,13 @@ export async function renderRefList(options) {
         });
         
         const tbody = table.createTBody();
-        for (const relRec of relatedRecords) {
+        for (const relRec of recordsToRender) {
             const tr = tbody.insertRow();
             const actionsCell = tr.insertCell();
             actionsCell.className = 'actions-cell';
             const menuBtn = document.createElement('button');
             menuBtn.className = 'reflist-action-menu-btn';
             menuBtn.disabled = isLocked;
-            // Ícone de 3 pontos verticais
             menuBtn.innerHTML = `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>`; 
             
             const dropdown = document.createElement('div');
@@ -154,13 +215,41 @@ export async function renderRefList(options) {
         tableContainer.appendChild(table);
         container.appendChild(tableContainer);
 
+        if (refListConfig && refListConfig.paginate && totalRecords > refListConfig.pageSize) {
+            const footer = document.createElement('div');
+            footer.className = 'grf-reflist-footer';
+            const pageSize = refListConfig.pageSize;
+            const totalPages = Math.ceil(totalRecords / pageSize);
+            const prevBtn = document.createElement('button');
+            prevBtn.textContent = 'Previous';
+            prevBtn.className = 'btn-reflist-nav';
+            prevBtn.disabled = currentPage === 1;
+            prevBtn.onclick = (e) => { e.stopPropagation(); if (currentPage > 1) { currentPage--; renderContent(); } };
+            const pageInfo = document.createElement('span');
+            pageInfo.className = 'reflist-page-info';
+            pageInfo.textContent = `${currentPage}/${totalPages}`;
+            pageInfo.style.margin = '0 10px';
+            const nextBtn = document.createElement('button');
+            nextBtn.textContent = 'Next';
+            nextBtn.className = 'btn-reflist-nav';
+            nextBtn.disabled = currentPage === totalPages;
+            nextBtn.onclick = (e) => { e.stopPropagation(); if (currentPage < totalPages) { currentPage++; renderContent(); } };
+            footer.appendChild(prevBtn);
+            footer.appendChild(pageInfo);
+            footer.appendChild(nextBtn);
+            container.appendChild(footer);
+        }
+
         const primaryTableId = record.gristHelper_tableId;
         const backReferenceColumn = Object.values(relatedSchema).find(col => col?.type === `Ref:${primaryTableId}`);
         const backReferenceColId = backReferenceColumn ? backReferenceColumn.colId : null;
+        const finalAddButton = container.querySelector('.add-btn');
+        if(finalAddButton) {
+             finalAddButton.onclick = () => handleAdd({ tableId: referencedTableId, onUpdate: renderContent, dataWriter, tableLens, backRefCol: backReferenceColId, parentRecId: record.id, parentTableId: primaryTableId, parentRefListColId: colSchema.colId, parentRecord: record, fieldConfig });
+        }
 
-        header.querySelector('.add-btn').onclick = () => handleAdd({ tableId: referencedTableId, onUpdate: renderContent, dataWriter, tableLens, backRefCol: backReferenceColId, parentRecId: record.id, parentTableId: primaryTableId, parentRefListColId: colSchema.colId, parentRecord: record, fieldConfig });
         tbody.querySelectorAll('tr').forEach((tr, index) => {
-            const rec = relatedRecords[index];
+            const rec = recordsToRender[index];
             const menuBtn = tr.querySelector('.reflist-action-menu-btn');
             const dropdown = tr.querySelector('.reflist-action-menu-dropdown');
             menuBtn.addEventListener('click', e => { e.stopPropagation(); const isOpen = dropdown.classList.contains('is-open'); closeAllMenus(); if (!isOpen) dropdown.classList.add('is-open'); });

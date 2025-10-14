@@ -277,7 +277,15 @@ if (styling.fieldBackground?.enabled) {
           if (fieldStyle.labelVisible) {
             const labelEl = document.createElement("div");
             const fieldSchema = schema ? schema[f.colId] : null;
-            const labelText = fieldSchema ? (fieldSchema.label || f.colId) : f.colId;
+            let labelText = fieldSchema ? (fieldSchema.label || f.colId) : f.colId;
+
+            // Append item count for RefList fields
+            if (fieldSchema && fieldSchema.type.startsWith('RefList:')) {
+                const refListValue = record[f.colId];
+                const count = Array.isArray(refListValue) && refListValue[0] === 'L' ? refListValue.length - 1 : 0;
+                labelText += ` (${count} itens)`;
+            }
+
             labelEl.textContent = labelText;
             if (fieldStyle.isTitleField && !styling.cardTitleTopBarEnabled) {
               labelEl.style.fontWeight = "bold";

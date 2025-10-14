@@ -105,7 +105,7 @@ window.CardConfigEditor = (() => {
     }
 
     const DEFAULT_FIELD_STYLE = { labelVisible: true, labelPosition: 'above', labelFont: 'inherit', labelFontSize: 'inherit', labelColor: 'inherit', labelOutline: false, labelOutlineColor: '#ffffff', dataJustify: 'left', heightLimited: false, maxHeightRows: 1, isTitleField: false };
-    const DEFAULT_STYLING = { fieldBackground: { enabled: false, lightenPercentage: 15 }, actionButtons: [], widgetBackgroundMode: "solid", widgetBackgroundSolidColor: "#f9f9f9", widgetBackgroundGradientType: "linear-gradient(to right, {c1}, {c2})", widgetBackgroundGradientColor1: "#f9f9f9", widgetBackgroundGradientColor2: "#e9e9e9", cardsColorMode: "solid", cardsColorSolidColor: "#ffffff", cardsColorGradientType: "linear-gradient(to right, {c1}, {c2})", cardsColorGradientColor1: "#ffffff", cardsColorGradientColor2: "#f0f0f0", cardsColorApplyText: false, cardBorderThickness: 0, cardBorderMode: "solid", cardBorderSolidColor: "#cccccc", cardTitleFontColor: "#000000", cardTitleFontStyle: "Calibri", cardTitleFontSize: "20px", cardTitleTopBarEnabled: false, cardTitleTopBarMode: "solid", cardTitleTopBarSolidColor: "#dddddd", cardTitleTopBarGradientType: "linear-gradient(to right, {c1}, {c2})", cardTitleTopBarGradientColor1: "#dddddd", cardTitleTopBarGradientColor2: "#cccccc", cardTitleTopBarLabelFontColor: "#000000", cardTitleTopBarLabelFontStyle: "Calibri", cardTitleTopBarLabelFontSize: "16px", cardTitleTopBarDataFontColor: "#333333", cardTitleTopBarDataFontStyle: "Calibri", cardTitleTopBarDataFontSize: "16px", handleAreaWidth: "8px", handleAreaMode: "solid", handleAreaSolidColor: "#40E0D0", widgetPadding: "10px", cardsSpacing: "15px", selectedCard: { enabled: false, scale: 1.05, cardTitleTopBarApplyText: false, colorEffect: "none" } };
+    const DEFAULT_STYLING = { fieldBackground: { enabled: false, lightenPercentage: 15 }, actionButtons: [], groupBoxes: [], widgetBackgroundMode: "solid", widgetBackgroundSolidColor: "#f9f9f9", widgetBackgroundGradientType: "linear-gradient(to right, {c1}, {c2})", widgetBackgroundGradientColor1: "#f9f9f9", widgetBackgroundGradientColor2: "#e9e9e9", cardsColorMode: "solid", cardsColorSolidColor: "#ffffff", cardsColorGradientType: "linear-gradient(to right, {c1}, {c2})", cardsColorGradientColor1: "#ffffff", cardsColorGradientColor2: "#f0f0f0", cardsColorApplyText: false, cardBorderThickness: 0, cardBorderMode: "solid", cardBorderSolidColor: "#cccccc", cardTitleFontColor: "#000000", cardTitleFontStyle: "Calibri", cardTitleFontSize: "20px", cardTitleTopBarEnabled: false, cardTitleTopBarMode: "solid", cardTitleTopBarSolidColor: "#dddddd", cardTitleTopBarGradientType: "linear-gradient(to right, {c1}, {c2})", cardTitleTopBarGradientColor1: "#dddddd", cardTitleTopBarGradientColor2: "#cccccc", cardTitleTopBarLabelFontColor: "#000000", cardTitleTopBarLabelFontStyle: "Calibri", cardTitleTopBarLabelFontSize: "16px", cardTitleTopBarDataFontColor: "#333333", cardTitleTopBarDataFontStyle: "Calibri", cardTitleTopBarDataFontSize: "16px", handleAreaWidth: "8px", handleAreaMode: "solid", handleAreaSolidColor: "#40E0D0", widgetPadding: "10px", cardsSpacing: "15px", selectedCard: { enabled: false, scale: 1.05, cardTitleTopBarApplyText: false, colorEffect: "none" } };
     const DEFAULT_NUM_ROWS = 1; const NUM_COLS = 10; const CONFIG_WIDTH = 700; const COL_WIDTH = CONFIG_WIDTH / NUM_COLS;
     
     function createTabButton(label, tabId, container) { const btn = document.createElement("button"); btn.type = "button"; btn.textContent = label; btn.className = 'config-tab-button'; btn.addEventListener("click", () => switchTab(tabId, container)); btn.dataset.tabId = tabId; return btn; }
@@ -529,40 +529,286 @@ window.CardConfigEditor = (() => {
         lightenPercentage: parseInt(tabEl.querySelector("#cs-st-fieldbg-lighten").value, 10) || 15
     };
 
+    s.groupBoxes = state.styling.groupBoxes || [];
+
     return s;
 }
-    function buildFieldsLayoutTab(contentArea) { const tabEl = document.createElement("div"); tabEl.dataset.tabSection = "fld"; tabEl.style.display = "none"; tabEl.innerHTML = ` <h3>Fields & Layout</h3> <div class="layout-controls"> <label>View Mode:</label> <label><input type="radio" name="cs-viewmode" id="cs-vm-click" value="click" /> Click Card</label> <label><input type="radio" name="cs-viewmode" id="cs-vm-burger" value="burger" /> Burger Icon</label> <span class="spacer"></span> <label>Number of Rows:</label> <input type="number" id="cs-num-rows" value="${state.numRows}" min="1" max="20" /> </div> <p class="help-text">Drag fields onto the grid below. Resize by dragging the right edge.</p> <div id="cs-layout-grid" class="layout-grid" style="--col-width: ${COL_WIDTH}px; --num-cols: ${NUM_COLS};"></div> <div class="available-fields-container"> <b>Available Fields:</b> <div id="cs-layout-fields" class="available-fields-list"></div> </div>`; contentArea.appendChild(tabEl); if (state.viewMode === "burger") { tabEl.querySelector("#cs-vm-burger").checked = true; } else { tabEl.querySelector("#cs-vm-click").checked = true; } const rowInput = tabEl.querySelector("#cs-num-rows"); rowInput.addEventListener("change", () => { state.numRows = parseInt(rowInput.value, 10) || 1; buildGridUI(tabEl.querySelector("#cs-layout-grid"), tabEl); }); buildGridUI(tabEl.querySelector("#cs-layout-grid"), tabEl); buildAvailableFieldsList(tabEl.querySelector("#cs-layout-fields")); }
-    function buildGridUI(gridEl, tabEl) { gridEl.innerHTML = ""; for (let r = 0; r < state.numRows; r++) { const rowDiv = document.createElement("div"); rowDiv.className = 'layout-grid-row'; rowDiv.dataset.rowIndex = String(r); rowDiv.addEventListener("dragover", e => e.preventDefault()); rowDiv.addEventListener("drop", e => {
-                e.preventDefault();
-                const colId = e.dataTransfer.getData("text/colid");
-                if (!colId) return;
+    function buildFieldsLayoutTab(contentArea) {
+    const tabEl = document.createElement("div");
+    tabEl.dataset.tabSection = "fld";
+    tabEl.style.display = "none";
+    tabEl.innerHTML = `
+            <h3>Fields & Layout</h3>
+            <div class="layout-controls">
+                <label>View Mode:</label>
+                <label><input type="radio" name="cs-viewmode" id="cs-vm-click" value="click" /> Click Card</label>
+                <label><input type="radio" name="cs-viewmode" id="cs-vm-burger" value="burger" /> Burger Icon</label>
+                <span class="spacer"></span>
+                <label>Number of Rows:</label>
+                <input type="number" id="cs-num-rows" value="${state.numRows}" min="1" max="20" />
+            </div>
+            <p class="help-text">Drag fields onto the grid below. Resize by dragging the right edge.</p>
+            <div style="position: relative;">
+                <div id="cs-group-box-grid" class="layout-grid" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 0; pointer-events: none; --col-width: ${COL_WIDTH}px; --num-cols: ${NUM_COLS};"></div>
+                <div id="cs-layout-grid" class="layout-grid" style="position: relative; z-index: 1; --col-width: ${COL_WIDTH}px; --num-cols: ${NUM_COLS};"></div>
+            </div>
+            <div class="available-fields-container">
+                <b>Available Fields:</b>
+                <div id="cs-layout-fields" class="available-fields-list"></div>
+            </div>
+            <hr>
+            <h4>Group Boxes</h4>
+            <p class="help-text">Add and configure group boxes. Drag them from the 'Available' list onto the grid above.</p>
+            <div class="available-fields-container">
+                <b>Available Group Boxes:</b>
+                <div id="cs-group-box-list" class="available-fields-list"></div>
+                <button type="button" id="cs-add-group-box-btn" class="btn-add-item" style="margin-top: 5px;">+ Add Group Box</button>
+            </div>
+        `;
+    contentArea.appendChild(tabEl);
+    if (state.viewMode === "burger") {
+        tabEl.querySelector("#cs-vm-burger").checked = true;
+    } else {
+        tabEl.querySelector("#cs-vm-click").checked = true;
+    }
+    const rowInput = tabEl.querySelector("#cs-num-rows");
+    rowInput.addEventListener("change", () => {
+        state.numRows = parseInt(rowInput.value, 10) || 1;
+        buildGridUI(tabEl.querySelector("#cs-layout-grid"), tabEl);
+    });
+    buildGridUI(tabEl.querySelector("#cs-layout-grid"), tabEl);
+    buildAvailableFieldsList(tabEl.querySelector("#cs-layout-fields"));
 
-                const isActionButton = e.dataTransfer.getData("text/isActionButton") === "true";
-                const rect = rowDiv.getBoundingClientRect();
-                const col = Math.floor((e.clientX - rect.left) / COL_WIDTH);
+    const addGroupBoxBtn = tabEl.querySelector('#cs-add-group-box-btn');
+    addGroupBoxBtn.addEventListener('click', () => {
+        if (!Array.isArray(state.styling.groupBoxes)) {
+            state.styling.groupBoxes = [];
+        }
+        const newGroupBox = {
+            id: `gbox-${Date.now()}`,
+            name: `Group ${state.styling.groupBoxes.length + 1}`,
+            backgroundColor: '#e0e0e0',
+            row: -1, // Indicates it's not placed on the grid yet
+            col: -1,
+            colSpan: 3,
+            rowSpan: 2,
+        };
+        state.styling.groupBoxes.push(newGroupBox);
+        buildAvailableGroupBoxesList(tabEl.querySelector('#cs-group-box-list'));
+        updateDebugJson();
+    });
+
+    buildAvailableGroupBoxesList(tabEl.querySelector('#cs-group-box-list'));
+    buildGroupBoxGridUI(tabEl.querySelector('#cs-group-box-grid'));
+}
+
+function buildAvailableGroupBoxesList(container) {
+    if (!container) return;
+    container.innerHTML = "";
+    const unplacedGroupBoxes = (state.styling.groupBoxes || []).filter(g => g.row === -1);
+
+    if (!unplacedGroupBoxes.length) {
+        container.innerHTML = "<i>No available group boxes.</i>";
+        return;
+    }
+
+    unplacedGroupBoxes.forEach(gbox => {
+        const el = document.createElement("div");
+        el.className = 'available-field';
+        el.textContent = gbox.name;
+        el.dataset.gboxid = gbox.id;
+        el.draggable = true;
+        el.addEventListener("dragstart", e => {
+            e.dataTransfer.setData("text/gboxid", gbox.id);
+        });
+        container.appendChild(el);
+    });
+}
+
+function buildGroupBoxGridUI(gridEl) {
+    if (!gridEl) return;
+    gridEl.innerHTML = ""; // Clear previous state
+    
+    const placedGroupBoxes = (state.styling.groupBoxes || []).filter(g => g.row > -1);
+
+    placedGroupBoxes.forEach(gbox => {
+        const box = document.createElement("div");
+        box.className = 'layout-group-box'; // You'll need to style this class
+        box.style.position = 'absolute';
+        box.style.left = (gbox.col * COL_WIDTH) + "px";
+        box.style.top = (gbox.row * 40) + "px"; // Assuming 40px row height, adjust as needed
+        box.style.width = (gbox.colSpan * COL_WIDTH) + "px";
+        box.style.height = (gbox.rowSpan * 40) + "px"; // Assuming 40px row height
+        box.style.backgroundColor = gbox.backgroundColor;
+        box.style.opacity = 0.7;
+        box.style.zIndex = 0;
+        box.innerHTML = `<span class="group-box-name">${gbox.name}</span>`;
+
+        const gearIcon = document.createElement("div");
+        gearIcon.innerHTML = "⚙️";
+        gearIcon.className = 'field-box-icon gear'; // Reuse class
+        gearIcon.style.zIndex = "10";
+        gearIcon.addEventListener("click", e => {
+            e.stopPropagation();
+            openGroupBoxStylePopup(gbox);
+        });
+        box.appendChild(gearIcon);
+
+        const removeIcon = document.createElement("div");
+        removeIcon.innerHTML = "✕";
+        removeIcon.className = 'field-box-icon remove'; // Reuse class from field boxes
+        removeIcon.style.zIndex = "10";
+        removeIcon.addEventListener("click", e => {
+            e.stopPropagation();
+            const idx = state.styling.groupBoxes.findIndex(g => g.id === gbox.id);
+            if (idx > -1) {
+                state.styling.groupBoxes.splice(idx, 1);
+            }
+            buildGroupBoxGridUI(gridEl);
+            // No need to rebuild available list, as it was already on the grid
+            updateDebugJson();
+        });
+        box.appendChild(removeIcon);
+
+        const handle = document.createElement("div");
+        handle.className = 'resize-handle';
+        box.appendChild(handle);
+        handle.addEventListener("mousedown", e => {
+            e.stopPropagation();
+            e.preventDefault();
+            
+            const startX = e.clientX;
+            const startY = e.clientY;
+            const origW = parseFloat(box.style.width);
+            const origH = parseFloat(box.style.height);
+
+            const onMouseMove = moveEvt => {
+                let newWidth = origW + (moveEvt.clientX - startX);
+                let newHeight = origH + (moveEvt.clientY - startY);
+                box.style.width = newWidth + "px";
+                box.style.height = newHeight + "px";
+            };
+
+            const onMouseUp = () => {
+                document.removeEventListener("mousemove", onMouseMove);
+                document.removeEventListener("mouseup", onMouseUp);
                 
-                const newLayoutItem = {
-                    colId,
-                    row: r,
-                    col,
-                    colSpan: isActionButton ? 1 : 2, // Buttons can be smaller by default
-                    style: { ...DEFAULT_FIELD_STYLE }
-                };
+                let newColSpan = Math.round(parseFloat(box.style.width) / COL_WIDTH);
+                let newRowSpan = Math.round(parseFloat(box.style.height) / 40); // Assuming 40px row height
 
-                if (isActionButton) {
-                    newLayoutItem.isActionButton = true;
-                    // Find the full button config and embed it
-                    const buttonConfig = (state.styling.actionButtons || []).find(b => b.id === colId);
-                    if (buttonConfig) {
-                        newLayoutItem.buttonConfig = buttonConfig;
-                    }
-                }
+                gbox.colSpan = Math.max(1, Math.min(NUM_COLS - gbox.col, newColSpan));
+                gbox.rowSpan = Math.max(1, newRowSpan);
 
-                state.layout.push(newLayoutItem);
-                buildGridUI(gridEl, tabEl);
-                buildAvailableFieldsList(_mainContainer.querySelector("#cs-layout-fields"));
+                buildGroupBoxGridUI(gridEl);
                 updateDebugJson();
-            }); state.layout.filter(f => f.row === r).forEach(f => { rowDiv.appendChild(createFieldBoxInConfigUI(f, gridEl, tabEl)); }); gridEl.appendChild(rowDiv); } }
+            };
+
+            document.addEventListener("mousemove", onMouseMove);
+            document.addEventListener("mouseup", onMouseUp);
+        });
+        
+        gridEl.appendChild(box);
+    });
+}
+
+function openGroupBoxStylePopup(gbox) {
+    if (_fieldStylePopup && _fieldStylePopup.parentNode) {
+        _fieldStylePopup.parentNode.removeChild(_fieldStylePopup);
+    }
+    const existingBackdrop = document.querySelector('.popup-backdrop');
+    if (existingBackdrop) {
+        existingBackdrop.parentNode.removeChild(existingBackdrop);
+    }
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'popup-backdrop';
+    backdrop.style.cssText = `position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 1050;`;
+    _mainContainer.appendChild(backdrop);
+
+    _fieldStylePopup = document.createElement("div");
+    _fieldStylePopup.style.cssText = `position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1060; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.3);`;
+    _fieldStylePopup.className = 'field-style-popup'; // Reuse class
+
+    _fieldStylePopup.innerHTML = `
+        <h3 style="margin-top:0;">Edit Group Box</h3>
+        <div class="form-group">
+            <label>Name:</label>
+            <input type="text" id="gbox-name" value="${gbox.name}" class="form-control">
+        </div>
+        <div class="form-group">
+            <label>Background Color:</label>
+            <input type="color" id="gbox-bgcolor" value="${gbox.backgroundColor}">
+        </div>
+        <div class="popup-actions">
+            <button id="gbox-cancel" type="button" class="btn btn-secondary">Cancel</button>
+            <button id="gbox-save" type="button" class="btn btn-primary">Save</button>
+        </div>
+    `;
+
+    _mainContainer.appendChild(_fieldStylePopup);
+
+    const closePopup = () => {
+        if (_fieldStylePopup && _fieldStylePopup.parentNode) {
+            _fieldStylePopup.parentNode.removeChild(_fieldStylePopup);
+            _fieldStylePopup = null;
+        }
+        const backdrop = document.querySelector('.popup-backdrop');
+        if (backdrop) {
+            backdrop.parentNode.removeChild(backdrop);
+        }
+    };
+
+    _fieldStylePopup.querySelector('#gbox-cancel').addEventListener('click', closePopup);
+    _fieldStylePopup.querySelector('#gbox-save').addEventListener('click', () => {
+        gbox.name = _fieldStylePopup.querySelector('#gbox-name').value;
+        gbox.backgroundColor = _fieldStylePopup.querySelector('#gbox-bgcolor').value;
+        
+        closePopup();
+        buildGroupBoxGridUI(_mainContainer.querySelector("#cs-group-box-grid"));
+        updateDebugJson();
+    });
+}
+    function buildGridUI(gridEl, tabEl) { gridEl.innerHTML = ""; for (let r = 0; r < state.numRows; r++) { const rowDiv = document.createElement("div"); rowDiv.className = 'layout-grid-row'; rowDiv.dataset.rowIndex = String(r); rowDiv.addEventListener("dragover", e => e.preventDefault()); rowDiv.addEventListener("drop", e => {
+    e.preventDefault();
+    const colId = e.dataTransfer.getData("text/colid");
+    const gboxId = e.dataTransfer.getData("text/gboxid");
+    const rect = rowDiv.getBoundingClientRect();
+    const col = Math.floor((e.clientX - rect.left) / COL_WIDTH);
+
+    if (colId) {
+        const isActionButton = e.dataTransfer.getData("text/isActionButton") === "true";
+        const newLayoutItem = {
+            colId,
+            row: r,
+            col,
+            colSpan: isActionButton ? 1 : 2,
+            style: { ...DEFAULT_FIELD_STYLE }
+        };
+
+        if (isActionButton) {
+            newLayoutItem.isActionButton = true;
+            const buttonConfig = (state.styling.actionButtons || []).find(b => b.id === colId);
+            if (buttonConfig) {
+                newLayoutItem.buttonConfig = buttonConfig;
+            }
+        }
+
+        state.layout.push(newLayoutItem);
+        buildGridUI(gridEl, tabEl);
+        buildAvailableFieldsList(_mainContainer.querySelector("#cs-layout-fields"));
+        updateDebugJson();
+    } else if (gboxId) {
+        const gbox = (state.styling.groupBoxes || []).find(g => g.id === gboxId);
+        if (gbox) {
+            gbox.row = r;
+            gbox.col = col;
+            // Re-render both grids and the available list
+            buildGroupBoxGridUI(_mainContainer.querySelector("#cs-group-box-grid"));
+            buildAvailableGroupBoxesList(_mainContainer.querySelector("#cs-group-box-list"));
+            updateDebugJson();
+        }
+    }
+}); state.layout.filter(f => f.row === r).forEach(f => { rowDiv.appendChild(createFieldBoxInConfigUI(f, gridEl, tabEl)); }); gridEl.appendChild(rowDiv); } }
     function createFieldBoxInConfigUI(fieldDef, gridEl, tabEl) {
         let fieldLabel;
         let fieldSchema;
@@ -767,9 +1013,21 @@ window.CardConfigEditor = (() => {
         });
     }
     async function openFieldStylePopup(fieldDef, fieldSchema) { // Added fieldSchema and async
-        if (_fieldStylePopup && _fieldStylePopup.parentNode) { _fieldStylePopup.parentNode.removeChild(_fieldStylePopup); }
+        if (_fieldStylePopup && _fieldStylePopup.parentNode) {
+            _fieldStylePopup.parentNode.removeChild(_fieldStylePopup);
+        }
+        const existingBackdrop = document.querySelector('.popup-backdrop');
+        if (existingBackdrop) {
+            existingBackdrop.parentNode.removeChild(existingBackdrop);
+        }
+
+        const backdrop = document.createElement('div');
+        backdrop.className = 'popup-backdrop';
+        backdrop.style.cssText = `position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 1050;`;
+        _mainContainer.appendChild(backdrop);
+        
         _fieldStylePopup = document.createElement("div");
-        _fieldStylePopup.style.cssText = ` position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1060; background: white; `;
+        _fieldStylePopup.style.cssText = `position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1060; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.3);`;
         _fieldStylePopup.className = 'field-style-popup';
         
         const isRefList = fieldSchema && fieldSchema.type.startsWith('RefList:');
@@ -785,7 +1043,17 @@ window.CardConfigEditor = (() => {
                 <div class="form-group">
                     <label>Max Rows to Display:</label>
                     <input type="number" id="fs-reflist-max-rows" min="0" value="${currentRefListConfig.maxRows || 0}" style="width:80px;">
-                    <p class="help-text">0 para exibir todos os registros relacionados.</p>
+                    <p class="help-text">0 to display all. This is ignored if pagination is enabled.</p>
+                </div>
+                <div class="form-group">
+                    <label><input type="checkbox" id="fs-reflist-paginate" ${currentRefListConfig.paginate ? 'checked' : ''}> Enable Pagination</label>
+                </div>
+                <div class="form-group" id="fs-reflist-pagesize-group" style="display: ${currentRefListConfig.paginate ? 'block' : 'none'};">
+                    <label>Rows per Page:</label>
+                    <input type="number" id="fs-reflist-page-size" min="1" value="${currentRefListConfig.pageSize || 5}" style="width:80px;">
+                </div>
+                <div class="form-group">
+                    <label><input type="checkbox" id="fs-reflist-collapsible" ${currentRefListConfig.collapsible ? 'checked' : ''}> Enable Collapse/Expand</label>
                 </div>
                 <div class="form-group">
                     <label>Colunas da Tabela Relacionada:</label>
@@ -803,7 +1071,28 @@ window.CardConfigEditor = (() => {
             `;
         }
 
-        _fieldStylePopup.innerHTML = ` <div class="field-style-popup-content"> <h3 style="margin-top:0;">Style: ${fieldDef.colId}</h3> <div><label><input type="checkbox" id="fs-lv"> Show Label</label></div> <div>Label Position: <label><input type="radio" name="fs-lp" value="above"> Above</label> <label><input type="radio" name="fs-lp" value="left"> Left</label> </div> <div>Data Justification: <select id="fs-dj"><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select> </div> <div><label><input type="checkbox" id="fs-hl"> Limit Height</label></div> <div id="fs-hl-rows" style="display:none;"><label>Max Rows: <input type="number" id="fs-hr" min="1" style="width:50px;"></label></div> <hr> <div><label><input type="checkbox" id="fs-itf"> Is a Title Field</label></div> <p class="help-text">Title Fields appear in the Top Bar if it's enabled.</p> ${refListOptionsHtml} <div class="popup-actions"> <button id="fs-cancel" type="button" class="btn btn-secondary">Cancel</button> <button id="fs-save" type="button" class="btn btn-primary">Save</button> </div> </div> `; _mainContainer.appendChild(_fieldStylePopup); const s = { ...DEFAULT_FIELD_STYLE, ...fieldDef.style }; _fieldStylePopup.querySelector('#fs-lv').checked = s.labelVisible; _fieldStylePopup.querySelector(`input[name='fs-lp'][value='${s.labelPosition}']`).checked = true; _fieldStylePopup.querySelector('#fs-dj').value = s.dataJustify; _fieldStylePopup.querySelector('#fs-hl').checked = s.heightLimited; _fieldStylePopup.querySelector('#fs-hl-rows').style.display = s.heightLimited ? 'block' : 'none'; _fieldStylePopup.querySelector('#fs-hr').value = s.maxHeightRows; _fieldStylePopup.querySelector('#fs-itf').checked = s.isTitleField; _fieldStylePopup.querySelector('#fs-hl').addEventListener('change', e => { _fieldStylePopup.querySelector('#fs-hl-rows').style.display = e.target.checked ? 'block' : 'none'; }); const closePopup = () => { if (_fieldStylePopup && _fieldStylePopup.parentNode) { _fieldStylePopup.parentNode.removeChild(_fieldStylePopup); } _fieldStylePopup = null; }; _fieldStylePopup.querySelector('#fs-cancel').addEventListener('click', closePopup); _fieldStylePopup.querySelector('#fs-save').addEventListener('click', () => { 
+        _fieldStylePopup.innerHTML = ` <div class="field-style-popup-content"> <h3 style="margin-top:0;">Style: ${fieldDef.colId}</h3> <div><label><input type="checkbox" id="fs-lv"> Show Label</label></div> <div>Label Position: <label><input type="radio" name="fs-lp" value="above"> Above</label> <label><input type="radio" name="fs-lp" value="left"> Left</label> </div> <div>Data Justification: <select id="fs-dj"><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select> </div> <div><label><input type="checkbox" id="fs-hl"> Limit Height</label></div> <div id="fs-hl-rows" style="display:none;"><label>Max Rows: <input type="number" id="fs-hr" min="1" style="width:50px;"></label></div> <hr> <div><label><input type="checkbox" id="fs-itf"> Is a Title Field</label></div> <p class="help-text">Title Fields appear in the Top Bar if it's enabled.</p> ${refListOptionsHtml} <div class="popup-actions"> <button id="fs-cancel" type="button" class="btn btn-secondary">Cancel</button> <button id="fs-save" type="button" class="btn btn-primary">Save</button> </div> </div> `; _mainContainer.appendChild(_fieldStylePopup); const s = { ...DEFAULT_FIELD_STYLE, ...fieldDef.style }; _fieldStylePopup.querySelector('#fs-lv').checked = s.labelVisible; _fieldStylePopup.querySelector(`input[name='fs-lp'][value='${s.labelPosition}']`).checked = true; _fieldStylePopup.querySelector('#fs-dj').value = s.dataJustify; _fieldStylePopup.querySelector('#fs-hl').checked = s.heightLimited; _fieldStylePopup.querySelector('#fs-hl-rows').style.display = s.heightLimited ? 'block' : 'none'; _fieldStylePopup.querySelector('#fs-hr').value = s.maxHeightRows; _fieldStylePopup.querySelector('#fs-itf').checked = s.isTitleField;         _fieldStylePopup.querySelector('#fs-hl').addEventListener('change', e => { _fieldStylePopup.querySelector('#fs-hl-rows').style.display = e.target.checked ? 'block' : 'none'; });
+
+        if (isRefList) {
+            const paginateCheckbox = _fieldStylePopup.querySelector('#fs-reflist-paginate');
+            const pageSizeGroup = _fieldStylePopup.querySelector('#fs-reflist-pagesize-group');
+            if(paginateCheckbox && pageSizeGroup) {
+                paginateCheckbox.addEventListener('change', () => {
+                    pageSizeGroup.style.display = paginateCheckbox.checked ? 'block' : 'none';
+                });
+            }
+        }
+
+                const closePopup = () => {
+            if (_fieldStylePopup && _fieldStylePopup.parentNode) {
+                _fieldStylePopup.parentNode.removeChild(_fieldStylePopup);
+                _fieldStylePopup = null;
+            }
+            const backdrop = document.querySelector('.popup-backdrop');
+            if (backdrop) {
+                backdrop.parentNode.removeChild(backdrop);
+            }
+        }; _fieldStylePopup.querySelector('#fs-cancel').addEventListener('click', closePopup); _fieldStylePopup.querySelector('#fs-save').addEventListener('click', () => { 
         const newStyle = { 
             labelVisible: _fieldStylePopup.querySelector('#fs-lv').checked, 
             labelPosition: _fieldStylePopup.querySelector('input[name="fs-lp"]:checked').value, 
@@ -823,8 +1112,11 @@ window.CardConfigEditor = (() => {
                 fieldDef.style.refListConfig.maxRows = parseInt(maxRowsInput.value, 10);
             }
 
-            const selectedCols = [];
-            const colCheckboxes = _fieldStylePopup.querySelectorAll('input.fs-reflist-col-checkbox:checked');
+            fieldDef.style.refListConfig.paginate = _fieldStylePopup.querySelector('#fs-reflist-paginate').checked;
+                            fieldDef.style.refListConfig.pageSize = parseInt(_fieldStylePopup.querySelector('#fs-reflist-page-size').value, 10) || 5;
+                            fieldDef.style.refListConfig.collapsible = _fieldStylePopup.querySelector('#fs-reflist-collapsible').checked;
+            
+                            const selectedCols = [];            const colCheckboxes = _fieldStylePopup.querySelectorAll('input.fs-reflist-col-checkbox:checked');
             colCheckboxes.forEach(checkbox => selectedCols.push(checkbox.value));
             fieldDef.style.refListConfig.columns = selectedCols;
         }
