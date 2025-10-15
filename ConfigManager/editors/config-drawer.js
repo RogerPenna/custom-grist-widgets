@@ -98,11 +98,89 @@ window.DrawerConfigEditor = (() => {
     
     // Renomeado para uso interno
     function _readFromUI() {
-        if (!currentSchema) return {}; 
+        if (!currentSchema) return {};
         const container = _mainContainer;
         if (!container || !container.querySelector('#displayModeSelector')) return {};
+
         _persistCurrentStageUI(currentEditingStage);
-        const drawerConfig = { tableId: currentTableId, displayMode: container.querySelector('#displayModeSelector').value, width: container.querySelector('#drawerWidthSelector').value, tabs: [], refListFieldConfig: {}, styleOverrides: {} }; let currentTab = null; container.querySelectorAll('#unifiedFieldList > li').forEach(item => { if (item.classList.contains('tab-card')) { if (currentTab) drawerConfig.tabs.push(currentTab); currentTab = { title: item.querySelector('.tab-card-input').value, fields: [] }; } else if (item.classList.contains('field-card')) { if (!currentTab) currentTab = { title: 'Principal', fields: [] }; const colId = item.dataset.colId; currentTab.fields.push(colId); const refListConfigPanel = item.querySelector('.reflist-config-panel'); if(refListConfigPanel){const refConfig = {}; refListConfigPanel.querySelectorAll('tbody tr').forEach(row => { const refColId = row.dataset.refColId; refConfig[refColId] = { showInTable: row.querySelector('[data-config-key="showInTable"]').checked, hideInModal: row.querySelector('[data-config-key="hideInModal"]').checked, lockInModal: row.querySelector('[data-config-key="lockInModal"]').checked, requireInModal: row.querySelector('[data-config-key="requireInModal"]').checked }; }); refConfig._options = { zebra: item.querySelector('.reflist-zebra-checkbox')?.checked || false }; drawerConfig.refListFieldConfig[colId] = refConfig;} const styleConfigPanel = item.querySelector('.style-config-panel'); if (styleConfigPanel) { const overrides = { ignoreConditional: styleConfigPanel.querySelector('[data-style-key="ignoreConditional"]')?.checked || false, ignoreHeader: styleConfigPanel.querySelector('[data-style-key="ignoreHeader"]')?.checked || false, ignoreCell: styleConfigPanel.querySelector('[data-style-key="ignoreCell"]')?.checked || false, }; if (overrides.ignoreConditional || overrides.ignoreHeader || overrides.ignoreCell) { drawerConfig.styleOverrides[colId] = overrides; } } } }); if (currentTab) drawerConfig.tabs.push(currentTab); const globalRules = stageConfigs['_global'] || { hiddenFields: [], lockedFields: [], requiredFields: [] }; drawerConfig.hiddenFields = globalRules.hiddenFields; drawerConfig.lockedFields = globalRules.lockedFields; drawerConfig.requiredFields = globalRules.requiredFields; const workflowEnabled = container.querySelector('#workflowEnabledCheckbox')?.checked; if (workflowEnabled) { const stageField = container.querySelector('#stageFieldSelector')?.value; if (stageField) { const stages = { ...stageConfigs }; delete stages['_global']; drawerConfig.workflow = { enabled: true, stageField, stages }; } else { drawerConfig.workflow = { enabled: true, stageField: null, stages: {} }; } } else { drawerConfig.workflow = { enabled: false }; }
+
+        const drawerConfig = {
+            tableId: currentTableId,
+            displayMode: container.querySelector('#displayModeSelector').value,
+            width: container.querySelector('#drawerWidthSelector').value,
+            tabs: [],
+            refListFieldConfig: {},
+            styleOverrides: {},
+            // Persist workflow and stage configs
+            workflow: {
+                enabled: container.querySelector('#workflowEnabledCheckbox')?.checked || false,
+                stageField: container.querySelector('#stageFieldSelector')?.value || null,
+                stages: stageConfigs
+            },
+            hiddenFields: stageConfigs['_global'].hiddenFields,
+            lockedFields: stageConfigs['_global'].lockedFields,
+            requiredFields: stageConfigs['_global'].requiredFields
+        };
+
+        let currentTab = null;
+        const listItems = container.querySelectorAll('#unifiedFieldList > li');
+
+        listItems.forEach(item => {
+            if (item.classList.contains('tab-card')) {
+                if (currentTab) {
+                    drawerConfig.tabs.push(currentTab);
+                }
+                currentTab = {
+                    title: item.querySelector('.tab-card-input').value,
+                    fields: []
+                };
+            } else if (item.classList.contains('field-card')) {
+                if (!currentTab) {
+                    // If a field appears before any tab, create a default 'Principal' tab.
+                    currentTab = { title: 'Principal', fields: [] };
+                }
+                const colId = item.dataset.colId;
+                currentTab.fields.push(colId);
+
+                // Read RefList config
+                const refListConfigPanel = item.querySelector('.reflist-config-panel');
+                if (refListConfigPanel) {
+                    const refConfig = {};
+                    refListConfigPanel.querySelectorAll('tbody tr').forEach(row => {
+                        const refColId = row.dataset.refColId;
+                        refConfig[refColId] = {
+                            showInTable: row.querySelector('[data-config-key="showInTable"]').checked,
+                            hideInModal: row.querySelector('[data-config-key="hideInModal"]').checked,
+                            lockInModal: row.querySelector('[data-config-key="lockInModal"]').checked,
+                            requireInModal: row.querySelector('[data-config-key="requireInModal"]').checked
+                        };
+                    });
+                    refConfig._options = {
+                        zebra: item.querySelector('.reflist-zebra-checkbox')?.checked || false
+                    };
+                    drawerConfig.refListFieldConfig[colId] = refConfig;
+                }
+
+                // Read Style Overrides
+                const styleConfigPanel = item.querySelector('.style-config-panel');
+                if (styleConfigPanel) {
+                    const overrides = {
+                        ignoreConditional: styleConfigPanel.querySelector('[data-style-key="ignoreConditional"]')?.checked || false,
+                        ignoreHeader: styleConfigPanel.querySelector('[data-style-key="ignoreHeader"]')?.checked || false,
+                        ignoreCell: styleConfigPanel.querySelector('[data-style-key="ignoreCell"]')?.checked || false,
+                    };
+                    if (overrides.ignoreConditional || overrides.ignoreHeader || overrides.ignoreCell) {
+                        drawerConfig.styleOverrides[colId] = overrides;
+                    }
+                }
+            }
+        });
+
+        // Push the last tab
+        if (currentTab) {
+            drawerConfig.tabs.push(currentTab);
+        }
+        
         return drawerConfig;
     }
 

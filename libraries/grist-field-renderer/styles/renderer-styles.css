@@ -89,6 +89,6 @@ input:checked + .grf-slider:before { transform: translateX(18px); }
     display: flex; align-items: center; gap: 8px;
 }
 .grf-reflist-table.is-zebra-striped tbody tr:nth-child(even) {
-    background-color: #f8f9fa; /* Um cinza claro sutil */
+    background-color: #e9ecef; /* Um cinza claro sutil */
 }
 .reflist-action-menu-item:hover { background-color: #007bff; color: white; }

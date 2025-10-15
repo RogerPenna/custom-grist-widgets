@@ -221,7 +221,7 @@
     font-weight: 600;
 }
 .grf-reflist-table.is-zebra-striped tbody tr:nth-child(even) {
-    background-color: #f8f9fa;
+    background-color: #e9ecef;
 }
 
 .grf-reflist-table .actions-cell {

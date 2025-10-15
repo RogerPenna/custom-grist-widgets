@@ -259,7 +259,7 @@ export const CardSystem = (() => {
 
         if (f.row >= 0 && f.row < numRows) {
           const fieldBox = document.createElement("div");
-          fieldBox.style.gridRow = `${f.row + 1}`;
+          fieldBox.style.gridRow = `${f.row + 1} / span ${f.rowSpan || 1}`;
           fieldBox.style.gridColumn = `${f.col + 1} / span ${f.colSpan || 1}`;
           fieldBox.style.padding = "4px";
 

@@ -792,6 +792,7 @@ function openGroupBoxStylePopup(gbox) {
             row: r,
             col,
             colSpan: isActionButton ? 1 : 2,
+            rowSpan: 1,
             style: { ...DEFAULT_FIELD_STYLE }
         };
 
@@ -835,6 +836,7 @@ function openGroupBoxStylePopup(gbox) {
         box.textContent = fieldLabel;
         box.style.left = (fieldDef.col * COL_WIDTH) + "px";
         box.style.width = (fieldDef.colSpan * COL_WIDTH) + "px";
+        box.style.height = (((fieldDef.rowSpan || 1) * 40) - 8) + "px";
         
         if (!fieldDef.isActionButton) {
             const gearIcon = document.createElement("div");
@@ -842,7 +844,7 @@ function openGroupBoxStylePopup(gbox) {
             gearIcon.className = 'field-box-icon gear';
             gearIcon.addEventListener("click", e => {
                 e.stopPropagation();
-                openFieldStylePopup(fieldDef, fieldSchema);
+                openFieldStylePopup(fieldDef, fieldSchema, gridEl, tabEl);
             });
             box.appendChild(gearIcon);
         }
@@ -1022,7 +1024,7 @@ function openGroupBoxStylePopup(gbox) {
             }
         });
     }
-    async function openFieldStylePopup(fieldDef, fieldSchema) { // Added fieldSchema and async
+    async function openFieldStylePopup(fieldDef, fieldSchema, gridEl, tabEl) { // Added fieldSchema and async
         if (_fieldStylePopup && _fieldStylePopup.parentNode) {
             _fieldStylePopup.parentNode.removeChild(_fieldStylePopup);
         }
@@ -1066,6 +1068,9 @@ function openGroupBoxStylePopup(gbox) {
                     <label><input type="checkbox" id="fs-reflist-collapsible" ${currentRefListConfig.collapsible ? 'checked' : ''}> Enable Collapse/Expand</label>
                 </div>
                 <div class="form-group">
+                    <label><input type="checkbox" id="fs-reflist-zebra" ${currentRefListConfig.zebra ? 'checked' : ''}> Tabela Zebrada</label>
+                </div>
+                <div class="form-group">
                     <label>Colunas da Tabela Relacionada:</label>
                     <div id="fs-reflist-columns-config">
                         ${Object.values(relatedSchema).filter(c => !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos').map(c => `
@@ -1085,7 +1090,9 @@ function openGroupBoxStylePopup(gbox) {
         <div><label><input type="checkbox" id="fs-use-grist-style"> Use Grist Field Style</label></div>
         <p class="help-text">If unchecked, the field will be rendered as simple text.</p>
         <hr>
+        <div><label>Card Rows: <input type="number" id="fs-card-rows" min="1" style="width:50px;"></label></div>
         <div><label><input type="checkbox" id="fs-lv"> Show Label</label></div> <div>Label Position: <label><input type="radio" name="fs-lp" value="above"> Above</label> <label><input type="radio" name="fs-lp" value="left"> Left</label> </div> <div>Data Justification: <select id="fs-dj"><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select> </div> <div><label><input type="checkbox" id="fs-hl"> Limit Height</label></div> <div id="fs-hl-rows" style="display:none;"><label>Max Rows: <input type="number" id="fs-hr" min="1" style="width:50px;"></label></div> <hr> <div><label><input type="checkbox" id="fs-itf"> Is a Title Field</label></div> <p class="help-text">Title Fields appear in the Top Bar if it's enabled.</p> ${refListOptionsHtml} <div class="popup-actions"> <button id="fs-cancel" type="button" class="btn btn-secondary">Cancel</button> <button id="fs-save" type="button" class="btn btn-primary">Save</button> </div> </div> `; _mainContainer.appendChild(_fieldStylePopup);        const s = { ...DEFAULT_FIELD_STYLE, ...fieldDef.style };
+        _fieldStylePopup.querySelector('#fs-card-rows').value = fieldDef.rowSpan || 1;
         _fieldStylePopup.querySelector('#fs-use-grist-style').checked = s.useGristStyle;
         _fieldStylePopup.querySelector('#fs-lv').checked = s.labelVisible; _fieldStylePopup.querySelector(`input[name='fs-lp'][value='${s.labelPosition}']`).checked = true; _fieldStylePopup.querySelector('#fs-dj').value = s.dataJustify; _fieldStylePopup.querySelector('#fs-hl').checked = s.heightLimited; _fieldStylePopup.querySelector('#fs-hl-rows').style.display = s.heightLimited ? 'block' : 'none'; _fieldStylePopup.querySelector('#fs-hr').value = s.maxHeightRows; _fieldStylePopup.querySelector('#fs-itf').checked = s.isTitleField;         _fieldStylePopup.querySelector('#fs-hl').addEventListener('change', e => { _fieldStylePopup.querySelector('#fs-hl-rows').style.display = e.target.checked ? 'block' : 'none'; });
 
@@ -1109,6 +1116,7 @@ function openGroupBoxStylePopup(gbox) {
                 backdrop.parentNode.removeChild(backdrop);
             }
         }; _fieldStylePopup.querySelector('#fs-cancel').addEventListener('click', closePopup); _fieldStylePopup.querySelector('#fs-save').addEventListener('click', () => { 
+        fieldDef.rowSpan = parseInt(_fieldStylePopup.querySelector('#fs-card-rows').value, 10) || 1;
         const newStyle = { 
             useGristStyle: _fieldStylePopup.querySelector('#fs-use-grist-style').checked,
             labelVisible: _fieldStylePopup.querySelector('#fs-lv').checked, 
@@ -1132,6 +1140,7 @@ function openGroupBoxStylePopup(gbox) {
             fieldDef.style.refListConfig.paginate = _fieldStylePopup.querySelector('#fs-reflist-paginate').checked;
                             fieldDef.style.refListConfig.pageSize = parseInt(_fieldStylePopup.querySelector('#fs-reflist-page-size').value, 10) || 5;
                             fieldDef.style.refListConfig.collapsible = _fieldStylePopup.querySelector('#fs-reflist-collapsible').checked;
+                            fieldDef.style.refListConfig.zebra = _fieldStylePopup.querySelector('#fs-reflist-zebra').checked;
             
                             const selectedCols = [];            const colCheckboxes = _fieldStylePopup.querySelectorAll('input.fs-reflist-col-checkbox:checked');
             colCheckboxes.forEach(checkbox => selectedCols.push(checkbox.value));
@@ -1140,6 +1149,7 @@ function openGroupBoxStylePopup(gbox) {
         // FIM DA LÓGICA DE SALVAMENTO DO REFLIST
         
         closePopup(); 
+        buildGridUI(gridEl, tabEl);
         updateDebugJson(); 
         }); 
     }

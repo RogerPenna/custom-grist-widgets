@@ -164,7 +164,7 @@ export async function renderRefList(options) {
         tableContainer.className = 'grf-reflist-table-container';
         const table = document.createElement('table');
         table.className = 'grf-reflist-table';
-        if (fieldConfig?._options?.zebra) { table.classList.add('is-zebra-striped'); }
+        if (fieldConfig?._options?.zebra || refListConfig?.zebra) { table.classList.add('is-zebra-striped'); }
         
         const thead = table.createTHead().insertRow();
         const allPossibleCols = Object.values(relatedSchema).filter(c => c && !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos');
