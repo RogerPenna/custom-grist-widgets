@@ -64,6 +64,12 @@
   - Resolvido um bug de regressão onde salvar uma configuração de Drawer resultava em uma configuração vazia, fazendo com que o conteúdo do drawer não fosse exibido.
   - O erro foi causado por uma sintaxe incorreta no arquivo `config-drawer.js` após uma refatoração.
 
+- [DONE] **Melhorias nos Ícones de Ação:**
+  - Implementada a funcionalidade de "Grupos de Ícones", permitindo agrupar múltiplos botões de ação.
+  - Adicionada configuração de alinhamento (esquerda, centro, direita) para os grupos de ícones dentro do card.
+  - Adicionada opção para redimensionar o tamanho dos ícones globalmente.
+  - A interface de configuração foi refatorada para gerenciar grupos em vez de botões individuais.
+
 ### Próximas Tarefas
 
 - [ ] (Nenhuma tarefa pendente no momento)

@@ -19,7 +19,8 @@ export const CardSystem = (() => {
   };
 
   const DEFAULT_STYLING = {
-    actionButtons: [],
+    iconGroups: [],
+    iconSize: 1.0,
     widgetBackgroundMode: "solid", widgetBackgroundSolidColor: "#f9f9f9", widgetBackgroundGradientType: "linear-gradient(to right, {c1}, {c2})", widgetBackgroundGradientColor1: "#f9f9f9", widgetBackgroundGradientColor2: "#e9e9e9",
     cardsColorMode: "solid", cardsColorSolidColor: "#ffffff", cardsColorGradientType: "linear-gradient(to right, {c1}, {c2})", cardsColorGradientColor1: "#ffffff", cardsColorGradientColor2: "#f0f0f0",
     cardsColorApplyText: false, // <-- NOVA PROPRIEDADE
@@ -208,48 +209,56 @@ export const CardSystem = (() => {
 
 
       layout.forEach(f => {
-        if (f.isActionButton) {
-            const buttonConfig = f.buttonConfig;
-            if (!buttonConfig) return;
+        if (f.isIconGroup) {
+            const groupConfig = (styling.iconGroups || []).find(g => g.id === f.colId);
+            if (!groupConfig || !groupConfig.buttons || groupConfig.buttons.length === 0) return;
 
-            const fieldBox = document.createElement("div");
-            fieldBox.style.gridRow = `${f.row + 1}`;
-            fieldBox.style.gridColumn = `${f.col + 1} / span ${f.colSpan || 1}`;
-            fieldBox.style.padding = "4px";
-            fieldBox.style.display = "flex";
-            fieldBox.style.justifyContent = "center";
-            fieldBox.style.alignItems = "center";
+            const groupContainer = document.createElement("div");
+            groupContainer.style.gridRow = `${f.row + 1} / span ${f.rowSpan || 1}`;
+            groupContainer.style.gridColumn = `${f.col + 1} / span ${f.colSpan || 1}`;
+            groupContainer.style.padding = "4px";
+            groupContainer.style.display = "flex";
+            groupContainer.style.gap = "8px";
+            groupContainer.style.alignItems = "center";
 
-            const actionButton = document.createElement("button");
-            actionButton.className = "cs-action-button";
-            actionButton.innerHTML = getIcon(buttonConfig.icon || 'icon-link');
-            actionButton.title = buttonConfig.tooltip || '';
-            actionButton.style.width = "32px";
-            actionButton.style.height = "32px";
-            actionButton.style.border = "1px solid #ccc";
-            actionButton.style.background = "#f0f0f0";
-            actionButton.style.borderRadius = "5px";
-            actionButton.style.cursor = "pointer";
-            actionButton.style.padding = "4px";
-            actionButton.style.display = "flex";
-            actionButton.style.justifyContent = "center";
-            actionButton.style.alignItems = "center";
-            actionButton.style.transition = "background-color 0.2s";
+            let justifyContent = "center";
+            if (groupConfig.alignment === 'left') justifyContent = "flex-start";
+            if (groupConfig.alignment === 'right') justifyContent = "flex-end";
+            groupContainer.style.justifyContent = justifyContent;
 
-            actionButton.addEventListener('mouseenter', () => actionButton.style.background = '#e0e0e0');
-            actionButton.addEventListener('mouseleave', () => actionButton.style.background = '#f0f0f0');
+            groupConfig.buttons.forEach(buttonConfig => {
+                const actionButton = document.createElement("button");
+                actionButton.className = "cs-action-button";
+                actionButton.innerHTML = getIcon(buttonConfig.icon || 'icon-link');
+                actionButton.title = buttonConfig.tooltip || '';
+                const iconSize = styling.iconSize || 1.0;
+                actionButton.style.width = `${32 * iconSize}px`;
+                actionButton.style.height = `${32 * iconSize}px`;
+                actionButton.style.border = "1px solid #ccc";
+                actionButton.style.background = "#f0f0f0";
+                actionButton.style.borderRadius = "5px";
+                actionButton.style.cursor = "pointer";
+                actionButton.style.padding = "4px";
+                actionButton.style.display = "flex";
+                actionButton.style.justifyContent = "center";
+                actionButton.style.alignItems = "center";
+                actionButton.style.transition = "background-color 0.2s";
 
-            actionButton.addEventListener("click", (e) => {
-                e.stopPropagation();
-                publish('grf-navigation-action-triggered', {
-                    config: buttonConfig,
-                    sourceRecord: record,
-                    tableId: currentOptions.tableId
+                actionButton.addEventListener('mouseenter', () => actionButton.style.background = '#e0e0e0');
+                actionButton.addEventListener('mouseleave', () => actionButton.style.background = '#f0f0f0');
+
+                actionButton.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    publish('grf-navigation-action-triggered', {
+                        config: buttonConfig,
+                        sourceRecord: record,
+                        tableId: currentOptions.tableId
+                    });
                 });
+                groupContainer.appendChild(actionButton);
             });
-            
-            fieldBox.appendChild(actionButton);
-            cardEl.appendChild(fieldBox);
+
+            cardEl.appendChild(groupContainer);
             return;
         }
 

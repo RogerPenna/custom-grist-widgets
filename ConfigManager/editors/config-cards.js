@@ -57,11 +57,10 @@ window.CardConfigEditor = (() => {
         };
         state.layout.forEach(field => { if (!field.style) field.style = { ...DEFAULT_FIELD_STYLE }; });
 
-        // Re-populate actionButtons from the layout configuration on load
-        const buttonsFromLayout = state.layout
-            .filter(item => item.isActionButton && item.buttonConfig)
-            .map(item => item.buttonConfig);
-        state.styling.actionButtons = buttonsFromLayout;
+        // Clear any legacy actionButtons that might be in the config
+        if (state.styling.actionButtons) {
+            delete state.styling.actionButtons;
+        }
 
         container.innerHTML = "";
         const tabsRow = document.createElement("div");
@@ -85,13 +84,10 @@ window.CardConfigEditor = (() => {
     }
 
     function read(container) {
-        // Before saving, ensure the buttonConfig in the layout is up-to-date.
+        // Clean up layout from any buttonConfig properties
         state.layout.forEach(layoutItem => {
-            if (layoutItem.isActionButton) {
-                const latestButtonConfig = (state.styling.actionButtons || []).find(b => b.id === layoutItem.colId);
-                if (latestButtonConfig) {
-                    layoutItem.buttonConfig = latestButtonConfig;
-                }
+            if (layoutItem.buttonConfig) {
+                delete layoutItem.buttonConfig;
             }
         });
 
@@ -101,21 +97,138 @@ window.CardConfigEditor = (() => {
         const numRows = parseInt(layoutTab.querySelector("#cs-num-rows").value, 10) || DEFAULT_NUM_ROWS;
         const sidePanelTab = container.querySelector("[data-tab-section='actions']");
         const sidePanel = { size: sidePanelTab.querySelector("#cs-sp-size").value, drawerConfigId: sidePanelTab.querySelector("#cs-sp-drawer-config").value || null };
+        
+        // Read iconSize from actions tab and add it to styling
+        newStyling.iconSize = parseFloat(sidePanelTab.querySelector("#cs-icon-size").value) || 1.0;
+
         return { tableId: state.tableId, styling: newStyling, sidePanel, layout: state.layout, viewMode, numRows };
     }
 
     const DEFAULT_FIELD_STYLE = { useGristStyle: true, labelVisible: true, labelPosition: 'above', labelFont: 'inherit', labelFontSize: 'inherit', labelColor: 'inherit', labelOutline: false, labelOutlineColor: '#ffffff', dataJustify: 'left', heightLimited: false, maxHeightRows: 1, isTitleField: false };
-    const DEFAULT_STYLING = { simpleTextColor: '#000000', simpleTextFont: 'Calibri', simpleTextSize: '14px', fieldBackground: { enabled: false, lightenPercentage: 15 }, actionButtons: [], groupBoxes: [], widgetBackgroundMode: "solid", widgetBackgroundSolidColor: "#f9f9f9", widgetBackgroundGradientType: "linear-gradient(to right, {c1}, {c2})", widgetBackgroundGradientColor1: "#f9f9f9", widgetBackgroundGradientColor2: "#e9e9e9", cardsColorMode: "solid", cardsColorSolidColor: "#ffffff", cardsColorGradientType: "linear-gradient(to right, {c1}, {c2})", cardsColorGradientColor1: "#ffffff", cardsColorGradientColor2: "#f0f0f0", cardsColorApplyText: false, cardBorderThickness: 0, cardBorderMode: "solid", cardBorderSolidColor: "#cccccc", cardTitleFontColor: "#000000", cardTitleFontStyle: "Calibri", cardTitleFontSize: "20px", cardTitleTopBarEnabled: false, cardTitleTopBarMode: "solid", cardTitleTopBarSolidColor: "#dddddd", cardTitleTopBarGradientType: "linear-gradient(to right, {c1}, {c2})", cardTitleTopBarGradientColor1: "#dddddd", cardTitleTopBarGradientColor2: "#cccccc", cardTitleTopBarLabelFontColor: "#000000", cardTitleTopBarLabelFontStyle: "Calibri", cardTitleTopBarLabelFontSize: "16px", cardTitleTopBarDataFontColor: "#333333", cardTitleTopBarDataFontStyle: "Calibri", cardTitleTopBarDataFontSize: "16px", handleAreaWidth: "8px", handleAreaMode: "solid", handleAreaSolidColor: "#40E0D0", widgetPadding: "10px", cardsSpacing: "15px", selectedCard: { enabled: false, scale: 1.05, cardTitleTopBarApplyText: false, colorEffect: "none" } };
+    const DEFAULT_STYLING = { iconSize: 1.0, simpleTextColor: '#000000', simpleTextFont: 'Calibri', simpleTextSize: '14px', fieldBackground: { enabled: false, lightenPercentage: 15 }, iconGroups: [], groupBoxes: [], widgetBackgroundMode: "solid", widgetBackgroundSolidColor: "#f9f9f9", widgetBackgroundGradientType: "linear-gradient(to right, {c1}, {c2})", widgetBackgroundGradientColor1: "#f9f9f9", widgetBackgroundGradientColor2: "#e9e9e9", cardsColorMode: "solid", cardsColorSolidColor: "#ffffff", cardsColorGradientType: "linear-gradient(to right, {c1}, {c2})", cardsColorGradientColor1: "#ffffff", cardsColorGradientColor2: "#f0f0f0", cardsColorApplyText: false, cardBorderThickness: 0, cardBorderMode: "solid", cardBorderSolidColor: "#cccccc", cardTitleFontColor: "#000000", cardTitleFontStyle: "Calibri", cardTitleFontSize: "20px", cardTitleTopBarEnabled: false, cardTitleTopBarMode: "solid", cardTitleTopBarSolidColor: "#dddddd", cardTitleTopBarGradientType: "linear-gradient(to right, {c1}, {c2})", cardTitleTopBarGradientColor1: "#dddddd", cardTitleTopBarGradientColor2: "#cccccc", cardTitleTopBarLabelFontColor: "#000000", cardTitleTopBarLabelFontStyle: "Calibri", cardTitleTopBarLabelFontSize: "16px", cardTitleTopBarDataFontColor: "#333333", cardTitleTopBarDataFontStyle: "Calibri", cardTitleTopBarDataFontSize: "16px", handleAreaWidth: "8px", handleAreaMode: "solid", handleAreaSolidColor: "#40E0D0", widgetPadding: "10px", cardsSpacing: "15px", selectedCard: { enabled: false, scale: 1.05, colorEffect: "none" } };
     const DEFAULT_NUM_ROWS = 1; const NUM_COLS = 10; const CONFIG_WIDTH = 700; const COL_WIDTH = CONFIG_WIDTH / NUM_COLS;
     
     function createTabButton(label, tabId, container) { const btn = document.createElement("button"); btn.type = "button"; btn.textContent = label; btn.className = 'config-tab-button'; btn.addEventListener("click", () => switchTab(tabId, container)); btn.dataset.tabId = tabId; return btn; }
     function switchTab(tabId, container) { const contentDiv = container.querySelector("#card-config-contents"); if (!contentDiv) return; contentDiv.querySelectorAll("[data-tab-section]").forEach(t => (t.style.display = "none")); container.querySelectorAll("[data-tab-id]").forEach(b => b.classList.remove('active')); const newActiveTab = contentDiv.querySelector(`[data-tab-section='${tabId}']`); if (newActiveTab) newActiveTab.style.display = "block"; const activeBtn = container.querySelector(`[data-tab-id='${tabId}']`); if (activeBtn) activeBtn.classList.add('active'); }
     
-    // Helper function to render the UI for all action buttons
-    function renderActionButtonsUI(container, actionButtons) {
+    function renderIconGroupsUI(container) {
+        container.innerHTML = ''; // Clear previous content
+        const iconGroups = state.styling.iconGroups || [];
+
+        if (iconGroups.length === 0) {
+            container.innerHTML = '<p class="help-text">No icon groups configured. Click "+ Add Icon Group" to add one.</p>';
+            return;
+        }
+
+        iconGroups.forEach(group => {
+            const groupEl = document.createElement('div');
+            groupEl.className = 'icon-group-item';
+            groupEl.innerHTML = `
+                <div class="icon-group-item-header">
+                    <strong>${group.name}</strong>
+                    <div>
+                        <button type="button" class="btn-configure-group" data-group-id="${group.id}">Configure</button>
+                        <button type="button" class="btn-remove-group" data-group-id="${group.id}">Remove</button>
+                    </div>
+                </div>
+            `;
+            container.appendChild(groupEl);
+        });
+    }
+
+
+    function openIconGroupPopup(group, onSave) {
+        if (_fieldStylePopup && _fieldStylePopup.parentNode) {
+            _fieldStylePopup.parentNode.removeChild(_fieldStylePopup);
+        }
+        const backdrop = document.createElement('div');
+        backdrop.className = 'popup-backdrop';
+        _mainContainer.appendChild(backdrop);
+
+        _fieldStylePopup = document.createElement("div");
+        _fieldStylePopup.className = 'field-style-popup icon-group-popup';
+        
+        _fieldStylePopup.innerHTML = `
+            <div class="field-style-popup-content">
+                <h3 style="margin-top:0;">Configure Icon Group</h3>
+                <div class="form-group">
+                    <label>Group Name:</label>
+                    <input type="text" id="group-name" value="${group.name}" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Alignment:</label>
+                    <select id="group-alignment">
+                        <option value="left" ${group.alignment === 'left' ? 'selected' : ''}>Left</option>
+                        <option value="center" ${group.alignment === 'center' ? 'selected' : ''}>Center</option>
+                        <option value="right" ${group.alignment === 'right' ? 'selected' : ''}>Right</option>
+                    </select>
+                </div>
+                <hr>
+                <h4>Action Buttons</h4>
+                <div id="popup-action-buttons-container"></div>
+                <button type="button" id="popup-add-action-button" class="btn-add-item">+ Add Action Button</button>
+                <div class="popup-actions">
+                    <button id="popup-cancel" type="button" class="btn btn-secondary">Cancel</button>
+                    <button id="popup-save" type="button" class="btn btn-primary">Save</button>
+                </div>
+            </div>
+        `;
+
+        _mainContainer.appendChild(_fieldStylePopup);
+
+        const closePopup = () => {
+            if (_fieldStylePopup && _fieldStylePopup.parentNode) {
+                _fieldStylePopup.parentNode.removeChild(_fieldStylePopup);
+                _fieldStylePopup = null;
+            }
+            if (backdrop && backdrop.parentNode) {
+                backdrop.parentNode.removeChild(backdrop);
+            }
+        };
+
+        const buttonsContainer = _fieldStylePopup.querySelector('#popup-action-buttons-container');
+        
+        // Temporarily clone the buttons array for editing
+        let tempButtons = JSON.parse(JSON.stringify(group.buttons));
+
+        renderActionButtonsUI_forPopup(buttonsContainer, tempButtons);
+
+        _fieldStylePopup.querySelector('#popup-add-action-button').addEventListener('click', () => {
+            const newButton = {
+                id: `action-button-${Date.now()}`,
+                icon: 'icon-link',
+                tooltip: 'New Action',
+                actionType: 'navigateToGristPage',
+            };
+            tempButtons.push(newButton);
+            renderActionButtonsUI_forPopup(buttonsContainer, tempButtons);
+        });
+
+        buttonsContainer.addEventListener('click', (e) => {
+            if (e.target.classList.contains('btn-remove-item')) {
+                const index = parseInt(e.target.dataset.index, 10);
+                tempButtons.splice(index, 1);
+                renderActionButtonsUI_forPopup(buttonsContainer, tempButtons);
+            }
+        });
+
+        _fieldStylePopup.querySelector('#popup-cancel').addEventListener('click', closePopup);
+        _fieldStylePopup.querySelector('#popup-save').addEventListener('click', () => {
+            group.name = _fieldStylePopup.querySelector('#group-name').value;
+            group.alignment = _fieldStylePopup.querySelector('#group-alignment').value;
+            group.buttons = tempButtons; // Save the modified buttons
+            
+            closePopup();
+            if (onSave) {
+                onSave();
+            }
+        });
+    }
+
+    function renderActionButtonsUI_forPopup(container, actionButtons) {
         container.innerHTML = ''; // Clear previous content
         if (!actionButtons || actionButtons.length === 0) {
-            container.innerHTML = '<p class="help-text">Nenhum bot\u00e3o de a\u00e7\u00e3o configurado. Clique em \"+ Add Action Button\" para adicionar um.</p>';
+            container.innerHTML = '<p class="help-text">No action buttons configured for this group.</p>';
             return;
         }
 
@@ -125,49 +238,43 @@ window.CardConfigEditor = (() => {
             buttonEl.dataset.index = index;
             buttonEl.innerHTML = `
                 <div class="action-button-item-header">
-                    <strong>Bot\u00e3o de A\u00e7\u00e3o #${index + 1}</strong>
-                    <button type="button" class="btn-remove-item" data-index="${index}">Remover</button>
+                    <strong>Action Button #${index + 1}</strong>
+                    <button type="button" class="btn-remove-item" data-index="${index}">Remove</button>
                 </div>
                 <div class="form-group">
-                    <label>\u00cdcone:</label>
+                    <label>Icon:</label>
                     <div class="icon-picker-display">
-                        <span class="current-icon">${buttonConfig.icon ? `<svg class="icon"><use href="#${buttonConfig.icon}"></use></svg>` : 'Nenhum'}</span>
-                        <button type="button" class="btn-open-icon-picker" data-index="${index}">Selecionar \u00cdcone</button>
+                        <span class="current-icon">${buttonConfig.icon ? `<svg class="icon"><use href="#${buttonConfig.icon}"></use></svg>` : 'None'}</span>
+                        <button type="button" class="btn-open-icon-picker" data-index="${index}">Select Icon</button>
                     </div>
                     <input type="hidden" class="action-icon" value="${buttonConfig.icon || ''}">
                 </div>
                 <div class="form-group">
                     <label>Tooltip:</label>
-                    <input type="text" class="action-tooltip" data-prop="tooltip" value="${buttonConfig.tooltip || ''}" placeholder="ex: Ver Planos de A\u00e7\u00e3o">
+                    <input type="text" class="action-tooltip" data-prop="tooltip" value="${buttonConfig.tooltip || ''}" placeholder="e.g., View Action Plans">
                 </div>
                 <div class="form-group">
-                    <label>Tipo de A\u00e7\u00e3o:</label>
+                    <label>Action Type:</label>
                     <select class="action-type" data-prop="actionType">
-                        <option value="navigateToGristPage" ${buttonConfig.actionType === 'navigateToGristPage' ? 'selected' : ''}>Navegar para P\u00e1gina Grist</option>
-                        <option value="openUrlFromColumn" ${buttonConfig.actionType === 'openUrlFromColumn' ? 'selected' : ''}>Abrir URL de uma Coluna</option>
-                        <option value="updateRecord" ${buttonConfig.actionType === 'updateRecord' ? 'selected' : ''}>Atualizar Registro (Grist)</option>
+                        <option value="navigateToGristPage" ${buttonConfig.actionType === 'navigateToGristPage' ? 'selected' : ''}>Navigate to Grist Page</option>
+                        <option value="openUrlFromColumn" ${buttonConfig.actionType === 'openUrlFromColumn' ? 'selected' : ''}>Open URL from Column</option>
+                        <option value="updateRecord" ${buttonConfig.actionType === 'updateRecord' ? 'selected' : ''}>Update Record (Grist)</option>
                     </select>
                 </div>
-                <div class="action-specific-config" data-index="${index}">
-                    </div>
+                <div class="action-specific-config" data-index="${index}"></div>
             `;
             container.appendChild(buttonEl);
 
-            // --- NEW UNIFIED EVENT HANDLING ---
             buttonEl.addEventListener('change', (e) => {
                 if (e.target.dataset.prop) {
                     const prop = e.target.dataset.prop;
                     buttonConfig[prop] = e.target.value;
-
-                    // If the actionType changed, we need to re-render the specific config section
                     if (prop === 'actionType') {
                         renderActionSpecificConfig(buttonEl.querySelector('.action-specific-config'), buttonConfig, index);
                     }
-                    updateDebugJson();
                 }
             });
 
-            // Adicionar event listener para o seletor de ícones
             const iconPickerBtn = buttonEl.querySelector('.btn-open-icon-picker');
             iconPickerBtn.addEventListener('click', (e) => {
                 const iconInput = e.currentTarget.closest('.action-button-item').querySelector('.action-icon');
@@ -175,7 +282,6 @@ window.CardConfigEditor = (() => {
                 openIconPicker(iconInput, iconDisplay, buttonConfig);
             });
 
-            // Initial render of action-specific config
             renderActionSpecificConfig(buttonEl.querySelector('.action-specific-config'), buttonConfig, index);
         });
     }
@@ -189,20 +295,20 @@ window.CardConfigEditor = (() => {
         if (buttonConfig.actionType === 'navigateToGristPage') {
             container.innerHTML = `
                 <div class="form-group">
-                    <label>P\u00e1gina de Destino:</label>
+                    <label>Target Page:</label>
                     <select class="action-target-page" data-prop="targetPageId">
-                        <option value="">-- Selecione uma P\u00e1gina --</option>
+                        <option value="">-- Select a Page --</option>
                         ${allGristPages.map(p => `<option value="${p.id}" ${buttonConfig.targetPageId === p.id ? 'selected' : ''}>${p.name}</option>`).join('')}
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Coluna de Filtro na P\u00e1gina de Destino:</label>
-                    <input type="text" class="action-target-filter-column" data-prop="targetFilterColumn" value="${buttonConfig.targetFilterColumn || ''}" placeholder="ex: id_risco">
+                    <label>Filter Column in Target Page:</label>
+                    <input type="text" class="action-target-filter-column" data-prop="targetFilterColumn" value="${buttonConfig.targetFilterColumn || ''}" placeholder="e.g., id_risk">
                 </div>
                 <div class="form-group">
-                    <label>Valor do Filtro (deste Card):</label>
+                    <label>Filter Value (from this Card):</label>
                     <select class="action-source-value-column" data-prop="sourceValueColumn">
-                        <option value="">-- Selecione uma Coluna --</option>
+                        <option value="">-- Select a Column --</option>
                         ${allGristColumns.map(col => `<option value="${col}" ${buttonConfig.sourceValueColumn === col ? 'selected' : ''}>${col}</option>`).join('')}
                     </select>
                 </div>
@@ -210,9 +316,9 @@ window.CardConfigEditor = (() => {
         } else if (buttonConfig.actionType === 'openUrlFromColumn') {
             container.innerHTML = `
                 <div class="form-group">
-                    <label>Coluna com a URL:</label>
+                    <label>Column with URL:</label>
                     <select class="action-url-column" data-prop="urlColumn">
-                        <option value="">-- Selecione uma Coluna --</option>
+                        <option value="">-- Select a Column --</option>
                         ${allGristColumns.map(col => `<option value="${col}" ${buttonConfig.urlColumn === col ? 'selected' : ''}>${col}</option>`).join('')}
                     </select>
                 </div>
@@ -220,15 +326,15 @@ window.CardConfigEditor = (() => {
         } else if (buttonConfig.actionType === 'updateRecord') {
             container.innerHTML = `
                 <div class="form-group">
-                    <label>Campo a Atualizar:</label>
+                    <label>Field to Update:</label>
                     <select class="action-update-field" data-prop="updateField">
-                        <option value="">-- Selecione um Campo --</option>
+                        <option value="">-- Select a Field --</option>
                         ${allGristColumns.map(col => `<option value="${col}" ${buttonConfig.updateField === col ? 'selected' : ''}>${col}</option>`).join('')}
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Novo Valor:</label>
-                    <input type="text" class="action-update-value" data-prop="updateValue" value="${buttonConfig.updateValue || ''}" placeholder="ex: Completo">
+                    <label>New Value:</label>
+                    <input type="text" class="action-update-value" data-prop="updateValue" value="${buttonConfig.updateValue || ''}" placeholder="e.g., Complete">
                 </div>
             `;
         }
@@ -242,7 +348,7 @@ window.CardConfigEditor = (() => {
         _iconPickerPopup.className = 'icon-picker-popup';
         _iconPickerPopup.style.cssText = `
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
-            z-index: 1070; padding: 15px; background: white; border: 1px solid #ccc; 
+            z-index: 1080; padding: 15px; background: white; border: 1px solid #ccc; 
             box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-width: 600px; max-height: 500px; 
             overflow-y: auto; border-radius: 5px;
         `;
@@ -254,12 +360,12 @@ window.CardConfigEditor = (() => {
         `).join('');
 
         _iconPickerPopup.innerHTML = `
-            <h4 style="margin-top: 0;">Selecione um Ícone</h4>
+            <h4 style="margin-top: 0;">Select an Icon</h4>
             <div class="icon-grid" style="display: flex; flex-wrap: wrap; gap: 10px;">
                 ${iconsHtml}
             </div>
             <div style="text-align: right; margin-top: 15px;">
-                <button id="icon-picker-cancel" type="button" class="btn btn-secondary">Cancelar</button>
+                <button id="icon-picker-cancel" type="button" class="btn btn-secondary">Cancel</button>
             </div>
         `;
         
@@ -269,17 +375,10 @@ window.CardConfigEditor = (() => {
             iconEl.addEventListener('click', () => {
                 const selectedIcon = iconEl.dataset.iconId;
                 
-                // 1. Atualizar o valor no campo de entrada oculto
                 inputElement.value = selectedIcon;
-                
-                // 2. Atualizar o display visual
                 displayElement.innerHTML = `<svg class="icon"><use href="#${selectedIcon}"></use></svg>`;
-                
-                // 3. Atualizar a configuração interna
                 buttonConfig.icon = selectedIcon;
-                updateDebugJson();
 
-                // 4. Fechar o pop-up
                 _iconPickerPopup.parentNode.removeChild(_iconPickerPopup);
                 _iconPickerPopup = null;
             });
@@ -290,6 +389,7 @@ window.CardConfigEditor = (() => {
             _iconPickerPopup = null;
         });
     }
+
 
 
     function buildStylingTab(contentArea) {
@@ -786,22 +886,19 @@ function openGroupBoxStylePopup(gbox) {
     const col = Math.floor((e.clientX - rect.left) / COL_WIDTH);
 
     if (colId) {
-        const isActionButton = e.dataTransfer.getData("text/isActionButton") === "true";
+        const isIconGroup = e.dataTransfer.getData("text/isIconGroup") === "true";
         const newLayoutItem = {
             colId,
             row: r,
             col,
-            colSpan: isActionButton ? 1 : 2,
+            colSpan: isIconGroup ? 2 : 2, // Default span for icon groups
             rowSpan: 1,
             style: { ...DEFAULT_FIELD_STYLE }
         };
 
-        if (isActionButton) {
-            newLayoutItem.isActionButton = true;
-            const buttonConfig = (state.styling.actionButtons || []).find(b => b.id === colId);
-            if (buttonConfig) {
-                newLayoutItem.buttonConfig = buttonConfig;
-            }
+        if (isIconGroup) {
+            newLayoutItem.isIconGroup = true;
+            // No need to add buttonConfig here, it will be resolved at render time
         }
 
         state.layout.push(newLayoutItem);
@@ -824,8 +921,9 @@ function openGroupBoxStylePopup(gbox) {
         let fieldLabel;
         let fieldSchema;
 
-        if (fieldDef.isActionButton) {
-            fieldLabel = `[Botão] ${fieldDef.buttonConfig?.tooltip || fieldDef.colId}`;
+        if (fieldDef.isIconGroup) {
+            const group = (state.styling.iconGroups || []).find(g => g.id === fieldDef.colId);
+            fieldLabel = `[Group] ${group ? group.name : fieldDef.colId}`;
         } else {
             fieldSchema = state.fields.find(field => field.colId === fieldDef.colId);
             fieldLabel = fieldSchema ? (fieldSchema.label || fieldSchema.colId) : fieldDef.colId;
@@ -838,7 +936,7 @@ function openGroupBoxStylePopup(gbox) {
         box.style.width = (fieldDef.colSpan * COL_WIDTH) + "px";
         box.style.height = (((fieldDef.rowSpan || 1) * 40) - 8) + "px";
         
-        if (!fieldDef.isActionButton) {
+        if (!fieldDef.isIconGroup) {
             const gearIcon = document.createElement("div");
             gearIcon.innerHTML = "⚙️";
             gearIcon.className = 'field-box-icon gear';
@@ -865,8 +963,8 @@ function openGroupBoxStylePopup(gbox) {
         box.draggable = true;
         box.addEventListener("dragstart", e => {
             e.dataTransfer.setData("text/colid", fieldDef.colId);
-            if (fieldDef.isActionButton) {
-                e.dataTransfer.setData("text/isActionButton", "true");
+            if (fieldDef.isIconGroup) {
+                e.dataTransfer.setData("text/isIconGroup", "true");
             }
             const idx = state.layout.indexOf(fieldDef);
             if (idx > -1) state.layout.splice(idx, 1);
@@ -907,16 +1005,16 @@ function openGroupBoxStylePopup(gbox) {
         // Real fields from the table
         const availableRealFields = state.fields.filter(f => !usedCols.includes(f.colId));
 
-        // Virtual fields for action buttons
-        const availableButtonFields = (state.styling.actionButtons || [])
-            .filter(btn => !usedCols.includes(btn.id))
-            .map(btn => ({
-                colId: btn.id,
-                label: `[Botão] ${btn.tooltip || 'Nova Ação'}`,
-                isActionButton: true
+        // Virtual fields for icon groups
+        const availableIconGroupFields = (state.styling.iconGroups || [])
+            .filter(group => !usedCols.includes(group.id))
+            .map(group => ({
+                colId: group.id,
+                label: `[Group] ${group.name}`,
+                isIconGroup: true
             }));
 
-        const availableCols = [...availableRealFields, ...availableButtonFields];
+        const availableCols = [...availableRealFields, ...availableIconGroupFields];
 
         if (!availableCols.length) {
             container.innerHTML = "<i>All fields placed.</i>";
@@ -931,8 +1029,8 @@ function openGroupBoxStylePopup(gbox) {
             el.draggable = true;
             el.addEventListener("dragstart", e => {
                 e.dataTransfer.setData("text/colid", field.colId);
-                if (field.isActionButton) {
-                    e.dataTransfer.setData("text/isActionButton", "true");
+                if (field.isIconGroup) {
+                    e.dataTransfer.setData("text/isIconGroup", "true");
                 }
             });
             container.appendChild(el);
@@ -964,9 +1062,20 @@ function openGroupBoxStylePopup(gbox) {
                 </div>
             </fieldset>
             <fieldset>
-                <legend>Secondary Action Buttons (Icons on Card)</legend>
-                <div id="cs-action-buttons-container"></div>
-                <button type="button" id="cs-add-action-button" class="btn-add-item">+ Add Action Button</button>
+                <legend>Icon Groups</legend>
+                <p class="help-text">Create groups of icons that can be placed on the card layout.</p>
+                <div class="form-group">
+                    <label for="cs-icon-size">Global Icon Size:</label>
+                    <select id="cs-icon-size">
+                        <option value="0.8">80%</option>
+                        <option value="0.9">90%</option>
+                        <option value="1.0" selected>100% (Default)</option>
+                        <option value="1.1">110%</option>
+                        <option value="1.2">120%</option>
+                    </select>
+                </div>
+                <div id="cs-icon-groups-container"></div>
+                <button type="button" id="cs-add-icon-group" class="btn-add-item">+ Add Icon Group</button>
             </fieldset>
         `;
         contentArea.appendChild(tabEl);
@@ -982,45 +1091,53 @@ function openGroupBoxStylePopup(gbox) {
         }
         if (state.sidePanel && state.sidePanel.drawerConfigId) { drawerSelect.value = state.sidePanel.drawerConfigId; }
         const spSizeSel = tabEl.querySelector("#cs-sp-size");
-        const actionButtonsContainer = tabEl.querySelector("#cs-action-buttons-container");
-        
-        // Initial render of action buttons
-        renderActionButtonsUI(actionButtonsContainer, state.styling.actionButtons || []);
+        if (state.sidePanel && state.sidePanel.size) { spSizeSel.value = state.sidePanel.size; }
+        const iconSizeSelect = tabEl.querySelector("#cs-icon-size");
+        if (state.styling && state.styling.iconSize) { iconSizeSelect.value = state.styling.iconSize; }
+        const iconGroupsContainer = tabEl.querySelector("#cs-icon-groups-container");
 
-        tabEl.querySelector('#cs-add-action-button').addEventListener('click', () => {
-            if (!Array.isArray(state.styling.actionButtons)) {
-                state.styling.actionButtons = [];
+        // Initial render of icon groups
+        renderIconGroupsUI(iconGroupsContainer);
+
+        tabEl.querySelector('#cs-add-icon-group').addEventListener('click', () => {
+            if (!Array.isArray(state.styling.iconGroups)) {
+                state.styling.iconGroups = [];
             }
-            const newButton = {
-                id: `action-button-${Date.now()}`,
-                icon: 'icon-link',
-                tooltip: 'Nova Ação',
-                actionType: 'navigateToGristPage',
+            const newGroup = {
+                id: `icon-group-${Date.now()}`,
+                name: `Group ${state.styling.iconGroups.length + 1}`,
+                alignment: 'center',
+                buttons: []
             };
-            state.styling.actionButtons.push(newButton);
-
-            renderActionButtonsUI(actionButtonsContainer, state.styling.actionButtons);
+            state.styling.iconGroups.push(newGroup);
+            renderIconGroupsUI(iconGroupsContainer);
             buildAvailableFieldsList(_mainContainer.querySelector("#cs-layout-fields"));
             updateDebugJson();
         });
 
-        // Add event listener for remove buttons (delegated to the container)
-        actionButtonsContainer.addEventListener('click', (e) => {
-            if (e.target.classList.contains('btn-remove-item')) {
-                const index = parseInt(e.target.dataset.index, 10);
-                const buttonToRemove = state.styling.actionButtons[index];
-                if (!buttonToRemove) return;
-
-                const buttonIdToRemove = buttonToRemove.id;
-
-                state.styling.actionButtons.splice(index, 1);
-
-                state.layout = state.layout.filter(item => item.colId !== buttonIdToRemove);
-
-                renderActionButtonsUI(actionButtonsContainer, state.styling.actionButtons);
-                buildGridUI(_mainContainer.querySelector("#cs-layout-grid"), _mainContainer.querySelector("[data-tab-section='fld']"));
-                buildAvailableFieldsList(_mainContainer.querySelector("#cs-layout-fields"));
-                updateDebugJson();
+        // Event delegation for icon group actions
+        iconGroupsContainer.addEventListener('click', (e) => {
+            if (e.target.classList.contains('btn-remove-group')) {
+                const groupId = e.target.dataset.groupId;
+                const groupIndex = state.styling.iconGroups.findIndex(g => g.id === groupId);
+                if (groupIndex > -1) {
+                    state.styling.iconGroups.splice(groupIndex, 1);
+                    state.layout = state.layout.filter(item => item.colId !== groupId);
+                    renderIconGroupsUI(iconGroupsContainer);
+                    buildGridUI(_mainContainer.querySelector("#cs-layout-grid"), _mainContainer.querySelector("[data-tab-section='fld']"));
+                    buildAvailableFieldsList(_mainContainer.querySelector("#cs-layout-fields"));
+                    updateDebugJson();
+                }
+            } else if (e.target.classList.contains('btn-configure-group')) {
+                const groupId = e.target.dataset.groupId;
+                const group = state.styling.iconGroups.find(g => g.id === groupId);
+                if (group) {
+                    openIconGroupPopup(group, () => {
+                        renderIconGroupsUI(iconGroupsContainer);
+                        buildAvailableFieldsList(_mainContainer.querySelector("#cs-layout-fields"));
+                        updateDebugJson();
+                    });
+                }
             }
         });
     }
