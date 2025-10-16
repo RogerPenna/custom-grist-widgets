@@ -40,63 +40,100 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let currentConfig = null;
     let currentConfigId = null;
+    let isInitialized = false;
 
-    // A função principal que orquestra tudo, com logs de depuração.
     async function initializeAndUpdate() {
-        console.log(`[1] initializeAndUpdate chamado com configId: ${currentConfigId}`);
+        console.log(`[DEBUG] Entering initializeAndUpdate. Current configId: ${currentConfigId}`);
         renderStatus("Carregando...");
 
+        // Helper to check for table and column integrity
+        const checkPrerequisites = async () => {
+            try {
+                const allTables = await tableLens.listAllTables();
+                if (!allTables.find(t => t.id === 'Grf_config')) {
+                    renderStatus("Tabela 'Grf_config' não encontrada. Use o ícone ⚙️ para abrir o gerenciador e criá-la.");
+                    return false;
+                }
+                const configSchema = await tableLens.getTableSchema('Grf_config');
+                const requiredCols = {
+                    configId: 'Text',
+                    widgetTitle: 'Text',
+                    description: 'Text',
+                    componentType: 'Text',
+                    configJson: 'Text',
+                    pageId: 'Numeric'
+                };
+                const missingCols = Object.keys(requiredCols).filter(col => !configSchema[col]);
+
+                if (missingCols.length > 0) {
+                    const requiredSchemaHtml = Object.entries(requiredCols).map(([name, type]) => `<li>${name} (Tipo: ${type})</li>`).join('');
+                    renderStatus(`
+                        <div class="status-placeholder-error">
+                            <p><b>Erro de Configuração</b></p>
+                            <p>A tabela 'Grf_config' não está configurada corretamente.</p>
+                            <p>Por favor, garanta que ela tenha as seguintes colunas:</p>
+                            <ul>${requiredSchemaHtml}</ul>
+                        </div>
+                    `);
+                    return false;
+                }
+                return true;
+            } catch (e) {
+                renderStatus(`Erro ao verificar pré-requisitos da configuração: ${e.message}`);
+                return false;
+            }
+        };
+
+        // If no configId is linked, the widget's behavior depends on the state of Grf_config
         if (!currentConfigId) {
-            console.log("[2] Nenhuma configId. Mostrando tela de setup.");
-            renderStatus("Widget não configurado. Clique no ícone ⚙️ para configurar.");
-            addSettingsGear();
+            console.log("[DEBUG] No configId linked. Checking prerequisites...");
+            const prerequisitesMet = await checkPrerequisites();
+            addSettingsGear(); // Always add gear
+            
+            if (!prerequisitesMet) {
+                console.log("[DEBUG] Prerequisites not met. Halting.");
+                return; // The message is already set by checkPrerequisites
+            }
+            
+            // If prerequisites are met, but still no ID, it means no config is linked.
+            console.log("[DEBUG] Prerequisites met, but no config linked.");
+            renderStatus("Widget pronto. Use o ícone ⚙️ para criar uma nova configuração para este CardViewer ou para vincular um ID de configuração existente.");
             return;
         }
 
-        // 1. Carrega a configuração
+        // --- Proceed with a linked configId ---
+        console.log(`[DEBUG] Proceeding with linked configId: ${currentConfigId}`);
+        
+        // Load config, then data...
         try {
-            console.log(`[3] Buscando config record para ID: ${currentConfigId}`);
             const configRecord = await tableLens.findRecord('Grf_config', { configId: currentConfigId });
-            currentConfig = configRecord ? JSON.parse(configRecord.configJson) : null;
-            console.log("[4] Configuração carregada:", currentConfig);
-
-            if (!currentConfig) {
-                renderStatus(`Erro: Configuração com ID "${currentConfigId}" não encontrada.`);
+            if (!configRecord) {
+                renderStatus(`Erro: A configuração com ID "${currentConfigId}" não foi encontrada na tabela 'Grf_config'. Verifique o ID ou crie uma nova configuração.`);
                 addSettingsGear();
                 return;
             }
-        } catch (e) {
-            renderStatus(`Erro ao carregar configuração: ${e.message}`);
-            addSettingsGear();
-            return;
-        }
 
-        const tableId = currentConfig.tableId;
-        console.log(`[5] tableId extraído da configuração: ${tableId}`);
-        if (!tableId) {
-            renderStatus("Erro de Configuração: 'tableId' não definido no JSON.");
-            addSettingsGear();
-            return;
-        }
+            currentConfig = JSON.parse(configRecord.configJson);
+            const tableId = currentConfig.tableId;
+            if (!tableId) {
+                renderStatus("Erro de Configuração: 'tableId' não definido no JSON da configuração.");
+                addSettingsGear();
+                return;
+            }
 
-        // 2. Carrega os dados (records e schema)
-        try {
-            console.log(`[6] Buscando records e schema para a tabela: ${tableId}`);
             const [records, schema] = await Promise.all([
                 tableLens.fetchTableRecords(tableId),
                 tableLens.getTableSchema(tableId)
             ]);
             
-            console.log("[7] Dados carregados com sucesso:", { recordsCount: records.length, schemaKeys: Object.keys(schema).length });
-            
             appContainer.innerHTML = '';
             CardSystem.renderCards(appContainer, records, { ...currentConfig, tableLens: tableLens }, schema);
             addSettingsGear();
-            console.log("[8] Renderização concluída.");
+            console.log("[DEBUG] Card rendering complete.");
 
         } catch (e) {
-            console.error(`Erro ao carregar dados da tabela "${tableId}":`, e);
-            renderStatus(`Erro ao carregar dados da tabela "${tableId}": ${e.message}`);
+            console.error(`[DEBUG] Error during linked config load/render for ID "${currentConfigId}":`, e);
+            renderStatus(`Erro ao carregar o widget com a configuração "${currentConfigId}": ${e.message}`);
             addSettingsGear();
         }
     }
@@ -225,7 +262,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     grist.onOptions(async (options) => {
         console.log("Evento onOptions disparado. Opções recebidas:", options);
         const newConfigId = options?.configId || null;
-        if (newConfigId !== currentConfigId) {
+        if (newConfigId !== currentConfigId || !isInitialized) {
+            isInitialized = true;
             currentConfigId = newConfigId;
             await initializeAndUpdate();
         }

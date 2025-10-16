@@ -24,7 +24,14 @@ export function renderText(options) {
             let html = String(cellValue || '').replace(/\n/g, '<br>');
             container.innerHTML = html;
         } else {
-            container.textContent = String(cellValue ?? '(vazio)'); // Unificando a exibição de nulos.
+            // To render line breaks, we replace newline characters with <br> tags.
+            // We must also escape any existing HTML in the cell value to prevent XSS.
+            const textValue = String(cellValue ?? '');
+            const tempDiv = document.createElement('div');
+            tempDiv.textContent = textValue;
+            const escapedHtml = tempDiv.innerHTML;
+            const finalHtml = escapedHtml.replace(/\n/g, '<br>');
+            container.innerHTML = finalHtml || '(vazio)';
         }
         return;
     }

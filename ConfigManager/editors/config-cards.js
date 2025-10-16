@@ -105,7 +105,7 @@ window.CardConfigEditor = (() => {
     }
 
     const DEFAULT_FIELD_STYLE = { useGristStyle: true, labelVisible: true, labelPosition: 'above', labelFont: 'inherit', labelFontSize: 'inherit', labelColor: 'inherit', labelOutline: false, labelOutlineColor: '#ffffff', dataJustify: 'left', heightLimited: false, maxHeightRows: 1, isTitleField: false };
-    const DEFAULT_STYLING = { iconSize: 1.0, simpleTextColor: '#000000', simpleTextFont: 'Calibri', simpleTextSize: '14px', fieldBackground: { enabled: false, lightenPercentage: 15 }, iconGroups: [], groupBoxes: [], widgetBackgroundMode: "solid", widgetBackgroundSolidColor: "#f9f9f9", widgetBackgroundGradientType: "linear-gradient(to right, {c1}, {c2})", widgetBackgroundGradientColor1: "#f9f9f9", widgetBackgroundGradientColor2: "#e9e9e9", cardsColorMode: "solid", cardsColorSolidColor: "#ffffff", cardsColorGradientType: "linear-gradient(to right, {c1}, {c2})", cardsColorGradientColor1: "#ffffff", cardsColorGradientColor2: "#f0f0f0", cardsColorApplyText: false, cardBorderThickness: 0, cardBorderMode: "solid", cardBorderSolidColor: "#cccccc", cardTitleFontColor: "#000000", cardTitleFontStyle: "Calibri", cardTitleFontSize: "20px", cardTitleTopBarEnabled: false, cardTitleTopBarMode: "solid", cardTitleTopBarSolidColor: "#dddddd", cardTitleTopBarGradientType: "linear-gradient(to right, {c1}, {c2})", cardTitleTopBarGradientColor1: "#dddddd", cardTitleTopBarGradientColor2: "#cccccc", cardTitleTopBarLabelFontColor: "#000000", cardTitleTopBarLabelFontStyle: "Calibri", cardTitleTopBarLabelFontSize: "16px", cardTitleTopBarDataFontColor: "#333333", cardTitleTopBarDataFontStyle: "Calibri", cardTitleTopBarDataFontSize: "16px", handleAreaWidth: "8px", handleAreaMode: "solid", handleAreaSolidColor: "#40E0D0", widgetPadding: "10px", cardsSpacing: "15px", selectedCard: { enabled: false, scale: 1.05, colorEffect: "none" } };
+    const DEFAULT_STYLING = { iconSize: 1.0, internalCardPadding: '10px',    fieldBox: { borderEnabled: false, borderColor: '#cccccc', borderWidth: 1, borderRadius: 4, backgroundColor: '#ffffff', effect: 'none' }, labelStyle: { bold: false, color: '#333333', font: 'Calibri', size: '12px' }, simpleTextColor: '#000000', simpleTextFont: 'Calibri', simpleTextSize: '14px', fieldBackground: { enabled: false, lightenPercentage: 15 }, iconGroups: [], groupBoxes: [], widgetBackgroundMode: "solid", widgetBackgroundSolidColor: "#f9f9f9", widgetBackgroundGradientType: "linear-gradient(to right, {c1}, {c2})", widgetBackgroundGradientColor1: "#f9f9f9", widgetBackgroundGradientColor2: "#e9e9e9", cardsColorMode: "solid", cardsColorSolidColor: "#ffffff", cardsColorGradientType: "linear-gradient(to right, {c1}, {c2})", cardsColorGradientColor1: "#ffffff", cardsColorGradientColor2: "#f0f0f0", cardsColorApplyText: false, cardBorderThickness: 0, cardBorderMode: "solid", cardBorderSolidColor: "#cccccc", cardTitleFontColor: "#000000", cardTitleFontStyle: "Calibri", cardTitleFontSize: "20px", cardTitleTopBarEnabled: false, cardTitleTopBarMode: "solid", cardTitleTopBarSolidColor: "#dddddd", cardTitleTopBarGradientType: "linear-gradient(to right, {c1}, {c2})", cardTitleTopBarGradientColor1: "#dddddd", cardTitleTopBarGradientColor2: "#cccccc", cardTitleTopBarLabelFontColor: "#000000", cardTitleTopBarLabelFontStyle: "Calibri", cardTitleTopBarLabelFontSize: "16px", cardTitleTopBarDataFontColor: "#333333", cardTitleTopBarDataFontStyle: "Calibri", cardTitleTopBarDataFontSize: "16px", handleAreaWidth: "8px", handleAreaMode: "solid", handleAreaSolidColor: "#40E0D0", widgetPadding: "10px", cardsSpacing: "15px", selectedCard: { enabled: false, scale: 1.05, colorEffect: "none" } };
     const DEFAULT_NUM_ROWS = 1; const NUM_COLS = 10; const CONFIG_WIDTH = 700; const COL_WIDTH = CONFIG_WIDTH / NUM_COLS;
     
     function createTabButton(label, tabId, container) { const btn = document.createElement("button"); btn.type = "button"; btn.textContent = label; btn.className = 'config-tab-button'; btn.addEventListener("click", () => switchTab(tabId, container)); btn.dataset.tabId = tabId; return btn; }
@@ -429,7 +429,7 @@ window.CardConfigEditor = (() => {
                 <fieldset><legend><b>Card Border</b></legend>Thickness (px): <input type="number" id="cs-st-border-thickness" min="0" style="width:60px"> <br><label><input type="radio" name="bordermode" value="solid"> Solid</label> <label><input type="radio" name="bordermode" value="conditional"> By Field</label><div class="style-control-group" data-mode="solid"><input type="color" id="cs-st-border-color"></div><div class="style-control-group" data-mode="conditional" style="display:none;"><select id="cs-st-border-field"><option value="">-- field --</option></select></div></fieldset>
                 <fieldset class="title-control-group" data-title-mode="no-bar"><legend><b>Card Title (when Top Bar is OFF)</b></legend>Color: <input type="color" id="cs-st-titlecolor"> Font: <select id="cs-st-titlefont"><option>Calibri</option><option>Arial</option><option>Times New Roman</option></select> Size: <input type="number" id="cs-st-titlesize" min="8" style="width:60px">px</fieldset>
                 <fieldset><legend><b>Handle Area</b></legend>Width (px): <input type="number" id="cs-st-handle-width" min="1" style="width:60px"> <br><label><input type="radio" name="handlemode" value="solid"> Solid</label> <label><input type="radio" name="handlemode" value="conditional"> By Field</label><div class="style-control-group" data-mode="solid"><input type="color" id="cs-st-handle-color"></div><div class="style-control-group" data-mode="conditional" style="display:none;"><select id="cs-st-handle-field"><option value="">-- field --</option></select></div></fieldset>
-                <fieldset><legend><b>Layout Spacing</b></legend>Widget Padding (px): <input type="number" id="cs-st-padding" min="0" style="width:60px"> <br>Card Spacing (px): <input type="number" id="cs-st-spacing" min="0" style="width:60px"></fieldset>
+                <fieldset><legend><b>Layout Spacing</b></legend>Widget Padding (px): <input type="number" id="cs-st-padding" min="0" style="width:60px"> <br>Card Spacing (px): <input type="number" id="cs-st-spacing" min="0" style="width:60px"> <br>Internal Card Padding (px): <input type="number" id="cs-st-internal-padding" min="0" style="width:60px"></fieldset>
                 <fieldset>
                     <legend><b>Field Background</b></legend>
                     <label><input type="checkbox" id="cs-st-fieldbg-enabled"> Enable custom background</label>
@@ -488,64 +488,105 @@ window.CardConfigEditor = (() => {
     </div>
 </fieldset>
                 <fieldset class="full-width"><legend><b>Selected Card Hover Effect</b></legend><label>Enable: <input type="checkbox" id="cs-st-sel-enabled"></label> <label style="margin-left: 20px;">Scale: <input type="number" id="cs-st-sel-scale" min="0" max="100" style="width:60px">%</label></fieldset>
+                <fieldset class="full-width">
+                    <legend><b>Field Box & Label Style</b></legend>
+                    <div class="styling-grid-internal">
+                        <fieldset>
+                            <legend>Field Box</legend>
+                            <label><input type="checkbox" id="cs-st-fbox-enabled"> Enable Border</label>
+                            <div id="cs-st-fbox-controls" style="display:none;">
+                                <p>Border:</p>
+                                Color: <input type="color" id="cs-st-fbox-bcolor">
+                                Width: <input type="number" id="cs-st-fbox-bwidth" min="0" style="width:60px">px
+                                Radius: <input type="number" id="cs-st-fbox-bradius" min="0" style="width:60px">px
+                                <hr style="margin: 8px 0;">
+                                <p>Fill & Effect:</p>
+                                Box Background: <input type="color" id="cs-st-fbox-bgcolor">
+                                <br>
+                                Box Effect: 
+                                <select id="cs-st-fbox-effect">
+                                    <option value="none">None</option>
+                                    <option value="bevel">Bevel (Inset)</option>
+                                    <option value="shadow">Drop Shadow</option>
+                                </select>
+                                <p class="help-text">A background color is required for the Bevel effect to be visible.</p>
+                            </div>
+                        </fieldset>
+                        <fieldset>
+                            <legend>Label Style</legend>
+                            <label><input type="checkbox" id="cs-st-label-bold"> Bold</label>
+                            Color: <input type="color" id="cs-st-label-color">
+                            Font: <select id="cs-st-label-font"><option>Calibri</option><option>Arial</option><option>Times New Roman</option></select>
+                            Size: <input type="number" id="cs-st-label-size" min="8" style="width:60px">px
+                        </fieldset>
+                    </div>
+                </fieldset>
                 <fieldset><legend><b>Simple Text Style</b></legend><p class="help-text">For fields where "Use Grist Field Style" is disabled.</p>Color: <input type="color" id="cs-st-simple-textcolor"> Font: <select id="cs-st-simple-textfont"><option>Calibri</option><option>Arial</option><option>Times New Roman</option></select> Size: <input type="number" id="cs-st-simple-textsize" min="8" style="width:60px">px</fieldset>
             </div>
         `;
         contentArea.appendChild(tabEl);
         const setupModeSwitcher = (fieldset) => { const radios = fieldset.querySelectorAll('input[type="radio"]'); radios.forEach(radio => { radio.addEventListener('change', () => { const selectedMode = radio.value; fieldset.querySelectorAll('.style-control-group').forEach(group => { group.style.display = group.dataset.mode === selectedMode ? '' : 'none'; }); }); }); };
         tabEl.querySelectorAll('fieldset').forEach(setupModeSwitcher);
-        const topBarCheckbox = tabEl.querySelector('#cs-st-topbar-enabled');
-        const topBarConfigDiv = tabEl.querySelector('.top-bar-config');
-        const noBarTitleFieldset = tabEl.querySelector('[data-title-mode="no-bar"]');
-        const toggleTitleControls = () => { const isEnabled = topBarCheckbox.checked; topBarConfigDiv.style.display = isEnabled ? 'flex' : 'none'; noBarTitleFieldset.disabled = isEnabled; noBarTitleFieldset.style.opacity = isEnabled ? '0.5' : '1'; };
-        topBarCheckbox.addEventListener('change', toggleTitleControls);
+        // --- Setup UI Logic & Event Listeners ---
 
-        // Handle enabling/disabling of Top Bar color controls based on "Apply text color"
+        // Generic helper for toggling visibility of a controls div based on a checkbox
+        const setupCheckboxToggle = (checkboxId, controlsId, displayType = 'block') => {
+            const checkbox = tabEl.querySelector(checkboxId);
+            const controls = tabEl.querySelector(controlsId);
+            if (!checkbox || !controls) return () => {}; // Return empty function if elements not found
+            const toggle = () => { controls.style.display = checkbox.checked ? displayType : 'none'; };
+            checkbox.addEventListener('change', toggle);
+            return toggle; // Return the toggle function itself
+        };
+
+        // Setup all checkbox-based UI toggles
+        const toggleTopBarControls = setupCheckboxToggle('#cs-st-topbar-enabled', '.top-bar-config', 'flex');
+        const toggleFieldBgControls = setupCheckboxToggle('#cs-st-fieldbg-enabled', '#cs-st-fieldbg-controls');
+        const toggleFieldBoxControls = setupCheckboxToggle('#cs-st-fbox-enabled', '#cs-st-fbox-controls');
+
+        // Special handler for Top Bar label/data color disable logic
         const topBarApplyTextCheckbox = tabEl.querySelector('#cs-st-topbar-apply-text');
         const topBarModeRadios = tabEl.querySelectorAll('input[name="topbarmode"]');
         const lblColorInput = tabEl.querySelector('#cs-st-topbar-lblcolor');
         const dataColorInput = tabEl.querySelector('#cs-st-topbar-datacolor');
-
         const updateTopBarColorInputsState = () => {
             const isConditional = tabEl.querySelector('input[name="topbarmode"][value="conditional"]').checked;
             const applyTextColor = topBarApplyTextCheckbox.checked;
             const shouldDisable = isConditional && applyTextColor;
-
-            // The inputs are inside a div with other elements, so let's target the parent div to style it.
-            const lblContainer = lblColorInput.closest('div');
-            const dataContainer = dataColorInput.closest('div');
-
-            if (lblContainer) {
-                lblColorInput.disabled = shouldDisable;
-                lblContainer.style.opacity = shouldDisable ? 0.5 : 1;
-                lblContainer.style.pointerEvents = shouldDisable ? 'none' : 'auto';
-            }
-            if (dataContainer) {
-                dataColorInput.disabled = shouldDisable;
-                dataContainer.style.opacity = shouldDisable ? 0.5 : 1;
-                dataContainer.style.pointerEvents = shouldDisable ? 'none' : 'auto';
-            }
+            [lblColorInput, dataColorInput].forEach(input => {
+                if (input) {
+                    const container = input.closest('div');
+                    input.disabled = shouldDisable;
+                    if (container) {
+                        container.style.opacity = shouldDisable ? 0.5 : 1;
+                        container.style.pointerEvents = shouldDisable ? 'none' : 'auto';
+                    }
+                }
+            });
         };
-
         topBarApplyTextCheckbox.addEventListener('change', updateTopBarColorInputsState);
         topBarModeRadios.forEach(radio => radio.addEventListener('change', updateTopBarColorInputsState));
+
+        // --- Populate Data & Initialize UI State ---
         const allFields = state.fields.map(f => f.colId);
         populateFieldSelect(tabEl.querySelector("#cs-st-cardscolorfield"), allFields);
         populateFieldSelect(tabEl.querySelector("#cs-st-border-field"), allFields);
         populateFieldSelect(tabEl.querySelector("#cs-st-topbar-field"), allFields);
         populateFieldSelect(tabEl.querySelector("#cs-st-handle-field"), allFields);
+        
         populateStylingTab(tabEl);
-        toggleTitleControls();
+
+        // Manually trigger all UI state updates after populating
+        toggleTopBarControls();
+        toggleFieldBgControls();
+        toggleFieldBoxControls();
+        updateTopBarColorInputsState();
         tabEl.querySelectorAll('input[type="radio"]:checked').forEach(radio => { if(radio) radio.dispatchEvent(new Event('change')) });
 
-        const fieldBgCheckbox = tabEl.querySelector('#cs-st-fieldbg-enabled');
-        const fieldBgControls = tabEl.querySelector('#cs-st-fieldbg-controls');
-        fieldBgCheckbox.addEventListener('change', () => {
-            fieldBgControls.style.display = fieldBgCheckbox.checked ? 'block' : 'none';
-        });
     }
 
-    function populateStylingTab(tabEl) { const s = state.styling; let bgModeInput = tabEl.querySelector(`input[name='bgmode'][value='${s.widgetBackgroundMode}']`); if (bgModeInput) { bgModeInput.checked = true; } else { tabEl.querySelector("input[name='bgmode'][value='solid']").checked = true; } tabEl.querySelector("#cs-st-bgcolor").value = s.widgetBackgroundSolidColor; tabEl.querySelector("#cs-st-bggradient-type").value = s.widgetBackgroundGradientType || 'linear-gradient(to right, {c1}, {c2})'; tabEl.querySelector("#cs-st-bggradient-c1").value = s.widgetBackgroundGradientColor1 || '#f9f9f9'; tabEl.querySelector("#cs-st-bggradient-c2").value = s.widgetBackgroundGradientColor2 || '#e9e9e9'; tabEl.querySelector(`input[name='cardscolormode'][value='${s.cardsColorMode}']`).checked = true; tabEl.querySelector("#cs-st-cardcolor").value = s.cardsColorSolidColor; tabEl.querySelector("#cs-st-cardgradient-type").value = s.cardsColorGradientType || 'linear-gradient(to right, {c1}, {c2})'; tabEl.querySelector("#cs-st-cardgradient-c1").value = s.cardsColorGradientColor1 || '#ffffff'; tabEl.querySelector("#cs-st-cardgradient-c2").value = s.cardsColorGradientColor2 || '#f0f0f0'; tabEl.querySelector("#cs-st-cardscolorfield").value = s.cardsColorField || ""; tabEl.querySelector("#cs-st-cardscolor-apply-text").checked = s.cardsColorApplyText === true; tabEl.querySelector("#cs-st-border-thickness").value = s.cardBorderThickness; tabEl.querySelector(`input[name='bordermode'][value='${s.cardBorderMode}']`).checked = true; tabEl.querySelector("#cs-st-border-color").value = s.cardBorderSolidColor; tabEl.querySelector("#cs-st-border-field").value = s.cardBorderField || ""; tabEl.querySelector("#cs-st-titlecolor").value = s.cardTitleFontColor; tabEl.querySelector("#cs-st-titlefont").value = s.cardTitleFontStyle; tabEl.querySelector("#cs-st-titlesize").value = parseInt(s.cardTitleFontSize, 10); tabEl.querySelector("#cs-st-topbar-enabled").checked = s.cardTitleTopBarEnabled; tabEl.querySelector(`input[name='topbarmode'][value='${s.cardTitleTopBarMode}']`).checked = true; tabEl.querySelector("#cs-st-topbar-color").value = s.cardTitleTopBarSolidColor; tabEl.querySelector("#cs-st-topbargradient-type").value = s.cardTitleTopBarGradientType || 'linear-gradient(to right, {c1}, {c2})'; tabEl.querySelector("#cs-st-topbargradient-c1").value = s.cardTitleTopBarGradientColor1 || '#dddddd'; tabEl.querySelector("#cs-st-topbargradient-c2").value = s.cardTitleTopBarGradientColor2 || '#cccccc'; tabEl.querySelector("#cs-st-topbar-field").value = s.cardTitleTopBarField || ""; tabEl.querySelector("#cs-st-topbar-apply-text").checked = s.cardTitleTopBarApplyText === true;tabEl.querySelector("#cs-st-topbar-lblcolor").value = s.cardTitleTopBarLabelFontColor; tabEl.querySelector("#cs-st-topbar-lblfont").value = s.cardTitleTopBarLabelFontStyle; tabEl.querySelector("#cs-st-topbar-lblsize").value = parseInt(s.cardTitleTopBarLabelFontSize, 10); tabEl.querySelector("#cs-st-topbar-datacolor").value = s.cardTitleTopBarDataFontColor; tabEl.querySelector("#cs-st-topbar-datafont").value = s.cardTitleTopBarDataFontStyle; tabEl.querySelector("#cs-st-topbar-datasize").value = parseInt(s.cardTitleTopBarDataFontSize, 10); tabEl.querySelector("#cs-st-handle-width").value = parseInt(s.handleAreaWidth, 10); tabEl.querySelector(`input[name='handlemode'][value='${s.handleAreaMode}']`).checked = true; tabEl.querySelector("#cs-st-handle-color").value = s.handleAreaSolidColor; tabEl.querySelector("#cs-st-handle-field").value = s.handleAreaField || ""; tabEl.querySelector("#cs-st-padding").value = parseInt(s.widgetPadding, 10); tabEl.querySelector("#cs-st-spacing").value = parseInt(s.cardsSpacing, 10); tabEl.querySelector("#cs-st-sel-enabled").checked = s.selectedCard.enabled;     tabEl.querySelector("#cs-st-sel-scale").value = s.selectedCard ? ((s.selectedCard.scale - 1) * 100).toFixed(0) : 0;
+    function populateStylingTab(tabEl) { const s = state.styling; let bgModeInput = tabEl.querySelector(`input[name='bgmode'][value='${s.widgetBackgroundMode}']`); if (bgModeInput) { bgModeInput.checked = true; } else { tabEl.querySelector("input[name='bgmode'][value='solid']").checked = true; } tabEl.querySelector("#cs-st-bgcolor").value = s.widgetBackgroundSolidColor; tabEl.querySelector("#cs-st-bggradient-type").value = s.widgetBackgroundGradientType || 'linear-gradient(to right, {c1}, {c2})'; tabEl.querySelector("#cs-st-bggradient-c1").value = s.widgetBackgroundGradientColor1 || '#f9f9f9'; tabEl.querySelector("#cs-st-bggradient-c2").value = s.widgetBackgroundGradientColor2 || '#e9e9e9'; tabEl.querySelector(`input[name='cardscolormode'][value='${s.cardsColorMode}']`).checked = true; tabEl.querySelector("#cs-st-cardcolor").value = s.cardsColorSolidColor; tabEl.querySelector("#cs-st-cardgradient-type").value = s.cardsColorGradientType || 'linear-gradient(to right, {c1}, {c2})'; tabEl.querySelector("#cs-st-cardgradient-c1").value = s.cardsColorGradientColor1 || '#ffffff'; tabEl.querySelector("#cs-st-cardgradient-c2").value = s.cardsColorGradientColor2 || '#f0f0f0'; tabEl.querySelector("#cs-st-cardscolorfield").value = s.cardsColorField || ""; tabEl.querySelector("#cs-st-cardscolor-apply-text").checked = s.cardsColorApplyText === true; tabEl.querySelector("#cs-st-border-thickness").value = s.cardBorderThickness; tabEl.querySelector(`input[name='bordermode'][value='${s.cardBorderMode}']`).checked = true; tabEl.querySelector("#cs-st-border-color").value = s.cardBorderSolidColor; tabEl.querySelector("#cs-st-border-field").value = s.cardBorderField || ""; tabEl.querySelector("#cs-st-titlecolor").value = s.cardTitleFontColor; tabEl.querySelector("#cs-st-titlefont").value = s.cardTitleFontStyle; tabEl.querySelector("#cs-st-titlesize").value = parseInt(s.cardTitleFontSize, 10); tabEl.querySelector("#cs-st-topbar-enabled").checked = s.cardTitleTopBarEnabled; tabEl.querySelector(`input[name='topbarmode'][value='${s.cardTitleTopBarMode}']`).checked = true; tabEl.querySelector("#cs-st-topbar-color").value = s.cardTitleTopBarSolidColor; tabEl.querySelector("#cs-st-topbargradient-type").value = s.cardTitleTopBarGradientType || 'linear-gradient(to right, {c1}, {c2})'; tabEl.querySelector("#cs-st-topbargradient-c1").value = s.cardTitleTopBarGradientColor1 || '#dddddd'; tabEl.querySelector("#cs-st-topbargradient-c2").value = s.cardTitleTopBarGradientColor2 || '#cccccc'; tabEl.querySelector("#cs-st-topbar-field").value = s.cardTitleTopBarField || ""; tabEl.querySelector("#cs-st-topbar-apply-text").checked = s.cardTitleTopBarApplyText === true;tabEl.querySelector("#cs-st-topbar-lblcolor").value = s.cardTitleTopBarLabelFontColor; tabEl.querySelector("#cs-st-topbar-lblfont").value = s.cardTitleTopBarLabelFontStyle; tabEl.querySelector("#cs-st-topbar-lblsize").value = parseInt(s.cardTitleTopBarLabelFontSize, 10); tabEl.querySelector("#cs-st-topbar-datacolor").value = s.cardTitleTopBarDataFontColor; tabEl.querySelector("#cs-st-topbar-datafont").value = s.cardTitleTopBarDataFontStyle; tabEl.querySelector("#cs-st-topbar-datasize").value = parseInt(s.cardTitleTopBarDataFontSize, 10); tabEl.querySelector("#cs-st-handle-width").value = parseInt(s.handleAreaWidth, 10); tabEl.querySelector(`input[name='handlemode'][value='${s.handleAreaMode}']`).checked = true; tabEl.querySelector("#cs-st-handle-color").value = s.handleAreaSolidColor; tabEl.querySelector("#cs-st-handle-field").value = s.handleAreaField || ""; tabEl.querySelector("#cs-st-padding").value = parseInt(s.widgetPadding, 10);    tabEl.querySelector("#cs-st-spacing").value = parseInt(s.cardsSpacing, 10);
+    tabEl.querySelector("#cs-st-internal-padding").value = parseInt(s.internalCardPadding, 10); tabEl.querySelector("#cs-st-sel-enabled").checked = s.selectedCard.enabled;     tabEl.querySelector("#cs-st-sel-scale").value = s.selectedCard ? ((s.selectedCard.scale - 1) * 100).toFixed(0) : 0;
     s.fieldBackground = s.fieldBackground || {};
     tabEl.querySelector("#cs-st-fieldbg-enabled").checked = s.fieldBackground.enabled === true;
     tabEl.querySelector("#cs-st-fieldbg-lighten").value = s.fieldBackground.lightenPercentage || 15;
@@ -553,6 +594,20 @@ window.CardConfigEditor = (() => {
     tabEl.querySelector('#cs-st-simple-textcolor').value = s.simpleTextColor || '#000000';
     tabEl.querySelector('#cs-st-simple-textfont').value = s.simpleTextFont || 'Calibri';
     tabEl.querySelector('#cs-st-simple-textsize').value = parseInt(s.simpleTextSize, 10) || 14;
+
+    const fb = s.fieldBox || {};
+    tabEl.querySelector('#cs-st-fbox-enabled').checked = fb.borderEnabled;
+    tabEl.querySelector('#cs-st-fbox-bcolor').value = fb.borderColor;
+    tabEl.querySelector('#cs-st-fbox-bwidth').value = fb.borderWidth;
+    tabEl.querySelector('#cs-st-fbox-bradius').value = fb.borderRadius;
+    tabEl.querySelector('#cs-st-fbox-bgcolor').value = fb.backgroundColor;
+    tabEl.querySelector('#cs-st-fbox-effect').value = fb.effect || 'none';
+    
+    const ls = s.labelStyle || {};
+    tabEl.querySelector('#cs-st-label-bold').checked = ls.bold;
+    tabEl.querySelector('#cs-st-label-color').value = ls.color;
+    tabEl.querySelector('#cs-st-label-font').value = ls.font;
+    tabEl.querySelector('#cs-st-label-size').value = parseInt(ls.size, 10);
 }
     function readStylingTab(container) {
     const tabEl = container.querySelector('[data-tab-section="sty"]');
@@ -628,6 +683,7 @@ window.CardConfigEditor = (() => {
     s.handleAreaWidth = `${parseInt(tabEl.querySelector("#cs-st-handle-width").value, 10) || 8}px`;
     s.widgetPadding = `${parseInt(tabEl.querySelector("#cs-st-padding").value, 10) || 0}px`;
     s.cardsSpacing = `${parseInt(tabEl.querySelector("#cs-st-spacing").value, 10) || 0}px`;
+    s.internalCardPadding = `${parseInt(tabEl.querySelector("#cs-st-internal-padding").value, 10) || 10}px`;
     s.selectedCard = { enabled: tabEl.querySelector("#cs-st-sel-enabled").checked, scale: 1 + ((parseInt(tabEl.querySelector("#cs-st-sel-scale").value, 10) || 0) / 100), colorEffect: "none" };
 
     s.fieldBackground = {
@@ -640,6 +696,22 @@ window.CardConfigEditor = (() => {
     s.simpleTextColor = tabEl.querySelector('#cs-st-simple-textcolor').value;
     s.simpleTextFont = tabEl.querySelector('#cs-st-simple-textfont').value;
     s.simpleTextSize = `${parseInt(tabEl.querySelector('#cs-st-simple-textsize').value, 10) || 14}px`;
+
+    s.fieldBox = {
+        borderEnabled: tabEl.querySelector('#cs-st-fbox-enabled').checked,
+        borderColor: tabEl.querySelector('#cs-st-fbox-bcolor').value,
+        borderWidth: parseInt(tabEl.querySelector('#cs-st-fbox-bwidth').value, 10),
+        borderRadius: parseInt(tabEl.querySelector('#cs-st-fbox-bradius').value, 10),
+        backgroundColor: tabEl.querySelector('#cs-st-fbox-bgcolor').value,
+        effect: tabEl.querySelector('#cs-st-fbox-effect').value
+    };
+
+    s.labelStyle = {
+        bold: tabEl.querySelector('#cs-st-label-bold').checked,
+        color: tabEl.querySelector('#cs-st-label-color').value,
+        font: tabEl.querySelector('#cs-st-label-font').value,
+        size: `${parseInt(tabEl.querySelector('#cs-st-label-size').value, 10)}px`
+    };
 
     return s;
 }

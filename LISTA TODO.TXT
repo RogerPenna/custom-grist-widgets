@@ -70,6 +70,14 @@
   - Adicionada opção para redimensionar o tamanho dos ícones globalmente.
   - A interface de configuração foi refatorada para gerenciar grupos em vez de botões individuais.
 
+- [DONE] **Melhorias de UX e Estilo (Card System):**
+  - Adicionada opção de "Internal Card Padding" para controlar o espaçamento interno dos cards.
+  - Implementado tooltip em campos com altura limitada para exibir o texto completo.
+  - Adicionadas opções de estilo para caixas de campo (borda, fundo, efeito) e labels (negrito, cor, fonte).
+  - Corrigido bug que impedia a renderização de quebras de linha em campos de texto.
+  - Corrigidos múltiplos bugs na inicialização da UI de configuração que impedia a persistência de estados.
+  - Melhoradas as mensagens de erro na inicialização do widget para guiar o usuário na configuração da tabela `Grf_config`.
+
 ### Próximas Tarefas
 
-- [ ] (Nenhuma tarefa pendente no momento)
+- [ ] Garantir que os efeitos de "Bevel" e "Drop Shadow" para as caixas de campo sejam visualmente aparentes.

@@ -21,6 +21,9 @@ export const CardSystem = (() => {
   const DEFAULT_STYLING = {
     iconGroups: [],
     iconSize: 1.0,
+    internalCardPadding: '10px',
+    fieldBox: { borderEnabled: false, borderColor: '#cccccc', borderWidth: 1, borderRadius: 4, backgroundColor: '#ffffff', effect: 'none' },
+    labelStyle: { bold: false, color: '#333333', font: 'Calibri', size: '12px' },
     widgetBackgroundMode: "solid", widgetBackgroundSolidColor: "#f9f9f9", widgetBackgroundGradientType: "linear-gradient(to right, {c1}, {c2})", widgetBackgroundGradientColor1: "#f9f9f9", widgetBackgroundGradientColor2: "#e9e9e9",
     cardsColorMode: "solid", cardsColorSolidColor: "#ffffff", cardsColorGradientType: "linear-gradient(to right, {c1}, {c2})", cardsColorGradientColor1: "#ffffff", cardsColorGradientColor2: "#f0f0f0",
     cardsColorApplyText: false, // <-- NOVA PROPRIEDADE
@@ -91,6 +94,12 @@ export const CardSystem = (() => {
       cardEl.style.minHeight = "60px";
       cardEl.style.transition = "all 0.2s ease-in-out";
 
+      const internalPadding = parseInt(styling.internalCardPadding, 10) || 10;
+      const handleWidth = parseInt(styling.handleAreaWidth, 10) || 8;
+      
+      cardEl.style.padding = `${internalPadding}px`;
+      cardEl.style.paddingLeft = `${internalPadding + handleWidth}px`;
+
       // --- INÍCIO DA LÓGICA DE ESTILO DO CARD ATUALIZADA ---
       if (styling.cardsColorMode === 'conditional' && styling.cardsColorField) {
           const colSchema = schema[styling.cardsColorField];
@@ -129,8 +138,6 @@ export const CardSystem = (() => {
       handleEl.style.borderTopLeftRadius = "8px";
       handleEl.style.borderBottomLeftRadius = "8px";
       cardEl.appendChild(handleEl);
-
-      cardEl.style.paddingLeft = styling.handleAreaWidth;
       if (viewMode === "burger") {
         const burger = document.createElement("span");
         burger.innerHTML = "☰";
@@ -268,9 +275,11 @@ export const CardSystem = (() => {
 
         if (f.row >= 0 && f.row < numRows) {
           const fieldBox = document.createElement("div");
-          fieldBox.style.gridRow = `${f.row + 1} / span ${f.rowSpan || 1}`;
-          fieldBox.style.gridColumn = `${f.col + 1} / span ${f.colSpan || 1}`;
-          fieldBox.style.padding = "4px";
+                fieldBox.style.gridRow = `${f.row + 1} / span ${f.rowSpan || 1}`;
+                fieldBox.style.gridColumn = `${f.col + 1} / span ${f.colSpan || 1}`;
+                if (f.row === 0) {
+                  console.log(`Applying style to ${f.colId}:`, fieldBox.style.gridColumn);
+                }          fieldBox.style.padding = "4px";
 
 if (styling.fieldBackground?.enabled) {
     const cardBaseColor = resolveStyle(record, schema, styling.cardsColorMode, styling.cardsColorSolidColor, null, styling.cardsColorField);
@@ -296,20 +305,46 @@ if (styling.fieldBackground?.enabled) {
             }
 
             labelEl.textContent = labelText;
+            const ls = styling.labelStyle || {};
+            labelEl.style.fontWeight = ls.bold ? 'bold' : 'normal';
+            labelEl.style.color = ls.color;
+            labelEl.style.fontFamily = ls.font;
+            labelEl.style.fontSize = ls.size;
+
             if (fieldStyle.isTitleField && !styling.cardTitleTopBarEnabled) {
+              // Override with title styles if it's a title field
               labelEl.style.fontWeight = "bold";
               labelEl.style.color = styling.cardTitleFontColor;
               labelEl.style.fontSize = styling.cardTitleFontSize;
               labelEl.style.fontFamily = styling.cardTitleFontStyle;
-            } else {
-              labelEl.style.fontFamily = fieldStyle.labelFont;
-              labelEl.style.fontSize = fieldStyle.labelFontSize;
-              labelEl.style.color = fieldStyle.labelColor;
             }
             fieldBox.appendChild(labelEl);
           }
 
           const valueContainer = document.createElement("div");
+          
+          // Apply new Field Box styles
+          const fb = styling.fieldBox || {};
+          if (fb.borderEnabled) {
+              valueContainer.style.border = `${fb.borderWidth || 1}px solid ${fb.borderColor || '#cccccc'}`;
+              valueContainer.style.borderRadius = `${fb.borderRadius || 4}px`;
+              valueContainer.style.padding = '4px 6px';
+              valueContainer.style.backgroundColor = fb.backgroundColor || '#ffffff';
+
+              // Apply effect
+              switch (fb.effect) {
+                  case 'bevel':
+                      valueContainer.style.boxShadow = 'inset 0 1px 2px rgba(0,0,0,0.15)';
+                      break;
+                  case 'shadow':
+                      valueContainer.style.boxShadow = '0 1px 3px rgba(0,0,0,0.12)';
+                      break;
+                  default:
+                      valueContainer.style.boxShadow = 'none';
+                      break;
+              }
+          }
+
           // The renderer will handle justification, but we can keep height limits if needed.
           if (fieldStyle.heightLimited) {
             valueContainer.style.cssText += `overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: ${fieldStyle.maxHeightRows}; -webkit-box-orient: vertical;`;
@@ -327,6 +362,13 @@ if (styling.fieldBackground?.enabled) {
           });
 
           fieldBox.appendChild(valueContainer);
+
+          // Add tooltip for fields with limited height, using the raw data for content.
+          if (fieldStyle.heightLimited) {
+            fieldBox.title = String(record[f.colId] ?? '');
+          }
+
+
           cardEl.appendChild(fieldBox);
         }
       });
