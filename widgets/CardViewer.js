@@ -242,7 +242,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         popover.querySelector('#popover-manager-btn').onclick = () => {
             closeSettingsPopover();
-            openConfigManager();
+            openConfigManager({ initialConfigId: currentConfigId });
         };
     }
 

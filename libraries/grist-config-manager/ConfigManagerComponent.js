@@ -54,8 +54,7 @@ function close() {
 }
 
 // Lógica principal da UI
-async function renderMainUI(container) {
-    const CONFIG_TABLE = 'Grf_config';
+    async function renderMainUI(container, initialConfigId = null) {    const CONFIG_TABLE = 'Grf_config';
     const tableLens = new GristTableLens(grist);
 
     try {
@@ -100,20 +99,61 @@ async function renderMainUI(container) {
         let selectedConfig = null;
         let currentEditorModule = null;
 
-        const loadList = (configs) => {
-            configListEl.innerHTML = '';
-            configs.forEach(c => {
-                const li = document.createElement('li');
-                li.textContent = c.widgetTitle || c.configId;
-                li.dataset.id = c.id;
-                li.onclick = () => {
-                    document.querySelectorAll('#cm-config-list li').forEach(item => item.classList.remove('is-active'));
-                    li.classList.add('is-active');
-                    displayConfig(c);
-                };
-                configListEl.appendChild(li);
-            });
-        };
+            const loadList = async () => {
+                allConfigs = await tableLens.fetchTableRecords(CONFIG_TABLE);
+                configListEl.innerHTML = '';
+
+                const groupedConfigs = allConfigs.reduce((acc, config) => {
+                    const description = config.description || '';
+                    const match = description.match(/^\[(.*?)\]/);
+                    const group = match ? match[1] : (config.componentType || 'Outros');
+
+                    if (!acc[group]) {
+                        acc[group] = [];
+                    }
+                    acc[group].push(config);
+                    return acc;
+                }, {});
+
+                Object.keys(groupedConfigs).sort().forEach(type => {
+                    const groupHeader = document.createElement('h4');
+                    groupHeader.textContent = type;
+                    groupHeader.style.marginTop = '15px';
+                    configListEl.appendChild(groupHeader);
+
+                    groupedConfigs[type].forEach(c => {
+                        const li = document.createElement('li');
+                        
+                        const nameSpan = document.createElement('span');
+                        nameSpan.textContent = c.widgetTitle;
+
+                        const typePill = document.createElement('span');
+                        typePill.textContent = c.componentType;
+                        typePill.className = `cm-type-pill cm-type-${c.componentType.replace(/\s+/g, '-').toLowerCase()}`;
+                        
+                        li.appendChild(nameSpan);
+                        li.appendChild(typePill);
+
+                        li.dataset.id = c.id;
+                        li.onclick = () => {
+                            container.querySelectorAll('#cm-config-list li').forEach(item => item.classList.remove('is-active'));
+                            li.classList.add('is-active');
+                            displayConfig(c);
+                        };
+                        configListEl.appendChild(li);
+                    });
+                });
+
+                if (initialConfigId) {
+                    const configToSelect = allConfigs.find(c => c.configId === initialConfigId);
+                    if (configToSelect) {
+                        const liToSelect = configListEl.querySelector(`[data-id='${configToSelect.id}']`);
+                        if (liToSelect) {
+                            liToSelect.click();
+                        }
+                    }
+                }
+            };
 
         const displayConfig = async (config) => {
             selectedConfig = config;
@@ -209,8 +249,10 @@ async function renderMainUI(container) {
 }
 
 // --- CORREÇÃO FINAL: 'open' AGORA É EXPORTADO ---
-export function open() {
+export function open(options = {}) {
     if (overlay) return;
+
+    const { initialConfigId = null } = options;
     overlay = document.createElement('div');
     overlay.className = 'grf-cm-overlay';
     overlay.innerHTML = `<div class="grf-cm-modal"><div class="grf-cm-header"><h1>Gerenciador de Configurações</h1><button class="grf-cm-close">×</button></div><div class="grf-cm-body"><p>Carregando...</p></div></div>`;
@@ -219,7 +261,6 @@ export function open() {
     overlay.querySelector('.grf-cm-close').onclick = close;
     overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
     
-    renderMainUI(overlay.querySelector('.grf-cm-body'));
-}
+            renderMainUI(overlay.querySelector('.grf-cm-body'), initialConfigId);}
 
 // --- END OF 100% COMPLETE AND CORRECTED ConfigManagerComponent.js ---

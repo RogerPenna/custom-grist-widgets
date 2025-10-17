@@ -4,6 +4,13 @@
 
 ### Tarefas Concluídas
 
+- [DONE] **Melhorias no Gerenciador de Configurações:**
+  - Ao abrir o gerenciador a partir de um widget, a configuração vinculada ao widget agora é pré-selecionada automaticamente.
+  - Adicionada a capacidade de agrupar configurações logicamente, adicionando um nome de grupo entre colchetes (ex: `[Meu Grupo]`) na descrição da configuração.
+  - Adicionado um indicador visual (uma "pílula" colorida) para mostrar o tipo de componente (Card System, Drawer, etc.) de cada configuração na lista.
+  - Corrigido um bug que impedia a exibição dos nomes das configurações na lista.
+  - Corrigido um erro de JavaScript causado por uma declaração de variável duplicada.
+
 - [DONE] **Corrigir bugs no popup de configuração de campo:**
   - Adicionado fundo branco ao popup de estilo de campo para corrigir fundo transparente.
   - Corrigido erro de TypeError que impedia a abertura da configuração para campos do tipo RefList.
