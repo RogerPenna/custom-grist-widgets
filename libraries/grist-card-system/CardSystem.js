@@ -58,10 +58,25 @@ export const CardSystem = (() => {
   }
   const getIcon = (id) => `<svg class="icon"><use href="#${id}"></use></svg>`;
 
+  function _injectTooltipStyles() {
+    if (document.getElementById('grf-tooltip-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'grf-tooltip-styles';
+    style.textContent = `
+        .grf-tooltip-trigger { position: relative; display: inline-block; margin-left: 8px; width: 16px; height: 16px; border-radius: 50%; background-color: #adb5bd; color: white; font-size: 11px; font-weight: bold; text-align: center; line-height: 16px; cursor: help; }
+        .grf-tooltip-trigger:before, .grf-tooltip-trigger:after { position: absolute; left: 50%; transform: translateX(-50%); opacity: 0; visibility: hidden; transition: opacity 0.2s ease, visibility 0.2s ease; z-index: 10; }
+        .grf-tooltip-trigger:after { content: attr(data-tooltip); bottom: 150%; background-color: rgba(0, 0, 0, 0.8); color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; font-weight: normal; line-height: 1.4; white-space: pre-wrap; width: 250px; }
+        .grf-tooltip-trigger:before { content: ''; bottom: 150%; margin-bottom: -5px; border-style: solid; border-width: 5px 5px 0 5px; border-color: rgba(0, 0, 0, 0.8) transparent transparent transparent; }
+        .grf-tooltip-trigger:hover:before, .grf-tooltip-trigger:hover:after { opacity: 1; visibility: visible; }
+    `;
+    document.head.appendChild(style);
+  }
+
   //--------------------------------------------------------------------
   // 2) Public renderCards(container, records, options, schema)
   //--------------------------------------------------------------------
   async function renderCards(container, records, options, schema) { // Added async
+    _injectTooltipStyles();
     await loadIcons(); // Call loadIcons here
     const currentOptions = options || {};
     const tableLens = currentOptions.tableLens; // Extract tableLens
@@ -304,7 +319,13 @@ if (styling.fieldBackground?.enabled) {
                 labelText += ` (${count} itens)`;
             }
 
-            labelEl.textContent = labelText;
+            let labelHtml = labelText;
+            if (fieldSchema && fieldSchema.description && fieldSchema.description.trim() !== '') {
+                const sanitizedDescription = fieldSchema.description.replace(/"/g, '&quot;');
+                labelHtml += ` <span class="grf-tooltip-trigger" data-tooltip="${sanitizedDescription}">?</span>`;
+            }
+
+            labelEl.innerHTML = labelHtml;
             const ls = styling.labelStyle || {};
             labelEl.style.fontWeight = ls.bold ? 'bold' : 'normal';
             labelEl.style.color = ls.color;
@@ -334,15 +355,16 @@ if (styling.fieldBackground?.enabled) {
               // Apply effect
               switch (fb.effect) {
                   case 'bevel':
-                      valueContainer.style.boxShadow = 'inset 0 1px 2px rgba(0,0,0,0.15)';
+                      valueContainer.style.boxShadow = 'inset 0 2px 4px rgba(0,0,0,0.3)';
+                      break;
+                  case 'bevel-outset':
+                      valueContainer.style.boxShadow = '-1px -1px 3px rgba(255,255,255,0.7), 1px 1px 3px rgba(0,0,0,0.2)';
                       break;
                   case 'shadow':
-                      valueContainer.style.boxShadow = '0 1px 3px rgba(0,0,0,0.12)';
-                      break;
-                  default:
-                      valueContainer.style.boxShadow = 'none';
+                      valueContainer.style.boxShadow = '0 2px 5px rgba(0,0,0,0.3)';
                       break;
               }
+
           }
 
           // The renderer will handle justification, but we can keep height limits if needed.
@@ -365,7 +387,7 @@ if (styling.fieldBackground?.enabled) {
 
           // Add tooltip for fields with limited height, using the raw data for content.
           if (fieldStyle.heightLimited) {
-            fieldBox.title = String(record[f.colId] ?? '');
+            valueContainer.title = String(record[f.colId] ?? '');
           }
 
 

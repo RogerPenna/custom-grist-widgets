@@ -121,13 +121,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
 
-            const [records, schema] = await Promise.all([
+            const [records, cleanSchema, rawSchema] = await Promise.all([
                 tableLens.fetchTableRecords(tableId),
-                tableLens.getTableSchema(tableId)
+                tableLens.getTableSchema(tableId),
+                tableLens.getTableSchema(tableId, { mode: 'raw' })
             ]);
             
+            Object.keys(cleanSchema).forEach(colId => { 
+                if (rawSchema[colId] && rawSchema[colId].description) { 
+                    cleanSchema[colId].description = rawSchema[colId].description; 
+                }
+            });
+
             appContainer.innerHTML = '';
-            CardSystem.renderCards(appContainer, records, { ...currentConfig, tableLens: tableLens }, schema);
+            CardSystem.renderCards(appContainer, records, { ...currentConfig, tableLens: tableLens }, cleanSchema);
             addSettingsGear();
             console.log("[DEBUG] Card rendering complete.");
 

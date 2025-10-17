@@ -507,6 +507,7 @@ window.CardConfigEditor = (() => {
                                 <select id="cs-st-fbox-effect">
                                     <option value="none">None</option>
                                     <option value="bevel">Bevel (Inset)</option>
+                                    <option value="bevel-outset">Bevel (Outset)</option>
                                     <option value="shadow">Drop Shadow</option>
                                 </select>
                                 <p class="help-text">A background color is required for the Bevel effect to be visible.</p>

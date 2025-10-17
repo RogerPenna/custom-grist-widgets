@@ -93,7 +93,12 @@ export function getFieldStyle(record, colSchema) {
  */
 function _applyStyles(element, colSchema, record, ruleIdToColIdMap, isLabel = false, overrideRules = {}) {
     if (!element) return;
-    element.style.color = ''; element.style.backgroundColor = ''; element.style.fontWeight = ''; element.style.fontStyle = '';
+    element.style.color = '';
+    if (!element.style.backgroundColor) {
+        element.style.backgroundColor = '';
+    }
+    element.style.fontWeight = '';
+    element.style.fontStyle = '';
 
     let wopts = {};
     if (typeof colSchema.widgetOptions === 'string' && colSchema.widgetOptions) {

@@ -65,6 +65,8 @@ input:checked + .grf-slider:before { transform: translateX(18px); }
     text-align: center;
     width: 50px;
 }
+
+
 .reflist-action-menu-btn {
     background: none; border: none; cursor: pointer;
     font-size: 1.2em; padding: 2px 8px; border-radius: 4px;

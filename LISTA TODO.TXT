@@ -80,4 +80,8 @@
 
 ### Próximas Tarefas
 
-- [ ] Garantir que os efeitos de "Bevel" e "Drop Shadow" para as caixas de campo sejam visualmente aparentes.
+- [DONE] **Melhorar Efeitos de Caixa de Campo e Adicionar Tooltips de Ajuda:**
+  - Os efeitos de "Bevel" e "Drop Shadow" foram tornados mais pronunciados para melhor visibilidade.
+  - Adicionado um novo efeito "Bevel (Outset)" para criar uma aparência de relevo.
+  - Implementado tooltips de ajuda (?) nos labels dos campos, que exibem a descrição do campo (do Grist) ao passar o mouse.
+  - Corrigido um conflito entre o novo tooltip de ajuda e o tooltip de conteúdo de campo truncado.
