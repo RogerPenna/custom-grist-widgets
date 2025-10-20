@@ -1,5 +1,18 @@
 # GRF - Framework de Componentes Grist - TODO
 
+- [DONE] **Criar novo tipo de widget configurável: "Table"**
+  - O objetivo é ter um widget que exiba dados em formato de tabela, com colunas configuráveis e ações de clique de linha.
+  - **Gerenciador de Configuração**:
+    - Adicionado "Table" como um novo tipo de componente no seletor do `ConfigManager/index.html`.
+    - Criado `ConfigManager/editors/config-table.js` para o editor de configuração da tabela, permitindo a seleção de colunas e a definição de uma ação de clique de linha (abrir um Drawer).
+    - O `ConfigManager/config-manager-widget.js` foi atualizado para registrar o novo tipo de componente e para carregar configurações a partir de um parâmetro de URL (`configId`).
+  - **Widget da Tabela**:
+    - Criado o diretório `table-widget/` com `index.html`, `style.css`, e `script.js`.
+    - O `table-widget/script.js` lê a configuração da tabela, renderiza os dados com as colunas selecionadas e manipula os cliques de linha para abrir um Drawer.
+    - Adicionado um botão "Configure" no widget da tabela para abrir facilmente o `ConfigManager` com a configuração correta pré-selecionada.
+  - **Correção de Bug**:
+    - Corrigido um erro de `Uncaught SyntaxError: Cannot use import statement outside a module` em `table-widget/index.html` adicionando `type="module"` à tag do script.
+
 ## Fase Final: Estilização e Refatoração
 
 ### Tarefas Concluídas
