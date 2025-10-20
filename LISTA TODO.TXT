@@ -92,3 +92,9 @@
   - Adicionado um novo efeito "Bevel (Outset)" para criar uma aparência de relevo.
   - Implementado tooltips de ajuda (?) nos labels dos campos, que exibem a descrição do campo (do Grist) ao passar o mouse.
   - Corrigido um conflito entre o novo tooltip de ajuda e o tooltip de conteúdo de campo truncado.
+
+- [BUG] **`grf-trigger-widget` event not firing correctly:** The `CardSystem.js` is not publishing the `grf-trigger-widget` event as intended, even though the code logic appears correct. This is likely due to a caching issue or the browser loading an older version of the script. Need to ensure the latest `CardSystem.js` is loaded and its `actionButton.addEventListener` is correctly publishing `grf-trigger-widget` when `actionType` is `triggerWidget`.
+
+- [BUG] **Filter not applied in "Riscos" widget:** Even when the `grf-trigger-widget` event is eventually fired, the "Riscos" widget is not filtering the records correctly based on the `externalFilter`. This needs further investigation into the filtering logic in `riscos/js/main.js`, specifically how `externalFilter` is being used to filter `allRiskRecords`.
+
+- [ENHANCEMENT] **Tooltip for action buttons:** The tooltip for action buttons should display the number of related records, not just the action name. This will require fetching the count of related records for the specific `sourceRecord` and `targetTable` and updating the tooltip dynamically. This can be addressed after the core `triggerWidget` functionality and filtering are resolved.
