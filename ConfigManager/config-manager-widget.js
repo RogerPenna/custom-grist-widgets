@@ -31,11 +31,22 @@ document.addEventListener('DOMContentLoaded', async function () {
     const editorMap = {
         'Drawer': window.DrawerConfigEditor,
         'CardSystem': window.CardConfigEditor,
+        'Table': window.TableConfigEditor,
     };
 
     async function initializeApp() {
         await renderTableSelector();
         await loadAndRenderConfigs();
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const configIdFromUrl = urlParams.get('configId');
+        if (configIdFromUrl) {
+            const configToSelect = allConfigs.find(c => c.configId === configIdFromUrl);
+            if (configToSelect) {
+                displayConfigDetails(configToSelect);
+            }
+        }
+
         document.getElementById('tableSelector').addEventListener('change', () => {
             if (selectedConfig) {
                 displayConfigDetails(selectedConfig);
