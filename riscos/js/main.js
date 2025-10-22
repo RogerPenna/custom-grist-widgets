@@ -5,6 +5,7 @@ import { fetchTableData } from './gristApiService.js'; // Importa se for buscar 
 import { renderMatrix, adjustSize } from './matrixModule.js';
 import { renderCards } from './cardsModule.js';
 import { initSidePanel, openSidePanel } from './sidePanelModule.js';
+import { subscribe } from '../../libraries/grist-event-bus/grist-event-bus.js';
 
 // --- Estado Global do Widget ---
 let allRiskRecords = []; // Todos os registros da tabela Riscos
@@ -14,6 +15,7 @@ let allDepartments = [];
 let selectedDepartments = [];
 let activeMatrixFilter = null; // { probability: p, impact: i } ou null
 let activeMatrixHighlight = null; // { probability: p, impact: i } ou null
+let externalFilter = null; // Added this line
 
 // --- Elementos da UI ---
 const filterDropdownBtn = document.getElementById('department-dropdown-btn');
@@ -27,6 +29,18 @@ grist.onRecords(handleGristRecords); // Chama a função quando os dados chegam/
 
 // --- Inicialização dos Módulos ---
 initSidePanel(); // Configura listeners do painel lateral
+
+// Added grf-trigger-widget subscriber
+subscribe('grf-trigger-widget', (data) => {
+    if (data && data.filterTargetColumn && data.filterValue) {
+        externalFilter = {
+            column: data.filterTargetColumn,
+            value: data.filterValue
+        };
+        renderAll();
+    }
+});
+console.log("DEBUG: grf-trigger-widget subscribed.");
 
 // --- Handler de Dados Grist ---
 function handleGristRecords(records, mappings) {
@@ -53,10 +67,25 @@ function handleGristRecords(records, mappings) {
 
 /** Função principal que aplica filtros e chama renderizadores */
 function renderAll() {
-    console.log("Renderizando tudo...");
+    let recordsToProcess = allRiskRecords; // New variable to hold records before filtering
+
+    // New: Apply external filter
+    if (externalFilter) {
+        recordsToProcess = recordsToProcess.filter(riskRecord => {
+            const filterColumnValue = riskRecord[externalFilter.column];
+            let isMatch = false;
+            if (Array.isArray(externalFilter.value)) {
+                const numericFilterValues = externalFilter.value.map(id => Number(id));
+                isMatch = numericFilterValues.includes(Number(filterColumnValue));
+            } else {
+                isMatch = Number(filterColumnValue) === Number(externalFilter.value);
+            }
+            return isMatch;
+        });
+    }
 
     // 1. Filtra por Departamento
-    filteredRiskRecords = allRiskRecords.filter(r => {
+    filteredRiskRecords = recordsToProcess.filter(r => { // Changed from allRiskRecords to recordsToProcess
         if (selectedDepartments.length === 0) return true; // Sem filtro de depto = mostra todos
         let dept = getDeptName(r, RISK_DEPT_COLUMN);
         return selectedDepartments.includes(dept);

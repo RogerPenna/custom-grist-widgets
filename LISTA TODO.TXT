@@ -1,17 +1,6 @@
 # GRF - Framework de Componentes Grist - TODO
 
-- [DONE] **Criar novo tipo de widget configurável: "Table"**
-  - O objetivo é ter um widget que exiba dados em formato de tabela, com colunas configuráveis e ações de clique de linha.
-  - **Gerenciador de Configuração**:
-    - Adicionado "Table" como um novo tipo de componente no seletor do `ConfigManager/index.html`.
-    - Criado `ConfigManager/editors/config-table.js` para o editor de configuração da tabela, permitindo a seleção de colunas e a definição de uma ação de clique de linha (abrir um Drawer).
-    - O `ConfigManager/config-manager-widget.js` foi atualizado para registrar o novo tipo de componente e para carregar configurações a partir de um parâmetro de URL (`configId`).
-  - **Widget da Tabela**:
-    - Criado o diretório `table-widget/` com `index.html`, `style.css`, e `script.js`.
-    - O `table-widget/script.js` lê a configuração da tabela, renderiza os dados com as colunas selecionadas e manipula os cliques de linha para abrir um Drawer.
-    - Adicionado um botão "Configure" no widget da tabela para abrir facilmente o `ConfigManager` com a configuração correta pré-selecionada.
-  - **Correção de Bug**:
-    - Corrigido um erro de `Uncaught SyntaxError: Cannot use import statement outside a module` em `table-widget/index.html` adicionando `type="module"` à tag do script.
+# GRF - Framework de Componentes Grist - TODO
 
 ## Fase Final: Estilização e Refatoração
 
@@ -106,8 +95,8 @@
   - Implementado tooltips de ajuda (?) nos labels dos campos, que exibem a descrição do campo (do Grist) ao passar o mouse.
   - Corrigido um conflito entre o novo tooltip de ajuda e o tooltip de conteúdo de campo truncado.
 
-- [BUG] **`grf-trigger-widget` event not firing correctly:** The `CardSystem.js` is not publishing the `grf-trigger-widget` event as intended, even though the code logic appears correct. This is likely due to a caching issue or the browser loading an older version of the script. Need to ensure the latest `CardSystem.js` is loaded and its `actionButton.addEventListener` is correctly publishing `grf-trigger-widget` when `actionType` is `triggerWidget`.
+- [DONE] **`grf-trigger-widget` event not firing correctly:** The `CardSystem.js` is not publishing the `grf-trigger-widget` event as intended, even though the code logic appears correct. This is likely due to a caching issue or the browser loading an older version of the script. Need to ensure the latest `CardSystem.js` is loaded and its `actionButton.addEventListener` is correctly publishing `grf-trigger-widget` when `actionType` is `triggerWidget`.
 
-- [BUG] **Filter not applied in "Riscos" widget:** Even when the `grf-trigger-widget` event is eventually fired, the "Riscos" widget is not filtering the records correctly based on the `externalFilter`. This needs further investigation into the filtering logic in `riscos/js/main.js`, specifically how `externalFilter` is being used to filter `allRiskRecords`.
+- [DONE] **Filter not applied in "Riscos" widget:** Even when the `grf-trigger-widget` event is eventually fired, the "Riscos" widget is not filtering the records correctly based on the `externalFilter`. This needs further investigation into the filtering logic in `riscos/js/main.js`, specifically how `externalFilter` is being used to filter `allRiskRecords`.
 
 - [ENHANCEMENT] **Tooltip for action buttons:** The tooltip for action buttons should display the number of related records, not just the action name. This will require fetching the count of related records for the specific `sourceRecord` and `targetTable` and updating the tooltip dynamically. This can be addressed after the core `triggerWidget` functionality and filtering are resolved.
