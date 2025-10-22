@@ -92,6 +92,8 @@ window.CardConfigEditor = (() => {
         });
 
         const newStyling = readStylingTab(container);
+        // Explicitly include iconGroups from state.styling as they are modified directly
+        newStyling.iconGroups = state.styling.iconGroups;
         const layoutTab = container.querySelector("[data-tab-section='fld']");
         const viewMode = layoutTab.querySelector("#cs-vm-click").checked ? "click" : "burger";
         const numRows = parseInt(layoutTab.querySelector("#cs-num-rows").value, 10) || DEFAULT_NUM_ROWS;
@@ -259,6 +261,7 @@ window.CardConfigEditor = (() => {
                         <option value="navigateToGristPage" ${buttonConfig.actionType === 'navigateToGristPage' ? 'selected' : ''}>Navigate to Grist Page</option>
                         <option value="openUrlFromColumn" ${buttonConfig.actionType === 'openUrlFromColumn' ? 'selected' : ''}>Open URL from Column</option>
                         <option value="updateRecord" ${buttonConfig.actionType === 'updateRecord' ? 'selected' : ''}>Update Record (Grist)</option>
+                        <option value="triggerWidget" ${buttonConfig.actionType === 'triggerWidget' ? 'selected' : ''}>Trigger Widget</option>
                     </select>
                 </div>
                 <div class="action-specific-config" data-index="${index}"></div>
@@ -335,6 +338,39 @@ window.CardConfigEditor = (() => {
                 <div class="form-group">
                     <label>New Value:</label>
                     <input type="text" class="action-update-value" data-prop="updateValue" value="${buttonConfig.updateValue || ''}" placeholder="e.g., Complete">
+                </div>
+            `;
+        } else if (buttonConfig.actionType === 'triggerWidget') {
+            const allComponentTypes = [...new Set(allConfigs.map(c => c.componentType === 'Card System' ? 'CardSystem' : c.componentType))];
+            container.innerHTML = `
+                <div class="form-group">
+                    <label>Target Widget Configuration:</label>
+                    <select class="action-target-config-id" data-prop="targetConfigId">
+                        <option value="">-- Select a Configuration --</option>
+                        ${allConfigs.map(c => `<option value="${c.configId}" ${buttonConfig.targetConfigId === c.configId ? 'selected' : ''}>${c.configId} (${c.componentType})</option>`).join('')}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Target Component Type (Optional):</label>
+                    <select class="action-target-component-type" data-prop="targetComponentType">
+                        <option value="">-- Auto-detect --</option>
+                        ${allComponentTypes.map(type => `<option value="${type}" ${buttonConfig.targetComponentType === type ? 'selected' : ''}>${type}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Filter Target Column (in Target Widget):</label>
+                    <select class="action-filter-target-column" data-prop="filterTargetColumn">
+                        <option value="">-- Select a Column --</option>
+                        <option value="id" ${buttonConfig.filterTargetColumn === 'id' ? 'selected' : ''}>id (Record ID)</option>
+                        ${allGristColumns.map(col => `<option value="${col}" ${buttonConfig.filterTargetColumn === col ? 'selected' : ''}>${col}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Source RefList Column (in this Card):</label>
+                    <select class="action-source-reflist-column" data-prop="sourceRefListColumn">
+                        <option value="">-- Select a RefList Column --</option>
+                        ${(state.fields || []).filter(f => f.type.startsWith('RefList:')).map(col => `<option value="${col.colId}" ${buttonConfig.sourceRefListColumn === col.colId ? 'selected' : ''}>${col.colId}</option>`).join('')}
+                    </select>
                 </div>
             `;
         }

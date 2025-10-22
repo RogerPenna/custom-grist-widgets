@@ -276,7 +276,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    // L\u00f3gica para o clique do card
+    // Lógica para o clique do card
     subscribe('grf-card-clicked', async (eventData) => {
         if (!eventData.drawerConfigId) return;
         console.log("Card clicado! Tentando abrir drawer com config:", eventData.drawerConfigId);
@@ -293,6 +293,79 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.error("Erro ao buscar ou abrir o Drawer:", e);
         }
     });
+
+    subscribe('grf-trigger-widget', async ({ configId, sourceRecord, rowIds, componentType }) => {
+        console.log(`[DEBUG] grf-trigger-widget received: configId=${configId}, componentType=${componentType}`);
+        if (!configId) {
+            console.error("grf-trigger-widget: configId is missing.");
+            return;
+        }
+
+        try {
+            const targetWidgetConfigRecord = await tableLens.findRecord('Grf_config', { configId: configId });
+            if (!targetWidgetConfigRecord) {
+                alert(`Error: Configuration with ID "${configId}" not found.`);
+                return;
+            }
+            const targetWidgetConfigData = JSON.parse(targetWidgetConfigRecord.configJson);
+            
+            // The componentType from the event is preferred, but fallback to the one in the config
+            const targetComponentType = componentType || targetWidgetConfigData.componentType;
+
+            await loadDynamicWidget(targetWidgetConfigData, sourceRecord, rowIds, targetComponentType);
+
+        } catch (e) {
+            console.error(`Error handling grf-trigger-widget:`, e);
+            alert(`Error loading widget for config "${configId}": ${e.message}`);
+        }
+    });
+
+    async function loadDynamicWidget(targetWidgetConfigData, sourceRecord, rowIdsToSelect, targetComponentType) {
+        console.log(`[DEBUG] loadDynamicWidget: Loading componentType='${targetComponentType}'`);
+        
+        appContainer.innerHTML = ''; // Clear current content
+
+        // Normalize component type for comparison
+        const normalizedComponentType = targetComponentType ? targetComponentType.trim() : '';
+
+        if (normalizedComponentType === 'CardSystem') {
+            const tableId = targetWidgetConfigData.tableId;
+            if (!tableId) {
+                renderStatus("Configuration Error: 'tableId' is not defined for the triggered widget.");
+                return;
+            }
+            
+            try {
+                const [records, schema] = await Promise.all([
+                    tableLens.fetchTableRecords(tableId),
+                    tableLens.getTableSchema(tableId)
+                ]);
+
+                let recordsToRender = records;
+                if (rowIdsToSelect && Array.isArray(rowIdsToSelect) && rowIdsToSelect.length > 0) {
+                    const numericRowIds = rowIdsToSelect.map(id => Number(id));
+                    recordsToRender = records.filter(record => numericRowIds.includes(Number(record.id)));
+                }
+
+                CardSystem.renderCards(appContainer, recordsToRender, { ...targetWidgetConfigData, tableLens: tableLens }, schema);
+                
+            } catch (e) {
+                renderStatus(`Error loading CardSystem widget: ${e.message}`);
+            }
+        } else {
+            renderStatus(`Widget loaded. Component Type: '${targetComponentType}'. Data can be accessed.`);
+            // Here you would add logic for other component types, like 'Drawer', 'Table', etc.
+            console.log('[DEBUG] Data available for custom rendering:', {
+                config: targetWidgetConfigData,
+                record: sourceRecord,
+                selectedIds: rowIdsToSelect
+            });
+        }
+        
+        // We might need a back button or other navigation here
+        // For now, the settings gear is added as a way to get back or change config
+        addSettingsGear();
+    }
 
     // L\u00f3gica para a\u00e7\u00f5es de navega\u00e7\u00e3o (bot\u00f5es de a\u00e7\u00e3o secund\u00e1ria)
     subscribe('grf-navigation-action-triggered', async (eventData) => {

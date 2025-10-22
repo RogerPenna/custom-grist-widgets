@@ -271,11 +271,41 @@ export const CardSystem = (() => {
 
                 actionButton.addEventListener("click", (e) => {
                     e.stopPropagation();
-                    publish('grf-navigation-action-triggered', {
-                        config: buttonConfig,
-                        sourceRecord: record,
-                        tableId: currentOptions.tableId
-                    });
+
+                    if (buttonConfig.actionType === 'triggerWidget') {
+                        const configIdToPublish = buttonConfig.targetConfigId || currentOptions.configId;
+                        if (!configIdToPublish) {
+                            console.warn("CardSystem: Cannot publish grf-trigger-widget. configId is missing in button configuration and current widget options.");
+                            return;
+                        }
+                        let rowIdsToPublish = [];
+                        let filterValueToPublish = record.id; // Default to record.id
+
+                        if (buttonConfig.sourceRefListColumn) {
+                            const refListValue = record[buttonConfig.sourceRefListColumn];
+                            if (Array.isArray(refListValue) && refListValue[0] === 'L') {
+                                rowIdsToPublish = refListValue.slice(1);
+                                filterValueToPublish = rowIdsToPublish; // Use the array of IDs for filtering
+                            } else {
+                                console.warn(`CardSystem: sourceRefListColumn '${buttonConfig.sourceRefListColumn}' is not a valid RefList in record. Falling back to record.id.`);
+                            }
+                        }
+
+                        publish('grf-trigger-widget', {
+                            configId: configIdToPublish,
+                            sourceRecord: record,
+                            rowIds: rowIdsToPublish, // Pass the array of row IDs
+                            filterValue: filterValueToPublish, // Pass either single ID or array of IDs
+                            componentType: buttonConfig.targetComponentType,
+                            filterTargetColumn: buttonConfig.filterTargetColumn
+                        });
+                    } else {
+                        publish('grf-navigation-action-triggered', {
+                            config: buttonConfig,
+                            sourceRecord: record,
+                            tableId: currentOptions.tableId
+                        });
+                    }
                 });
                 groupContainer.appendChild(actionButton);
             });
