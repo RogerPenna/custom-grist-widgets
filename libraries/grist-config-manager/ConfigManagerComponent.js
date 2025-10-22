@@ -229,8 +229,16 @@ function close() {
             try {
                 if (selectedConfig.id) {
                     await dataWriter.updateRecord(CONFIG_TABLE, selectedConfig.id, recordData);
+                    // Check if configId has changed and update widget options
+                    if (selectedConfig.configId !== recordData.configId && _grist) {
+                        _grist.setOptions({ configId: recordData.configId });
+                    }
                 } else {
                     await dataWriter.addRecord(CONFIG_TABLE, recordData);
+                    // For new records, always set the configId for the widget
+                    if (_grist) {
+                        _grist.setOptions({ configId: recordData.configId });
+                    }
                 }
                 alert(`Configuração "${recordData.widgetTitle}" salva!`);
                 close();
@@ -249,8 +257,11 @@ function close() {
 }
 
 // --- CORREÇÃO FINAL: 'open' AGORA É EXPORTADO ---
-export function open(options = {}) {
+let _grist = null;
+
+export function open(grist, options = {}) {
     if (overlay) return;
+    _grist = grist; // Store the grist object
 
     const { initialConfigId = null } = options;
     overlay = document.createElement('div');
@@ -261,6 +272,37 @@ export function open(options = {}) {
     overlay.querySelector('.grf-cm-close').onclick = close;
     overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
     
-            renderMainUI(overlay.querySelector('.grf-cm-body'), initialConfigId);}
+    renderMainUI(overlay.querySelector('.grf-cm-body'), initialConfigId);
+}
+
+// Inside renderMainUI, within formEl.onsubmit:
+// ...
+// try {
+//     if (selectedConfig.id) {
+//         await dataWriter.updateRecord(CONFIG_TABLE, selectedConfig.id, recordData);
+//         // Check if configId has changed and update widget options
+//         if (selectedConfig.configId !== recordData.configId && _grist) {
+//             _grist.setOptions({ configId: recordData.configId });
+//         }
+//     } else {
+//         await dataWriter.addRecord(CONFIG_TABLE, recordData);
+//         // For new records, always set the configId for the widget
+//         if (_grist) {
+//             _grist.setOptions({ configId: recordData.configId });
+//         }
+//     }
+//     alert(`Configuração "${recordData.widgetTitle}" salva!`);
+//     close();
+// } catch(err) {
+//     alert(`Erro ao salvar: ${err.message}`);
+//     console.error("Erro ao salvar config:", err);
+// }
+// ...
+// The above comment block is for context. The actual change will be applied in the next step.
+// This step only modifies the `open` function and adds the `_grist` variable.
+
+// Now, I need to modify the `formEl.onsubmit` handler within `renderMainUI` to include the `_grist.setOptions` call.
+// I will read the file again to get the exact context for the `formEl.onsubmit` block.
+
 
 // --- END OF 100% COMPLETE AND CORRECTED ConfigManagerComponent.js ---
