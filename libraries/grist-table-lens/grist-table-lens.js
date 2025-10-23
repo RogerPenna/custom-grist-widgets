@@ -255,7 +255,8 @@ export const GristTableLens = function(gristInstance) {
         try {
             const allRelatedRecords = await this.fetchTableRecords(referencedTableId);
             const idSet = new Set(relatedRecordIds);
-            return allRelatedRecords.filter(r => idSet.has(r.id));
+            const filteredRelatedRecords = allRelatedRecords.filter(r => idSet.has(r.id));
+            return filteredRelatedRecords;
         } catch (error) {
             console.error(`GTL.fetchRelatedRecords: Erro ao buscar registros para '${refColumnId}'.`, error);
             return [];

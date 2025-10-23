@@ -9,8 +9,35 @@ import { CardSystem } from '../libraries/grist-card-system/CardSystem.js';
 import { subscribe } from '../libraries/grist-event-bus/grist-event-bus.js';
 import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js';
 import { GristDataWriter } from '../libraries/grist-data-writer.js';
+import { GristFilterBar } from '../libraries/grist-filter-bar/grist-filter-bar.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
+    console.log('DOMContentLoaded event fired in CardViewer.js.');
+
+    // Load the filter bar HTML and initialize GristFilterBar
+    const filterBarContainer = document.getElementById('filter-bar-container');
+    if (filterBarContainer) {
+        console.log('filter-bar-container found in CardViewer.js.', filterBarContainer);
+        try {
+            const response = await fetch('../libraries/grist-filter-bar/grist-filter-bar.html');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const html = await response.text();
+            filterBarContainer.innerHTML = html;
+            console.log('Filter bar HTML loaded and inserted in CardViewer.js.');
+            new GristFilterBar({
+                onFilter: (searchTerm) => {
+                    CardSystem.filterRecords(searchTerm);
+                }
+            });
+            console.log('GristFilterBar instantiated in CardViewer.js.');
+        } catch (error) {
+            console.error('Error loading filter bar in CardViewer.js:', error);
+        }
+    } else {
+        console.error('filter-bar-container not found in the DOM in CardViewer.js.');
+    }
     
     // Carrega o arquivo SVG e o injeta no DOM.
     async function loadIcons() {

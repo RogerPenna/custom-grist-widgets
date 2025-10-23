@@ -1,6 +1,6 @@
 // --- START OF COMPLETE AND CORRECTED config-drawer.js ---
 
-window.DrawerConfigEditor = (() => {
+export const DrawerConfigEditor = (() => {
     let currentSchema = null;
     let currentTableId = null; // Variável para armazenar o tableId
     let stageConfigs = {};

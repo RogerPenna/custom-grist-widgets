@@ -1,7 +1,5 @@
 # GRF - Framework de Componentes Grist - TODO
 
-# GRF - Framework de Componentes Grist - TODO
-
 ## Fase Final: Estilização e Refatoração
 
 ### Tarefas Concluídas
@@ -113,3 +111,20 @@
 - [DONE] **Filter not applied in "Riscos" widget:** Even when the `grf-trigger-widget` event is eventually fired, the "Riscos" widget is not filtering the records correctly based on the `externalFilter`. This needs further investigation into the filtering logic in `riscos/js/main.js`, specifically how `externalFilter` is being used to filter `allRiskRecords`.
 
 - [ENHANCEMENT] **Tooltip for action buttons:** The tooltip for action buttons should display the number of related records, not just the action name. This will require fetching the count of related records for the specific `sourceRecord` and `targetTable` and updating the tooltip dynamically. This can be addressed after the core `triggerWidget` functionality and filtering are resolved.
+
+### Progresso Atual no Table Widget
+
+- [DONE] **Resolvido erro 404 para `tabulator.min.js` e `tabulator.min.css`:** Arquivos adicionados manualmente à `libraries/tabulator`.
+- [DONE] **Corrigidos caminhos de importação em `table-widget/script.js`:** De absolutos para relativos.
+- [DONE] **Corrigido caminho de `framework-config.js` em `table-widget/index.html`:** De absoluto para relativo.
+- [DONE] **Ícone de engrenagem e popover de configuração estilizados corretamente no Table Widget.**
+- [DONE] **Modal do Gerenciador de Configurações formatado corretamente no Table Widget.**
+- [DONE] **`ConfigManagerComponent.js` atualizado para gerar opções "Novo" dinamicamente e incluir "Table" como tipo de componente.**
+- [DONE] **`table-widget/script.js` passa `componentTypes: ['Table']` ao abrir o `ConfigManagerComponent`.**
+- [DONE] **Todos os scripts de editor (`config-cards.js`, `config-drawer.js`, `config-card-style.js`, `config-table.js`) convertidos para módulos e importados diretamente em `ConfigManagerComponent.js`.**
+- [DONE] **Tags de script do editor removidas de `table-widget/index.html` e `widgets/CardViewer.html`.**
+- [DONE] **Criado `config-table.js` placeholder.**
+
+### Erro Atual
+
+- [BUG] **`ReferenceError: componentTypes is not defined` no `ConfigManagerComponent.js`:** Ocorre em `renderMainUI` (linha 77:29) porque a função `open` não está passando o parâmetro `componentTypes` para `renderMainUI` corretamente. Isso impede a correta inicialização do Gerenciador de Configurações e a exibição das opções de tipo de componente.

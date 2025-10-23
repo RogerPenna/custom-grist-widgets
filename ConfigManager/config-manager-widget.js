@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     const editorMap = {
         'Drawer': window.DrawerConfigEditor,
         'CardSystem': window.CardConfigEditor,
-        'Table': window.TableConfigEditor,
+        'Table System': window.TableConfigEditor,
     };
 
     async function initializeApp() {

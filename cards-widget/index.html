@@ -1,88 +1,16 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Card System Widget</title>
-
-  <!--
-    THIS IS THE CORRECTED AND MOST IMPORTANT LINE.
-    It loads the Grist API from the official website (CDN).
-  -->
-  <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
-
-  <style>
-    html, body {
-      height: 100%;
-      width: 100%;
-      margin: 0;
-      padding: 0;
-      font-family: sans-serif;
-      background-color: #f9f9f9;
-    }
-    #app-container {
-      height: 100%;
-      width: 100%;
-      box-sizing: border-box;
-      overflow-y: auto;
-    }
-  </style>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Cards Widget</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="../libraries/grist-filter-bar/grist-filter-bar.css">
 </head>
 <body>
-
-  <!-- The container where your script will render the cards -->
-  <div id="app-container"></div>
-
-  <!-- This loads your main script file from the same directory -->
-  <script src="script.js" defer></script>
-
-  <!--
-    This "glue" script connects Grist to your CardSystem module.
-    It will run after the two scripts above are loaded.
-  -->
-  <script>
-    // This function will run once the DOM is ready.
-    function initializeWidget() {
-      // Check if the Grist API loaded correctly.
-      if (typeof grist === 'undefined') {
-        document.body.innerHTML = '<p style="color: red; padding: 15px;">Fatal Error: grist-plugin-api.js could not be loaded. Please check the network connection and the script tag in index.html.</p>';
-        return;
-      }
-
-      // Check if your CardSystem module loaded correctly from script.js
-      if (typeof CardSystem === 'undefined') {
-        document.body.innerHTML = '<p style="color: red; padding: 15px;">Error: CardSystem module not found. Make sure script.js is loaded correctly and has no errors.</p>';
-        return;
-      }
-
-      const appContainer = document.getElementById('app-container');
-      let latestRecords = [];
-      let latestOptions = {};
-
-      function renderWidget() {
-        if (!appContainer || !latestRecords) return;
-        CardSystem.renderCards(appContainer, latestRecords, latestOptions);
-      }
-
-      // Tell Grist we are ready.
-      grist.ready();
-
-      // Listen for data from Grist.
-      grist.onRecords(function(records) {
-        latestRecords = records;
-        renderWidget();
-      });
-
-      // Listen for options from Grist.
-      grist.onOptions(function(options) {
-        latestOptions = options || {};
-        renderWidget();
-      });
-    }
-
-    // Wait for the HTML document to be fully loaded before running the initialization logic.
-    document.addEventListener('DOMContentLoaded', initializeWidget);
-  </script>
-
+    <div id="filter-bar-container"></div>
+    <div id="app">
+        <div id="card-container"></div>
+    </div>
 </body>
 </html>

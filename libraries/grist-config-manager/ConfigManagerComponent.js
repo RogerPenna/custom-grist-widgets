@@ -6,6 +6,12 @@
 import { GristTableLens } from '../grist-table-lens/grist-table-lens.js';
 import { GristDataWriter } from '../grist-data-writer.js';
 
+// Import editor modules
+import { CardConfigEditor } from '../../ConfigManager/editors/config-cards.js';
+import { DrawerConfigEditor } from '../../ConfigManager/editors/config-drawer.js';
+import { CardStyleConfigEditor } from '../../ConfigManager/editors/config-card-style.js';
+import { TableConfigEditor } from '../../ConfigManager/editors/config-table.js';
+
 let overlay = null;
 
 // Funções auxiliares (declaradas uma única vez)
@@ -67,12 +73,15 @@ function close() {
         let allConfigs = await tableLens.fetchTableRecords(CONFIG_TABLE);
         const dataWriter = new GristDataWriter(grist);
         
+        // Dynamically generate options for cm-new-type-selector
+        const typeOptions = componentTypes.map(type => `<option value="${type}">${type}</option>`).join('');
+
         container.innerHTML = `
             <div class="grf-cm-main-container">
                 <div class="grf-cm-sidebar">
                     <h2>Configurações</h2>
                     <div class="grf-cm-new-controls">
-                        <select id="cm-new-type-selector"><option value="Card System">Card System</option><option value="Drawer">Drawer</option><option value="Card Style">Card Style</option></select>
+                        <select id="cm-new-type-selector">${typeOptions}</select> // Use dynamically generated options
                         <button id="cm-new-btn" class="btn btn-primary">+ Nova</button>
                     </div>
                     <ul id="cm-config-list"></ul>
@@ -90,9 +99,10 @@ function close() {
             </div>`;
         
         const editorMap = {
-            'CardSystem': window.CardConfigEditor,
-            'Drawer': window.DrawerConfigEditor,
-            'Card Style': window.CardStyleConfigEditor
+            'Card System': CardConfigEditor,
+            'Drawer': DrawerConfigEditor,
+            'Card Style': CardStyleConfigEditor,
+            'Table': TableConfigEditor
         };
         const configListEl = container.querySelector('#cm-config-list');
         const editorContentEl = container.querySelector('#cm-editor-content');
@@ -329,7 +339,7 @@ export function open(grist, options = {}) {
     if (overlay) return;
     _grist = grist; // Store the grist object
 
-    const { initialConfigId = null } = options;
+    const { initialConfigId = null, componentTypes = ['Card System', 'Drawer', 'Card Style'] } = options; // Add componentTypes
     overlay = document.createElement('div');
     overlay.className = 'grf-cm-overlay';
     overlay.innerHTML = `<div class="grf-cm-modal"><div class="grf-cm-header"><h1>Gerenciador de Configurações</h1><button class="grf-cm-close">×</button></div><div class="grf-cm-body"><p>Carregando...</p></div></div>`;
@@ -338,7 +348,7 @@ export function open(grist, options = {}) {
     overlay.querySelector('.grf-cm-close').onclick = close;
     overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
     
-    renderMainUI(overlay.querySelector('.grf-cm-body'), initialConfigId);
+    renderMainUI(overlay.querySelector('.grf-cm-body'), initialConfigId, componentTypes); // Pass componentTypes
 }
 
 // Inside renderMainUI, within formEl.onsubmit:

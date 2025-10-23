@@ -1,4 +1,4 @@
-window.CardConfigEditor = (() => {
+export const CardConfigEditor = (() => {
     let state = {};
     let _mainContainer = null;
     let _fieldStylePopup = null;

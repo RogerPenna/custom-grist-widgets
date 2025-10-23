@@ -8,7 +8,7 @@
 
     <!-- Carrega o CSS da biblioteca de configuração. Isso está correto. -->
     <link rel="stylesheet" href="../libraries/grist-config-manager/ConfigManagerComponent.css">
-    
+    <link rel="stylesheet" href="../libraries/grist-style-utils/icons.css">
     <style>
         /* Estilos do widget e do modal de configuração */
         html, body { 
@@ -40,23 +40,6 @@
             align-items: center;
             box-sizing: border-box;
         }
-    #settings-gear-btn {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        width: 32px;
-        height: 32px;
-        cursor: pointer;
-        z-index: 100;
-        border-radius: 50%;
-        background-color: rgba(255, 255, 255, 0.8);
-        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    #settings-gear-btn:hover { background-color: #fff; }
-        }
         #settings-modal-overlay { 
             position: fixed; 
             top: 0; 
@@ -86,126 +69,6 @@
         .input-group input:focus { outline: none; border-color: #86b7fe; box-shadow: 0 0 0 0.25rem rgba(13,110,253,.25); }
         .input-group button { border-radius: 0 5px 5px 0; }
         .btn-danger { background-color: #dc3545; border-color: #dc3545; }
-		    #config-popover-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: transparent; /* Invisível, só para capturar cliques */
-        z-index: 1900;
-    }
-
-    .config-popover {
-        position: absolute;
-        top: 48px; /* Posição abaixo do ícone de engrenagem */
-        right: 10px;
-        width: 280px;
-        background-color: #fff;
-        border-radius: 6px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        border: 1px solid #dee2e6;
-        padding: 15px;
-        z-index: 2000;
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-    }
-
-    .config-popover .input-group {
-        display: flex;
-        align-items: center;
-    }
-
-    .config-popover label {
-        font-size: 14px;
-        font-weight: 600;
-        color: #495057;
-        margin-bottom: 5px;
-        display: block;
-    }
-
-    .config-popover input[type="text"] {
-        flex-grow: 1;
-        height: 32px;
-        padding: 0 8px;
-        border: 1px solid #ced4da;
-        border-radius: 4px 0 0 4px; /* Cantos arredondados à esquerda */
-    }
-
-    .config-popover-btn {
-        height: 32px;
-        width: 32px;
-        padding: 4px;
-        border: 1px solid #ced4da;
-        background-color: #f8f9fa;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    .config-popover-btn:hover {
-        background-color: #e9ecef;
-    }
-    .config-popover-btn svg {
-        width: 18px;
-        height: 18px;
-        stroke: #495057;
-    }
-
-    /* Ajustes específicos para os botões do pop-up */
-    #popover-link-btn {
-        border-left: none;
-        border-radius: 0 4px 4px 0; /* Cantos arredondados à direita */
-    }
-    #popover-manager-btn {
-        border-radius: 4px;
-        margin-left: auto; /* Alinha o botão de engrenagem à direita */
-    }
-	.icon, #settings-gear-btn svg {
-    width: 18px;
-    height: 18px;
-    /* Define a cor base para os ícones */
-    color: #495057;
-    /* Aplica a cor tanto ao preenchimento quanto ao contorno */
-    fill: currentColor;
-    stroke: currentColor;
-}
-/* Alinha o layout do popover em uma única linha */
-.config-popover {
-    flex-direction: row; /* MUDANÇA: de column para row */
-    align-items: flex-end; /* Alinha os itens na base */
-}
-.config-popover > div { /* O container do input/label */
-    flex-grow: 1;
-/* ========================================================== */
-/* CORREÇÃO PRECISA PARA ÍCONES DE CONTORNO (ADICIONE ISTO) */
-/* ========================================================== */
-
-/* Define a cor e o tamanho para todos os ícones */
-#settings-gear-btn svg, .config-popover-btn .icon {
-    width: 18px;
-    height: 18px;
-    color: #495057; /* Cinza escuro para o 'currentColor' */
-}
-
-/* 
- * A MÁGICA ESTÁ AQUI: Esta regra se aplica às FORMAS DENTRO dos ícones.
- * Ela força o preenchimento a ser transparente e o contorno a usar a cor definida acima.
-*/
-#settings-gear-btn svg *, .config-popover-btn .icon * {
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 2; /* Garante uma espessura de linha consistente */
-    stroke-linecap: round;
-    stroke-linejoin: round;
-}
-
-/* 
- * EXCEÇÃO: Para os poucos ícones sólidos, o atributo 'fill="currentColor"' 
- * dentro do arquivo icons.svg vai sobrescrever o 'fill: none' acima, 
- * então eles também funcionarão corretamente.
-*/
     </style>
 </head>
 <body>
@@ -218,11 +81,6 @@
 
     <!-- Carregamos o CardSystem, que parece ser um script global (não usa export) -->
 <script src="../libraries/grist-card-system/CardSystem.js" type="module"></script>
-    
-    <!-- Carregamos os editores, que também são globais -->
-    <script src="../ConfigManager/editors/config-drawer.js"></script>
-    <script src="../ConfigManager/editors/config-cards.js"></script>
-    <script src="../ConfigManager/editors/config-card-style.js"></script>
     
     <!-- FINALMENTE, carregamos o nosso ponto de entrada como MÓDULO. -->
     <!-- Ele será responsável por importar TODAS as outras bibliotecas de módulo. -->

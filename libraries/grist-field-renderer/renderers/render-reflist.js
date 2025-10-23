@@ -85,7 +85,7 @@ export async function renderRefList(options) {
             `;
             expandButton.innerHTML = `
                 <span style="font-size: 16px;">▶️</span>
-                <span style="font-size: 16px;">◀️</span>
+                <span style="font-size: 16px;">RefList Collapsed</span>
             `;
             expandButton.onclick = (e) => {
                 e.stopPropagation();
@@ -93,11 +93,13 @@ export async function renderRefList(options) {
                 renderContent();
             };
             container.appendChild(expandButton);
-            return;
+            // Do NOT return here. Continue to fetch records but only display if expanded.
         }
 
         // Expanded state rendering
-        container.innerHTML = '<p>Carregando...</p>';
+        if (!isCollapsed) {
+            container.innerHTML = '<p>Carregando...</p>';
+        }
         let relatedRecords = await tableLens.fetchRelatedRecords(record, colSchema.colId);
         relatedRecords.sort((a, b) => { const vA = a[sortColumn], vB = b[sortColumn]; if (vA < vB) return sortDirection === 'asc' ? -1 : 1; if (vA > vB) return sortDirection === 'asc' ? 1 : -1; return 0; });
 
@@ -117,7 +119,19 @@ export async function renderRefList(options) {
         const relatedSchema = await tableLens.getTableSchema(referencedTableId);
         const ruleMap = ruleIdToColIdMap || new Map();
         
-        container.innerHTML = '';
+        if (isCollapsed) {
+            // If collapsed, just update the count in the expand button
+            const expandButton = container.querySelector('.reflist-expand-button');
+            if (expandButton) {
+                expandButton.innerHTML = `
+                    <span style="font-size: 16px;">▶️</span>
+                    <span style="font-size: 16px;">RefList Collapsed (${totalRecords} itens)</span>
+                `;
+            }
+            return; // Now return after fetching but before detailed rendering
+        }
+
+        container.innerHTML = ''; // Clear the 'Carregando...' or collapsed button
         const header = document.createElement('div');
         header.className = 'grf-reflist-header';
         container.appendChild(header);

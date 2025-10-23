@@ -1,4 +1,4 @@
-window.CardStyleConfigEditor = (() => {
+export const CardStyleConfigEditor = (() => {
     let _mainContainer = null;
 
     function render(container, config, lens, tableId, allConfigs) {
