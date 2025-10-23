@@ -13,6 +13,11 @@ export const CardSystem = (() => {
   //--------------------------------------------------------------------
   // 1) Internal State + Defaults
   //--------------------------------------------------------------------
+  let _allRecords = [];       // Store all records for filtering
+  let _lastOptions = {};      // Store last options for filtering
+  let _lastSchema = {};       // Store last schema for filtering
+  let _container = null;      // Store the container element
+  let _originalRecords = [];  // Store the original, unfiltered records
   
   const DEFAULT_FIELD_STYLE = {
     labelVisible: true, labelPosition: 'above', labelFont: 'inherit', labelFontSize: 'inherit', labelColor: 'inherit', labelOutline: false, labelOutlineColor: '#ffffff', dataJustify: 'left', heightLimited: false, maxHeightRows: 1, isTitleField: false
@@ -85,6 +90,12 @@ export const CardSystem = (() => {
     console.log("DEBUG: CardSystem received layout:", JSON.stringify(layout, null, 2));
     const viewMode = currentOptions.viewMode || 'click';
     const numRows = currentOptions.numRows || DEFAULT_NUM_ROWS;
+
+    // Store all records for filtering
+    _allRecords = records;
+    _lastOptions = currentOptions;
+    _lastSchema = schema;
+    _container = container;
 
     container.innerHTML = "";
     if (!records || !records.length) {
@@ -428,6 +439,24 @@ if (styling.fieldBackground?.enabled) {
     });
   }
 
+  // Function to filter records based on a search term
+  function filterRecords(searchTerm) {
+    if (!_container) {
+      console.error("Card container not found for filtering.");
+      return;
+    }
+    const filteredRecords = _allRecords.filter(record => {
+      return Object.values(record).some(value =>
+        String(value).toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    });
+    // We need to pass the current options and schema to renderCards for it to work correctly
+    // This assumes that the last options and schema used for rendering are still available or can be reconstructed.
+    // For simplicity, we'll re-fetch them or store them if needed. For now, let's assume they are passed.
+    // A more robust solution might involve storing the last used options/schema in _CardSystem state.
+    renderCards(_container, filteredRecords, _lastOptions, _lastSchema); 
+  }
+
   function handleCardClick(record, options) {
     const drawerConfigId = options?.sidePanel?.drawerConfigId;
     const tableId = options?.tableId;
@@ -469,5 +498,5 @@ if (styling.fieldBackground?.enabled) {
     return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
   }
 
-  return { renderCards };
+  return { renderCards, filterRecords };
 })();

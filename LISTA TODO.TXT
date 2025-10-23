@@ -100,6 +100,8 @@
 
 ### Próximas Tarefas
 
+- [BUG] **Filter module not updating correctly:** When using the filter bar, deleting characters or changing the search term after an initial filter does not correctly update the displayed cards. The filter seems to be applied to an already filtered set of records, instead of always filtering the original, complete dataset.
+
 - [DONE] **Melhorar Efeitos de Caixa de Campo e Adicionar Tooltips de Ajuda:**
   - Os efeitos de "Bevel" e "Drop Shadow" foram tornados mais pronunciados para melhor visibilidade.
   - Adicionado um novo efeito "Bevel (Outset)" para criar uma aparência de relevo.
