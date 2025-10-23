@@ -13,7 +13,7 @@ export const CardSystem = (() => {
   //--------------------------------------------------------------------
   // 1) Internal State + Defaults
   //--------------------------------------------------------------------
-  let _allRecords = [];       // Store all records for filtering
+  let _displayedRecords = []; // Store currently displayed records
   let _lastOptions = {};      // Store last options for filtering
   let _lastSchema = {};       // Store last schema for filtering
   let _container = null;      // Store the container element
@@ -91,8 +91,11 @@ export const CardSystem = (() => {
     const viewMode = currentOptions.viewMode || 'click';
     const numRows = currentOptions.numRows || DEFAULT_NUM_ROWS;
 
-    // Store all records for filtering
-    _allRecords = records;
+    // Store records for filtering and display
+    _displayedRecords = records;
+    if (_originalRecords.length === 0) { // Only set original records on initial load
+        _originalRecords = records;
+    }
     _lastOptions = currentOptions;
     _lastSchema = schema;
     _container = container;
@@ -445,11 +448,27 @@ if (styling.fieldBackground?.enabled) {
       console.error("Card container not found for filtering.");
       return;
     }
-    const filteredRecords = _allRecords.filter(record => {
-      return Object.values(record).some(value =>
-        String(value).toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    });
+        const filteredRecords = _originalRecords.filter(record => {
+          const lowerCaseSearchTerm = searchTerm.toLowerCase();
+          return Object.keys(_lastSchema).some(colId => {
+            const colSchema = _lastSchema[colId];
+            // Exclude Grist helper fields (e.g., 'id', 'manualSort', 'gristHelper_...')
+            if (colId === 'id' || colId === 'manualSort' || colId.startsWith('gristHelper_')) {
+              return false;
+            }
+    
+            let valueToSearch = record[colId];
+            let stringValue = '';
+    
+            if (colSchema.type === 'Bool') {
+              stringValue = (valueToSearch === true) ? 'sim' : (valueToSearch === false) ? 'não' : '';
+            } else if (valueToSearch !== null && valueToSearch !== undefined) {
+              stringValue = String(valueToSearch).toLowerCase();
+            }
+            
+            console.log(`Checking field '${colId}' with value: '${stringValue}' for search term: '${lowerCaseSearchTerm}'`);
+            return stringValue.includes(lowerCaseSearchTerm);
+          });    });
     // We need to pass the current options and schema to renderCards for it to work correctly
     // This assumes that the last options and schema used for rendering are still available or can be reconstructed.
     // For simplicity, we'll re-fetch them or store them if needed. For now, let's assume they are passed.
