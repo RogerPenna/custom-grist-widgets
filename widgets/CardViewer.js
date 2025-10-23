@@ -114,29 +114,49 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             currentConfig = JSON.parse(configRecord.configJson);
-            const tableId = currentConfig.tableId;
-            if (!tableId) {
-                renderStatus("Erro de Configuração: 'tableId' não definido no JSON da configuração.");
-                addSettingsGear();
-                return;
-            }
 
-            const [records, cleanSchema, rawSchema] = await Promise.all([
-                tableLens.fetchTableRecords(tableId),
-                tableLens.getTableSchema(tableId),
-                tableLens.getTableSchema(tableId, { mode: 'raw' })
-            ]);
-            
-            Object.keys(cleanSchema).forEach(colId => { 
-                if (rawSchema[colId] && rawSchema[colId].description) { 
-                    cleanSchema[colId].description = rawSchema[colId].description; 
+            if (configRecord.componentType === 'Card Style') {
+                // For Card Style, the configJson directly contains the styling object
+                // We don't need a tableId, and we'll render a preview or placeholder
+                const stylingConfig = currentConfig.styling; // Extract the styling object
+                if (!stylingConfig) {
+                    renderStatus("Erro de Configuração: 'styling' não definido no JSON da configuração de estilo.");
+                    addSettingsGear();
+                    return;
                 }
-            });
+                
+                appContainer.innerHTML = '';
+                // Render a placeholder with the applied style
+                CardSystem.renderCards(appContainer, [], { styling: stylingConfig, tableLens: tableLens }, {}); // Pass empty records and schema for preview
+                addSettingsGear();
+                console.log("[DEBUG] Card Style preview rendering complete.");
 
-            appContainer.innerHTML = '';
-            CardSystem.renderCards(appContainer, records, { ...currentConfig, tableLens: tableLens }, cleanSchema);
-            addSettingsGear();
-            console.log("[DEBUG] Card rendering complete.");
+            } else {
+                // Existing logic for 'Card System' and other component types
+                const tableId = currentConfig.tableId;
+                if (!tableId) {
+                    renderStatus("Erro de Configuração: 'tableId' não definido no JSON da configuração.");
+                    addSettingsGear();
+                    return;
+                }
+
+                const [records, cleanSchema, rawSchema] = await Promise.all([
+                    tableLens.fetchTableRecords(tableId),
+                    tableLens.getTableSchema(tableId),
+                    tableLens.getTableSchema(tableId, { mode: 'raw' })
+                ]);
+                
+                Object.keys(cleanSchema).forEach(colId => { 
+                    if (rawSchema[colId] && rawSchema[colId].description) { 
+                        cleanSchema[colId].description = rawSchema[colId].description; 
+                    }
+                });
+
+                appContainer.innerHTML = '';
+                CardSystem.renderCards(appContainer, records, { ...currentConfig, tableLens: tableLens }, cleanSchema);
+                addSettingsGear();
+                console.log("[DEBUG] Card rendering complete.");
+            }
 
         } catch (e) {
             console.error(`[DEBUG] Error during linked config load/render for ID "${currentConfigId}":`, e);

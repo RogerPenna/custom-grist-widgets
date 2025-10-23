@@ -6,6 +6,17 @@
 
 ### Tarefas Concluídas
 
+- [DONE] **Implementar funcionalidade de Salvar/Carregar Estilos de Card:**
+  - Adicionado tipo de componente "Card Style" ao Gerenciador de Configurações.
+  - Implementado editor simplificado (`config-card-style.js`) para estilos de card.
+  - Botão "Copy Style" alterado para "Save Style as New Config" no editor de Card System.
+  - Implementada lógica para salvar o estilo atual como uma nova configuração "Card Style" no `Grf_config`.
+  - Implementada lógica para carregar um estilo de card salvo anteriormente através de um dropdown no editor de Card System.
+  - Corrigido bug onde a alteração do `configId` de um widget no ConfigManager não era propagada corretamente.
+  - Corrigido erro "tableId não definido" ao carregar configurações de "Card Style" no `CardViewer.js`.
+  - Corrigido problema onde o prompt de nome do estilo não aparecia ou bloqueava a entrada.
+
+
 - [DONE] **Melhorias no Gerenciador de Configurações:**
   - Ao abrir o gerenciador a partir de um widget, a configuração vinculada ao widget agora é pré-selecionada automaticamente.
   - Adicionada a capacidade de agrupar configurações logicamente, adicionando um nome de grupo entre colchetes (ex: `[Meu Grupo]`) na descrição da configuração.

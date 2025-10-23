@@ -433,7 +433,13 @@ window.CardConfigEditor = (() => {
         tabEl.dataset.tabSection = "sty";
         tabEl.style.display = "none";
         tabEl.innerHTML = `
-            <h3>Styling Options</h3>
+            <h3>Styling Options <button type="button" id="cs-save-style-btn" class="btn btn-sm btn-primary" style="margin-left: 10px;">Save Style as New Config</button></h3>
+            <div style="margin-top: 15px; display: flex; align-items: center; gap: 10px;">
+                <select id="cs-load-style-select" class="form-control" style="flex-grow: 1;">
+                    <option value="">-- Load Saved Style --</option>
+                </select>
+                <button type="button" id="cs-load-style-btn" class="btn btn-sm btn-secondary">Load</button>
+            </div>
             <div class="styling-grid">
                 <fieldset>
                     <legend><b>Widget Background</b></legend>
@@ -620,6 +626,74 @@ window.CardConfigEditor = (() => {
         updateTopBarColorInputsState();
         tabEl.querySelectorAll('input[type="radio"]:checked').forEach(radio => { if(radio) radio.dispatchEvent(new Event('change')) });
 
+        // Event listener for the Save Style as New Config button
+        const saveStyleBtn = tabEl.querySelector('#cs-save-style-btn');
+        if (saveStyleBtn) {
+            saveStyleBtn.addEventListener('click', () => {
+                try {
+                    const currentStyling = readStylingTab(tabEl);
+
+                    const event = new CustomEvent('grf-save-card-style', {
+                        detail: {
+                            widgetTitle: null, // Will be prompted in ConfigManagerComponent
+                            configJson: JSON.stringify({ styling: currentStyling }),
+                            componentType: 'Card Style',
+                            description: '[STYLE]'
+                        },
+                        bubbles: true
+                    });
+                    _mainContainer.dispatchEvent(event);
+                } catch (e) {
+                    console.error('Error saving style:', e);
+                    alert('Error saving style: ' + e.message);
+                }
+            });
+        }
+
+        // --- Load Style Dropdown Logic ---
+        const loadStyleSelect = tabEl.querySelector('#cs-load-style-select');
+        const loadStyleBtn = tabEl.querySelector('#cs-load-style-btn');
+
+        // Populate the dropdown with saved Card Styles
+        const cardStyles = allConfigs.filter(c => c.componentType === 'Card Style');
+        cardStyles.forEach(styleConfig => {
+            const option = document.createElement('option');
+            option.value = styleConfig.configId;
+            option.textContent = styleConfig.widgetTitle;
+            loadStyleSelect.appendChild(option);
+        });
+
+        // Handle Load Style button click
+        if (loadStyleBtn) {
+            loadStyleBtn.addEventListener('click', () => {
+                const selectedConfigId = loadStyleSelect.value;
+                if (!selectedConfigId) {
+                    alert('Please select a style to load.');
+                    return;
+                }
+
+                const selectedStyle = cardStyles.find(s => s.configId === selectedConfigId);
+                if (selectedStyle) {
+                    try {
+                        const loadedStyling = JSON.parse(selectedStyle.configJson).styling;
+                        // Update the state with the loaded styling
+                        state.styling = { ...DEFAULT_STYLING, ...loadedStyling };
+                        // Re-populate the styling tab to reflect changes
+                        populateStylingTab(tabEl);
+                        // Manually trigger UI updates for toggles etc.
+                        tabEl.querySelectorAll('input[type="radio"]:checked').forEach(radio => { if(radio) radio.dispatchEvent(new Event('change')) });
+                        // Also update the debug JSON
+                        updateDebugJson();
+                        alert(`Style "${selectedStyle.widgetTitle}" loaded successfully!`);
+                    } catch (e) {
+                        console.error('Error loading style:', e);
+                        alert('Error loading style: ' + e.message);
+                    }
+                } else {
+                    alert('Selected style not found.');
+                }
+            });
+        }
     }
 
     function populateStylingTab(tabEl) { const s = state.styling; let bgModeInput = tabEl.querySelector(`input[name='bgmode'][value='${s.widgetBackgroundMode}']`); if (bgModeInput) { bgModeInput.checked = true; } else { tabEl.querySelector("input[name='bgmode'][value='solid']").checked = true; } tabEl.querySelector("#cs-st-bgcolor").value = s.widgetBackgroundSolidColor; tabEl.querySelector("#cs-st-bggradient-type").value = s.widgetBackgroundGradientType || 'linear-gradient(to right, {c1}, {c2})'; tabEl.querySelector("#cs-st-bggradient-c1").value = s.widgetBackgroundGradientColor1 || '#f9f9f9'; tabEl.querySelector("#cs-st-bggradient-c2").value = s.widgetBackgroundGradientColor2 || '#e9e9e9'; tabEl.querySelector(`input[name='cardscolormode'][value='${s.cardsColorMode}']`).checked = true; tabEl.querySelector("#cs-st-cardcolor").value = s.cardsColorSolidColor; tabEl.querySelector("#cs-st-cardgradient-type").value = s.cardsColorGradientType || 'linear-gradient(to right, {c1}, {c2})'; tabEl.querySelector("#cs-st-cardgradient-c1").value = s.cardsColorGradientColor1 || '#ffffff'; tabEl.querySelector("#cs-st-cardgradient-c2").value = s.cardsColorGradientColor2 || '#f0f0f0'; tabEl.querySelector("#cs-st-cardscolorfield").value = s.cardsColorField || ""; tabEl.querySelector("#cs-st-cardscolor-apply-text").checked = s.cardsColorApplyText === true; tabEl.querySelector("#cs-st-border-thickness").value = s.cardBorderThickness; tabEl.querySelector(`input[name='bordermode'][value='${s.cardBorderMode}']`).checked = true; tabEl.querySelector("#cs-st-border-color").value = s.cardBorderSolidColor; tabEl.querySelector("#cs-st-border-field").value = s.cardBorderField || ""; tabEl.querySelector("#cs-st-titlecolor").value = s.cardTitleFontColor; tabEl.querySelector("#cs-st-titlefont").value = s.cardTitleFontStyle; tabEl.querySelector("#cs-st-titlesize").value = parseInt(s.cardTitleFontSize, 10); tabEl.querySelector("#cs-st-topbar-enabled").checked = s.cardTitleTopBarEnabled; tabEl.querySelector(`input[name='topbarmode'][value='${s.cardTitleTopBarMode}']`).checked = true; tabEl.querySelector("#cs-st-topbar-color").value = s.cardTitleTopBarSolidColor; tabEl.querySelector("#cs-st-topbargradient-type").value = s.cardTitleTopBarGradientType || 'linear-gradient(to right, {c1}, {c2})'; tabEl.querySelector("#cs-st-topbargradient-c1").value = s.cardTitleTopBarGradientColor1 || '#dddddd'; tabEl.querySelector("#cs-st-topbargradient-c2").value = s.cardTitleTopBarGradientColor2 || '#cccccc'; tabEl.querySelector("#cs-st-topbar-field").value = s.cardTitleTopBarField || ""; tabEl.querySelector("#cs-st-topbar-apply-text").checked = s.cardTitleTopBarApplyText === true;tabEl.querySelector("#cs-st-topbar-lblcolor").value = s.cardTitleTopBarLabelFontColor; tabEl.querySelector("#cs-st-topbar-lblfont").value = s.cardTitleTopBarLabelFontStyle; tabEl.querySelector("#cs-st-topbar-lblsize").value = parseInt(s.cardTitleTopBarLabelFontSize, 10); tabEl.querySelector("#cs-st-topbar-datacolor").value = s.cardTitleTopBarDataFontColor; tabEl.querySelector("#cs-st-topbar-datafont").value = s.cardTitleTopBarDataFontStyle; tabEl.querySelector("#cs-st-topbar-datasize").value = parseInt(s.cardTitleTopBarDataFontSize, 10); tabEl.querySelector("#cs-st-handle-width").value = parseInt(s.handleAreaWidth, 10); tabEl.querySelector(`input[name='handlemode'][value='${s.handleAreaMode}']`).checked = true; tabEl.querySelector("#cs-st-handle-color").value = s.handleAreaSolidColor; tabEl.querySelector("#cs-st-handle-field").value = s.handleAreaField || ""; tabEl.querySelector("#cs-st-padding").value = parseInt(s.widgetPadding, 10);    tabEl.querySelector("#cs-st-spacing").value = parseInt(s.cardsSpacing, 10);
@@ -647,7 +721,7 @@ window.CardConfigEditor = (() => {
     tabEl.querySelector('#cs-st-label-size').value = parseInt(ls.size, 10);
 }
     function readStylingTab(container) {
-    const tabEl = container.querySelector('[data-tab-section="sty"]');
+    const tabEl = container;
     const getCheckedValue = (name) => tabEl.querySelector(`input[name='${name}']:checked`)?.value;
     const s = {};
     Object.assign(s, DEFAULT_STYLING);

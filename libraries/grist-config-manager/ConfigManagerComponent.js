@@ -72,7 +72,7 @@ function close() {
                 <div class="grf-cm-sidebar">
                     <h2>Configurações</h2>
                     <div class="grf-cm-new-controls">
-                        <select id="cm-new-type-selector"><option value="Card System">Card System</option><option value="Drawer">Drawer</option></select>
+                        <select id="cm-new-type-selector"><option value="Card System">Card System</option><option value="Drawer">Drawer</option><option value="Card Style">Card Style</option></select>
                         <button id="cm-new-btn" class="btn btn-primary">+ Nova</button>
                     </div>
                     <ul id="cm-config-list"></ul>
@@ -91,7 +91,8 @@ function close() {
         
         const editorMap = {
             'CardSystem': window.CardConfigEditor,
-            'Drawer': window.DrawerConfigEditor
+            'Drawer': window.DrawerConfigEditor,
+            'Card Style': window.CardStyleConfigEditor
         };
         const configListEl = container.querySelector('#cm-config-list');
         const editorContentEl = container.querySelector('#cm-editor-content');
@@ -249,6 +250,71 @@ function close() {
         };
 
         loadList(allConfigs);
+
+        // Event listener for saving a new Card Style from the CardConfigEditor
+        container.addEventListener('grf-save-card-style', async (e) => {
+            const { configJson, componentType, description } = e.detail;
+            const modalBody = container;
+            const originalModalBodyContent = modalBody.innerHTML; // Store original content
+
+            // Temporarily replace modal body with name input form
+            modalBody.innerHTML = `
+                <div class="grf-cm-prompt-form">
+                    <div class="form-group">
+                        <label for="style-name-input">Enter a name for this Card Style:</label>
+                        <input type="text" id="style-name-input" class="form-control" required>
+                    </div>
+                    <div class="form-actions" style="text-align: right; margin-top: 20px;">
+                        <button id="style-name-cancel" type="button" class="btn btn-secondary">Cancel</button>
+                        <button id="style-name-save" type="button" class="btn btn-primary" style="margin-left: 10px;">Save</button>
+                    </div>
+                </div>
+            `;
+
+            const nameInput = modalBody.querySelector('#style-name-input');
+            const saveBtn = modalBody.querySelector('#style-name-save');
+            const cancelBtn = modalBody.querySelector('#style-name-cancel');
+
+            nameInput.focus();
+
+            const saveStyle = async (styleName) => {
+                const newConfigId = `nova_${componentType.replace(/\s+/g, '').toLowerCase()}_${Date.now()}`;
+                const recordData = {
+                    widgetTitle: styleName,
+                    configId: newConfigId,
+                    description: description,
+                    componentType: componentType,
+                    configJson: configJson
+                };
+
+                try {
+                    await dataWriter.addRecord(CONFIG_TABLE, recordData);
+                    alert(`Card Style "${styleName}" saved successfully!`);
+                    close();
+                } catch (err) {
+                    alert(`Error saving Card Style: ${err.message}`);
+                    console.error("Error saving Card Style:", err);
+                } finally {
+                    modalBody.innerHTML = originalModalBodyContent; // Restore original content
+                    loadList(allConfigs); // Reload list to show new config
+                }
+            };
+
+            saveBtn.onclick = () => {
+                const styleName = nameInput.value.trim();
+                if (styleName) {
+                    saveStyle(styleName);
+                } else {
+                    alert('Style name cannot be empty.');
+                }
+            };
+
+            cancelBtn.onclick = () => {
+                modalBody.innerHTML = originalModalBodyContent; // Restore original content
+                // Optionally, reload the list if needed, or just close the modal
+                loadList(allConfigs); // Reload list to ensure state is consistent
+            };
+        });
 
     } catch (error) {
         console.error("Erro inesperado no ConfigManager:", error);
