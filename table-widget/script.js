@@ -5,16 +5,25 @@ import { open as openConfigManager } from '../libraries/grist-config-manager/Con
 // import Tabulator from '../libraries/tabulator/tabulator.min.js'; 
 
 document.addEventListener('DOMContentLoaded', async function () {
-    console.log('DOMContentLoaded fired.');
-    const tableContainer = document.getElementById('table-container');
     let currentConfig = null;
     let currentConfigId = null;
     let isInitialized = false;
     let tabulatorTable = null;
 
+    console.log('DOMContentLoaded fired.');
+    const tableContainer = document.getElementById('table-container');
+
     grist.ready({ requiredAccess: 'full' });
     console.log('grist.ready() called.');
     console.log('Grist API ready.');
+
+    // Explicitly get options on load to ensure configId is set if persisted
+    const initialOptions = await grist.getOptions();
+    if (initialOptions?.configId) {
+        currentConfigId = initialOptions.configId;
+        isInitialized = true; // Mark as initialized if we have a configId
+        console.log('DEBUG: Initialized currentConfigId from grist.getOptions():', currentConfigId);
+    }
 
     // Carrega o arquivo SVG e o injeta no DOM.
     async function loadIcons() {
@@ -82,9 +91,14 @@ document.addEventListener('DOMContentLoaded', async function () {
         `;
         document.body.appendChild(popover);
 
-        popover.querySelector('#popover-link-btn').onclick = () => {
+        popover.querySelector('#popover-link-btn').onclick = async () => {
             const newId = popover.querySelector('#popover-config-id').value.trim();
+            console.log('DEBUG: Calling grist.setOptions with configId:', newId || null);
             grist.setOptions({ configId: newId || null });
+            // Manually update currentConfigId and re-initialize as a workaround for grist.onOptions not firing reliably after setOptions
+            currentConfigId = newId || null;
+            isInitialized = true; // Ensure re-initialization
+            await initializeAndUpdate();
             closeSettingsPopover();
         };
 
@@ -108,7 +122,6 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 
     async function initializeAndUpdate() {
-        console.log('initializeAndUpdate called.');
         renderStatus("Loading...");
 
         const tableLens = new GristTableLens(grist);
@@ -129,7 +142,6 @@ document.addEventListener('DOMContentLoaded', async function () {
                     description: 'Text',
                     componentType: 'Text',
                     configJson: 'Text',
-                    pageId: 'Numeric',
                     tableID: 'Text' // Added tableID for direct widget linkage
                 };
                 const missingCols = Object.keys(requiredCols).filter(col => !configSchema[col]);
@@ -177,33 +189,35 @@ document.addEventListener('DOMContentLoaded', async function () {
             currentConfig = JSON.parse(configRecord.configJson);
             console.log('currentConfig (parsed from configJson):', currentConfig);
 
-            const tableID = currentConfig.tableID;
-            console.log('tableID from currentConfig:', tableID);
-            if (!tableID) {
+            const tableId = currentConfig.tableId;
+            console.log('tableId from currentConfig:', tableId);
+            if (!tableId) {
                 renderStatus("Configuration Error: 'tableId' not defined in the configuration JSON.");
                 addSettingsGear();
                 return;
             }
 
-            console.log('Fetching records and schema for tableID:', tableID);
+            console.log('Fetching records and schema for tableId:', tableId);
             const [records, cleanSchema] = await Promise.all([
-                tableLens.fetchTableRecords(tableID),
-                tableLens.getTableSchema(tableID)
+                tableLens.fetchTableRecords(tableId),
+                tableLens.getTableSchema(tableId)
             ]);
             console.log('Fetched records:', records);
             console.log('Fetched cleanSchema:', cleanSchema);
 
             // Map Grist schema to Tabulator column definitions
-            const columns = Object.keys(cleanSchema).map(colId => {
+            const columns = (currentConfig.visibleColumns || Object.keys(cleanSchema)).map(colId => {
                 const gristCol = cleanSchema[colId];
+                if (!gristCol) return null; // Skip if column not found in schema
                 return {
                     title: gristCol.label || gristCol.colId,
                     field: gristCol.colId,
                     hozAlign: 'left', // Default alignment
                     headerFilter: true, // Enable header filters
+                    width: currentConfig.columnWidths[colId] || undefined, // Apply custom width
                     // Potentially add more type-specific formatters/editors here
                 };
-            });
+            }).filter(col => col !== null); // Filter out nulls from skipped columns
             console.log('Tabulator columns:', columns);
 
             tableContainer.innerHTML = ''; // Clear previous content
@@ -217,14 +231,28 @@ document.addEventListener('DOMContentLoaded', async function () {
                 tooltips: true, //show tool tips on cells
                 addRowPos: "top", //when adding a new row, add it to the top of the table
                 history: true, //allow undo and redo actions on the table
-                pagination: "local", //paginate the data
-                paginationSize: 10, //allow 7 rows to be displayed at a time
-                paginationSizeSelector: [5, 10, 20, 50, 100],
+                pagination: currentConfig.pagination.enabled ? "local" : false, //paginate the data
+                paginationSize: currentConfig.pagination.pageSize, //allow 7 rows to be displayed at a time
+                paginationSizeSelector: currentConfig.pagination.enabled ? [5, 10, 20, 50, 100] : false,
                 movableColumns: true, //allow column order to be changed
                 resizableRows: true, //allow row height to be changed
-                initialSort: currentConfig.initialSort || [], // e.g., [{column:"name", dir:"asc"}]
-                initialFilter: currentConfig.initialFilter || [], // e.g., [{field:"age", type:">", value:18}]
+                initialSort: currentConfig.defaultSort.column ? [{ column: currentConfig.defaultSort.column, dir: currentConfig.defaultSort.direction }] : [],
+                // initialFilter: currentConfig.initialFilter || [], // Not implemented in editor yet
             });
+
+            // Apply styling classes
+            if (currentConfig.styling.zebra) {
+                tableContainer.classList.add('tabulator-zebra');
+            } else {
+                tableContainer.classList.remove('tabulator-zebra');
+            }
+            if (currentConfig.styling.compact) {
+                tableContainer.classList.add('tabulator-compact');
+            } else {
+                tableContainer.classList.remove('tabulator-compact');
+            }
+            // Tabulator handles fixed header with height:"100%" and layout:"fitColumns" generally
+            // No specific class needed for fixedHeader unless custom CSS is applied.
             console.log('Tabulator initialized.');
             addSettingsGear();
 
@@ -237,12 +265,10 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     // Grist event listeners
     grist.onOptions(async (options) => {
-        console.log('grist.onOptions fired. Options:', options);
         const newConfigId = options?.configId || null;
         if (newConfigId !== currentConfigId || !isInitialized) {
             isInitialized = true;
             currentConfigId = newConfigId;
-            console.log('Calling initializeAndUpdate from onOptions');
             await initializeAndUpdate();
         }
     });

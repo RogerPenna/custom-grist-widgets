@@ -114,6 +114,7 @@
 
 ### Progresso Atual no Table Widget
 
+- [DONE] **`configId` do Table Widget persiste após navegação:** Corrigido o problema onde o `configId` não era mantido ao navegar para fora e voltar à página, garantindo que o widget carregue a configuração correta.
 - [DONE] **Resolvido erro 404 para `tabulator.min.js` e `tabulator.min.css`:** Arquivos adicionados manualmente à `libraries/tabulator`.
 - [DONE] **Corrigidos caminhos de importação em `table-widget/script.js`:** De absolutos para relativos.
 - [DONE] **Corrigido caminho de `framework-config.js` em `table-widget/index.html`:** De absoluto para relativo.
