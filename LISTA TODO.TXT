@@ -129,3 +129,25 @@
 ### Erro Atual
 
 - [BUG] **`ReferenceError: componentTypes is not defined` no `ConfigManagerComponent.js`:** Ocorre em `renderMainUI` (linha 77:29) porque a função `open` não está passando o parâmetro `componentTypes` para `renderMainUI` corretamente. Isso impede a correta inicialização do Gerenciador de Configurações e a exibição das opções de tipo de componente.
+
+### Table Configurator UI Improvements
+
+- [DONE] **`configId` do Table Widget persiste após navegação:**
+  - **Problema:** O `configId` para o Table Widget não estava persistindo após a navegação, recarregando como `null`.
+  - **Resolução:** Modificado `table-widget/script.js` para explicitamente recuperar o `configId` usando `grist.getOptions()` no início do `DOMContentLoaded`, garantindo a inicialização correta.
+
+- [DONE] **Botões "Selecionar Todos" e "Desmarcar Todos" causavam submissão inesperada do formulário e perda de dados:**
+  - **Problema:** Clicar nos botões "Selecionar Todos" ou "Desmarcar Todos" no Table Configurator causava a submissão do formulário, fechando o configurador e potencialmente salvando uma configuração incompleta.
+  - **Resolução:** Adicionado `type="button"` aos botões em `ConfigManager/editors/config-table.js` para evitar submissão de formulário indesejada.
+
+- [DONE] **Botões "Selecionar Todos" e "Desmarcar Todos" não atualizavam corretamente as caixas de seleção na UI:**
+  - **Problema:** Após clicar em "Selecionar Todos" ou "Desmarcar Todos", as caixas de seleção no configurador não eram atualizadas visualmente, e o array `_config.visibleColumns` não refletia corretamente o estado desejado.
+  - **Resolução:** Modificado `ConfigManager/editors/config-table.js` para atualizar diretamente a propriedade `checked` de todas as caixas de seleção relevantes e, em seguida, despachar um evento `change` manual em cada uma.
+
+- [DONE] **Campos do configurador da tabela não eram exibidos inicialmente:**
+  - **Problema:** Ao abrir o Table Configurator, nenhum campo era exibido.
+  - **Resolução:** Lógica de `currentVisibleColumns` em `ConfigManager/editors/config-table.js` ajustada para exibir todas as `availableColumns` por padrão, se `_config.visibleColumns` estivesse vazio ou indefinido.
+
+- [DONE] **JSON da configuração não era visível na área de texto de depuração:**
+  - **Problema:** O JSON da configuração não era exibido na área de texto "JSON Gerado (Monitor de Debug)" para o Table Configurator.
+  - **Resolução:** Removidos logs de depuração de `ConfigManager/config-manager-widget.js`. Modificada `ConfigManager/editors/config-table.js` para incluir uma seção `<details>` com `<code>` para exibir o JSON gerado dinamicamente, e implementada a função `updateDebugJson()` para popular esta seção.
