@@ -60,7 +60,7 @@ function close() {
 }
 
 // Lógica principal da UI
-    async function renderMainUI(container, initialConfigId = null) {    const CONFIG_TABLE = 'Grf_config';
+    async function renderMainUI(container, initialConfigId = null, componentTypes) {    const CONFIG_TABLE = 'Grf_config';
     const tableLens = new GristTableLens(grist);
 
     try {
@@ -81,7 +81,7 @@ function close() {
                 <div class="grf-cm-sidebar">
                     <h2>Configurações</h2>
                     <div class="grf-cm-new-controls">
-                        <select id="cm-new-type-selector">${typeOptions}</select> // Use dynamically generated options
+                        <select id="cm-new-type-selector">${typeOptions}</select>
                         <button id="cm-new-btn" class="btn btn-primary">+ Nova</button>
                     </div>
                     <ul id="cm-config-list"></ul>
@@ -99,9 +99,9 @@ function close() {
             </div>`;
         
         const editorMap = {
-            'Card System': CardConfigEditor,
+            'CardSystem': CardConfigEditor,
             'Drawer': DrawerConfigEditor,
-            'Card Style': CardStyleConfigEditor,
+            'CardStyle': CardStyleConfigEditor,
             'Table': TableConfigEditor
         };
         const configListEl = container.querySelector('#cm-config-list');
