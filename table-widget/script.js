@@ -1,6 +1,7 @@
 import '../ConfigManager/editors/table-manifest.js';
 import { GristTableLens } from '../libraries/grist-table-lens/grist-table-lens.js';
 import { open as openConfigManager } from '../libraries/grist-config-manager/ConfigManagerComponent.js';
+import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js';
 
 // Assume Tabulator is globally available because it's imported in index.html
 // import Tabulator from '../libraries/tabulator/tabulator.min.js'; 
@@ -10,6 +11,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     let currentConfigId = null;
     let isInitialized = false;
     let tabulatorTable = null;
+    const addRowBtn = document.getElementById('add-row-btn');
 
     console.log('DOMContentLoaded fired.');
     const tableContainer = document.getElementById('table-container');
@@ -207,15 +209,26 @@ document.addEventListener('DOMContentLoaded', async function () {
             console.log('Fetched cleanSchema:', cleanSchema);
 
             // Map Grist schema to Tabulator column definitions
-            const columns = (currentConfig.visibleColumns || Object.keys(cleanSchema)).map(colId => {
-                const gristCol = cleanSchema[colId];
+            const columns = (currentConfig.columns || []).map(colConfig => {
+                const gristCol = cleanSchema[colConfig.colId];
                 if (!gristCol) return null; // Skip if column not found in schema
+                const isEditable = currentConfig.editMode === 'excel' && !colConfig.locked;
+                const validators = [];
+                if (currentConfig.editMode === 'excel' && colConfig.required) {
+                    validators.push('required');
+                }
+
                 return {
                     title: gristCol.label || gristCol.colId,
                     field: gristCol.colId,
-                    hozAlign: 'left', // Default alignment
+                    hozAlign: colConfig.align || 'left', // Default alignment
                     headerFilter: true, // Enable header filters
-                    width: currentConfig.columnWidths[colId] || undefined, // Apply custom width
+                    width: colConfig.width || undefined, // Apply custom width
+                    bottomCalc: currentConfig.enableColumnCalcs ? (colConfig.bottomCalc || undefined) : undefined, // Apply column calculation only if global option is enabled
+                    editable: isEditable, // Apply editability based on mode and locked status
+                    validator: validators.length > 0 ? validators.join('|') : undefined, // Apply validators
+                    formatter: colConfig.formatter || undefined, // Apply cell formatter
+                    formatterParams: colConfig.formatterParams || undefined, // Apply cell formatter parameters
                     // Potentially add more type-specific formatters/editors here
                 };
             }).filter(col => col !== null); // Filter out nulls from skipped columns
@@ -228,33 +241,102 @@ document.addEventListener('DOMContentLoaded', async function () {
                 data: records, //assign data to table
                 layout: "fitColumns", //fit columns to width of table (optional)
                 columns: columns, //define table columns
+                columnCalcs: currentConfig.enableColumnCalcs ? "bottom" : false, // Enable column calculations
                 // Additional Tabulator options
                 tooltips: true, //show tool tips on cells
                 addRowPos: "top", //when adding a new row, add it to the top of the table
                 history: true, //allow undo and redo actions on the table
-                pagination: currentConfig.pagination.enabled ? "local" : false, //paginate the data
-                paginationSize: currentConfig.pagination.pageSize, //allow 7 rows to be displayed at a time
-                paginationSizeSelector: currentConfig.pagination.enabled ? [5, 10, 20, 50, 100] : false,
+                pagination: currentConfig.pagination?.enabled ? "local" : false, //paginate the data
+                paginationSize: currentConfig.pagination?.pageSize, //allow 7 rows to be displayed at a time
+                paginationSizeSelector: currentConfig.pagination?.enabled ? [5, 10, 20, 50, 100] : false,
                 movableColumns: true, //allow column order to be changed
                 resizableRows: true, //allow row height to be changed
-                initialSort: currentConfig.defaultSort.column ? [{ column: currentConfig.defaultSort.column, dir: currentConfig.defaultSort.direction }] : [],
+                initialSort: currentConfig.defaultSort?.column ? [{ column: currentConfig.defaultSort.column, dir: currentConfig.defaultSort.direction }] : [],
                 // initialFilter: currentConfig.initialFilter || [], // Not implemented in editor yet
             });
 
             // Apply styling classes
-            if (currentConfig.styling.zebra) {
-                tableContainer.classList.add('tabulator-zebra');
+            if (currentConfig.stripedTable) {
+                tableContainer.classList.add('custom-striped-enabled');
             } else {
-                tableContainer.classList.remove('tabulator-zebra');
-            }
-            if (currentConfig.styling.compact) {
-                tableContainer.classList.add('tabulator-compact');
-            } else {
-                tableContainer.classList.remove('tabulator-compact');
+                tableContainer.classList.remove('custom-striped-enabled');
             }
             // Tabulator handles fixed header with height:"100%" and layout:"fitColumns" generally
-            // No specific class needed for fixedHeader unless custom CSS is applied.
-            console.log('Tabulator initialized.');
+                        // No specific class needed for fixedHeader unless custom CSS is applied.
+                        console.log('Tabulator initialized.');
+            
+                        // Manual event delegation for row clicks as a workaround
+                        tableContainer.addEventListener('click', async (e) => {
+                            const rowElement = e.target.closest('.tabulator-row');
+                            if (!rowElement) return; // Click was not on a row
+            
+                            console.log("Manual row click detected.", { editMode: currentConfig.editMode, drawerId: currentConfig.drawerId });
+            
+                            if (currentConfig.editMode === 'drawer' && currentConfig.drawerId) {
+                                const row = tabulatorTable.getRow(rowElement);
+                                if (!row) {
+                                    console.error("Could not find Tabulator row component for the clicked element.");
+                                    return;
+                                }
+                                const rowId = row.getData().id;
+                                const tableId = currentConfig.tableId;
+            
+                                console.log("Attempting to open drawer from manual click:", { tableId, rowId });
+                                try {
+                                    const drawerConfigRecord = await tableLens.findRecord('Grf_config', { configId: currentConfig.drawerId });
+                                    if (drawerConfigRecord) {
+                                        const drawerConfigData = JSON.parse(drawerConfigRecord.configJson);
+                                        openDrawer(tableId, rowId, drawerConfigData);
+                                        console.log("openDrawer call completed from manual click.");
+                                    } else {
+                                        console.error(`Drawer config with ID \"${currentConfig.drawerId}\" not found.`);
+                                        alert(`Error: Drawer configuration with ID \"${currentConfig.drawerId}\" not found.`);
+                                    }
+                                } catch (error) {
+                                    console.error("Error fetching or opening drawer:", error);
+                                    alert("Error opening drawer: " + error.message);
+                                }
+                            }
+                        });
+            
+                        // Handle Add New Button visibility and functionality
+            if (currentConfig.enableAddNewBtn) {
+                addRowBtn.style.display = 'block';
+                addRowBtn.onclick = async () => {
+                    console.log("Add New button clicked. Edit Mode:", currentConfig.editMode);
+                    if (currentConfig.editMode === 'drawer' && currentConfig.drawerId) {
+                        console.log("Opening drawer for new record.");
+                        try {
+                            const drawerConfigRecord = await tableLens.findRecord('Grf_config', { configId: currentConfig.drawerId });
+                            if (drawerConfigRecord) {
+                                const drawerConfigData = JSON.parse(drawerConfigRecord.configJson);
+                                // Open drawer for a new record, assuming the drawer component handles 'new'
+                                openDrawer(tableId, 'new', drawerConfigData);
+                                console.log("openDrawer called for new record.");
+                            } else {
+                                console.error(`Drawer config with ID \"${currentConfig.drawerId}\" not found.`);
+                                alert(`Error: Drawer configuration with ID \"${currentConfig.drawerId}\" not found.`);
+                            }
+                        } catch (error) {
+                            console.error("Error preparing drawer for new record:", error);
+                            alert("Error opening drawer for new record: " + error.message);
+                        }
+                    } else {
+                        console.log("Adding new record directly (Excel mode).");
+                        try {
+                            // Fallback to default Grist action if not in drawer mode
+                            await grist.docApi.applyUserActions([['AddRecord', tableId, -1, {}]]);
+                        } catch (e) {
+                            console.error("Error adding new record:", e);
+                            alert("Error adding new record: " + e.message);
+                        }
+                    }
+                };
+            } else {
+                addRowBtn.style.display = 'none';
+                addRowBtn.onclick = null;
+            }
+
             addSettingsGear();
 
         } catch (e) {

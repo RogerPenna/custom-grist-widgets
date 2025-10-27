@@ -15,3 +15,19 @@ th, td {
 th {
     background-color: #f2f2f2;
 }
+
+/* Tabulator Striped Table Style */
+
+/* When custom-striped-enabled IS present, apply custom stripes */
+.custom-striped-enabled .tabulator-row.tabulator-row-odd {
+    background-color: #f0f0f0; /* Your desired stripe color */
+}
+.custom-striped-enabled .tabulator-row.tabulator-row-even {
+    background-color: transparent; /* Ensure even rows are not striped */
+}
+
+/* When custom-striped-enabled is NOT present, ensure no stripes */
+.tabulator:not(.custom-striped-enabled) .tabulator-row.tabulator-row-odd,
+.tabulator:not(.custom-striped-enabled) .tabulator-row.tabulator-row-even {
+    background-color: transparent; /* Or white, to explicitly remove any default stripes */
+}

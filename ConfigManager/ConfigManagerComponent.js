@@ -28,12 +28,12 @@ const ConfigManagerComponent = (() => {
                 <h4>Passo 1: Crie a Tabela</h4>
                 <p>Crie uma nova tabela com o nome exato:</p>
                 <div class="grf-copy-box">
-                    <code>_grf_config</code>
+                    <code>Grf_config</code>
                     <button class="grf-copy-btn">Copiar</button>
                 </div>
 
                 <h4>Passo 2: Crie as Colunas</h4>
-                <p>Adicione as seguintes colunas à tabela <code>_grf_config</code>:</p>
+                <p>Adicione as seguintes colunas à tabela <code>Grf_config</code>:</p>
                 <table class="grf-setup-table">
                     <thead>
                         <tr>
@@ -54,7 +54,7 @@ const ConfigManagerComponent = (() => {
         
         // Adiciona eventos de clique para os botões e células
         container.querySelector('.grf-copy-btn').addEventListener('click', (e) => {
-            copyToClipboard('_grf_config', e.target);
+            copyToClipboard('Grf_config', e.target);
         });
 
         container.querySelectorAll('.grf-copy-cell').forEach(cell => {
@@ -104,7 +104,7 @@ const ConfigManagerComponent = (() => {
         // --- MODIFICAÇÃO ---: Envolvemos toda a lógica em um try...catch para detectar falhas de inicialização.
         try {
             // --- MODIFICAÇÃO ---: O nome da tabela está correto e agora é uma constante.
-            const CONFIG_TABLE = '_grf_config';
+            const CONFIG_TABLE = 'Grf_config';
 
             // Instâncias das bibliotecas de dados
             const tableLens = new GristTableLens(grist);

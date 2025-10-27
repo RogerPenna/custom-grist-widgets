@@ -289,8 +289,17 @@ async function _renderDrawerContent() {
     Object.keys(cleanSchema).forEach(colId => { if (rawSchema[colId] && rawSchema[colId].description) cleanSchema[colId].description = rawSchema[colId].description; });
     currentSchema = cleanSchema;
     
-    currentRecord = await tableLens.fetchRecordById(currentTableId, currentRecordId);
-    if (!currentRecord) { closeDrawer(); return; }
+    if (currentRecordId === 'new') {
+        currentRecord = {};
+    } else {
+        currentRecord = await tableLens.fetchRecordById(currentTableId, currentRecordId);
+    }
+
+    if (!currentRecord) { 
+        console.error("Drawer Error: Record not found and it is not a new record.");
+        closeDrawer(); 
+        return; 
+    }
 
     const rules = _getCombinedRules(currentRecord);
     const ruleIdToColIdMap = new Map();
@@ -390,7 +399,8 @@ export async function openDrawer(tableId, recordId, options = {}) {
     _initializeDrawerDOM();
     currentTableId = tableId;
     currentRecordId = recordId;
-    isEditing = options.mode === 'edit' || false;
+    // For new records, automatically enter edit mode.
+    isEditing = recordId === 'new' || options.mode === 'edit' || false;
     currentDrawerOptions = options; 
     if (drawerPanel) { drawerPanel.classList.remove('is-modal'); }
     if (drawerOverlay) { drawerOverlay.classList.remove('is-modal-overlay'); }
@@ -402,7 +412,7 @@ export async function openDrawer(tableId, recordId, options = {}) {
     document.body.classList.add('grist-drawer-is-open');
     drawerPanel.classList.add('is-open');
     drawerOverlay.classList.add('is-open');
-    drawerTitle.textContent = `Detalhes do Registro ${recordId}`;
+    drawerTitle.textContent = recordId === 'new' ? `New Record` : `Detalhes do Registro ${recordId}`;
     _updateButtonVisibility();
     try {
         await _renderDrawerContent();

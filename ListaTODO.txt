@@ -114,7 +114,10 @@
 
 ### Progresso Atual no Table Widget
 
-- [DONE] **`configId` do Table Widget persiste após navegação:** Corrigido o problema onde o `configId` não era mantido ao navegar para fora e voltar à página, garantindo que o widget carregue a configuração correta.
+- [DONE] **`configId` do Table Widget persiste após navegação:**
+  - **Problema:** O `configId` para o Table Widget não estava persistindo após a navegação, recarregando como `null`.
+  - **Resolução:** Modificado `table-widget/script.js` para explicitamente recuperar o `configId` usando `grist.getOptions()` no início do `DOMContentLoaded`, garantindo a inicialização correta.
+
 - [DONE] **Resolvido erro 404 para `tabulator.min.js` e `tabulator.min.css`:** Arquivos adicionados manualmente à `libraries/tabulator`.
 - [DONE] **Corrigidos caminhos de importação em `table-widget/script.js`:** De absolutos para relativos.
 - [DONE] **Corrigido caminho de `framework-config.js` em `table-widget/index.html`:** De absoluto para relativo.
@@ -151,3 +154,49 @@
 - [DONE] **JSON da configuração não era visível na área de texto de depuração:**
   - **Problema:** O JSON da configuração não era exibido na área de texto "JSON Gerado (Monitor de Debug)" para o Table Configurator.
   - **Resolução:** Removidos logs de depuração de `ConfigManager/config-manager-widget.js`. Modificada `ConfigManager/editors/config-table.js` para incluir uma seção `<details>` com `<code>` para exibir o JSON gerado dinamicamente, e implementada a função `updateDebugJson()` para popular esta seção.
+
+### Progresso da Implementação Recente (Table Widget)
+
+- [DONE] **Configurador de Tabela Inicial:**
+  - Criada UI básica do configurador de tabela em `config-table.js`.
+  - Registrado o configurador de tabela com `table-manifest.js` e `ConfigManagerComponent.js`.
+- [DONE] **Visibilidade e Ordem das Colunas:**
+  - Usuários podem reordenar colunas e marcá-las como visíveis/ocultas.
+  - Botões "Selecionar Todas" / "Deselecionar Todas" implementados.
+- [DONE] **Tabela Zebrada (Estilização):**
+  - Opção de configuração adicionada.
+- [DONE] **Habilitar Cálculos de Coluna (Global):**
+  - Alternância global implementada.
+- [DONE] **Cálculo de Coluna (por coluna):**
+  - Dropdown para selecionar soma, média, mínimo, máximo, contagem.
+- [DONE] **Modo de Edição (Excel vs. Drawer):**
+  - Botões de rádio para Estilo Excel (Edição Inline) e Estilo Drawer (Edição por Formulário).
+- [DONE] **Travado (por coluna):**
+  - Checkbox para tornar a coluna não editável.
+- [DONE] **Obrigatório (por coluna):**
+  - Checkbox para tornar a coluna obrigatória (apenas Estilo Excel).
+- [DONE] **Botão 'Adicionar Novo':**
+  - Botão implementado para adicionar novos registros.
+  - Corrigido bug de `grist.docApi.addRecords is not a function` usando `grist.docApi.applyUserActions`.
+- [DONE] **Formatação de Células (por coluna):**
+  - Dropdown para formatadores embutidos do Tabulator (Moeda, Link, Data/Hora, Tick/Cruz, Imagem, Progresso) com `formatterParams` dinâmicos.
+- [DONE] **Grist Styling Overrides (por coluna):**
+  - Checkboxes para `ignoreConditionalFormatting`, `ignoreHeaderStyle`, `ignoreCellStyle` como flags para implementação futura.
+- [FIXED] **Bug no carregamento da configuração:** Resolvido `TypeError: Cannot read properties of undefined (reading 'enabled')` ao acessar `currentConfig.pagination` e `currentConfig.defaultSort` com encadeamento opcional.
+
+- [DONE] **Drawer Não Abre ao Clicar na Linha:**
+  - **Problema:** O drawer não abria ao clicar em uma linha da tabela, mesmo com a configuração de `editMode` como 'drawer'. Os eventos `cellClick` e `rowClick` do Tabulator não estavam sendo disparados de forma confiável.
+  - **Resolução:** Removido o manipulador de eventos do Tabulator (`rowClick`). Implementado um ouvinte de evento de clique nativo no contêiner da tabela (`tableContainer`). Este ouvinte usa delegação de eventos para detectar cliques em elementos de linha (`.tabulator-row`), obtém os dados da linha correspondente usando a API do Tabulator (`tabulatorTable.getRow()`) e, em seguida, chama a função `openDrawer` manualmente. Esta abordagem contorna o sistema de eventos interno do Tabulator, garantindo que os cliques sejam capturados e tratados de forma robusta.
+
+### Bugs Atuais / Funcionalidades Pendentes (Table Widget)
+
+- [BUG] **Tabela Zebrada Lógica Invertida:** Ativar "Tabela Zebrada" desativa as listras; desativá-la as ativa. (Re-reportado pelo usuário).
+- [BUG] **"Modo de Edição" Falta "Estilo Excel":** O botão de rádio para "Estilo Excel" está faltando na interface do usuário.
+- [PENDING] **"ID do Drawer" como Dropdown:** Usuário solicitou que este seja um menu suspenso das configurações de Drawer disponíveis.
+- [HIGH PRIORITY] **Formatação de Células Grist na Tabela:** A tabela *não* está mostrando a formatação de célula específica do Grist (por exemplo, cápsulas coloridas para campos Choice).
+
+### Funcionalidades Ainda Não Implementadas (da "Instructions for TABULATOR options.txt")
+
+- **RefList / Exibição de Tabela Aninhada**
+- **Coluna Virtual "Ações"**
+- **Detalhes de Implementação CRUD (Atualizar/Excluir para Estilo Excel, Visualizar/Editar/Excluir para Estilo Drawer)**
