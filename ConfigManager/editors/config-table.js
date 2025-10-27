@@ -28,51 +28,126 @@ export const TableConfigEditor = (() => {
         console.log("Table Editor - drawerConfigs:", drawerConfigs);
 
         container.innerHTML = `
-            <div class="config-section-title">Opções Globais da Tabela</div>
-            <div class="form-group">
-                <label class="config-toggle">
-                    <input type="checkbox" id="striped-table-checkbox" ${configData.stripedTable ? 'checked' : ''}>
-                    Tabela Zebrada
-                </label>
+            <style>
+                .tab-container { display: flex; border-bottom: 1px solid #ccc; }
+                .tab-button { background: #f1f1f1; border: 1px solid #ccc; border-bottom: none; padding: 10px 15px; cursor: pointer; margin-bottom: -1px; }
+                .tab-button.active { background: #fff; border-bottom: 1px solid #fff; }
+                .tab-panel { display: none; padding: 20px; border: 1px solid #ccc; border-top: none; }
+                .tab-panel.active { display: block; }
+            </style>
+            <div class="tab-container">
+                <button type="button" class="tab-button active" data-tab="general">Geral</button>
+                <button type="button" class="tab-button" data-tab="fields">Campos</button>
             </div>
-            <div class="form-group">
-                <label class="config-toggle">
-                    <input type="checkbox" id="enable-column-calcs-checkbox" ${configData.enableColumnCalcs ? 'checked' : ''}>
-                    Habilitar Cálculos de Coluna
-                </label>
+            <div id="general-tab" class="tab-panel active">
+                <div class="config-section-title">Opções Globais da Tabela</div>
+                <div class="form-group">
+                    <label class="config-toggle">
+                        <input type="checkbox" id="striped-table-checkbox" ${configData.stripedTable ? 'checked' : ''}>
+                        Tabela Zebrada
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label class="config-toggle">
+                        <input type="checkbox" id="enable-column-calcs-checkbox" ${configData.enableColumnCalcs ? 'checked' : ''}>
+                        Habilitar Cálculos de Coluna
+                    </label>
+                </div>
+                <div class="config-section-title" style="margin-top: 20px;">Modo de Edição</div>
+                <div class="form-group">
+                    <label>
+                        <input type="radio" name="editMode" value="excel" ${configData.editMode === 'excel' ? 'checked' : ''}> Excel Style (Edição Inline)
+                    </label>
+                    <label>
+                        <input type="radio" name="editMode" value="drawer" ${configData.editMode === 'drawer' ? 'checked' : ''}> Drawer Style (Edição por Formulário)
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label for="drawer-id-select">ID do Drawer (para Modo Drawer)</label>
+                    <select id="drawer-id-select">
+                        <option value="">-- Selecione um Drawer --</option>
+                        ${drawerConfigs.map(d => `<option value="${d.configId}" ${configData.drawerId === d.configId ? 'selected' : ''}>${d.name || d.configId || '[Drawer Sem ID]'}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="config-toggle">
+                        <input type="checkbox" id="enable-add-new-btn-checkbox" ${configData.enableAddNewBtn ? 'checked' : ''}>
+                        Habilitar Botão 'Adicionar Novo'
+                    </label>
+                </div>
+
+                <div class="config-section-title" style="margin-top: 20px;">Layout & Interatividade</div>
+                <div class="form-group">
+                    <label for="layout-mode-select">Modo de Layout da Coluna</label>
+                    <select id="layout-mode-select">
+                        <option value="fitColumns" ${configData.layout === 'fitColumns' ? 'selected' : ''}>Fit Columns (ajusta colunas à largura da tabela)</option>
+                        <option value="fitData" ${configData.layout === 'fitData' ? 'selected' : ''}>Fit Data (ajusta largura da coluna aos dados)</option>
+                        <option value="fitDataFill" ${configData.layout === 'fitDataFill' ? 'selected' : ''}>Fit Data Fill</option>
+                        <option value="fitDataStretch" ${configData.layout === 'fitDataStretch' ? 'selected' : ''}>Fit Data Stretch</option>
+                        <option value="fitDataTable" ${configData.layout === 'fitDataTable' ? 'selected' : ''}>Fit Data Table</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="responsive-layout-select">Layout Responsivo</label>
+                    <select id="responsive-layout-select">
+                        <option value="false" ${!configData.responsiveLayout ? 'selected' : ''}>Desativado</option>
+                        <option value="hide" ${configData.responsiveLayout === 'hide' ? 'selected' : ''}>Ocultar Colunas</option>
+                        <option value="collapse" ${configData.responsiveLayout === 'collapse' ? 'selected' : ''}>Agrupar Colunas</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="config-toggle">
+                        <input type="checkbox" id="resizable-columns-checkbox" ${configData.resizableColumns !== false ? 'checked' : ''}>
+                        Colunas Redimensionáveis
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label class="config-toggle">
+                        <input type="checkbox" id="header-filter-checkbox" ${configData.headerFilter !== false ? 'checked' : ''}>
+                        Filtros no Cabeçalho
+                    </label>
+                </div>
+
+                <div class="config-section-title" style="margin-top: 20px;">Paginação</div>
+                <div class="form-group">
+                    <label for="pagination-mode-select">Modo de Paginação</label>
+                    <select id="pagination-mode-select">
+                        <option value="false" ${!configData.pagination?.enabled ? 'selected' : ''}>Desativada</option>
+                        <option value="local" ${configData.pagination?.enabled === 'local' ? 'selected' : ''}>Local</option>
+                        <option value="remote" ${configData.pagination?.enabled === 'remote' ? 'selected' : ''}>Remota (requer configuração adicional)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="pagination-size-input">Itens por Página</label>
+                    <input type="number" id="pagination-size-input" value="${configData.pagination?.pageSize || 10}" min="1">
+                </div>
             </div>
-            <div class="config-section-title" style="margin-top: 20px;">Modo de Edição</div>
-            <div class="form-group">
-                <label>
-                    <input type="radio" name="editMode" value="excel" ${configData.editMode === 'excel' ? 'checked' : ''}> Excel Style (Edição Inline)
-                </label>
-                <label>
-                    <input type="radio" name="editMode" value="drawer" ${configData.editMode === 'drawer' ? 'checked' : ''}> Drawer Style (Edição por Formulário)
-                </label>
+            <div id="fields-tab" class="tab-panel">
+                <div class="config-section-title">Colunas Visíveis e Ordem</div>
+                <p class="editor-instructions">Arraste e solte as colunas para reordenar. Use os botões para selecionar/deselecionar todas.</p>
+                <div class="column-bulk-actions">
+                    <button type="button" id="select-all-cols-btn" class="btn btn-secondary btn-sm">Selecionar Todas</button>
+                    <button type="button" id="deselect-all-cols-btn" class="btn btn-secondary btn-sm">Deselecionar Todas</button>
+                </div>
+                <ul id="column-list" class="field-order-list"></ul>
+                <div class="config-section-title" style="margin-top: 20px;">Colunas Disponíveis</div>
+                <ul id="available-column-list" class="field-order-list"></ul>
             </div>
-            <div class="form-group">
-                <label for="drawer-id-select">ID do Drawer (para Modo Drawer)</label>
-                <select id="drawer-id-select">
-                    <option value="">-- Selecione um Drawer --</option>
-                    ${drawerConfigs.map(d => `<option value="${d.configId}" ${configData.drawerId === d.configId ? 'selected' : ''}>${d.name || d.configId || '[Drawer Sem ID]'}</option>`).join('')}
-                </select>
-            </div>
-            <div class="form-group">
-                <label class="config-toggle">
-                    <input type="checkbox" id="enable-add-new-btn-checkbox" ${configData.enableAddNewBtn ? 'checked' : ''}>
-                    Habilitar Botão 'Adicionar Novo'
-                </label>
-            </div>
-            <div class="config-section-title" style="margin-top: 20px;">Colunas Visíveis e Ordem</div>
-            <p class="editor-instructions">Arraste e solte as colunas para reordenar. Use os botões para selecionar/deselecionar todas.</p>
-            <div class="column-bulk-actions">
-                <button type="button" id="select-all-cols-btn" class="btn btn-secondary btn-sm">Selecionar Todas</button>
-                <button type="button" id="deselect-all-cols-btn" class="btn btn-secondary btn-sm">Deselecionar Todas</button>
-            </div>
-            <ul id="column-list" class="field-order-list"></ul>
-            <div class="config-section-title" style="margin-top: 20px;">Colunas Disponíveis</div>
-            <ul id="available-column-list" class="field-order-list"></ul>
         `;
+
+        const tabButtons = container.querySelectorAll('.tab-button');
+        const tabPanels = container.querySelectorAll('.tab-panel');
+
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+
+                tabPanels.forEach(panel => panel.classList.remove('active'));
+                const tabName = button.dataset.tab;
+                container.querySelector(`#${tabName}-tab`).classList.add('active');
+            });
+        });
 
         const columnListEl = container.querySelector('#column-list');
         const availableColumnListEl = container.querySelector('#available-column-list');
@@ -124,6 +199,14 @@ export const TableConfigEditor = (() => {
             editMode: container.querySelector('input[name="editMode"]:checked')?.value || 'excel', // Default to excel
             drawerId: container.querySelector('#drawer-id-select').value || null,
             enableAddNewBtn: container.querySelector('#enable-add-new-btn-checkbox').checked,
+            layout: container.querySelector('#layout-mode-select').value,
+            responsiveLayout: container.querySelector('#responsive-layout-select').value === 'false' ? false : container.querySelector('#responsive-layout-select').value,
+            resizableColumns: container.querySelector('#resizable-columns-checkbox').checked,
+            headerFilter: container.querySelector('#header-filter-checkbox').checked,
+            pagination: {
+                enabled: container.querySelector('#pagination-mode-select').value === 'false' ? false : container.querySelector('#pagination-mode-select').value,
+                pageSize: parseInt(container.querySelector('#pagination-size-input').value, 10) || 10,
+            },
             columns: visibleItems.map(item => {
                 const formatter = item.querySelector('.col-formatter-select').value || null;
                 let formatterParams = {};
@@ -140,6 +223,8 @@ export const TableConfigEditor = (() => {
                     colId: item.dataset.colId,
                     width: item.querySelector('.col-width-input').value || null,
                     align: item.querySelector('.col-align-select').value,
+                    wrapText: item.querySelector('.wrap-text-checkbox').checked,
+                    maxTextRows: parseInt(item.querySelector('.max-text-rows-input').value, 10) || null,
                     bottomCalc: item.querySelector('.col-calc-select').value || null,
                     locked: item.querySelector('.is-locked-checkbox').checked,
                     required: item.querySelector('.is-required-checkbox').checked,
@@ -199,6 +284,16 @@ export const TableConfigEditor = (() => {
                         <option value="center" ${align === 'center' ? 'selected' : ''}>Centro</option>
                         <option value="right" ${align === 'right' ? 'selected' : ''}>Direita</option>
                     </select>
+                </div>
+                <div class="form-group">
+                    <label class="config-toggle">
+                        <input type="checkbox" class="wrap-text-checkbox" ${colConfig?.wrapText !== false ? 'checked' : ''}>
+                        Quebrar Linha (Wrap Text)
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label for="max-text-rows-${col.colId}">Máx. Linhas de Texto</label>
+                    <input type="number" id="max-text-rows-${col.colId}" class="max-text-rows-input" value="${colConfig?.maxTextRows || ''}" placeholder="auto" min="1">
                 </div>
                 <div class="form-group">
                     <label for="col-calc-${col.colId}">Cálculo da Coluna</label>

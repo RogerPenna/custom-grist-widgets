@@ -2,6 +2,7 @@ import '../ConfigManager/editors/table-manifest.js';
 import { GristTableLens } from '../libraries/grist-table-lens/grist-table-lens.js';
 import { open as openConfigManager } from '../libraries/grist-config-manager/ConfigManagerComponent.js';
 import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js';
+import { renderField, getFieldStyle } from '../libraries/grist-field-renderer/grist-field-renderer.js';
 
 // Assume Tabulator is globally available because it's imported in index.html
 // import Tabulator from '../libraries/tabulator/tabulator.min.js'; 
@@ -15,6 +16,8 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     console.log('DOMContentLoaded fired.');
     const tableContainer = document.getElementById('table-container');
+    const tableLens = new GristTableLens(grist);
+    let cleanSchema = null;
 
     grist.ready({ requiredAccess: 'full' });
     console.log('grist.ready() called.');
@@ -45,6 +48,155 @@ document.addEventListener('DOMContentLoaded', async function () {
     await loadIcons();
 
     const getIcon = (id) => `<svg class="icon"><use href="#${id}"></use></svg>`;
+
+
+
+
+    // Custom Tabulator formatter for Grist-specific cell rendering
+    const gristCellFormatter = (cell, formatterParams, onRendered) => {
+        const colId = cell.getField();
+        const record = cell.getRow().getData();
+        const colSchema = cleanSchema[colId];
+        const colConfig = formatterParams.colConfig;
+
+        if (!colSchema) {
+            return String(cell.getValue() ?? '');
+        }
+
+        const tempContainer = document.createElement('div');
+        tempContainer.style.cssText = 'width: 100%;';
+
+        if (colConfig) {
+            if (colConfig.wrapText !== false) {
+                tempContainer.style.whiteSpace = 'normal';
+                if (colConfig.maxTextRows > 0) {
+                    const lineHeight = 1.4; // em
+                    tempContainer.style.lineHeight = `${lineHeight}em`;
+                    tempContainer.style.maxHeight = `${colConfig.maxTextRows * lineHeight}em`;
+                    tempContainer.style.overflow = 'hidden';
+                    tempContainer.style.display = '-webkit-box';
+                    tempContainer.style.webkitLineClamp = colConfig.maxTextRows;
+                    tempContainer.style.webkitBoxOrient = 'vertical';
+                }
+            } else {
+                tempContainer.style.whiteSpace = 'nowrap';
+                tempContainer.style.overflow = 'hidden';
+                tempContainer.style.textOverflow = 'ellipsis';
+            }
+        }
+
+        // onRendered callback will be called when the cell is rendered
+        onRendered(async () => {
+            const fieldStyle = getFieldStyle(record, colSchema);
+
+            await renderField({
+                container: tempContainer,
+                colSchema: colSchema,
+                record: record,
+                isEditing: false,
+                tableLens: tableLens,
+                fieldStyle: fieldStyle,
+                styling: {}
+            });
+        });
+
+        return tempContainer; // Return the placeholder container synchronously
+    };
+
+    function openModal(title, content) {
+        const modalOverlay = document.createElement('div');
+        modalOverlay.className = 'grf-modal-overlay';
+        modalOverlay.style.cssText = `
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.6); display: flex;
+            justify-content: center; align-items: center; z-index: 1000;
+        `;
+
+        const modalContent = document.createElement('div');
+        modalContent.className = 'grf-modal-content';
+        modalContent.style.cssText = `
+            background-color: #fff; border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3); display: flex;
+            flex-direction: column; overflow: hidden;
+            width: 80%; height: 80%;
+        `;
+
+        const modalHeader = document.createElement('div');
+        modalHeader.className = 'grf-modal-header';
+        modalHeader.style.cssText = `
+            padding: 10px 15px; display: flex; justify-content: space-between;
+            align-items: center; background-color: #f1f1f1;
+            border-bottom: 1px solid #ddd;
+        `;
+
+        const modalTitle = document.createElement('h4');
+        modalTitle.innerText = title;
+        modalTitle.style.margin = '0';
+
+        const closeButton = document.createElement('button');
+        closeButton.innerHTML = '&times;';
+        closeButton.className = 'grf-modal-close';
+        closeButton.style.cssText = `
+            background: none; border: none; font-size: 28px;
+            font-weight: bold; color: #888; cursor: pointer;
+        `;
+        closeButton.onclick = () => document.body.removeChild(modalOverlay);
+
+        modalHeader.appendChild(modalTitle);
+        modalHeader.appendChild(closeButton);
+
+        const modalBody = document.createElement('div');
+        modalBody.className = 'grf-modal-body';
+        modalBody.style.cssText = 'padding: 15px; flex-grow: 1; overflow: auto;';
+        modalBody.appendChild(content);
+
+        modalContent.appendChild(modalHeader);
+        modalContent.appendChild(modalBody);
+        modalOverlay.appendChild(modalContent);
+        document.body.appendChild(modalOverlay);
+
+        modalOverlay.addEventListener('click', (e) => {
+            if (e.target === modalOverlay) {
+                document.body.removeChild(modalOverlay);
+            }
+        });
+    }
+
+    async function showRefListInModal(colSchema, cellValue) {
+        const tableContainer = document.createElement('div');
+        tableContainer.style.height = '100%';
+
+        openModal(`Records from ${colSchema.label}`, tableContainer);
+
+        try {
+            const refTableId = colSchema.type.split(':')[1];
+            const refIds = cellValue.slice(1);
+
+            const [nestedSchema, allRecords] = await Promise.all([
+                tableLens.getTableSchema(refTableId),
+                tableLens.fetchTableRecords(refTableId)
+            ]);
+
+            const nestedData = allRecords.filter(r => refIds.includes(r.id));
+            const nestedColumns = Object.values(nestedSchema).map(col => ({
+                title: col.label,
+                field: col.colId,
+                formatter: gristCellFormatter,
+            }));
+
+            new Tabulator(tableContainer, {
+                height: '100%',
+                layout: 'fitColumns',
+                data: nestedData,
+                columns: nestedColumns,
+            });
+        } catch (e) {
+            console.error('Error creating nested table in modal:', e);
+            tableContainer.innerText = 'Error loading nested data.';
+        }
+    }
+
+
 
     // Initial call to initializeAndUpdate to ensure it runs at least once
     console.log('Initial call to initializeAndUpdate (direct call)');
@@ -127,8 +279,6 @@ document.addEventListener('DOMContentLoaded', async function () {
     async function initializeAndUpdate() {
         renderStatus("Loading...");
 
-        const tableLens = new GristTableLens(grist);
-
         // Helper to check for table and column integrity
         const checkPrerequisites = async () => {
             try {
@@ -201,10 +351,11 @@ document.addEventListener('DOMContentLoaded', async function () {
             }
 
             console.log('Fetching records and schema for tableId:', tableId);
-            const [records, cleanSchema] = await Promise.all([
+            const [records, schema] = await Promise.all([
                 tableLens.fetchTableRecords(tableId),
                 tableLens.getTableSchema(tableId)
             ]);
+            cleanSchema = schema;
             console.log('Fetched records:', records);
             console.log('Fetched cleanSchema:', cleanSchema);
 
@@ -212,6 +363,27 @@ document.addEventListener('DOMContentLoaded', async function () {
             const columns = (currentConfig.columns || []).map(colConfig => {
                 const gristCol = cleanSchema[colConfig.colId];
                 if (!gristCol) return null; // Skip if column not found in schema
+
+                let formatter = gristCellFormatter;
+
+                if (gristCol.type.startsWith('RefList:')) {
+                    formatter = (cell) => {
+                        const cellValue = cell.getValue();
+                        if (!Array.isArray(cellValue) || cellValue.length <= 1) {
+                            return '[0 items]';
+                        }
+
+                        const button = document.createElement('button');
+                        button.className = 'grist-reflist-button';
+                        button.innerText = `[${cellValue.length - 1} items]`;
+                        button.onclick = () => {
+                            const colSchema = cleanSchema[cell.getField()];
+                            showRefListInModal(colSchema, cellValue);
+                        };
+                        return button;
+                    };
+                }
+
                 const isEditable = currentConfig.editMode === 'excel' && !colConfig.locked;
                 const validators = [];
                 if (currentConfig.editMode === 'excel' && colConfig.required) {
@@ -222,14 +394,17 @@ document.addEventListener('DOMContentLoaded', async function () {
                     title: gristCol.label || gristCol.colId,
                     field: gristCol.colId,
                     hozAlign: colConfig.align || 'left', // Default alignment
-                    headerFilter: true, // Enable header filters
+                    headerFilter: currentConfig.headerFilter !== false, // Enable header filters based on global config
                     width: colConfig.width || undefined, // Apply custom width
                     bottomCalc: currentConfig.enableColumnCalcs ? (colConfig.bottomCalc || undefined) : undefined, // Apply column calculation only if global option is enabled
                     editable: isEditable, // Apply editability based on mode and locked status
                     validator: validators.length > 0 ? validators.join('|') : undefined, // Apply validators
-                    formatter: colConfig.formatter || undefined, // Apply cell formatter
-                    formatterParams: colConfig.formatterParams || undefined, // Apply cell formatter parameters
-                    // Potentially add more type-specific formatters/editors here
+                    formatter: formatter, // Use custom Grist formatter
+                    formatterParams: { 
+                        ...(colConfig.formatterParams || {}),
+                        colConfig: colConfig,
+                    },
+                    tooltip: true, // Enable tooltips for overflow
                 };
             }).filter(col => col !== null); // Filter out nulls from skipped columns
             console.log('Tabulator columns:', columns);
@@ -237,17 +412,28 @@ document.addEventListener('DOMContentLoaded', async function () {
             tableContainer.innerHTML = ''; // Clear previous content
             console.log('Initializing Tabulator...');
             tabulatorTable = new Tabulator(tableContainer, {
-                height: "100%", //set height of table (in CSS or here), this enables the Virtual DOM and improves performance with large tables
-                data: records, //assign data to table
-                layout: "fitColumns", //fit columns to width of table (optional)
-                columns: columns, //define table columns
-                columnCalcs: currentConfig.enableColumnCalcs ? "bottom" : false, // Enable column calculations
-                // Additional Tabulator options
-                tooltips: true, //show tool tips on cells
-                addRowPos: "top", //when adding a new row, add it to the top of the table
-                history: true, //allow undo and redo actions on the table
-                pagination: currentConfig.pagination?.enabled ? "local" : false, //paginate the data
-                paginationSize: currentConfig.pagination?.pageSize, //allow 7 rows to be displayed at a time
+                height: "100%",
+                data: records,
+                layout: currentConfig.layout || "fitColumns",
+                responsiveLayout: currentConfig.responsiveLayout || false,
+                responsiveLayoutCollapseUseFormatters: false, // Disable column formatters in collapsed view
+                responsiveLayoutCollapseFormatter: function(data) {
+                    const list = document.createElement("ul");
+                    data.forEach(function(col) {
+                        const item = document.createElement("li");
+                        item.innerHTML = "<strong>" + col.title + "</strong>: " + col.value;
+                        list.appendChild(item);
+                    });
+                    return Object.keys(data).length ? list : "";
+                },
+                resizableColumns: currentConfig.resizableColumns !== false,
+                columns: columns,
+                columnCalcs: currentConfig.enableColumnCalcs ? "bottom" : false,
+                tooltips: true,
+                history: true,
+                addRowPos: "top",
+                pagination: currentConfig.pagination?.enabled || false,
+                paginationSize: currentConfig.pagination?.pageSize || 10,
                 paginationSizeSelector: currentConfig.pagination?.enabled ? [5, 10, 20, 50, 100] : false,
                 movableColumns: true, //allow column order to be changed
                 resizableRows: true, //allow row height to be changed

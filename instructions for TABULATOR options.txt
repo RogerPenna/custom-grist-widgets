@@ -1,0 +1,270 @@
+## **To the Assisting LLM:**
+
+You are modifying an existing Grist custom widget that uses Tabulator.js. The widget already supports basic field visibility and reordering.
+
+Your task is to implement the following **additional configuration options**. Please categorize them as **Table Options** (global settings) and **Field Options** (per-column settings) and use the Tabulator guidelines provided for each.
+
+-----
+
+## **1. Table Options (Global Settings)**
+
+These options control the overall behavior and appearance of the entire Tabulator table.
+
+### **Striped Table (Styling)**
+
+  * **Goal:** Apply a "zebra" striped style to the table rows.
+  * **Tabulator Feature:** CSS Themes / Classes.
+  * **Guideline:** This is a table-wide toggle. When enabled, add a theme or a custom class to the Tabulator constructor.
+  * **Example (Adding a class):**
+    ```javascript
+    var table = new Tabulator("#example-table", {
+      ...
+      classes: "tabulator-striped" // Your custom class
+    });
+    ```
+  * **Example (Required CSS):**
+    ```css
+    /* Add this to your widget's CSS */
+    .tabulator-striped .tabulator-row.tabulator-row-odd {
+      background-color: #f0f0f0; /* Or any other stripe color */
+    }
+    ```
+
+<br>
+
+### **Enable Column Calculations**
+
+  * **Goal:** Show a footer row with column calculations (sum, avg, etc.).
+  * **Tabulator Property:** `columnCalcs`
+  * **Guideline:** This is the master switch. Set `columnCalcs: "bottom"` (or `"top"`) in the main Tabulator constructor. This *enables* the calculation row; the specific calculation for each column is a **Field Option**.
+  * **Example:**
+    ```javascript
+    var table = new Tabulator("#example-table", {
+      columnCalcs: "bottom", // Show calculation row at the bottom
+      ...
+    });
+    ```
+
+<br>
+
+### **Edit Mode (Excel vs. Drawer)**
+
+  * **Goal:** Define how users edit records. This must be a mutually exclusive choice.
+  * **Guideline:**
+      * **Mode 1: "Excel Style" (Inline Editing):** The table behaves like a spreadsheet. All fields (except those explicitly "Locked") must be made editable.
+      * **Mode 2: "Drawer Style" (Icon-based Editing):** The table is read-only. Editing is delegated to "View" or "Edit" icons, which call a separate Drawer component. All data columns **must** be set to `editable: false`.
+
+<br>
+
+### **"Add New" Button**
+
+  * **Goal:** Allow users to add new records.
+  * **Tabulator Feature:** N/A (External Button)
+  * **Guideline:** This should be an HTML button rendered *outside* the Tabulator table.
+  * **Implementation:**
+    1.  Create a button (e.g., `<button id="add-row-btn">Add New Record</button>`).
+    2.  Add a click listener to it.
+    3.  The listener must call the Grist API to add an empty record. Grist's data binding will then automatically update the table.
+    <!-- end list -->
+      * **Example:**
+        ```javascript
+        document.getElementById("add-row-btn").addEventListener("click", () => {
+          grist.docApi.addRecords('YourTable', [{}]);
+        });
+        ```
+
+-----
+
+## **2. Field Options (Per-Column Settings)**
+
+These options are configured individually for each field in the widget's settings.
+
+### **General Properties**
+
+  * **Hidden (Hides the field)**
+      * **Tabulator Property:** `visible`
+      * **Guideline:** Set `visible: false` in the column definition. This is an existing feature, but ensure it maps correctly.
+  * **Locked (Makes the field read-only)**
+      * **Tabulator Property:** `editable`
+      * **Guideline:** Set `editable: false` in the column definition. This is critical for "Drawer Style" mode and for locking specific fields in "Excel Style" mode.
+  * **Required (Makes the field mandatory)**
+      * **Tabulator Property:** `validator`
+      * **Guideline:** This only applies if "Excel Style" editing is enabled. In the column definition, add `editor: "input"` (or another appropriate editor) and `validator: "required"`.
+
+<br>
+
+### **Cell Formatting**
+
+  * **Goal:** Allow users to select a built-in Tabulator formatter.
+  * **Tabulator Property:** `formatter` and `formatterParams`
+  * **Guideline:** Provide a dropdown to select formatters like `progress`, `money`, `tickCross`, `star`, `image`, `link`.
+  * **Example (% Bar):**
+    ```javascript
+    // In the 'columns' array
+    {
+      title: "Progress",
+      field: "progressField",
+      formatter: "progress", // User selected "progress"
+      formatterParams: {
+        min: 0,
+        max: 100,
+        legend: true, // Show the numeric value
+        legendSuffix: "%" // Append a '%' sign
+      }
+    }
+    ```
+  * **Example (Money):**
+    ```javascript
+    // In the 'columns' array
+    {
+      title: "Price",
+      field: "priceField",
+      formatter: "money", // User selected "money"
+      formatterParams: {
+        decimal: ".",
+        thousand: ",",
+        symbol: "$"
+      }
+    }
+    ```
+
+<br>
+
+### **Grist Styling Overrides**
+
+  * **Goal:** Allow users to ignore Grist's styling in favor of the default Tabulator theme.
+  * **Guideline:** These are **logic flags** for your widget code.
+      * **`ignoreConditionalFormatting`:** If `true`, your code must **not** pass a custom `formatter` or `cssClass` to apply Grist's conditional rules.
+      * **`ignoreHeaderStyle`:** If `true`, your code must **not** pass a `titleFormatter` or `headerCssClass` to apply Grist's header styles.
+      * **`ignoreCellStyle`:** If `true`, your code must **not** pass a `formatter` or `cssClass` to apply Grist's general cell styles.
+
+<br>
+
+### **Column Calculation**
+
+  * **Goal:** Set the specific calculation for this column.
+  * **Tabulator Property:** `bottomCalc` (or `topCalc`)
+  * **Guideline:** This option only works if the **Table Option** "Enable Column Calculations" is on. Provide a dropdown for the column to select `sum`, `avg`, `min`, `max`, or `count`.
+  * **Example:**
+    ```javascript
+    // In the 'columns' array
+    {
+      title: "Total Sales",
+      field: "salesAmount",
+      bottomCalc: "sum" // User selected "sum"
+    }
+    ```
+
+<br>
+
+### **RefList / Nested Table Display**
+
+  * **Goal:** Display Grist RefList (child) records in a nested table under the parent row.
+  * **Tabulator Feature:** `rowFormatter` (a **Table Option** that you configure *based* on this field)
+  * **Guideline:** This is complex. The user will enable this on the Grist *RefList* field. This tells your widget to:
+    1.  Implement a table-wide `rowFormatter` function.
+    2.  Inside that function, check if the data for that row contains the RefList field (e.g., `rowData.MyRefList`).
+    3.  If it does, create a `<div>` and instantiate a **new, nested Tabulator table** inside it, using `rowData.MyRefList` as its `data`.
+  * **Example Structure:**
+    ```javascript
+    // This is a TABLE option, but it's triggered by a FIELD setting
+    var table = new Tabulator("#example-table", {
+      ...,
+      rowFormatter: function(row) {
+        const rowData = row.getData();
+        
+        // Check for the child records field
+        if (rowData.MyRefList && rowData.MyRefList.length > 0) {
+          var nestedTableDiv = document.createElement("div");
+          row.getElement().appendChild(nestedTableDiv);
+
+          // Create nested table
+          new Tabulator(nestedTableDiv, {
+            data: rowData.MyRefList, // Pass the child data
+            columns: [ /* Columns for the child table */ ]
+          });
+        }
+      }
+    });
+    ```
+
+<br>
+
+### **CRUD Implementation Details**
+
+How you handle Create/Update/Delete depends *entirely* on the "Edit Mode" **Table Option**.
+
+#### **If Mode 1: "Excel Style" (Inline Editing)**
+
+  * **Update:**
+      * Listen to the `cellEdited` event.
+      * In the callback, get the row ID, field name, and new value.
+      * Call `grist.docApi.updateRecords(...)` with the new data.
+  * **Delete:**
+      * You must add a **Virtual "Actions" Column** (see below) just for the delete icon.
+
+#### **If Mode 2: "Drawer Style" (Icon-based Editing)**
+
+  * **Update (and View):**
+      * You must add a **Virtual "Actions" Column** (see below) with "View" and/or "Edit" icons.
+  * **Delete:**
+      * You can add a "Delete" icon to this same **Virtual "Actions" Column**.
+
+<br>
+
+### **Virtual "Actions" Column**
+
+  * **Goal:** Create a column that is not tied to data but holds action icons (View, Edit, Delete).
+  * **Guideline:** This is configured at the **Table Level** but results in a new column being added to the `columns` array. The user must be able to:
+    1.  Enable this column.
+    2.  Toggle "View," "Edit," and "Delete" icons.
+    3.  Provide the `Drawer ID` for the "View" and "Edit" icons.
+  * **Implementation:**
+    ```javascript
+    // Add this object to your 'columns' array
+    {
+      title: "Actions",
+      width: 100, // Or some fixed width
+      hozAlign: "center",
+      headerSort: false,
+      formatter: function(cell, formatterParams) {
+        // Build icon HTML based on user's configuration
+        let icons = "";
+        if (options.enableViewIcon) {
+          icons += "<i class='fa fa-eye' data-action='view'></i> ";
+        }
+        if (options.enableEditIcon) {
+          icons += "<i class='fa fa-edit' data-action='edit'></i> ";
+        }
+        if (options.enableDeleteIcon) {
+          icons += "<i class='fa fa-trash' data-action='delete'></i>";
+        }
+        return icons;
+      },
+      cellClick: function(e, cell) {
+        const action = e.target.dataset.action;
+        if (!action) return; // Clicked whitespace
+
+        const rowId = cell.getRow().getData().id;
+
+        if (action === 'view') {
+          // 'options.viewDrawerId' is from widget config
+          openDrawer(options.viewDrawerId, rowId); 
+        } else if (action === 'edit') {
+          // 'options.editDrawerId' is from widget config
+          openDrawer(options.editDrawerId, rowId);
+        } else if (action === 'delete') {
+          if (confirm("Are you sure?")) {
+            grist.docApi.deleteRecords('YourTable', [rowId]);
+          }
+        }
+      }
+    }
+
+    // You must implement this helper function
+    function openDrawer(drawerId, recordId) {
+      // Your code to find the drawer by 'drawerId'
+      // and tell it to open with 'recordId'
+      console.log(`Opening drawer '${drawerId}' for record '${recordId}'`);
+    }
+    ```

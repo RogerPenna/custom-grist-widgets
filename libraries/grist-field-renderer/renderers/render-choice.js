@@ -54,12 +54,17 @@ export function renderChoice(options) {
                 }
             });
         } else {
-            container.textContent = String(cellValue ?? '(vazio)');
+            const pill = document.createElement('span');
+            pill.className = 'grf-choice-pill'; // Reuse the same class
+            pill.textContent = String(cellValue ?? '(vazio)');
+            container.appendChild(pill);
+
             const style = choiceOptions[cellValue];
             // --- MUDANÇA 5: Verifica a flag antes de aplicar o estilo ---
             if (shouldApplyStyles && style) {
-                if (style.textColor) container.style.color = style.textColor; if (style.fillColor) container.style.backgroundColor = style.fillColor; if (style.fontBold) container.style.fontWeight = 'bold';
-                container.style.padding = style.fillColor ? '2px 8px' : ''; container.style.borderRadius = style.fillColor ? '12px' : ''; container.style.display = 'inline-block';
+                if (style.textColor) pill.style.color = style.textColor;
+                if (style.fillColor) pill.style.backgroundColor = style.fillColor;
+                if (style.fontBold) pill.style.fontWeight = 'bold';
             }
         }
         return;

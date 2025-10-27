@@ -16,6 +16,10 @@ th {
     background-color: #f2f2f2;
 }
 
+.tabulator-cell {
+    white-space: normal !important;
+}
+
 /* Tabulator Striped Table Style */
 
 /* When custom-striped-enabled IS present, apply custom stripes */
@@ -30,4 +34,13 @@ th {
 .tabulator:not(.custom-striped-enabled) .tabulator-row.tabulator-row-odd,
 .tabulator:not(.custom-striped-enabled) .tabulator-row.tabulator-row-even {
     background-color: transparent; /* Or white, to explicitly remove any default stripes */
+}
+
+.grist-reflist-button {
+    background: none;
+    border: none;
+    color: #007bff;
+    cursor: pointer;
+    text-decoration: underline;
+    padding: 0;
 }
