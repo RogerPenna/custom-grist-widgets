@@ -1,3 +1,4 @@
+import '../ConfigManager/editors/table-manifest.js';
 import { GristTableLens } from '../libraries/grist-table-lens/grist-table-lens.js';
 import { open as openConfigManager } from '../libraries/grist-config-manager/ConfigManagerComponent.js';
 

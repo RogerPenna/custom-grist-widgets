@@ -121,6 +121,7 @@ const ConfigManagerComponent = (() => {
                             <select id="cm-new-type-selector">
                                 <option value="CardSystem">Card System</option>
                                 <option value="Drawer">Drawer</option>
+                                <option value="Table">Table</option>
                             </select>
                             <button id="cm-new-btn" class="btn btn-primary">+ Nova</button>
                         </div>
@@ -149,6 +150,7 @@ const ConfigManagerComponent = (() => {
             const editorMap = {
                 'CardSystem': window.CardConfigEditor,
                 'Drawer': window.DrawerConfigEditor,
+                'Table': window.TableConfigEditor,
             };
 
             const configListEl = container.querySelector('#cm-config-list');
