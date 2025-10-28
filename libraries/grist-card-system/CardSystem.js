@@ -133,7 +133,7 @@ export const CardSystem = (() => {
       if (styling.cardsColorMode === 'conditional' && styling.cardsColorField) {
           const colSchema = schema[styling.cardsColorField];
           if (colSchema) {
-              const fieldStyle = getFieldStyle(record, colSchema);
+              const fieldStyle = getFieldStyle(record, colSchema, schema);
               // Aplica a cor de fundo (com fallback para a cor sólida padrão)
               cardEl.style.background = fieldStyle.fillColor || styling.cardsColorSolidColor;
               // APLICA A COR DE TEXTO SE A OPÇÃO ESTIVER MARCADA
@@ -196,7 +196,7 @@ export const CardSystem = (() => {
         if (styling.cardTitleTopBarMode === 'conditional' && styling.cardTitleTopBarField) {
     const colSchema = schema[styling.cardTitleTopBarField];
     if (colSchema) {
-        const fieldStyle = getFieldStyle(record, colSchema);
+        const fieldStyle = getFieldStyle(record, colSchema, schema);
         
         // Aplica a cor de fundo (com fallback)
         topBarEl.style.background = fieldStyle.fillColor || styling.cardTitleTopBarSolidColor;
@@ -494,7 +494,7 @@ if (styling.fieldBackground?.enabled) {
     if (mode === 'gradient' && gradientOptions?.type) { return gradientOptions.type.replace('{c1}', gradientOptions.c1).replace('{c2}', gradientOptions.c2); }
     if (mode === 'conditional' && fieldName && record && schema?.[fieldName]) {
         const colSchema = schema[fieldName];
-        const fieldStyle = getFieldStyle(record, colSchema);
+        const fieldStyle = getFieldStyle(record, colSchema, schema);
         return fieldStyle.fillColor || solidColor;
     }
     return solidColor;

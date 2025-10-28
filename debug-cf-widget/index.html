@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Conditional Formatting Debug Widget</title>
+    <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+    <style>
+        body { font-family: sans-serif; margin: 10px; font-size: 14px; }
+        #controls { margin-bottom: 15px; padding: 10px; background-color: #f7f7f7; border: 1px solid #ddd; border-radius: 4px; display: flex; align-items: center; }
+        #controls label { font-weight: bold; margin-right: 10px; }
+        #tableSelector, #fieldSelector { padding: 5px; font-size: 14px; }
+        table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; vertical-align: top; }
+        th { background-color: #f0f0f0; position: sticky; top: 0; z-index: 1;}
+    </style>
+</head>
+<body>
+    <div id="controls">
+        <label for="tableSelector">Select Table:</label>
+        <select id="tableSelector"></select>
+        <label for="fieldSelector">Select Field:</label>
+        <select id="fieldSelector"></select>
+    </div>
+    <h1>Conditional Formatting Debug</h1>
+    <div id="loadingMessage">Loading...</div>
+    <div id="resultsContainer" style="display:none;">
+        <table id="resultsTable">
+            <thead>
+                <tr></tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+    <div id="errorMessage" style="color:red; font-weight:bold;"></div>
+    <button id="download-json-btn" style="display:none;">Download JSON</button>
+    <pre id="schema-display"></pre>
+
+    <script type="module" src="../libraries/grist-table-lens/grist-table-lens.js"></script>
+    <script type="module" src="script.js"></script>
+</body>
+</html>

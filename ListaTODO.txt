@@ -96,6 +96,20 @@
   - Corrigidos múltiplos bugs na inicialização da UI de configuração que impedia a persistência de estados.
   - Melhoradas as mensagens de erro na inicialização do widget para guiar o usuário na configuração da tabela `Grf_config`.
 
+### Correções Recentes (Conditional Formatting e Debug Widget)
+
+- [DONE] **Correção da Lógica de Formatação Condicional:**
+  - Identificado e corrigido o problema central no `grist-field-renderer.js` onde a formatação condicional não era aplicada corretamente.
+  - A função `getFieldStyle` foi refatorada para aplicar o estilo da **última** regra correspondente, em vez de tentar mesclar estilos ou aplicar a primeira regra.
+  - A função `_applyStyles` foi simplificada para aplicar diretamente o `fieldStyle` calculado, eliminando a lógica de formatação duplicada e incorreta.
+  - Corrigidas múltiplas chamadas a `getFieldStyle` no `CardSystem.js` que não passavam o `tableSchema`, impedindo a avaliação das regras.
+  - Resolvido um `TypeError` em `getFieldStyle` que ocorria quando uma coluna não possuía regras de formatação condicional.
+  - O resultado é que a formatação condicional (cores de campo, fundo de card, etc.) agora funciona corretamente nos widgets "Table" e "Card System".
+
+- [DONE] **Melhorias no Widget de Debug de Formatação Condicional:**
+  - Adicionada uma coluna "CSV" com um botão "Copiar" para facilitar a extração de dados de uma linha para análise.
+  - Adicionada uma coluna "Applied Colors (Grist)" que simula a lógica correta do Grist (última regra correspondente) para mostrar a cor que *deveria* ser aplicada, o que foi crucial para diagnosticar o problema principal.
+
 ### Próximas Tarefas
 
 - [DONE] **Filter module not updating correctly:** When using the filter bar, deleting characters or changing the search term after an initial filter does not correctly update the displayed cards. The filter seems to be applied to an already filtered set of records, instead of always filtering the original, complete dataset.

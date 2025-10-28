@@ -87,15 +87,12 @@ document.addEventListener('DOMContentLoaded', async function () {
 
         // onRendered callback will be called when the cell is rendered
         onRendered(async () => {
-            const fieldStyle = getFieldStyle(record, colSchema);
-
             await renderField({
                 container: tempContainer,
                 colSchema: colSchema,
                 record: record,
                 isEditing: false,
                 tableLens: tableLens,
-                fieldStyle: fieldStyle,
                 styling: {}
             });
         });
@@ -240,7 +237,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                     </button>
                 </div>
             </div>
-            <button id="popover-manager-btn" class="config-popover-btn" title="Open Configuration Manager">
+            <button id="popover-manager-btn" class_="config-popover-btn" title="Open Configuration Manager">
                 ${getIcon('icon-settings')}
             </button>
         `;
@@ -475,8 +472,8 @@ document.addEventListener('DOMContentLoaded', async function () {
                                         openDrawer(tableId, rowId, drawerConfigData);
                                         console.log("openDrawer call completed from manual click.");
                                     } else {
-                                        console.error(`Drawer config with ID \"${currentConfig.drawerId}\" not found.`);
-                                        alert(`Error: Drawer configuration with ID \"${currentConfig.drawerId}\" not found.`);
+                                        console.error(`Drawer config with ID "${currentConfig.drawerId}" not found.`);
+                                        alert(`Error: Drawer configuration with ID "${currentConfig.drawerId}" not found.`);
                                     }
                                 } catch (error) {
                                     console.error("Error fetching or opening drawer:", error);
@@ -500,8 +497,8 @@ document.addEventListener('DOMContentLoaded', async function () {
                                 openDrawer(tableId, 'new', drawerConfigData);
                                 console.log("openDrawer called for new record.");
                             } else {
-                                console.error(`Drawer config with ID \"${currentConfig.drawerId}\" not found.`);
-                                alert(`Error: Drawer configuration with ID \"${currentConfig.drawerId}\" not found.`);
+                                console.error(`Drawer config with ID "${currentConfig.drawerId}" not found.`);
+                                alert(`Error: Drawer configuration with ID "${currentConfig.drawerId}" not found.`);
                             }
                         } catch (error) {
                             console.error("Error preparing drawer for new record:", error);
