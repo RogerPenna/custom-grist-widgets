@@ -195,6 +195,95 @@ export async function renderRefList(options) {
 
             CardSystem.renderCards(cardsContainer, recordsToRender, cardConfig, relatedSchema, tableLens);
 
+        } else if (refListConfig?.displayAs === 'tabulator') {
+            const tabulatorConfigId = refListConfig.tabulatorConfigId;
+            if (!tabulatorConfigId) {
+                container.innerHTML = '<p>Error: No Tabulator Config ID specified.</p>';
+                return;
+            }
+
+            const tabulatorConfig = await tableLens.fetchConfig(tabulatorConfigId);
+            if (!tabulatorConfig) {
+                container.innerHTML = `<p>Error: Tabulator Config with ID '${tabulatorConfigId}' not found.</p>`;
+                return;
+            }
+
+            const gristCellFormatter = (cell, formatterParams, onRendered) => {
+                const colId = cell.getField();
+                const record = cell.getRow().getData();
+                const colSchema = relatedSchema[colId];
+                const colConfig = formatterParams.colConfig;
+
+                if (!colSchema) { return String(cell.getValue() ?? ''); }
+
+                const tempContainer = document.createElement('div');
+                tempContainer.style.cssText = 'width: 100%;';
+
+                if (colConfig) {
+                    if (colConfig.wrapText !== false) {
+                        tempContainer.style.whiteSpace = 'normal';
+                        if (colConfig.maxTextRows > 0) {
+                            const lineHeight = 1.4; // em
+                            tempContainer.style.lineHeight = `${lineHeight}em`;
+                            tempContainer.style.maxHeight = `${colConfig.maxTextRows * lineHeight}em`;
+                            tempContainer.style.overflow = 'hidden';
+                            tempContainer.style.display = '-webkit-box';
+                            tempContainer.style.webkitLineClamp = colConfig.maxTextRows;
+                            tempContainer.style.webkitBoxOrient = 'vertical';
+                        }
+                    } else {
+                        tempContainer.style.whiteSpace = 'nowrap';
+                        tempContainer.style.overflow = 'hidden';
+                        tempContainer.style.textOverflow = 'ellipsis';
+                    }
+                }
+
+                onRendered(async () => {
+                    await renderField({
+                        container: tempContainer,
+                        colSchema: colSchema,
+                        record: record,
+                        isEditing: false,
+                        tableLens: tableLens,
+                        ruleIdToColIdMap: ruleMap,
+                        fieldConfig: fieldConfig,
+                    });
+                });
+
+                return tempContainer;
+            };
+
+            const columns = (tabulatorConfig.columns || []).map(colConfig => {
+                const gristCol = relatedSchema[colConfig.colId];
+                if (!gristCol) return null;
+
+                return {
+                    title: gristCol.label || gristCol.colId,
+                    field: gristCol.colId,
+                    hozAlign: colConfig.align || 'left',
+                    headerFilter: tabulatorConfig.headerFilter !== false,
+                    width: colConfig.width || undefined,
+                    formatter: gristCellFormatter,
+                    formatterParams: {
+                        colConfig: colConfig,
+                    },
+                    tooltip: true,
+                };
+            }).filter(col => col !== null);
+
+            const tabulatorContainer = document.createElement('div');
+            container.appendChild(tabulatorContainer);
+
+            new Tabulator(tabulatorContainer, {
+                height: "100%",
+                data: recordsToRender,
+                columns: columns,
+                layout: tabulatorConfig.layout || "fitColumns",
+                pagination: tabulatorConfig.pagination?.enabled || false,
+                paginationSize: tabulatorConfig.pagination?.pageSize || 10,
+                paginationSizeSelector: tabulatorConfig.pagination?.enabled ? [5, 10, 20, 50, 100] : false,
+            });
+
         } else {
             const tableContainer = document.createElement('div');
             tableContainer.className = 'grf-reflist-table-container';
@@ -304,20 +393,6 @@ export async function renderRefList(options) {
         if(finalAddButton) {
              finalAddButton.onclick = () => handleAdd({ tableId: referencedTableId, onUpdate: renderContent, dataWriter, tableLens, backRefCol: backReferenceColId, parentRecId: record.id, parentTableId: primaryTableId, parentRefListColId: colSchema.colId, parentRecord: record, fieldConfig });
         }
-
-        tbody.querySelectorAll('tr').forEach((tr, index) => {
-            const rec = recordsToRender[index];
-            const menuBtn = tr.querySelector('.reflist-action-menu-btn');
-            const dropdown = tr.querySelector('.reflist-action-menu-dropdown');
-            menuBtn.addEventListener('click', e => { e.stopPropagation(); const isOpen = dropdown.classList.contains('is-open'); closeAllMenus(); if (!isOpen) dropdown.classList.add('is-open'); });
-            dropdown.addEventListener('click', e => {
-                e.stopPropagation();
-                const action = e.target.closest('.reflist-action-menu-item')?.dataset.action;
-                if (action === 'edit') handleEdit(referencedTableId, rec.id, renderContent, dataWriter, tableLens, fieldConfig);
-                else if (action === 'delete') handleDelete(referencedTableId, rec.id, renderContent, dataWriter);
-                closeAllMenus();
-            });
-        });
     };
 
     document.addEventListener('click', closeAllMenus);

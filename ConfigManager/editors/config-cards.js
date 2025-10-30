@@ -1361,21 +1361,23 @@ function openGroupBoxStylePopup(gbox) {
             refListOptionsHtml = `
                 <hr>
                 <h4>RefList Display Options</h4>
-                
-                <!-- *** LINHA DE TESTE ADICIONADA AQUI *** -->
-                <h4 style="color: red; border: 1px solid red; padding: 5px;">TESTE CHECAGEM DE ARQUIVO</h4>
-
                 <div class="form-group">
                     <label>Display As:</label>
                     <select id="fs-reflist-display-as">
-                        <option value="table" ${currentRefListConfig.displayAs === 'table' ? 'selected' : ''}>Table</option>
+                        <option value="table" ${currentRefListConfig.displayAs === 'table' ? 'selected' : ''}>Simple Table</option>
                         <option value="cards" ${currentRefListConfig.displayAs === 'cards' ? 'selected' : ''}>Cards</option>
+                        <option value="tabulator" ${currentRefListConfig.displayAs === 'tabulator' ? 'selected' : ''}>Complex Table</option>
                     </select>
                 </div>
                 <div class="form-group" id="fs-reflist-card-config-group" style="display: ${currentRefListConfig.displayAs === 'cards' ? 'block' : 'none'};">
                     <label>Card Config ID:</label>
                     <input type="text" id="fs-reflist-card-config-id" value="${currentRefListConfig.cardConfigId || ''}" placeholder="Enter Card Config ID">
                 </div>
+                <div class="form-group" id="fs-reflist-tabulator-config-group" style="display: ${currentRefListConfig.displayAs === 'tabulator' ? 'block' : 'none'};">
+                    <label>Tabulator Config ID:</label>
+                    <input type="text" id="fs-reflist-tabulator-config-id" value="${currentRefListConfig.tabulatorConfigId || ''}" placeholder="Enter Tabulator Config ID">
+                </div>
+
                 <div class="form-group">
                     <label>Max Rows to Display:</label>
                     <input type="number" id="fs-reflist-max-rows" min="0" value="${currentRefListConfig.maxRows || 0}" style="width:80px;">
@@ -1391,20 +1393,22 @@ function openGroupBoxStylePopup(gbox) {
                 <div class="form-group">
                     <label><input type="checkbox" id="fs-reflist-collapsible" ${currentRefListConfig.collapsible ? 'checked' : ''}> Enable Collapse/Expand</label>
                 </div>
-                <div class="form-group">
-                    <label><input type="checkbox" id="fs-reflist-zebra" ${currentRefListConfig.zebra ? 'checked' : ''}> Tabela Zebrada</label>
-                </div>
-                <div class="form-group">
-                    <label>Colunas da Tabela Relacionada:</label>
-                    <div id="fs-reflist-columns-config" style="max-height: 200px; overflow-y: auto; border: 1px solid #ccc; padding: 5px; border-radius: 4px;">
-                        ${Object.values(relatedSchema).filter(c => !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos').map(c => `
-                            <div>
-                                <label>
-                                    <input type="checkbox" class="fs-reflist-col-checkbox" value="${c.colId}" ${currentRefListConfig.columns && currentRefListConfig.columns.includes(c.colId) ? 'checked' : ''}>
-                                    ${c.label || c.colId} (${c.type})
-                                </label>
-                            </div>
-                        `).join('')}
+                <div id="fs-reflist-simple-table-options" style="display: ${currentRefListConfig.displayAs === 'table' ? 'block' : 'none'};">
+                    <div class="form-group">
+                        <label><input type="checkbox" id="fs-reflist-zebra" ${currentRefListConfig.zebra ? 'checked' : ''}> Tabela Zebrada</label>
+                    </div>
+                    <div class="form-group">
+                        <label>Colunas da Tabela Relacionada:</label>
+                        <div id="fs-reflist-columns-config" style="max-height: 200px; overflow-y: auto; border: 1px solid #ccc; padding: 5px; border-radius: 4px;">
+                            ${Object.values(relatedSchema).filter(c => !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos').map(c => `
+                                <div>
+                                    <label>
+                                        <input type="checkbox" class="fs-reflist-col-checkbox" value="${c.colId}" ${currentRefListConfig.columns && currentRefListConfig.columns.includes(c.colId) ? 'checked' : ''}>
+                                        ${c.label || c.colId} (${c.type})
+                                    </label>
+                                </div>
+                            `).join('')}
+                        </div>
                     </div>
                 </div>
             `;
@@ -1431,10 +1435,16 @@ function openGroupBoxStylePopup(gbox) {
 
             const displayAsSelect = _fieldStylePopup.querySelector('#fs-reflist-display-as');
             const cardConfigGroup = _fieldStylePopup.querySelector('#fs-reflist-card-config-group');
-            if(displayAsSelect && cardConfigGroup) {
-                displayAsSelect.addEventListener('change', () => {
+            const tabulatorConfigGroup = _fieldStylePopup.querySelector('#fs-reflist-tabulator-config-group');
+            const simpleTableOptions = _fieldStylePopup.querySelector('#fs-reflist-simple-table-options');
+            if(displayAsSelect && cardConfigGroup && tabulatorConfigGroup && simpleTableOptions) {
+                const toggleOptions = () => {
                     cardConfigGroup.style.display = displayAsSelect.value === 'cards' ? 'block' : 'none';
-                });
+                    tabulatorConfigGroup.style.display = displayAsSelect.value === 'tabulator' ? 'block' : 'none';
+                    simpleTableOptions.style.display = displayAsSelect.value === 'table' ? 'block' : 'none';
+                };
+                displayAsSelect.addEventListener('change', toggleOptions);
+                toggleOptions(); // Initial call to set correct visibility on popup open
             }
         }
 
@@ -1470,6 +1480,7 @@ function openGroupBoxStylePopup(gbox) {
 
             fieldDef.style.refListConfig.displayAs = _fieldStylePopup.querySelector('#fs-reflist-display-as').value;
             fieldDef.style.refListConfig.cardConfigId = _fieldStylePopup.querySelector('#fs-reflist-card-config-id').value;
+            fieldDef.style.refListConfig.tabulatorConfigId = _fieldStylePopup.querySelector('#fs-reflist-tabulator-config-id').value;
             fieldDef.style.refListConfig.paginate = _fieldStylePopup.querySelector('#fs-reflist-paginate').checked;
                             fieldDef.style.refListConfig.pageSize = parseInt(_fieldStylePopup.querySelector('#fs-reflist-page-size').value, 10) || 5;
                             fieldDef.style.refListConfig.collapsible = _fieldStylePopup.querySelector('#fs-reflist-collapsible').checked;

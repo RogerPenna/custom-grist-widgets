@@ -1,129 +1,88 @@
-/* libraries/grist-config-manager/ConfigManagerComponent.css */
-/* VERSÃO FINAL, COMPLETA E UNIFICADA */
-
-/* ========================================================== */
-/* ESTILOS ESSENCIAIS PARA O MODAL (ADICIONADOS AO TOPO)     */
-/* ========================================================== */
 .grf-cm-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
     background-color: rgba(0, 0, 0, 0.6);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 2000; /* Z-index alto para ficar na frente de tudo */
+    display: flex; justify-content: center; align-items: center;
+    z-index: 2000;
 }
 
 .grf-cm-modal {
-    background-color: #ffffff;
-    width: 95%;
-    height: 90%;
-    max-width: 1400px; /* Aumentado para dar mais espaço aos editores */
-    border-radius: 8px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
+    background-color: #ffffff; width: 95%; height: 90%; max-width: 1400px;
+    border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    display: flex; flex-direction: column; overflow: hidden;
 }
 
 .grf-cm-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px 20px;
-    border-bottom: 1px solid #dee2e6;
-    background-color: #f8f9fa;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 20px; border-bottom: 1px solid #dee2e6; background-color: #f8f9fa;
 }
 
-.grf-cm-header h1 {
-    margin: 0;
-    font-size: 1.4em;
-    color: #343a40;
-}
+.grf-cm-header h1 { margin: 0; font-size: 1.4em; color: #343a40; }
 
 .grf-cm-close {
-    background: none;
-    border: none;
-    font-size: 2.2em;
-    line-height: 1;
-    cursor: pointer;
-    color: #6c757d;
-    padding: 0 5px;
+    background: none; border: none; font-size: 2.2em; line-height: 1;
+    cursor: pointer; color: #6c757d; padding: 0 5px;
 }
-.grf-cm-close:hover {
-    color: #212529;
-}
+.grf-cm-close:hover { color: #212529; }
 
-.grf-cm-body {
-    flex-grow: 1;
-    overflow-y: auto; /* Permite scroll no corpo principal se necessário */
-    padding: 0; /* Removido para os painéis internos controlarem o padding */
-}
-
-/* ========================================================== */
-/* CÓDIGO CSS COMPLETO QUE VOCÊ FORNECEU (INÍCIO)             */
-/* ========================================================== */
-
-/* Nota: algumas regras foram renomeadas para usar as classes do componente, ex: .main-container -> .grf-cm-main-container */
+.grf-cm-body { flex-grow: 1; overflow-y: auto; padding: 0; }
 
 .grf-cm-main-container {
-    display: flex;
-    gap: 20px;
-    padding: 20px;
-    height: 100%;
-    box-sizing: border-box;
+    display: flex; gap: 20px; padding: 20px; height: 100%; box-sizing: border-box;
 }
 
 .grf-cm-sidebar {
-    flex: 0 0 300px;
-    border-right: 1px solid #e9ecef;
-    padding-right: 20px;
-    overflow-y: auto;
+    flex: 0 0 300px; border-right: 1px solid #e9ecef;
+    padding-right: 20px; overflow-y: auto;
+    display: flex; flex-direction: column;
 }
 
-#cm-config-list {
-    list-style-type: none;
-    padding: 0;
-    margin-top: 15px;
-}
+.grf-cm-controls-container { padding: 5px; background-color: #f0f0f0; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 10px; }
+.grf-cm-new-controls, .grf-cm-filter-controls { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
+.grf-cm-filter-controls { margin-bottom: 0; }
+.grf-cm-new-controls select, .grf-cm-filter-controls select { flex-grow: 1; padding: 5px; border-radius: 3px; border: 1px solid #ccc; }
+.grf-cm-new-controls button { padding: 5px 10px; border-radius: 3px; }
 
+#cm-config-list-container { flex-grow: 1; overflow-y: auto; border: 1px solid #ddd; background-color: #fff; border-radius: 4px; }
+#cm-config-list { list-style-type: none; padding: 0; margin: 0; }
+
+.cm-group-header { padding: 6px 10px; background-color: #e9e9e9; font-weight: bold; cursor: pointer; border-bottom: 1px solid #ddd; }
+.cm-group-header:hover { background-color: #e0e0e0; }
+.cm-group-header.collapsed::before { content: '▶ '; }
+.cm-group-header:not(.collapsed)::before { content: '▼ '; }
+
+#cm-config-list ul { padding-left: 0; list-style: none; }
 #cm-config-list li {
-    padding: 10px 12px;
-    cursor: pointer;
-    border-radius: 4px;
-    margin-bottom: 5px;
-    border: 1px solid transparent;
-    color: #333;
+    padding: 4px 8px; /* Reduzido */
+    cursor: pointer; 
+    border-radius: 4px; 
+    margin: 1px 0; /* Reduzido */
+    border: 1px solid transparent; 
+    color: #333; 
+    display: flex; 
+    align-items: center;
 }
 #cm-config-list li:hover { background-color: #e9ecef; }
 #cm-config-list li.is-active { background-color: #0d6efd; color: white; font-weight: bold; border-color: #0a58ca; }
 
-.grf-cm-editor-panel {
-    flex-grow: 1;
-    overflow-y: auto;
-    padding-right: 15px; /* Espaço para a barra de rolagem */
-}
+.cm-type-circle { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; margin-right: 8px; }
+
+.grf-cm-editor-panel { flex-grow: 1; overflow-y: auto; padding-right: 15px; }
 
 .form-group { margin-bottom: 15px; }
+#cm-editor-actions { display: none; justify-content: flex-end; gap: 10px; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #e9ecef; }
+
 label { display: block; font-weight: bold; margin-bottom: 5px; }
 input[type="text"], input[type="number"], select, textarea {
-    width: 100%;
-    padding: 8px;
-    border: 1px solid #ced4da;
-    border-radius: 4px;
-    box-sizing: border-box;
+    width: 100%; padding: 8px; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box;
 }
-textarea { font-family: 'Menlo', 'Monaco', 'Courier New', monospace; font-size: 14px; line-height: 1.5; }
 
-.btn { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+.btn { padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
 .btn-primary { background-color: #0d6efd; color: white; }
 .btn-success { background-color: #198754; color: white; }
-.btn-danger { background-color: #dc3545; color: white; margin-left: 10px; }
+.btn-danger { background-color: #dc3545; color: white; }
+.btn-secondary { background-color: #6c757d; color: white; }
 
-/* --- ESTILOS DO DRAWER EDITOR --- */
+/* Estilos dos editores específicos */
 .drawer-config-section { margin-top: 20px; }
 .drawer-config-section h4 { margin-top: 0; border-bottom: 1px solid #dee2e6; padding-bottom: 8px; }
 #unifiedFieldList { list-style: none; padding: 0; }
@@ -186,35 +145,3 @@ textarea { font-family: 'Menlo', 'Monaco', 'Courier New', monospace; font-size: 
 .available-fields-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .available-field { border: 1px solid #999; padding: 5px 10px; background: #eee; cursor: grab; border-radius: 4px; }
 .available-field:active { cursor: grabbing; }
-
-/* ========================================================== */
-/* CÓDIGO CSS COMPLETO QUE VOCÊ FORNECEU (FIM)                */
-/* ========================================================== */
-
-/* Estilos para a pílula de tipo de componente */
-#cm-config-list li {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.cm-type-pill {
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 10px;
-    font-weight: bold;
-    text-transform: uppercase;
-    color: white;
-}
-
-.cm-type-card-system {
-    background-color: #007bff; /* Blue */
-}
-
-.cm-type-drawer {
-    background-color: #28a745; /* Green */
-}
-
-.cm-type-outros {
-    background-color: #6c757d; /* Grey */
-}

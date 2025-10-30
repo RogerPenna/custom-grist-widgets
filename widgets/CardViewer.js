@@ -289,7 +289,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         popover.querySelector('#popover-manager-btn').onclick = () => {
             closeSettingsPopover();
-            openConfigManager(grist, { initialConfigId: currentConfigId });
+openConfigManager(grist, { initialConfigId: currentConfigId, componentTypes: ['Card System', 'Drawer', 'Card Style', 'Table'] });
         };
     }
 
