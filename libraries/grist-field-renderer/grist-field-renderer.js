@@ -176,7 +176,7 @@ export async function renderField(options) {
     }
 
     // Correctly pass refListConfig to the callOptions from the fieldStyle object
-    const callOptions = { ...options, container, cellValue, refListConfig: fieldStyle?.refListConfig };
+    const callOptions = { ...options, container, cellValue, refListConfig: options.fieldStyle?.refListConfig };
 
     const type = colSchema.type || '';
     if (type.startsWith('RefList:')) {

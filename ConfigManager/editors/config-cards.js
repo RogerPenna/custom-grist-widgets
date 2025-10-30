@@ -1,9 +1,11 @@
+// --- START OF CORRECTED config-cards.js ---
+
 export const CardConfigEditor = (() => {
     let state = {};
     let _mainContainer = null;
     let _fieldStylePopup = null;
     let _iconPickerPopup = null;
-    let allConfigs = []; // Moved from state to module scope for persistence
+    let allConfigs = []; // Variavel no escopo do módulo para persistir a lista de configs
     
     // Lista de ícones extraída de icons.svg para uso no seletor 
     const AVAILABLE_ICONS = [
@@ -39,7 +41,7 @@ export const CardConfigEditor = (() => {
 
     async function render(container, config, lens, tableId, receivedConfigs = []) {
         _mainContainer = container;
-        allConfigs = receivedConfigs; // Use module-scoped variable
+        allConfigs = receivedConfigs; // Armazena a lista de configs recebida na variável do módulo
         if (!tableId) { container.innerHTML = '<p class="editor-placeholder">Selecione uma Tabela de Dados no menu acima para começar a configurar.</p>'; return; }
         const schema = await lens.getTableSchema(tableId);
         if (!schema) { container.innerHTML = '<p class="editor-placeholder">Erro ao carregar o schema da tabela. Verifique o console.</p>'; return; }
@@ -75,7 +77,7 @@ export const CardConfigEditor = (() => {
         contentArea.id = "card-config-contents";
         container.appendChild(contentArea);
         buildStylingTab(contentArea);
-        buildFieldsLayoutTab(contentArea);
+        buildFieldsLayoutTab(contentArea); // Não precisa mais passar `allConfigs`
         buildActionsTab(contentArea);
         updateDebugJson();
         switchTab("sty", container);
@@ -826,6 +828,8 @@ export const CardConfigEditor = (() => {
 
     return s;
 }
+    // *** CORREÇÃO APLICADA AQUI ***
+    // Removido `allConfigs` como parâmetro. A função agora usará a variável do módulo.
     function buildFieldsLayoutTab(contentArea) {
     const tabEl = document.createElement("div");
     tabEl.dataset.tabSection = "fld";
@@ -1061,6 +1065,8 @@ function openGroupBoxStylePopup(gbox) {
         updateDebugJson();
     });
 }
+    // *** CORREÇÃO APLICADA AQUI ***
+    // Removido `allConfigs` como parâmetro. A função agora usará a variável do módulo.
     function buildGridUI(gridEl, tabEl) { gridEl.innerHTML = ""; for (let r = 0; r < state.numRows; r++) { const rowDiv = document.createElement("div"); rowDiv.className = 'layout-grid-row'; rowDiv.dataset.rowIndex = String(r); rowDiv.addEventListener("dragover", e => e.preventDefault()); rowDiv.addEventListener("drop", e => {
     e.preventDefault();
     const colId = e.dataTransfer.getData("text/colid");
@@ -1081,7 +1087,6 @@ function openGroupBoxStylePopup(gbox) {
 
         if (isIconGroup) {
             newLayoutItem.isIconGroup = true;
-            // No need to add buttonConfig here, it will be resolved at render time
         }
 
         state.layout.push(newLayoutItem);
@@ -1093,13 +1098,15 @@ function openGroupBoxStylePopup(gbox) {
         if (gbox) {
             gbox.row = r;
             gbox.col = col;
-            // Re-render both grids and the available list
             buildGroupBoxGridUI(_mainContainer.querySelector("#cs-group-box-grid"));
             buildAvailableGroupBoxesList(_mainContainer.querySelector("#cs-group-box-list"));
             updateDebugJson();
         }
     }
 }); state.layout.filter(f => f.row === r).forEach(f => { rowDiv.appendChild(createFieldBoxInConfigUI(f, gridEl, tabEl)); }); gridEl.appendChild(rowDiv); } }
+    
+    // *** CORREÇÃO APLICADA AQUI ***
+    // Removido `allConfigs` como parâmetro. A função agora usará a variável do módulo.
     function createFieldBoxInConfigUI(fieldDef, gridEl, tabEl) {
         let fieldLabel;
         let fieldSchema;
@@ -1324,7 +1331,9 @@ function openGroupBoxStylePopup(gbox) {
             }
         });
     }
-    async function openFieldStylePopup(fieldDef, fieldSchema, gridEl, tabEl) { // Added fieldSchema and async
+    // *** CORREÇÃO DEFINITIVA APLICADA AQUI ***
+    // Removido `allConfigs` da assinatura. A função agora usará a variável `allConfigs` do escopo do módulo, que é mais confiável.
+    async function openFieldStylePopup(fieldDef, fieldSchema, gridEl, tabEl) {
         if (_fieldStylePopup && _fieldStylePopup.parentNode) {
             _fieldStylePopup.parentNode.removeChild(_fieldStylePopup);
         }
@@ -1339,7 +1348,7 @@ function openGroupBoxStylePopup(gbox) {
         _mainContainer.appendChild(backdrop);
         
         _fieldStylePopup = document.createElement("div");
-        _fieldStylePopup.style.cssText = `position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1060; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.3);`;
+        _fieldStylePopup.style.cssText = `position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1060; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); max-height: 80vh; overflow-y: auto;`;
         _fieldStylePopup.className = 'field-style-popup';
         
         const isRefList = fieldSchema && fieldSchema.type.startsWith('RefList:');
@@ -1352,6 +1361,21 @@ function openGroupBoxStylePopup(gbox) {
             refListOptionsHtml = `
                 <hr>
                 <h4>RefList Display Options</h4>
+                
+                <!-- *** LINHA DE TESTE ADICIONADA AQUI *** -->
+                <h4 style="color: red; border: 1px solid red; padding: 5px;">TESTE CHECAGEM DE ARQUIVO</h4>
+
+                <div class="form-group">
+                    <label>Display As:</label>
+                    <select id="fs-reflist-display-as">
+                        <option value="table" ${currentRefListConfig.displayAs === 'table' ? 'selected' : ''}>Table</option>
+                        <option value="cards" ${currentRefListConfig.displayAs === 'cards' ? 'selected' : ''}>Cards</option>
+                    </select>
+                </div>
+                <div class="form-group" id="fs-reflist-card-config-group" style="display: ${currentRefListConfig.displayAs === 'cards' ? 'block' : 'none'};">
+                    <label>Card Config ID:</label>
+                    <input type="text" id="fs-reflist-card-config-id" value="${currentRefListConfig.cardConfigId || ''}" placeholder="Enter Card Config ID">
+                </div>
                 <div class="form-group">
                     <label>Max Rows to Display:</label>
                     <input type="number" id="fs-reflist-max-rows" min="0" value="${currentRefListConfig.maxRows || 0}" style="width:80px;">
@@ -1372,7 +1396,7 @@ function openGroupBoxStylePopup(gbox) {
                 </div>
                 <div class="form-group">
                     <label>Colunas da Tabela Relacionada:</label>
-                    <div id="fs-reflist-columns-config">
+                    <div id="fs-reflist-columns-config" style="max-height: 200px; overflow-y: auto; border: 1px solid #ccc; padding: 5px; border-radius: 4px;">
                         ${Object.values(relatedSchema).filter(c => !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos').map(c => `
                             <div>
                                 <label>
@@ -1404,6 +1428,14 @@ function openGroupBoxStylePopup(gbox) {
                     pageSizeGroup.style.display = paginateCheckbox.checked ? 'block' : 'none';
                 });
             }
+
+            const displayAsSelect = _fieldStylePopup.querySelector('#fs-reflist-display-as');
+            const cardConfigGroup = _fieldStylePopup.querySelector('#fs-reflist-card-config-group');
+            if(displayAsSelect && cardConfigGroup) {
+                displayAsSelect.addEventListener('change', () => {
+                    cardConfigGroup.style.display = displayAsSelect.value === 'cards' ? 'block' : 'none';
+                });
+            }
         }
 
                 const closePopup = () => {
@@ -1428,7 +1460,6 @@ function openGroupBoxStylePopup(gbox) {
         }; 
         fieldDef.style = { ...DEFAULT_FIELD_STYLE, ...newStyle }; 
 
-        // INÍCIO DA LÓGICA DE SALVAMENTO DO REFLIST (CORREÇÃO)
         if (isRefList && _fieldStylePopup) {
             fieldDef.style.refListConfig = fieldDef.style.refListConfig || {};
 
@@ -1437,6 +1468,8 @@ function openGroupBoxStylePopup(gbox) {
                 fieldDef.style.refListConfig.maxRows = parseInt(maxRowsInput.value, 10);
             }
 
+            fieldDef.style.refListConfig.displayAs = _fieldStylePopup.querySelector('#fs-reflist-display-as').value;
+            fieldDef.style.refListConfig.cardConfigId = _fieldStylePopup.querySelector('#fs-reflist-card-config-id').value;
             fieldDef.style.refListConfig.paginate = _fieldStylePopup.querySelector('#fs-reflist-paginate').checked;
                             fieldDef.style.refListConfig.pageSize = parseInt(_fieldStylePopup.querySelector('#fs-reflist-page-size').value, 10) || 5;
                             fieldDef.style.refListConfig.collapsible = _fieldStylePopup.querySelector('#fs-reflist-collapsible').checked;
@@ -1446,7 +1479,6 @@ function openGroupBoxStylePopup(gbox) {
             colCheckboxes.forEach(checkbox => selectedCols.push(checkbox.value));
             fieldDef.style.refListConfig.columns = selectedCols;
         }
-        // FIM DA LÓGICA DE SALVAMENTO DO REFLIST
         
         closePopup(); 
         buildGridUI(gridEl, tabEl);
@@ -1456,3 +1488,5 @@ function openGroupBoxStylePopup(gbox) {
     function populateFieldSelect(selectEl, fieldList) { if(!selectEl) return; while (selectEl.options.length > 1) { selectEl.remove(1); } fieldList.forEach(f => { const opt = document.createElement("option"); opt.value = f; opt.textContent = f; selectEl.appendChild(opt); }); }
     return { render, read };
 })();
+
+// --- END OF CORRECTED config-cards.js ---

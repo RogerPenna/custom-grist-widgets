@@ -63,7 +63,8 @@ input:checked + .grf-slider:before { transform: translateX(18px); }
 }
 .grf-reflist-table { width: 100%; border-collapse: collapse; }
 .grf-reflist-table th, .grf-reflist-table td {
-    white-space: nowrap; padding: 8px 10px; border-bottom: 1px solid #ddd;
+    word-wrap: break-word;
+    padding: 8px 10px; border-bottom: 1px solid #ddd;
     text-align: left; font-size: 0.95em;
 }
 .grf-reflist-table th { background-color: #f8f8f8; font-weight: bold; }

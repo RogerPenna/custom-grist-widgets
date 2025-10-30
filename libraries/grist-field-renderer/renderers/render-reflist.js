@@ -1,4 +1,5 @@
 // libraries/grist-field-renderer/renderers/render-reflist.js
+import { CardSystem } from '../../grist-card-system/CardSystem.js';
 import { openModal } from '../../grist-modal-component/modal-component.js';
 import { GristDataWriter } from '../../grist-data-writer.js';
 import { renderField } from '../grist-field-renderer.js';
@@ -55,9 +56,11 @@ async function handleEdit(tableId, recordId, onUpdate, dataWriter, tableLens, fi
 async function handleDelete(tableId, recordId, onUpdate, dataWriter) { if (confirm(`Tem certeza?`)) { await dataWriter.deleteRecords(tableId, [recordId]); onUpdate(); } }
 
 export async function renderRefList(options) {
+    console.log('renderRefList options:', options);
     let currentPage = 1;
-    let isCollapsed = options.refListConfig?.collapsible; // Start collapsed if option is enabled
     const { container, record, colSchema, tableLens, isLocked, fieldConfig, ruleIdToColIdMap, refListConfig } = options;
+    let isCollapsed = container.dataset.collapsed === 'true' || (container.dataset.collapsed === undefined && options.refListConfig?.collapsible);
+    container.dataset.collapsed = isCollapsed;
     const dataWriter = new GristDataWriter(grist);
     const iconPath = '../libraries/icons/icons.svg';
     container.innerHTML = '';
@@ -174,66 +177,100 @@ export async function renderRefList(options) {
             }
         }
         
-        const tableContainer = document.createElement('div');
-        tableContainer.className = 'grf-reflist-table-container';
-        const table = document.createElement('table');
-        table.className = 'grf-reflist-table';
-        if (fieldConfig?._options?.zebra || refListConfig?.zebra) { table.classList.add('is-zebra-striped'); }
-        
-        const thead = table.createTHead().insertRow();
-        const allPossibleCols = Object.values(relatedSchema).filter(c => c && !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos');
-        let columnsToDisplay;
-
-        if (refListConfig && refListConfig.columns && refListConfig.columns.length > 0) {
-            const visibleColIds = new Set(refListConfig.columns);
-            columnsToDisplay = allPossibleCols.filter(col => visibleColIds.has(col.colId));
-        } else if (fieldConfig && typeof fieldConfig === 'object') {
-            columnsToDisplay = allPossibleCols.filter(col => fieldConfig[col.colId]?.showInTable === true);
-        } else {
-            columnsToDisplay = allPossibleCols;
-        }
-        console.log("DEBUG: All possible columns:", allPossibleCols.map(c => c.colId));
-        console.log("DEBUG: Calculated columnsToDisplay:", columnsToDisplay.map(c => c.colId));
-
-        const thActions = document.createElement('th'); thActions.textContent = 'Ações'; thead.appendChild(thActions);
-        columnsToDisplay.forEach(c => {
-            const th = document.createElement('th'); th.textContent = c.label || c.colId;
-            th.style.cursor = 'pointer';
-            th.onclick = () => { sortColumn = c.colId; sortDirection = (sortDirection === 'asc') ? 'desc' : 'asc'; renderContent(); };
-            thead.appendChild(th);
-        });
-        
-        const tbody = table.createTBody();
-        for (const relRec of recordsToRender) {
-            const tr = tbody.insertRow();
-            const actionsCell = tr.insertCell();
-            actionsCell.className = 'actions-cell';
-            const menuBtn = document.createElement('button');
-            menuBtn.className = 'reflist-action-menu-btn';
-            menuBtn.disabled = isLocked;
-            menuBtn.innerHTML = `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>`; 
-            
-            const dropdown = document.createElement('div');
-            dropdown.className = 'reflist-action-menu-dropdown';
-            dropdown.innerHTML = `
-                <div class="reflist-action-menu-item" data-action="edit">
-                    <svg class="icon"><use href="${iconPath}#icon-edit"></use></svg>
-                    <span>Editar</span>
-                </div>
-                <div class="reflist-action-menu-item" data-action="delete">
-                    <svg class="icon"><use href="${iconPath}#icon-delete"></use></svg>
-                    <span>Deletar</span>
-                </div>
-            `;
-            actionsCell.appendChild(menuBtn);
-            actionsCell.appendChild(dropdown);
-            for (const c of columnsToDisplay) {
-                const td = tr.insertCell();
-                renderField({ container: td, colSchema: c, record: relRec, tableLens, ruleIdToColIdMap: ruleMap, fieldConfig: fieldConfig });
+        if (refListConfig?.displayAs === 'cards') {
+            const cardConfigId = refListConfig.cardConfigId;
+            if (!cardConfigId) {
+                container.innerHTML = '<p>Error: No Card Config ID specified.</p>';
+                return;
             }
+
+            const cardConfig = await tableLens.fetchConfig(cardConfigId);
+            if (!cardConfig) {
+                container.innerHTML = `<p>Error: Card Config with ID '${cardConfigId}' not found.</p>`;
+                return;
+            }
+
+            const cardsContainer = document.createElement('div');
+            container.appendChild(cardsContainer);
+
+            CardSystem.renderCards(cardsContainer, recordsToRender, cardConfig, relatedSchema, tableLens);
+
+        } else {
+            const tableContainer = document.createElement('div');
+            tableContainer.className = 'grf-reflist-table-container';
+            const table = document.createElement('table');
+            table.className = 'grf-reflist-table';
+            if (fieldConfig?._options?.zebra || refListConfig?.zebra) { table.classList.add('is-zebra-striped'); }
+            
+            const thead = table.createTHead().insertRow();
+            const allPossibleCols = Object.values(relatedSchema).filter(c => c && !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos');
+            let columnsToDisplay;
+
+            if (refListConfig && refListConfig.columns && refListConfig.columns.length > 0) {
+                const visibleColIds = new Set(refListConfig.columns);
+                columnsToDisplay = allPossibleCols.filter(col => visibleColIds.has(col.colId));
+            } else if (fieldConfig && typeof fieldConfig === 'object') {
+                columnsToDisplay = allPossibleCols.filter(col => fieldConfig[col.colId]?.showInTable === true);
+            } else {
+                columnsToDisplay = allPossibleCols;
+            }
+            console.log("DEBUG: All possible columns:", allPossibleCols.map(c => c.colId));
+            console.log("DEBUG: Calculated columnsToDisplay:", columnsToDisplay.map(c => c.colId));
+
+            const thActions = document.createElement('th'); thActions.textContent = 'Ações'; thead.appendChild(thActions);
+            columnsToDisplay.forEach(c => {
+                const th = document.createElement('th'); th.textContent = c.label || c.colId;
+                th.style.cursor = 'pointer';
+                th.onclick = () => { sortColumn = c.colId; sortDirection = (sortDirection === 'asc') ? 'desc' : 'asc'; renderContent(); };
+                thead.appendChild(th);
+            });
+            
+            const tbody = table.createTBody();
+            for (const relRec of recordsToRender) {
+                const tr = tbody.insertRow();
+                const actionsCell = tr.insertCell();
+                actionsCell.className = 'actions-cell';
+                const menuBtn = document.createElement('button');
+                menuBtn.className = 'reflist-action-menu-btn';
+                menuBtn.disabled = isLocked;
+                menuBtn.innerHTML = `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>`; 
+                
+                const dropdown = document.createElement('div');
+                dropdown.className = 'reflist-action-menu-dropdown';
+                dropdown.innerHTML = `
+                    <div class="reflist-action-menu-item" data-action="edit">
+                        <svg class="icon"><use href="${iconPath}#icon-edit"></use></svg>
+                        <span>Editar</span>
+                    </div>
+                    <div class="reflist-action-menu-item" data-action="delete">
+                        <svg class="icon"><use href="${iconPath}#icon-delete"></use></svg>
+                        <span>Deletar</span>
+                    </div>
+                `;
+                actionsCell.appendChild(menuBtn);
+                actionsCell.appendChild(dropdown);
+                for (const c of columnsToDisplay) {
+                    const td = tr.insertCell();
+                    renderField({ container: td, colSchema: c, record: relRec, tableLens, ruleIdToColIdMap: ruleMap, fieldConfig: fieldConfig });
+                }
+            }
+            tableContainer.appendChild(table);
+            container.appendChild(tableContainer);
+
+            tbody.querySelectorAll('tr').forEach((tr, index) => {
+                const rec = recordsToRender[index];
+                const menuBtn = tr.querySelector('.reflist-action-menu-btn');
+                const dropdown = tr.querySelector('.reflist-action-menu-dropdown');
+                menuBtn.addEventListener('click', e => { e.stopPropagation(); const isOpen = dropdown.classList.contains('is-open'); closeAllMenus(); if (!isOpen) dropdown.classList.add('is-open'); });
+                dropdown.addEventListener('click', e => {
+                    e.stopPropagation();
+                    const action = e.target.closest('.reflist-action-menu-item')?.dataset.action;
+                    if (action === 'edit') handleEdit(referencedTableId, rec.id, renderContent, dataWriter, tableLens, fieldConfig);
+                    else if (action === 'delete') handleDelete(referencedTableId, rec.id, renderContent, dataWriter);
+                    closeAllMenus();
+                });
+            });
         }
-        tableContainer.appendChild(table);
-        container.appendChild(tableContainer);
 
         if (refListConfig && refListConfig.paginate && totalRecords > refListConfig.pageSize) {
             const footer = document.createElement('div');

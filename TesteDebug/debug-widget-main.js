@@ -192,6 +192,9 @@ document.addEventListener('DOMContentLoaded', function () {
             renderConfigSelector();
             
             const allTables = await tableLens.listAllTables();
+            const grfConfigRecords = await tableLens.fetchTableRecords('Grf_config');
+            console.log('Grf_config records:', grfConfigRecords);
+
             const selectedTableId = await grist.selectedTable.getTableId() || (allTables.length > 0 ? allTables[0].id : null);
             tableSelectorEl.innerHTML = '';
             allTables.forEach(table => {
