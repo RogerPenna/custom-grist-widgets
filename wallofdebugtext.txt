@@ -1,0 +1,2913 @@
+Localization initialized in 16ms
+gristConfigCache.ts:49 gristConfigCache getWorker[kcSCWh6q1XK1kYi2gh9Eri]: not found
+theme.ts:319 The custom.css file uses deprecated variables that will be removed in the future. 
+Please follow the example custom.css file to update the variables: https://support.getgrist.com/self-managed/#how-do-i-customize-styling.
+(anonymous) @ theme.ts:319
+Q @ theme.ts:98
+Al @ App.ts:206
+create @ dispose.ts:136
+(anonymous) @ app.js:37
+Promise.then
+(anonymous) @ app.js:36
+e @ jquery.min.js:2
+t @ jquery.min.js:2
+setTimeout
+(anonymous) @ jquery.min.js:2
+c @ jquery.min.js:2
+fireWith @ jquery.min.js:2
+fire @ jquery.min.js:2
+c @ jquery.min.js:2
+fireWith @ jquery.min.js:2
+ready @ jquery.min.js:2
+B @ jquery.min.js:2Understand this warning
+DocPageModel.ts:395 DocPageModel _openDoc starting for kcSCWh6q1XK1 (mode undefined)
+gristConfigCache.ts:49 gristConfigCache getDoc[kcSCWh6q1XK1]: not found
+GristWSConnection.ts:100 GristWSConnection connecting to: ws://192.168.0.95:8484/dw/self/v/unknown/o/grupopavicon?clientId=e825246baea82784&counter=10&newClient=1&browserSettings=%7B%22timezone%22%3A%22America%2FSao_Paulo%22%7D&user=rogerio%40pavicon.com.br
+Comm.ts:160 Comm.useDocConnection(kcSCWh6q1XK1kYi2gh9Eri): useCount now 1
+Comm.ts:257 Comm request #0 openDoc (2) ['kcSCWh6q1XK1kYi2gh9Eri', {…}]
+GristWSConnection.ts:100 GristWSConnection.send[false] {"reqId":0,"method":"openDoc","args":["kcSCWh6q1XK1kYi2gh9Eri",{"openMode":"default","originalUrlId":"kcSCWh6q1XK1"}]}
+GristWSConnection.ts:100 GristWSConnection: onopen: Connected
+GristWSConnection.ts:100 GristWSConnection: onmessage (113 bytes)
+GristWSConnection.ts:100 GristWSConnection established: clientId e825246baea82784 counter 10 needReload false
+GristWSConnection.ts:100 GristWSConnection.send[true] {"reqId":0,"method":"openDoc","args":["kcSCWh6q1XK1kYi2gh9Eri",{"openMode":"default","originalUrlId":"kcSCWh6q1XK1"}]}
+Comm.ts:373 Comm: Triggering event clientConnect
+App.ts:160 App clientConnect event: needReload false version unknown
+GristWSConnection.ts:100 GristWSConnection: onmessage (53393 bytes)
+Comm.ts:351 Comm response #0 openDoc OK
+Comm.ts:160 Comm.useDocConnection(kcSCWh6q1XK1kYi2gh9Eri): useCount now 2
+GristDoc.ts:346 RECEIVED DOC RESPONSE {docFD: 0, clientId: 'e825246baea82784', doc: {…}, log: Array(100), recoveryMode: false, …}
+Comm.ts:257 Comm request #1 listActiveUserProfiles [0]
+GristWSConnection.ts:100 GristWSConnection.send[true] {"reqId":1,"method":"listActiveUserProfiles","args":[0]}
+BaseView.js:176 e[2] BaseView viewSection 41 (Fornecedores) lastCursorPos {"rowId":0,"fieldIndex":0}
+Comm.ts:257 Comm request #2 fetchTable (2) [0, 'Fornecedores']
+GristWSConnection.ts:100 GristWSConnection.send[true] {"reqId":2,"method":"fetchTable","args":[0,"Fornecedores"]}
+Comm.ts:257 Comm request #3 getUsersForViewAs [0]
+GristWSConnection.ts:100 GristWSConnection.send[true] {"reqId":3,"method":"getUsersForViewAs","args":[0]}
+Comm.ts:174 Comm.releaseDocConnection(kcSCWh6q1XK1kYi2gh9Eri): useCount now 1
+GristWSConnection.ts:100 GristWSConnection: onmessage (124 bytes)
+GristWSConnection.ts:100 GristWSConnection skipping duplicate 'clientConnect' message
+GristWSConnection.ts:100 GristWSConnection: onmessage (33 bytes)
+Comm.ts:351 Comm response #1 listActiveUserProfiles OK
+GristWSConnection.ts:100 GristWSConnection: onmessage (23851 bytes)
+Comm.ts:351 Comm response #2 fetchTable OK
+GristWSConnection.ts:100 GristWSConnection: onmessage (897 bytes)
+Comm.ts:351 Comm response #3 getUsersForViewAs OK
+localization.ts:172 Missing translation for key: menus.Acesso total ao documento
+missingKeyHandler @ localization.ts:172
+j @ i18next.js:791
+value @ i18next.js:807
+value @ i18next.js:2625
+e @ i18next.js:2607
+r @ localization.ts:180
+Ce @ localization.ts:112
+(anonymous) @ localization.ts:182
+(anonymous) @ menus.ts:281
+(anonymous) @ select.ts:74
+(anonymous) @ domComputed.ts:86
+(anonymous) @ binding.ts:59
+_evaluate @ subscribe.ts:128
+W @ subscribe.ts:79
+V @ subscribe.ts:202
+Y @ binding.ts:59
+J @ binding.ts:72
+(anonymous) @ domComputed.ts:85
+Le @ domImpl.ts:163
+Ie @ domImpl.ts:142
+Le @ domImpl.ts:169
+Ie @ domImpl.ts:142
+Be @ domImpl.ts:154
+Ce @ domImpl.ts:69
+(anonymous) @ styled.ts:97
+t.select @ select.ts:73
+H @ menus.ts:278
+_buildAccessLevelConfig @ CustomSectionConfig.ts:618
+buildDom @ CustomSectionConfig.ts:484
+(anonymous) @ domComponent.ts:87
+(anonymous) @ domComputed.ts:102
+(anonymous) @ domComputed.ts:86
+Y @ binding.ts:62
+J @ binding.ts:72
+(anonymous) @ domComputed.ts:85
+Le @ domImpl.ts:163
+Ie @ domImpl.ts:142
+Le @ domImpl.ts:169
+Ie @ domImpl.ts:142
+Be @ domImpl.ts:154
+Re @ domImpl.ts:186
+Ue @ domComputed.ts:32
+(anonymous) @ domComputed.ts:86
+Y @ binding.ts:51
+J @ binding.ts:72
+(anonymous) @ domComputed.ts:85
+Le @ domImpl.ts:163
+Ie @ domImpl.ts:142
+Le @ domImpl.ts:169
+Ie @ domImpl.ts:142
+Le @ domImpl.ts:169
+Ie @ domImpl.ts:142
+Be @ domImpl.ts:154
+Re @ domImpl.ts:186
+Ue @ domComputed.ts:32
+(anonymous) @ domComputed.ts:86
+Y @ binding.ts:51
+J @ binding.ts:72
+(anonymous) @ domComputed.ts:85
+Le @ domImpl.ts:163
+Ie @ domImpl.ts:142
+Le @ domImpl.ts:169
+Ie @ domImpl.ts:142
+Le @ domImpl.ts:169
+Ie @ domImpl.ts:142
+Be @ domImpl.ts:154
+Re @ domImpl.ts:186
+Ue @ domComputed.ts:32
+(anonymous) @ domComputed.ts:86
+(anonymous) @ binding.ts:59
+_evaluate @ subscribe.ts:128
+recompute @ _computed_queue.ts:62
+_ @ _computed_queue.ts:111
+setAndTrigger @ observable.ts:68
+set @ observable.ts:56
+(anonymous) @ RightPanel.ts:440
+Promise.then
+_createViewConfigTab @ RightPanel.ts:438
+_buildPageWidgetConfig @ RightPanel.ts:450
+(anonymous) @ domComponent.ts:85
+(anonymous) @ domComputed.ts:102
+(anonymous) @ domComputed.ts:86
+Y @ binding.ts:62
+J @ binding.ts:72
+(anonymous) @ domComputed.ts:85
+Le @ domImpl.ts:163
+Ie @ domImpl.ts:142
+Le @ domImpl.ts:169
+Ie @ domImpl.ts:142
+Be @ domImpl.ts:154
+Ce @ domImpl.ts:69
+ct @ dom.ts:43
+l @ RightPanelUtils.ts:30
+(anonymous) @ RightPanel.ts:381
+(anonymous) @ domComputed.ts:133
+(anonymous) @ domComputed.ts:86
+(anonymous) @ binding.ts:59
+_evaluate @ subscribe.ts:128
+W @ subscribe.ts:79
+V @ subscribe.ts:202
+Y @ binding.ts:59
+J @ binding.ts:72
+(anonymous) @ domComputed.ts:85
+Le @ domImpl.ts:163
+Ie @ domImpl.ts:142
+Le @ domImpl.ts:169
+Ie @ domImpl.ts:142
+Be @ domImpl.ts:154
+Re @ domImpl.ts:186
+Ue @ domComputed.ts:32
+(anonymous) @ domComputed.ts:86
+(anonymous) @ binding.ts:59
+_evaluate @ subscribe.ts:128
+W @ subscribe.ts:79
+V @ subscribe.ts:202
+Y @ binding.ts:59
+J @ binding.ts:72
+(anonymous) @ domComputed.ts:85
+Le @ domImpl.ts:163
+Ie @ domImpl.ts:142
+Le @ domImpl.ts:169
+Ie @ domImpl.ts:142
+Be @ domImpl.ts:154
+Re @ domImpl.ts:186
+Ue @ domComputed.ts:32
+(anonymous) @ domComputed.ts:86
+Y @ binding.ts:62
+J @ binding.ts:72
+(anonymous) @ domComputed.ts:85
+Le @ domImpl.ts:163
+Ie @ domImpl.ts:142
+Le @ domImpl.ts:169
+Ie @ domImpl.ts:142
+Le @ domImpl.ts:169
+Ie @ domImpl.ts:142
+Be @ domImpl.ts:154
+Re @ domImpl.ts:186
+Ue @ domComputed.ts:32
+(anonymous) @ domComputed.ts:86
+Y @ binding.ts:51
+J @ binding.ts:72
+(anonymous) @ domComputed.ts:85
+Le @ domImpl.ts:163
+Ie @ domImpl.ts:142
+Le @ domImpl.ts:169
+Ie @ domImpl.ts:142
+Be @ domImpl.ts:154
+Re @ domImpl.ts:186
+Ue @ domComputed.ts:32
+(anonymous) @ domComputed.ts:86
+(anonymous) @ binding.ts:59
+_evaluate @ subscribe.ts:128
+recompute @ _computed_queue.ts:62
+_ @ _computed_queue.ts:111
+setAndTrigger @ observable.ts:68
+autoDispose @ observable.ts:166
+_openDoc @ DocPageModel.ts:490
+await in _openDoc
+(anonymous) @ DocPageModel.ts:233
+(anonymous) @ AsyncFlow.ts:47
+Te @ AsyncFlow.ts:52
+create @ dispose.ts:136
+(anonymous) @ DocPageModel.ts:231
+_evaluate @ subscribe.ts:128
+W @ subscribe.ts:79
+V @ subscribe.ts:202
+initialize @ DocPageModel.ts:218
+We @ DocPageModel.ts:214
+create @ dispose.ts:136
+Cl @ AppUI.ts:136
+(anonymous) @ domComponent.ts:85
+(anonymous) @ domComputed.ts:102
+(anonymous) @ domComputed.ts:86
+Y @ binding.ts:62
+J @ binding.ts:72
+(anonymous) @ domComputed.ts:85
+Le @ domImpl.ts:163
+Ie @ domImpl.ts:142
+Le @ domImpl.ts:169
+Ie @ domImpl.ts:142
+Be @ domImpl.ts:154
+Re @ domImpl.ts:186
+Ue @ domComputed.ts:32
+(anonymous) @ domComputed.ts:86
+(anonymous) @ binding.ts:59
+_evaluate @ subscribe.ts:128
+W @ subscribe.ts:79
+V @ subscribe.ts:202
+Y @ binding.ts:59
+J @ binding.ts:72
+(anonymous) @ domComputed.ts:85
+Le @ domImpl.ts:163
+Ie @ domImpl.ts:142
+Le @ domImpl.ts:169
+Ie @ domImpl.ts:142
+Le @ domImpl.ts:169
+Ie @ domImpl.ts:142
+Be @ domImpl.ts:154
+Re @ domImpl.ts:186
+Ue @ domComputed.ts:32
+(anonymous) @ domComputed.ts:86
+(anonymous) @ binding.ts:59
+_evaluate @ subscribe.ts:128
+recompute @ _computed_queue.ts:62
+_ @ _computed_queue.ts:111
+setAndTrigger @ observable.ts:68
+autoDispose @ observable.ts:166
+p @ dispose.ts:309
+create @ dispose.ts:136
+_doInitialize @ AppModel.ts:271
+await in _doInitialize
+initialize @ AppModel.ts:196
+(anonymous) @ AppModel.ts:187
+_evaluate @ subscribe.ts:128
+W @ subscribe.ts:79
+V @ subscribe.ts:202
+te @ AppModel.ts:187
+create @ dispose.ts:136
+Al @ App.ts:102
+create @ dispose.ts:136
+(anonymous) @ app.js:37
+Promise.then
+(anonymous) @ app.js:36
+e @ jquery.min.js:2
+t @ jquery.min.js:2
+setTimeout
+(anonymous) @ jquery.min.js:2
+c @ jquery.min.js:2
+fireWith @ jquery.min.js:2
+fire @ jquery.min.js:2
+c @ jquery.min.js:2
+fireWith @ jquery.min.js:2
+ready @ jquery.min.js:2
+B @ jquery.min.js:2Understand this warning
+grist-event-bus.js:17 GRF Event Bus initialized.
+CardViewer.js:15 DOMContentLoaded event fired in CardViewer.js.
+CardViewer.js:20 filter-bar-container found in CardViewer.js. <div id=​"filter-bar-container">​</div>​
+CardViewer.js:28 Filter bar HTML loaded and inserted in CardViewer.js.
+CardViewer.js:34 GristFilterBar instantiated in CardViewer.js.
+grist-plugin-api.ts:408 PLUGIN VIEW /widgets/CardViewer.html: Rpc sending Ready
+grist-plugin-api.ts:408 PLUGIN VIEW /widgets/CardViewer.html: Rpc for CustomSectionAPI.configure#1: RPC_CALLING
+grist-plugin-api.ts:408 PLUGIN VIEW /widgets/CardViewer.html: Rpc sending RpcCall: CustomSectionAPI.configure#1
+2WidgetFrame.ts:275 Rpc sending Custom
+WidgetFrame.ts:275 Rpc for CustomSectionAPI.configure#1: RPC_ONCALL
+rpc.js:475 Rpc for CustomSectionAPI.configure#1: RPC_ONCALL_OK
+rpc.js:315 Rpc sending RpcRespData
+WidgetFrame.ts:169 Rpc sending Custom
+WidgetFrame.ts:169 Rpc sending Custom
+grist-plugin-api.ts:408 PLUGIN VIEW /widgets/CardViewer.html: Rpc for GristView.fetchSelectedTable#2: RPC_CALLING
+grist-plugin-api.ts:408 PLUGIN VIEW /widgets/CardViewer.html: Rpc sending RpcCall: GristView.fetchSelectedTable#2
+grist-plugin-api.ts:408 PLUGIN VIEW /widgets/CardViewer.html: Rpc sending Custom
+grist-plugin-api.ts:408 PLUGIN VIEW /widgets/CardViewer.html: Rpc for CustomSectionAPI.configure#1: RPC_RESULT_OK
+grist-plugin-api.ts:408 PLUGIN VIEW /widgets/CardViewer.html: Rpc for GristView.fetchSelectedTable#3: RPC_CALLING
+grist-plugin-api.ts:408 PLUGIN VIEW /widgets/CardViewer.html: Rpc sending RpcCall: GristView.fetchSelectedTable#3
+CardViewer.js:317 Evento onOptions disparado. Opções recebidas: {configId: 'nova_cardsystem_1761913656686'}
+CardViewer.js:73 [DEBUG] Entering initializeAndUpdate. Current configId: nova_cardsystem_1761913656686
+CardViewer.js:132 [DEBUG] Proceeding with linked configId: nova_cardsystem_1761913656686
+grist-plugin-api.ts:408 PLUGIN VIEW /widgets/CardViewer.html: Rpc for GristDocAPI.fetchTable#4: RPC_CALLING
+grist-plugin-api.ts:408 PLUGIN VIEW /widgets/CardViewer.html: Rpc sending RpcCall: GristDocAPI.fetchTable#4
+WidgetFrame.ts:275 Rpc for GristView.fetchSelectedTable#2: RPC_ONCALL
+rpc.js:475 Rpc for GristView.fetchSelectedTable#2: RPC_ONCALL_OK
+rpc.js:315 Rpc sending RpcRespData
+WidgetFrame.ts:275 Rpc for GristView.fetchSelectedTable#3: RPC_ONCALL
+rpc.js:475 Rpc for GristView.fetchSelectedTable#3: RPC_ONCALL_OK
+rpc.js:315 Rpc sending RpcRespData
+WidgetFrame.ts:275 Rpc for GristDocAPI.fetchTable#4: RPC_ONCALL
+Comm.ts:257 Comm request #4 fetchTable (2) [0, 'Grf_config']
+GristWSConnection.ts:100 GristWSConnection.send[true] {"reqId":4,"method":"fetchTable","args":[0,"Grf_config"]}
+grist-plugin-api.ts:408 PLUGIN VIEW /widgets/CardViewer.html: Rpc for GristView.fetchSelectedTable#2: RPC_RESULT_OK
+grist-plugin-api.ts:408 PLUGIN VIEW /widgets/CardViewer.html: Rpc for CustomSectionAPI.mappings#5: RPC_CALLING
+grist-plugin-api.ts:408 PLUGIN VIEW /widgets/CardViewer.html: Rpc sending RpcCall: CustomSectionAPI.mappings#5
+grist-plugin-api.ts:408 PLUGIN VIEW /widgets/CardViewer.html: Rpc for GristView.fetchSelectedTable#3: RPC_RESULT_OK
+WidgetFrame.ts:275 Rpc for CustomSectionAPI.mappings#5: RPC_ONCALL
+rpc.js:475 Rpc for CustomSectionAPI.mappings#5: RPC_ONCALL_OK
+rpc.js:315 Rpc sending RpcRespData
+grist-plugin-api.ts:408 PLUGIN VIEW /widgets/CardViewer.html: Rpc for CustomSectionAPI.mappings#5: RPC_RESULT_OK
+2CardViewer.js:309 Evento onRecords disparado. Disparando atualização se a config estiver carregada.
+GristWSConnection.ts:100 GristWSConnection: onmessage (5233 bytes)
+Comm.ts:351 Comm response #4 fetchTable OK
+rpc.js:475 Rpc for GristDocAPI.fetchTable#4: RPC_ONCALL_OK
+rpc.js:315 Rpc sending RpcRespData
+grist-plugin-api.ts:408 PLUGIN VIEW /widgets/CardViewer.html: Rpc for GristDocAPI.fetchTable#4: RPC_RESULT_OK
+grist-plugin-api.ts:408 PLUGIN VIEW /widgets/CardViewer.html: Rpc for GristDocAPI.fetchTable#6: RPC_CALLING
+grist-plugin-api.ts:408 PLUGIN VIEW /widgets/CardViewer.html: Rpc sending RpcCall: GristDocAPI.fetchTable#6
+grist-plugin-api.ts:408 PLUGIN VIEW /widgets/CardViewer.html: Rpc for GristDocAPI.fetchTable#7: RPC_CALLING
+grist-plugin-api.ts:408 PLUGIN VIEW /widgets/CardViewer.html: Rpc sending RpcCall: GristDocAPI.fetchTable#7
+grist-plugin-api.ts:408 PLUGIN VIEW /widgets/CardViewer.html: Rpc for GristDocAPI.fetchTable#8: RPC_CALLING
+grist-plugin-api.ts:408 PLUGIN VIEW /widgets/CardViewer.html: Rpc sending RpcCall: GristDocAPI.fetchTable#8
+grist-plugin-api.ts:408 PLUGIN VIEW /widgets/CardViewer.html: Rpc for GristDocAPI.fetchTable#9: RPC_CALLING
+grist-plugin-api.ts:408 PLUGIN VIEW /widgets/CardViewer.html: Rpc sending RpcCall: GristDocAPI.fetchTable#9
+grist-plugin-api.ts:408 PLUGIN VIEW /widgets/CardViewer.html: Rpc for GristDocAPI.fetchTable#10: RPC_CALLING
+grist-plugin-api.ts:408 PLUGIN VIEW /widgets/CardViewer.html: Rpc sending RpcCall: GristDocAPI.fetchTable#10
+WidgetFrame.ts:275 Rpc for GristDocAPI.fetchTable#6: RPC_ONCALL
+Comm.ts:257 Comm request #5 fetchTable (2) [0, 'Fornecedores']
+GristWSConnection.ts:100 GristWSConnection.send[true] {"reqId":5,"method":"fetchTable","args":[0,"Fornecedores"]}
+WidgetFrame.ts:275 Rpc for GristDocAPI.fetchTable#7: RPC_ONCALL
+Comm.ts:257 Comm request #6 fetchTable (2) [0, '_grist_Tables']
+GristWSConnection.ts:100 GristWSConnection.send[true] {"reqId":6,"method":"fetchTable","args":[0,"_grist_Tables"]}
+WidgetFrame.ts:275 Rpc for GristDocAPI.fetchTable#8: RPC_ONCALL
+Comm.ts:257 Comm request #7 fetchTable (2) [0, '_grist_Tables_column']
+GristWSConnection.ts:100 GristWSConnection.send[true] {"reqId":7,"method":"fetchTable","args":[0,"_grist_Tables_column"]}
+WidgetFrame.ts:275 Rpc for GristDocAPI.fetchTable#9: RPC_ONCALL
+Comm.ts:257 Comm request #8 fetchTable (2) [0, '_grist_Tables']
+GristWSConnection.ts:100 GristWSConnection.send[true] {"reqId":8,"method":"fetchTable","args":[0,"_grist_Tables"]}
+WidgetFrame.ts:275 Rpc for GristDocAPI.fetchTable#10: RPC_ONCALL
+Comm.ts:257 Comm request #9 fetchTable (2) [0, '_grist_Tables_column']
+GristWSConnection.ts:100 GristWSConnection.send[true] {"reqId":9,"method":"fetchTable","args":[0,"_grist_Tables_column"]}
+GristWSConnection.ts:100 GristWSConnection: onmessage (23851 bytes)
+Comm.ts:351 Comm response #5 fetchTable OK
+rpc.js:475 Rpc for GristDocAPI.fetchTable#6: RPC_ONCALL_OK
+rpc.js:315 Rpc sending RpcRespData
+GristWSConnection.ts:100 GristWSConnection: onmessage (664 bytes)
+Comm.ts:351 Comm response #6 fetchTable OK
+rpc.js:475 Rpc for GristDocAPI.fetchTable#7: RPC_ONCALL_OK
+rpc.js:315 Rpc sending RpcRespData
+GristWSConnection.ts:100 GristWSConnection: onmessage (16804 bytes)
+Comm.ts:351 Comm response #7 fetchTable OK
+rpc.js:475 Rpc for GristDocAPI.fetchTable#8: RPC_ONCALL_OK
+rpc.js:315 Rpc sending RpcRespData
+GristWSConnection.ts:100 GristWSConnection: onmessage (664 bytes)
+Comm.ts:351 Comm response #8 fetchTable OK
+rpc.js:475 Rpc for GristDocAPI.fetchTable#9: RPC_ONCALL_OK
+rpc.js:315 Rpc sending RpcRespData
+grist-plugin-api.ts:408 PLUGIN VIEW /widgets/CardViewer.html: Rpc for GristDocAPI.fetchTable#6: RPC_RESULT_OK
+grist-plugin-api.ts:408 PLUGIN VIEW /widgets/CardViewer.html: Rpc for GristDocAPI.fetchTable#7: RPC_RESULT_OK
+grist-plugin-api.ts:408 PLUGIN VIEW /widgets/CardViewer.html: Rpc for GristDocAPI.fetchTable#8: RPC_RESULT_OK
+grist-plugin-api.ts:408 PLUGIN VIEW /widgets/CardViewer.html: Rpc for GristDocAPI.fetchTable#9: RPC_RESULT_OK
+GristWSConnection.ts:100 GristWSConnection: onmessage (16804 bytes)
+Comm.ts:351 Comm response #9 fetchTable OK
+rpc.js:475 Rpc for GristDocAPI.fetchTable#10: RPC_ONCALL_OK
+rpc.js:315 Rpc sending RpcRespData
+grist-plugin-api.ts:408 PLUGIN VIEW /widgets/CardViewer.html: Rpc for GristDocAPI.fetchTable#10: RPC_RESULT_OK
+CardViewer.js:185 [DEBUG] Card rendering complete.
+CardSystem.js:90 DEBUG: CardSystem received layout: [
+  {
+    "colId": "Nome_Fornecedor",
+    "row": 0,
+    "col": 0,
+    "colSpan": 2,
+    "rowSpan": 1,
+    "style": {
+      "useGristStyle": true,
+      "labelVisible": true,
+      "labelPosition": "above",
+      "labelFont": "inherit",
+      "labelFontSize": "inherit",
+      "labelColor": "inherit",
+      "labelOutline": false,
+      "labelOutlineColor": "#ffffff",
+      "dataJustify": "left",
+      "heightLimited": false,
+      "maxHeightRows": 1,
+      "isTitleField": false
+    }
+  },
+  {
+    "colId": "Tipo",
+    "row": 0,
+    "col": 8,
+    "colSpan": 2,
+    "rowSpan": 1,
+    "style": {
+      "useGristStyle": true,
+      "labelVisible": true,
+      "labelPosition": "above",
+      "labelFont": "inherit",
+      "labelFontSize": "inherit",
+      "labelColor": "inherit",
+      "labelOutline": false,
+      "labelOutlineColor": "#ffffff",
+      "dataJustify": "left",
+      "heightLimited": false,
+      "maxHeightRows": 1,
+      "isTitleField": false
+    }
+  },
+  {
+    "colId": "Mat_Controlado",
+    "row": 0,
+    "col": 2,
+    "colSpan": 2,
+    "rowSpan": 1,
+    "style": {
+      "useGristStyle": true,
+      "labelVisible": true,
+      "labelPosition": "above",
+      "labelFont": "inherit",
+      "labelFontSize": "inherit",
+      "labelColor": "inherit",
+      "labelOutline": false,
+      "labelOutlineColor": "#ffffff",
+      "dataJustify": "left",
+      "heightLimited": false,
+      "maxHeightRows": 1,
+      "isTitleField": false
+    }
+  },
+  {
+    "colId": "Classe",
+    "row": 0,
+    "col": 4,
+    "colSpan": 2,
+    "rowSpan": 1,
+    "style": {
+      "useGristStyle": true,
+      "labelVisible": true,
+      "labelPosition": "above",
+      "labelFont": "inherit",
+      "labelFontSize": "inherit",
+      "labelColor": "inherit",
+      "labelOutline": false,
+      "labelOutlineColor": "#ffffff",
+      "dataJustify": "left",
+      "heightLimited": false,
+      "maxHeightRows": 1,
+      "isTitleField": false
+    }
+  },
+  {
+    "colId": "Necessita_Qualificacao_Inicial_",
+    "row": 0,
+    "col": 6,
+    "colSpan": 2,
+    "rowSpan": 1,
+    "style": {
+      "useGristStyle": true,
+      "labelVisible": true,
+      "labelPosition": "above",
+      "labelFont": "inherit",
+      "labelFontSize": "inherit",
+      "labelColor": "inherit",
+      "labelOutline": false,
+      "labelOutlineColor": "#ffffff",
+      "dataJustify": "left",
+      "heightLimited": false,
+      "maxHeightRows": 1,
+      "isTitleField": false
+    }
+  }
+]
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+ Applying style to Nome_Fornecedor: 1 / span 2
+ Applying style to Tipo: 9 / span 2
+ Applying style to Mat_Controlado: 3 / span 2
+ Applying style to Classe: 5 / span 2
+ Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+ Applying style to Nome_Fornecedor: 1 / span 2
+ Applying style to Tipo: 9 / span 2
+ Applying style to Mat_Controlado: 3 / span 2
+ Applying style to Classe: 5 / span 2
+ Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+ Applying style to Nome_Fornecedor: 1 / span 2
+ Applying style to Tipo: 9 / span 2
+ Applying style to Mat_Controlado: 3 / span 2
+ Applying style to Classe: 5 / span 2
+ Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+ Applying style to Nome_Fornecedor: 1 / span 2
+ Applying style to Tipo: 9 / span 2
+ Applying style to Mat_Controlado: 3 / span 2
+ Applying style to Classe: 5 / span 2
+ Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+ Applying style to Nome_Fornecedor: 1 / span 2
+ Applying style to Tipo: 9 / span 2
+ Applying style to Mat_Controlado: 3 / span 2
+ Applying style to Classe: 5 / span 2
+ Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+ Applying style to Nome_Fornecedor: 1 / span 2
+ Applying style to Tipo: 9 / span 2
+ Applying style to Mat_Controlado: 3 / span 2
+ Applying style to Classe: 5 / span 2
+ Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+ Applying style to Nome_Fornecedor: 1 / span 2
+ Applying style to Tipo: 9 / span 2
+ Applying style to Mat_Controlado: 3 / span 2
+ Applying style to Classe: 5 / span 2
+ Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+ Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+ Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+ Applying style to Nome_Fornecedor: 1 / span 2
+ Applying style to Tipo: 9 / span 2
+ Applying style to Mat_Controlado: 3 / span 2
+ Applying style to Classe: 5 / span 2
+ Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+ Applying style to Nome_Fornecedor: 1 / span 2
+ Applying style to Tipo: 9 / span 2
+ Applying style to Mat_Controlado: 3 / span 2
+ Applying style to Classe: 5 / span 2
+ Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+ Applying style to Nome_Fornecedor: 1 / span 2
+ Applying style to Tipo: 9 / span 2
+ Applying style to Mat_Controlado: 3 / span 2
+ Applying style to Classe: 5 / span 2
+ Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+ Applying style to Classe: 5 / span 2
+ Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+ Applying style to Nome_Fornecedor: 1 / span 2
+ Applying style to Tipo: 9 / span 2
+ Applying style to Mat_Controlado: 3 / span 2
+ Applying style to Classe: 5 / span 2
+ Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+ Applying style to Nome_Fornecedor: 1 / span 2
+ Applying style to Tipo: 9 / span 2
+ Applying style to Mat_Controlado: 3 / span 2
+ Applying style to Classe: 5 / span 2
+ Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+ Applying style to Nome_Fornecedor: 1 / span 2
+ Applying style to Tipo: 9 / span 2
+ Applying style to Mat_Controlado: 3 / span 2
+ Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+ Applying style to Classe: 5 / span 2
+ Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+ Applying style to Nome_Fornecedor: 1 / span 2
+ Applying style to Tipo: 9 / span 2
+ Applying style to Mat_Controlado: 3 / span 2
+ Applying style to Classe: 5 / span 2
+ Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+ Applying style to Nome_Fornecedor: 1 / span 2
+ Applying style to Tipo: 9 / span 2
+ Applying style to Mat_Controlado: 3 / span 2
+ Applying style to Classe: 5 / span 2
+ Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+ Applying style to Nome_Fornecedor: 1 / span 2
+ Applying style to Tipo: 9 / span 2
+ Applying style to Mat_Controlado: 3 / span 2
+ Applying style to Classe: 5 / span 2
+ Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+ Applying style to Nome_Fornecedor: 1 / span 2
+ Applying style to Tipo: 9 / span 2
+ Applying style to Mat_Controlado: 3 / span 2
+ Applying style to Classe: 5 / span 2
+ Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+ Applying style to Nome_Fornecedor: 1 / span 2
+ Applying style to Tipo: 9 / span 2
+ Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+CardSystem.js:340 Applying style to Nome_Fornecedor: 1 / span 2
+CardSystem.js:340 Applying style to Tipo: 9 / span 2
+CardSystem.js:340 Applying style to Mat_Controlado: 3 / span 2
+CardSystem.js:340 Applying style to Classe: 5 / span 2
+CardSystem.js:340 Applying style to Necessita_Qualificacao_Inicial_: 7 / span 2
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+render-reflist.js:59 renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+render-reflist.js:75 --- DEBUG: renderRefList ---
+render-reflist.js:76 Rendering RefList for field: Tipo
+render-reflist.js:77 Received fieldConfig: {}
+render-reflist.js:78 Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ renderRefList options: {container: div, colSchema: {…}, record: {…}, isEditing: false, tableLens: GristTableLens, …}
+ --- DEBUG: renderRefList ---
+ Rendering RefList for field: Tipo
+ Received fieldConfig: {}
+ Received refListConfig: {}
+ PLUGIN VIEW /widgets/CardViewer.html: Rpc for GristDocAPI.fetchTable#11: RPC_CALLING
+ PLUGIN VIEW /widgets/CardViewer.html: Rpc sending RpcCall: GristDocAPI.fetchTable#11
+ PLUGIN VIEW /widgets/CardViewer.html: Rpc for GristDocAPI.fetchTable#12: RPC_CALLING
+ PLUGIN VIEW /widgets/CardViewer.html: Rpc sending RpcCall: GristDocAPI.fetchTable#12
+ PLUGIN VIEW /widgets/CardViewer.html: Rpc for GristDocAPI.fetchTable#13: RPC_CALLING
+ PLUGIN VIEW /widgets/CardViewer.html: Rpc sending RpcCall: GristDocAPI.fetchTable#13
+ PLUGIN VIEW /widgets/CardViewer.html: Rpc for GristDocAPI.fetchTable#14: RPC_CALLING
+ PLUGIN VIEW /widgets/CardViewer.html: Rpc sending RpcCall: GristDocAPI.fetchTable#14
+ PLUGIN VIEW /widgets/CardViewer.html: Rpc for GristDocAPI.fetchTable#15: RPC_CALLING
+ PLUGIN VIEW /widgets/CardViewer.html: Rpc sending RpcCall: GristDocAPI.fetchTable#15
+ PLUGIN VIEW /widgets/CardViewer.html: Rpc for GristDocAPI.fetchTable#16: RPC_CALLING
+grist-plugin-api.ts:408 PLUGIN VIEW /widgets/CardViewer.html: Rpc sending RpcCall: GristDocAPI.fetchTable#16
+grist-plugin-api.ts:408 PLUGIN VIEW /widgets/CardViewer.html: Rpc for GristDocAPI.fetchTable#17: RPC_CALLING
+grist-plugin-api.ts:408 PLUGIN VIEW /widgets/CardViewer.html: Rpc sending RpcCall: GristDocAPI.fetchTable#17
+grist-plugin-api.ts:408 PLUGIN VIEW /widgets/CardViewer.html: Rpc for GristDocAPI.fetchTable#18: RPC_CALLING
+grist-plugin-api.ts:408 PLUGIN VIEW /widgets/CardViewer.html: Rpc sending RpcCall: GristDocAPI.fetchTable#18
+grist-plugin-api.ts:408 PLUGIN VIEW /widgets/CardViewer.html: Rpc for GristDocAPI.fetchTable#19: RPC_CALLING
+grist-plugin-api.ts:408 PLUGIN VIEW /widgets/CardViewer.html: Rpc sending RpcCall: GristDocAPI.fetchTable#19
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+ DEBUG: All possible columns: ['Tipo_Fornecedor']
+ DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+WidgetFrame.ts:275 Rpc for GristDocAPI.fetchTable#11: RPC_ONCALL
+Comm.ts:257 Comm request #10 fetchTable (2) [0, 'Tipos_de_Fornecedores']
+GristWSConnection.ts:100 GristWSConnection.send[true] {"reqId":10,"method":"fetchTable","args":[0,"Tipos_de_Fornecedores"]}
+WidgetFrame.ts:275 Rpc for GristDocAPI.fetchTable#12: RPC_ONCALL
+Comm.ts:257 Comm request #11 fetchTable (2) [0, 'Tipos_de_Fornecedores']
+GristWSConnection.ts:100 GristWSConnection.send[true] {"reqId":11,"method":"fetchTable","args":[0,"Tipos_de_Fornecedores"]}
+WidgetFrame.ts:275 Rpc for GristDocAPI.fetchTable#13: RPC_ONCALL
+Comm.ts:257 Comm request #12 fetchTable (2) [0, 'Tipos_de_Fornecedores']
+GristWSConnection.ts:100 GristWSConnection.send[true] {"reqId":12,"method":"fetchTable","args":[0,"Tipos_de_Fornecedores"]}
+WidgetFrame.ts:275 Rpc for GristDocAPI.fetchTable#14: RPC_ONCALL
+Comm.ts:257 Comm request #13 fetchTable (2) [0, 'Tipos_de_Fornecedores']
+GristWSConnection.ts:100 GristWSConnection.send[true] {"reqId":13,"method":"fetchTable","args":[0,"Tipos_de_Fornecedores"]}
+WidgetFrame.ts:275 Rpc for GristDocAPI.fetchTable#15: RPC_ONCALL
+Comm.ts:257 Comm request #14 fetchTable (2) [0, 'Tipos_de_Fornecedores']
+GristWSConnection.ts:100 GristWSConnection.send[true] {"reqId":14,"method":"fetchTable","args":[0,"Tipos_de_Fornecedores"]}
+WidgetFrame.ts:275 Rpc for GristDocAPI.fetchTable#16: RPC_ONCALL
+Comm.ts:257 Comm request #15 fetchTable (2) [0, 'Tipos_de_Fornecedores']
+GristWSConnection.ts:100 GristWSConnection.send[true] {"reqId":15,"method":"fetchTable","args":[0,"Tipos_de_Fornecedores"]}
+WidgetFrame.ts:275 Rpc for GristDocAPI.fetchTable#17: RPC_ONCALL
+Comm.ts:257 Comm request #16 fetchTable (2) [0, 'Tipos_de_Fornecedores']
+GristWSConnection.ts:100 GristWSConnection.send[true] {"reqId":16,"method":"fetchTable","args":[0,"Tipos_de_Fornecedores"]}
+WidgetFrame.ts:275 Rpc for GristDocAPI.fetchTable#18: RPC_ONCALL
+Comm.ts:257 Comm request #17 fetchTable (2) [0, 'Tipos_de_Fornecedores']
+GristWSConnection.ts:100 GristWSConnection.send[true] {"reqId":17,"method":"fetchTable","args":[0,"Tipos_de_Fornecedores"]}
+WidgetFrame.ts:275 Rpc for GristDocAPI.fetchTable#19: RPC_ONCALL
+Comm.ts:257 Comm request #18 fetchTable (2) [0, 'Tipos_de_Fornecedores']
+GristWSConnection.ts:100 GristWSConnection.send[true] {"reqId":18,"method":"fetchTable","args":[0,"Tipos_de_Fornecedores"]}
+GristWSConnection.ts:100 GristWSConnection: onmessage (615 bytes)
+Comm.ts:351 Comm response #10 fetchTable OK
+rpc.js:475 Rpc for GristDocAPI.fetchTable#11: RPC_ONCALL_OK
+rpc.js:315 Rpc sending RpcRespData
+grist-plugin-api.ts:408 PLUGIN VIEW /widgets/CardViewer.html: Rpc for GristDocAPI.fetchTable#11: RPC_RESULT_OK
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+GristWSConnection.ts:100 GristWSConnection: onmessage (615 bytes)
+Comm.ts:351 Comm response #11 fetchTable OK
+rpc.js:475 Rpc for GristDocAPI.fetchTable#12: RPC_ONCALL_OK
+rpc.js:315 Rpc sending RpcRespData
+GristWSConnection.ts:100 GristWSConnection: onmessage (615 bytes)
+Comm.ts:351 Comm response #12 fetchTable OK
+rpc.js:475 Rpc for GristDocAPI.fetchTable#13: RPC_ONCALL_OK
+rpc.js:315 Rpc sending RpcRespData
+GristWSConnection.ts:100 GristWSConnection: onmessage (615 bytes)
+Comm.ts:351 Comm response #13 fetchTable OK
+rpc.js:475 Rpc for GristDocAPI.fetchTable#14: RPC_ONCALL_OK
+rpc.js:315 Rpc sending RpcRespData
+GristWSConnection.ts:100 GristWSConnection: onmessage (615 bytes)
+Comm.ts:351 Comm response #14 fetchTable OK
+rpc.js:475 Rpc for GristDocAPI.fetchTable#15: RPC_ONCALL_OK
+rpc.js:315 Rpc sending RpcRespData
+GristWSConnection.ts:100 GristWSConnection: onmessage (615 bytes)
+Comm.ts:351 Comm response #15 fetchTable OK
+rpc.js:475 Rpc for GristDocAPI.fetchTable#16: RPC_ONCALL_OK
+rpc.js:315 Rpc sending RpcRespData
+GristWSConnection.ts:100 GristWSConnection: onmessage (615 bytes)
+Comm.ts:351 Comm response #16 fetchTable OK
+rpc.js:475 Rpc for GristDocAPI.fetchTable#17: RPC_ONCALL_OK
+rpc.js:315 Rpc sending RpcRespData
+GristWSConnection.ts:100 GristWSConnection: onmessage (615 bytes)
+Comm.ts:351 Comm response #17 fetchTable OK
+rpc.js:475 Rpc for GristDocAPI.fetchTable#18: RPC_ONCALL_OK
+rpc.js:315 Rpc sending RpcRespData
+grist-plugin-api.ts:408 PLUGIN VIEW /widgets/CardViewer.html: Rpc for GristDocAPI.fetchTable#12: RPC_RESULT_OK
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+GristWSConnection.ts:100 GristWSConnection: onmessage (615 bytes)
+Comm.ts:351 Comm response #18 fetchTable OK
+rpc.js:475 Rpc for GristDocAPI.fetchTable#19: RPC_ONCALL_OK
+rpc.js:315 Rpc sending RpcRespData
+grist-plugin-api.ts:408 PLUGIN VIEW /widgets/CardViewer.html: Rpc for GristDocAPI.fetchTable#13: RPC_RESULT_OK
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+grist-plugin-api.ts:408 PLUGIN VIEW /widgets/CardViewer.html: Rpc for GristDocAPI.fetchTable#14: RPC_RESULT_OK
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+grist-plugin-api.ts:408 PLUGIN VIEW /widgets/CardViewer.html: Rpc for GristDocAPI.fetchTable#15: RPC_RESULT_OK
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+grist-plugin-api.ts:408 PLUGIN VIEW /widgets/CardViewer.html: Rpc for GristDocAPI.fetchTable#16: RPC_RESULT_OK
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+grist-plugin-api.ts:408 PLUGIN VIEW /widgets/CardViewer.html: Rpc for GristDocAPI.fetchTable#17: RPC_RESULT_OK
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+grist-plugin-api.ts:408 PLUGIN VIEW /widgets/CardViewer.html: Rpc for GristDocAPI.fetchTable#18: RPC_RESULT_OK
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']
+grist-plugin-api.ts:408 PLUGIN VIEW /widgets/CardViewer.html: Rpc for GristDocAPI.fetchTable#19: RPC_RESULT_OK
+render-reflist.js:306 DEBUG: All possible columns: ['Tipo_Fornecedor']
+render-reflist.js:307 DEBUG: Calculated columnsToDisplay: ['Tipo_Fornecedor']

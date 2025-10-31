@@ -108,7 +108,7 @@ async function renderMainUI(container, initialConfigId, componentTypes) {
                         <div class="form-group"><label for="cm-config-id">ID da Configuração (Identificador único)</label><input type="text" id="cm-config-id" required></div>
                         <div class="form-group"><label for="cm-description">Descrição</label><input type="text" id="cm-description"></div>
                         <div id="cm-editor-content"><p class="editor-placeholder">Selecione uma config ou crie uma nova.</p></div>
-                        <div class="form-actions"><button type="submit" id="cm-save-btn" class="btn btn-success">Salvar e Fechar</button></div>
+                        <div class="form-actions"><button type="button" id="cm-save-btn" class="btn btn-success">Salvar e Fechar</button></div>
                     </form>
                 </div>
             </div>`;
@@ -273,8 +273,8 @@ async function renderMainUI(container, initialConfigId, componentTypes) {
         container.querySelector('#cm-duplicate-btn').onclick = () => { if (selectedConfig) { duplicateConfig(selectedConfig); } };
         container.querySelector('#cm-delete-btn').onclick = () => { if (selectedConfig) { deleteConfig(selectedConfig); } };
             
-        formEl.onsubmit = async (e) => {
-            e.preventDefault();
+        console.log("Attaching onsubmit handler");
+        container.querySelector('#cm-save-btn').onclick = async () => {
             if (!selectedConfig || !currentEditorModule) return;
             const specializedEditorContainer = editorContentEl.querySelector('#cm-specialized-editor');
             const newConfigData = currentEditorModule.read(specializedEditorContainer);
@@ -293,13 +293,16 @@ async function renderMainUI(container, initialConfigId, componentTypes) {
                 }
                 allConfigs = await tableLens.fetchTableRecords(CONFIG_TABLE);
                 loadList(filterTypeSelectorEl.value);
-                alert(`Configuração "${recordData.widgetTitle}" salva!`);
-                if (_grist) { _grist.setOptions({ configId: recordData.configId }); }
+                alert(`Configuração \"${recordData.widgetTitle}\" salva!`);
+                if (_grist && initialConfigId === recordData.configId) {
+                    _grist.setOptions({ configId: recordData.configId });
+                }
                 close();
             } catch(err) {
                  alert(`Erro ao salvar: ${err.message}`);
             }
         };
+
 
         clearForm();
         loadList();

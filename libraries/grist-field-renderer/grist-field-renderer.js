@@ -137,7 +137,12 @@ function renderSimpleText(options) {
 }
 
 export async function renderField(options) {
-    const { container, colSchema, record, isEditing = false, labelElement, styleOverride, styling, tableLens } = options;
+    const { container, colSchema, record, isEditing = false, labelElement, styleOverride, styling, tableLens, isChild = false } = options;
+
+    if (isChild && colSchema.type.startsWith('RefList')) {
+        container.innerHTML = '<span class="error-msg">[Nested RefList not supported]</span>';
+        return;
+    }
 
     let tableSchema = null;
     if (tableLens && record && record.gristHelper_tableId) {

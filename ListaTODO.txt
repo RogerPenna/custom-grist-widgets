@@ -110,6 +110,26 @@
   - Adicionada uma coluna "CSV" com um botão "Copiar" para facilitar a extração de dados de uma linha para análise.
   - Adicionada uma coluna "Applied Colors (Grist)" que simula a lógica correta do Grist (última regra correspondente) para mostrar a cor que *deveria* ser aplicada, o que foi crucial para diagnosticar o problema principal.
 
+### Correções Recentes (ConfigManager e RefList)
+
+- [DONE] **Correção do Problema de Salvamento do ConfigManager:**
+  - **Problema:** Salvar uma configuração (por exemplo, de um Drawer) a partir de um widget (por exemplo, um Card) fazia com que o ID da configuração salva fosse incorretamente vinculado ao widget original.
+  - **Causa Raiz:** O `ConfigManager` não estava sendo fechado e reinicializado corretamente entre os usos, fazendo com que o `initialConfigId` (o ID do widget original) se perdesse ou que a lógica de salvamento não fosse executada.
+  - **Resolução:**
+    1. O botão "Salvar e Fechar" foi alterado de `type="submit"` para `type="button"`.
+    2. O evento `onsubmit` do formulário foi substituído por um `onclick` direto no botão, garantindo que a função `close()` seja chamada de forma confiável.
+    3. A função `close()` agora redefine a variável `overlay`, forçando a reinicialização completa do `ConfigManager` na próxima vez que for aberto.
+    4. A lógica que atualiza o widget (`_grist.setOptions()`) foi confirmada para ser executada apenas quando o ID da configuração que está sendo salva corresponde ao ID da configuração inicial do widget, evitando a vinculação incorreta.
+
+- [DONE] **Correção da Renderização da Tabela RefList (Tabulator):**
+  - **Problema:** As linhas de uma tabela RefList (renderizada com Tabulator) apareciam colapsadas (com poucos pixels de altura) no carregamento inicial, corrigindo-se apenas após rolar a tela.
+  - **Causa Raiz:** A altura das linhas era calculada pelo Tabulator antes que o conteúdo assíncrono (os campos do Grist) fosse renderizado dentro das células, resultando em uma altura de linha quase zero.
+  - **Resolução:** Adicionada uma chamada à função `cell.getRow().normalizeHeight()` no callback `onRendered` do formatador de célula do Tabulator. Isso força a tabela a recalcular a altura da linha *depois* que o conteúdo da célula foi renderizado, garantindo que a altura esteja correta desde o início.
+
+- [DONE] **Correção de Loop Infinito em RefLists Aninhadas:**
+  - **Problema:** A renderização de uma RefList dentro de outra causava um loop infinito de renderização, travando o navegador e gerando milhares de logs de depuração.
+  - **Resolução:** Implementado um mecanismo para impedir a renderização de RefLists aninhadas. A função `renderField` agora aceita um parâmetro `isChild` e, se detectar que está tentando renderizar uma RefList dentro de outra, exibe uma mensagem de erro em vez de entrar em recursão.
+
 ### Próximas Tarefas
 
 - [DONE] **Filter module not updating correctly:** When using the filter bar, deleting characters or changing the search term after an initial filter does not correctly update the displayed cards. The filter seems to be applied to an already filtered set of records, instead of always filtering the original, complete dataset.

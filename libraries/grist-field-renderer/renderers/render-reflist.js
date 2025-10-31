@@ -248,6 +248,7 @@ export async function renderRefList(options) {
                         ruleIdToColIdMap: ruleMap,
                         fieldConfig: fieldConfig,
                     });
+                    cell.getRow().normalizeHeight();
                 });
 
                 return tempContainer;
@@ -282,6 +283,11 @@ export async function renderRefList(options) {
                 pagination: tabulatorConfig.pagination?.enabled || false,
                 paginationSize: tabulatorConfig.pagination?.pageSize || 10,
                 paginationSizeSelector: tabulatorConfig.pagination?.enabled ? [5, 10, 20, 50, 100] : false,
+                renderComplete: function() {
+                    setTimeout(() => {
+                        this.redraw(true);
+                    }, 0);
+                },
             });
 
         } else {
@@ -340,7 +346,7 @@ export async function renderRefList(options) {
                 actionsCell.appendChild(dropdown);
                 for (const c of columnsToDisplay) {
                     const td = tr.insertCell();
-                    renderField({ container: td, colSchema: c, record: relRec, tableLens, ruleIdToColIdMap: ruleMap, fieldConfig: fieldConfig });
+                    renderField({ container: td, colSchema: c, record: relRec, tableLens, ruleIdToColIdMap: ruleMap, fieldConfig: fieldConfig, isChild: true });
                 }
             }
             tableContainer.appendChild(table);
