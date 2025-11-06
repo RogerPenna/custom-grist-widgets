@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Report Manager</title>
+    <!-- I will create and link the stylesheet later -->
+    <link rel="stylesheet" href="reporter_style.css">
+</head>
+<body>
+    <div id="app-container">
+        <header>
+            <h1>Gerenciador de Relatórios de Auditoria</h1>
+            <p>Importe os resultados das auditorias e gere relatórios consolidados.</p>
+        </header>
+
+        <main>
+            <section id="import-section">
+                <h2>1. Importar Resultados</h2>
+                <p>Selecione um ou mais arquivos <code>.json</code> exportados pelo AppAuditor.</p>
+                <div class="botoes-container">
+                    <label for="results-json-input" class="btn-primario">
+                        Carregar Arquivo(s) de Resultado
+                    </label>
+                    <input type="file" id="results-json-input" accept=".json,application/json" multiple style="display: none;">
+                </div>
+                <div id="import-status"></div>
+            </section>
+
+            <section id="report-section">
+                <h2>2. Gerar Relatórios</h2>
+                <p>Selecione uma auditoria importada e gere o relatório em PDF.</p>
+                <div class="form-grupo">
+                    <label for="auditoria-final-select">Auditoria:</label>
+                    <select id="auditoria-final-select" disabled>
+                        <option value="">-- Carregando auditorias --</option>
+                    </select>
+                </div>
+                <div class="botoes-container">
+                    <button id="btn-generate-report" class="btn-primario" disabled>Gerar Relatório Individual</button>
+                </div>
+                <div id="report-status"></div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Grist and other libraries will be linked here -->
+    <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+    <script src="../AppAuditor/js/lib/jspdf.umd.min.js"></script>
+    <script src="../AppAuditor/js/lib/FileSaver.min.js"></script>
+    <script src="reporter_main.js?v=1.3"></script>
+</body>
+</html>
