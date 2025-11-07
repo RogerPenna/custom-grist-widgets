@@ -2,8 +2,6 @@ import { GristTableLens } from '../../libraries/grist-table-lens/grist-table-len
 import { GristDataWriter } from '../../libraries/grist-data-writer.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log("DOM Content Loaded. Starting widget initialization.");
-
     let allDeliveries = [];
     let suppliers = new Map();
     let lens;
@@ -11,73 +9,65 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     try {
         await grist.ready();
-        console.log("Grist is ready.");
         lens = new GristTableLens(grist);
         dataWriter = new GristDataWriter(grist);
-        console.log("GristTableLens and GristDataWriter instantiated.");
     } catch (e) {
         console.error("Error during Grist initialization:", e);
-        return; // Stop if Grist setup fails
+        return;
     }
 
     async function initialize() {
-        console.log("Initialize function started.");
         const filterBarContainer = document.getElementById('filter-bar');
         if (filterBarContainer) {
             try {
-                console.log("Fetching filter-bar.html...");
                 const response = await fetch('filter-bar.html');
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const html = await response.text();
-                filterBarContainer.innerHTML = html;
-                console.log("Filter bar HTML loaded successfully.");
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                filterBarContainer.innerHTML = await response.text();
             } catch (error) {
                 console.error('Error loading filter bar:', error);
             }
-        } else {
-            console.error("Filter bar container not found!");
         }
 
         try {
-            console.log("Fetching 'Dados' table...");
-            allDeliveries = await lens.fetchTableRecords('Dados');
-            console.log(`Fetched ${allDeliveries.length} records from 'Dados'.`);
+            const [deliveries, fornecedores] = await Promise.all([
+                lens.fetchTableRecords('Dados'),
+                lens.fetchTableRecords('Fornecedores')
+            ]);
+            allDeliveries = deliveries;
 
-            console.log("Fetching 'Fornecedores' table...");
-            const allFornecedores = await lens.fetchTableRecords('Fornecedores');
-            console.log(`Fetched ${allFornecedores.length} records from 'Fornecedores'.`);
-
-            const supplierNames = new Map(allFornecedores.map(f => [f.id, f.Nome_Fornecedor]));
+            const supplierNames = new Map(fornecedores.map(f => [f.id, f.Nome_Fornecedor]));
 
             allDeliveries.forEach(d => {
                 d.Emitente_Nome_Fornecedor = supplierNames.get(d.Emitente) || 'Fornecedor Desconhecido';
+                d.jsDate = new Date(d.Emissao * 1000);
+                d.jsYear = d.jsDate.getFullYear();
             });
-            console.log("Supplier names mapped to deliveries.");
 
         } catch (error) {
             console.error("Error fetching initial data:", error);
-            // Render a message to the user in the dashboard container
             const container = document.getElementById('dashboard-container');
-            if(container) container.innerHTML = `<p class="error-msg">Erro ao carregar dados. Verifique se as tabelas 'Dados' e 'Fornecedores' existem e se o widget tem permissão para acessá-las.</p>`;
-            return; // Stop execution if data fetching fails
+            if(container) container.innerHTML = `<p class="error-msg">Erro ao carregar dados.</p>`;
+            return;
         }
 
-        console.log("Processing deliveries...");
         processDeliveries();
-        console.log("Populating filters...");
         populateFilters();
-        console.log("Rendering dashboard...");
-        renderDashboard();
-        console.log("Setting up filter listeners...");
+        await renderDashboard(); // Make initial render async to fetch classifications
         setupFilterListeners();
-        console.log("Initialization complete.");
+    }
+    
+    function debounce(func, delay) {
+        let timeout;
+        return function(...args) {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), delay);
+        };
     }
 
     function setupFilterListeners() {
-        document.getElementById('search-input').addEventListener('input', renderDashboard);
-        document.getElementById('obra-filter-input').addEventListener('input', renderDashboard);
+        const debouncedRender = debounce(renderDashboard, 300);
+        document.getElementById('search-input').addEventListener('input', debouncedRender);
+        document.getElementById('obra-filter-input').addEventListener('input', debouncedRender);
         document.getElementById('year-filter').addEventListener('change', renderDashboard);
         document.getElementById('sort-order').addEventListener('change', renderDashboard);
     }
@@ -100,140 +90,183 @@ document.addEventListener('DOMContentLoaded', async () => {
     function populateFilters() {
         const obraDatalist = document.getElementById('obra-list');
         const yearFilter = document.getElementById('year-filter');
-
         const obras = [...new Set(allDeliveries.map(d => d.Obra_Local))].sort();
-        const years = [...new Set(allDeliveries.map(d => new Date(d.Emissao * 1000).getFullYear()))].sort((a, b) => b - a);
-
+        const years = [...new Set(allDeliveries.map(d => d.jsYear))].sort((a, b) => b - a);
         obraDatalist.innerHTML = obras.map(o => `<option value="${o}"></option>`).join('');
         yearFilter.innerHTML = '<option value="">Todos os Anos</option>' + years.map(y => `<option value="${y}">${y}</option>`).join('');
-
         const currentYear = new Date().getFullYear();
         if (years.includes(currentYear)) {
             yearFilter.value = currentYear;
         }
     }
 
-    function renderDashboard() {
-        const container = document.getElementById('dashboard-container');
-        container.innerHTML = '';
+    function getStatusColor(percentage) {
+    if (percentage <= 2) {
+        return { bg: '#00C851', text: '#fff' }; // Green
+    } else if (percentage <= 5) {
+        return { bg: '#CCFF33', text: '#222' }; // Yellow-green
+    } else if (percentage <= 10) {
+        return { bg: '#FFEB3B', text: '#222' }; // Yellow
+    } else if (percentage <= 20) {
+        return { bg: '#FF9800', text: '#222' }; // Orange
+    } else {
+        return { bg: '#F44336', text: '#fff' }; // Red
+    }
+}
 
-        const searchTerm = document.getElementById('search-input').value.toLowerCase();
-        const selectedObra = document.getElementById('obra-filter-input').value;
-        const selectedYear = document.getElementById('year-filter').value;
-        const sortOrder = document.getElementById('sort-order').value;
+async function renderDashboard() {
+    const container = document.getElementById('dashboard-container');
+    container.innerHTML = '<div>Carregando...</div>';
 
-        let supplierMetrics = Array.from(suppliers.values()).map(supplier => {
-            const filteredDeliveries = supplier.deliveries.filter(d => {
-                const deliveryYear = new Date(d.Emissao * 1000).getFullYear();
-                const obraMatch = !selectedObra || d.Obra_Local === selectedObra;
-                const yearMatch = !selectedYear || deliveryYear === parseInt(selectedYear);
-                return obraMatch && yearMatch;
-            });
+    const classificacaoRecords = await lens.fetchTableRecords('Classificacao_Fornecedores');
 
-            if (filteredDeliveries.length === 0) {
-                return null;
-            }
+    const searchTerm = document.getElementById('search-input').value.toLowerCase();
+    const selectedObra = document.getElementById('obra-filter-input').value;
+    const selectedYear = document.getElementById('year-filter').value;
+    const sortOrder = document.getElementById('sort-order').value;
 
-            const totalDeliveries = filteredDeliveries.length;
-            const nonConformingDeliveries = filteredDeliveries.filter(d => d.Insp_Recebimento !== 'A');
-            const totalValue = filteredDeliveries.reduce((sum, d) => sum + d.Valor, 0);
-            const nonConformingValue = nonConformingDeliveries.reduce((sum, d) => sum + d.Valor, 0);
-
-            return {
-                ...supplier,
-                metrics: {
-                    totalDeliveries,
-                    nonConformingCount: nonConformingDeliveries.length,
-                    nonConformingPercentage: totalDeliveries > 0 ? (nonConformingDeliveries.length / totalDeliveries) * 100 : 0,
-                    totalValue,
-                    nonConformingValue,
-                    nonConformingValuePercentage: totalValue > 0 ? (nonConformingValue / totalValue) * 100 : 0
-                }
-            };
-        }).filter(Boolean);
-
-        if (searchTerm) {
-            supplierMetrics = supplierMetrics.filter(s => s.name.toLowerCase().includes(searchTerm));
-        }
-
-        if (sortOrder === 'most_deliveries') {
-            supplierMetrics.sort((a, b) => b.metrics.totalDeliveries - a.metrics.totalDeliveries);
-        } else if (sortOrder === 'highest_value') {
-            supplierMetrics.sort((a, b) => b.metrics.totalValue - a.metrics.totalValue);
-        }
-
-        supplierMetrics.forEach(supplier => {
-            const card = document.createElement('div');
-            card.className = 'supplier-card';
-            card.innerHTML = `
-                <h3>${supplier.name}</h3>
-                <p>Total de Entregas: ${supplier.metrics.totalDeliveries}</p>
-                <p>Entregas Não Conformes: ${supplier.metrics.nonConformingCount} (${supplier.metrics.nonConformingPercentage.toFixed(2)}%)</p>
-                <p>Valor Total: ${supplier.metrics.totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
-                <p>Valor Não Conforme: ${supplier.metrics.nonConformingValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} (${supplier.metrics.nonConformingValuePercentage.toFixed(2)}%)</p>
-            `;
-            card.addEventListener('click', () => {
-                openCustomDrawer(supplier);
-            });
-            container.appendChild(card);
+    let supplierMetrics = Array.from(suppliers.values()).map(supplier => {
+        const filteredDeliveries = supplier.deliveries.filter(d => {
+            const yearMatch = !selectedYear || d.jsYear === parseInt(selectedYear);
+            const obraMatch = !selectedObra || d.Obra_Local === selectedObra;
+            return obraMatch && yearMatch;
         });
+
+        if (filteredDeliveries.length === 0) return null;
+
+        const totalDeliveries = filteredDeliveries.length;
+        const nonConformingDeliveries = filteredDeliveries.filter(d => d.Insp_Recebimento !== 'A');
+        const totalValue = filteredDeliveries.reduce((sum, d) => sum + d.Valor, 0);
+        const nonConformingValue = nonConformingDeliveries.reduce((sum, d) => sum + d.Valor, 0);
+        const nonConformingPercentage = totalDeliveries > 0 ? (nonConformingDeliveries.length / totalDeliveries) * 100 : 0;
+        const nonConformingValuePercentage = totalValue > 0 ? (nonConformingValue / totalValue) * 100 : 0;
+
+        const currentYearClassification = classificacaoRecords.find(c => c.Fornecedor === supplier.id && c.Ano === new Date().getFullYear());
+
+        return {
+            ...supplier,
+            metrics: {
+                totalDeliveries,
+                nonConformingCount: nonConformingDeliveries.length,
+                nonConformingPercentage,
+                totalValue,
+                nonConformingValue,
+                nonConformingValuePercentage,
+                classification: currentYearClassification
+            }
+        };
+    }).filter(Boolean);
+
+    if (searchTerm) {
+        supplierMetrics = supplierMetrics.filter(s => s.name.toLowerCase().includes(searchTerm));
     }
 
+    switch (sortOrder) {
+        case 'most_deliveries': supplierMetrics.sort((a, b) => b.metrics.totalDeliveries - a.metrics.totalDeliveries); break;
+        case 'highest_value': supplierMetrics.sort((a, b) => b.metrics.totalValue - a.metrics.totalValue); break;
+        case 'most_nc_deliveries': supplierMetrics.sort((a, b) => b.metrics.nonConformingCount - a.metrics.nonConformingCount); break;
+        case 'highest_nc_value': supplierMetrics.sort((a, b) => b.metrics.nonConformingValue - a.metrics.nonConformingValue); break;
+        case 'highest_nc_percent': supplierMetrics.sort((a, b) => b.metrics.nonConformingPercentage - a.metrics.nonConformingPercentage); break;
+        case 'highest_nc_value_percent': supplierMetrics.sort((a, b) => b.metrics.nonConformingValuePercentage - a.metrics.nonConformingValuePercentage); break;
+    }
+
+    container.innerHTML = ''; // Clear loading message
+    supplierMetrics.forEach(supplier => {
+        const card = document.createElement('div');
+        card.className = 'supplier-card';
+
+        const ncCountColor = getStatusColor(supplier.metrics.nonConformingPercentage);
+        const ncValueColor = getStatusColor(supplier.metrics.nonConformingValuePercentage);
+
+        let seal = '';
+        if (supplier.metrics.classification) {
+            const status = supplier.metrics.classification.Status;
+            const date = new Date(supplier.metrics.classification.Data_Classificacao * 1000);
+            const isOutdated = (new Date() - date) > 365 * 24 * 60 * 60 * 1000;
+            if (isOutdated) {
+                seal = `<div class="status-chip warning">🟠 Sob observação</div>`;
+            } else if (status === 'Aprovado') {
+                seal = `<div class="status-chip approved">🟢 Aprovado</div>`;
+            } else if (status === 'Reprovado') {
+                seal = `<div class="status-chip critical">🔴 Reprovado</div>`;
+            }
+        }
+
+        card.innerHTML = `
+            <div class="card-supplier-info">
+                <h3 class="supplier-name">${supplier.name}</h3>
+                <div class="supplier-totals">
+                    <span>📦 ${supplier.metrics.totalDeliveries} entregas</span>
+                    <span>💰 ${supplier.metrics.totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                </div>
+            </div>
+            <div class="card-metrics">
+                <div class="metric-item">
+                    <span class="metric-label">⚠️ NC (Qtd)</span>
+                    <div class="metric-value">
+                        <span>${supplier.metrics.nonConformingCount}</span>
+                        <span class="pill" style="background-color: ${ncCountColor.bg}; color: ${ncCountColor.text}">${supplier.metrics.nonConformingPercentage.toFixed(1)}%</span>
+                    </div>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">⚠️ NC (Valor)</span>
+                    <div class="metric-value">
+                        <span>${supplier.metrics.nonConformingValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                        <span class="pill" style="background-color: ${ncValueColor.bg}; color: ${ncValueColor.text}">${supplier.metrics.nonConformingValuePercentage.toFixed(1)}%</span>
+                    </div>
+                </div>
+            </div>
+            <div class="card-status">
+                ${seal}
+            </div>
+        `;
+        card.addEventListener('click', () => openCustomDrawer(supplier));
+        container.appendChild(card);
+    });
+}
+
     async function openCustomDrawer(supplier) {
+        const modalHeader = `
+            <div class="modal-header">
+                <h3>${supplier.name}</h3>
+                <span class="modal-close">&times;</span>
+            </div>
+        `;
         const drawerContent = `
             <div class="tabs">
                 <button class="tab-link active" data-tab="tab-1">Seleção Inicial</button>
                 <button class="tab-link" data-tab="tab-2">Monitoramento</button>
             </div>
-            <div id="tab-1" class="tab-content active">
-                <p>Placeholder for Seleção Inicial content.</p>
-            </div>
+            <div id="tab-1" class="tab-content active"><p>Placeholder for Seleção Inicial content.</p></div>
             <div id="tab-2" class="tab-content">
-                <div id="classificacao-container">
-                    <h4>Classificações Anteriores</h4>
-                    <div id="classificacao-table"></div>
-                    <div id="new-classificacao-form"></div>
-                </div>
+                <div id="classificacao-container"><h4>Classificações Anteriores</h4><div id="classificacao-table"></div><div id="new-classificacao-form"></div></div>
                 <hr>
                 <h4>Entregas</h4>
                 <div class="monitoramento-filters">
                     <select id="monitoramento-year-filter"></select>
                     <input type="text" id="monitoramento-obra-filter" placeholder="Filtrar Obra...">
                     <input type="text" id="monitoramento-inspecao-filter" placeholder="Filtrar Inspeção...">
-                    <select id="monitoramento-date-range-filter">
-                        <option value="">Todo o período</option>
-                        <option value="1">Último mês</option>
-                        <option value="2">Último bimestre</option>
-                        <option value="3">Último trimestre</option>
-                        <option value="6">Último semestre</option>
-                    </select>
+                    <select id="monitoramento-date-range-filter"><option value="">Todo o período</option><option value="1">Último mês</option><option value="2">Último bimestre</option><option value="3">Último trimestre</option><option value="6">Último semestre</option></select>
                     <label><input type="checkbox" id="monitoramento-nao-conforme-filter"> Mostrar somente não conformes</label>
                 </div>
-                <div id="monitoramento-table"></div>
+                <div id="monitoramento-table-container"><div id="monitoramento-table"></div></div>
             </div>
         `;
 
         const modalOverlay = document.createElement('div');
         modalOverlay.className = 'modal-overlay';
-        
         const modalContent = document.createElement('div');
         modalContent.className = 'modal-content';
-        modalContent.innerHTML = `<span class="modal-close">&times;</span>` + drawerContent;
-
+        modalContent.innerHTML = modalHeader + drawerContent;
         modalOverlay.appendChild(modalContent);
         document.body.appendChild(modalOverlay);
 
         const closeModal = () => modalOverlay.remove();
         modalContent.querySelector('.modal-close').addEventListener('click', closeModal);
-        modalOverlay.addEventListener('click', (e) => {
-            if (e.target === modalOverlay) {
-                closeModal();
-            }
-        });
+        modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) closeModal(); });
 
         const tabs = modalContent.querySelectorAll('.tab-link');
         const tabContents = modalContent.querySelectorAll('.tab-content');
-
         tabs.forEach(tab => {
             tab.addEventListener('click', () => {
                 tabs.forEach(t => t.classList.remove('active'));
@@ -248,31 +281,61 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function renderMonitoramentoTab(modalContent, supplier) {
         try {
-            console.log("Fetching 'Classificacao_Fornecedores' table...");
             const classificacaoRecords = await lens.fetchTableRecords('Classificacao_Fornecedores');
-            console.log(`Fetched ${classificacaoRecords.length} records from 'Classificacao_Fornecedores'.`);
             const supplierClassificacoes = classificacaoRecords.filter(c => c.Fornecedor === supplier.id).sort((a, b) => b.Ano - a.Ano);
             renderClassificacaoTable(modalContent, supplierClassificacoes);
         } catch (error) {
-            console.error("Error fetching classification data:", error);
-            modalContent.querySelector('#classificacao-table').innerHTML = `<p class="error-msg">Erro ao carregar classificações. Verifique se a tabela 'Classificacao_Fornecedores' existe.</p>`;
+            modalContent.querySelector('#classificacao-table').innerHTML = `<p class="error-msg">Erro ao carregar classificações.</p>`;
         }
 
         const monitoramentoYearFilter = modalContent.querySelector('#monitoramento-year-filter');
-        const years = [...new Set(supplier.deliveries.map(d => new Date(d.Emissao * 1000).getFullYear()))].sort((a, b) => b - a);
+        const years = [...new Set(supplier.deliveries.map(d => d.jsYear))].sort((a, b) => b - a);
         monitoramentoYearFilter.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
 
-        const renderTable = () => renderMonitoramentoTable(modalContent, supplier);
+        const tableContainer = modalContent.querySelector('#monitoramento-table-container');
+        tableContainer.innerHTML = `<button id="load-deliveries-btn">Carregar Entregas</button><div id="monitoramento-table"></div>`;
 
-        modalContent.querySelector('#monitoramento-year-filter').addEventListener('change', renderTable);
-        modalContent.querySelector('#monitoramento-obra-filter').addEventListener('input', renderTable);
-        modalContent.querySelector('#monitoramento-inspecao-filter').addEventListener('input', renderTable);
-        modalContent.querySelector('#monitoramento-date-range-filter').addEventListener('change', renderTable);
-        modalContent.querySelector('#monitoramento-nao-conforme-filter').addEventListener('change', renderTable);
+        const table = new Tabulator(modalContent.querySelector('#monitoramento-table'), {
+            data: [],
+            layout: "fitColumns",
+            pagination: "local",
+            paginationSize: 10,
+            paginationSizeSelector: [15, 25, 50, 100],
+            columns: [
+                { title: "Obra", field: "Obra_Local" },
+                { title: "Emitente", field: "Emitente_Nome_Fornecedor" },
+                { title: "Valor", field: "Valor", formatter: "money", formatterParams: { decimal: ",", thousand: ".", symbol: "R$" } },
+                { title: "Inspeção Recebimento", field: "Insp_Recebimento", tooltip: true },
+            ],
+        });
 
-        renderMonitoramentoTable(modalContent, supplier);
+        const loadData = async () => {
+            tableContainer.querySelector('#load-deliveries-btn').disabled = true;
+            tableContainer.querySelector('#load-deliveries-btn').textContent = 'Carregando...';
+            const filters = {
+                year: modalContent.querySelector('#monitoramento-year-filter').value,
+                obraFilter: modalContent.querySelector('#monitoramento-obra-filter').value.toLowerCase(),
+                inspecaoFilter: modalContent.querySelector('#monitoramento-inspecao-filter').value.toLowerCase(),
+                dateRange: modalContent.querySelector('#monitoramento-date-range-filter').value,
+                naoConformeOnly: modalContent.querySelector('#monitoramento-nao-conforme-filter').checked,
+            };
+            let cutoffDate = null;
+            if (filters.dateRange) {
+                const now = new Date();
+                const monthsToSubtract = parseInt(filters.dateRange, 10);
+                cutoffDate = new Date(new Date().setMonth(now.getMonth() - monthsToSubtract));
+            }
+            filters.cutoffDate = cutoffDate;
+
+            const filteredDeliveries = await filterDeliveriesAsync(supplier.deliveries, filters);
+            table.setData(filteredDeliveries);
+            tableContainer.querySelector('#load-deliveries-btn').disabled = false;
+            tableContainer.querySelector('#load-deliveries-btn').textContent = 'Recarregar Entregas';
+        };
+
+        modalContent.querySelector('#load-deliveries-btn').addEventListener('click', loadData);
+
         renderNewClassificacaoForm(modalContent, supplier, monitoramentoYearFilter.value);
-
         monitoramentoYearFilter.addEventListener('change', () => {
             renderNewClassificacaoForm(modalContent, supplier, monitoramentoYearFilter.value);
         });
@@ -282,6 +345,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         new Tabulator(modalContent.querySelector('#classificacao-table'), {
             data: data,
             layout: "fitColumns",
+            pagination: "local",
+            paginationSize: 5,
+            paginationSizeSelector: [5, 10, 20],
             columns: [
                 { title: "Ano", field: "Ano" },
                 { title: "Status", field: "Status" },
@@ -291,40 +357,30 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    function renderMonitoramentoTable(modalContent, supplier) {
-        const year = modalContent.querySelector('#monitoramento-year-filter').value;
-        const obraFilter = modalContent.querySelector('#monitoramento-obra-filter').value.toLowerCase();
-        const inspecaoFilter = modalContent.querySelector('#monitoramento-inspecao-filter').value.toLowerCase();
-        const dateRange = modalContent.querySelector('#monitoramento-date-range-filter').value;
-        const naoConformeOnly = modalContent.querySelector('#monitoramento-nao-conforme-filter').checked;
-
-        let filteredDeliveries = supplier.deliveries.filter(d => new Date(d.Emissao * 1000).getFullYear() == year);
-
-        if (obraFilter) {
-            filteredDeliveries = filteredDeliveries.filter(d => d.Obra_Local.toLowerCase().includes(obraFilter));
-        }
-        if (inspecaoFilter) {
-            filteredDeliveries = filteredDeliveries.filter(d => d.Insp_Recebimento.toLowerCase().includes(inspecaoFilter));
-        }
-        if (naoConformeOnly) {
-            filteredDeliveries = filteredDeliveries.filter(d => d.Insp_Recebimento !== 'A');
-        }
-        if (dateRange) {
-            const now = new Date();
-            const monthsToSubtract = parseInt(dateRange, 10);
-            const cutoffDate = new Date(new Date().setMonth(now.getMonth() - monthsToSubtract));
-            filteredDeliveries = filteredDeliveries.filter(d => new Date(d.Emissao * 1000) >= cutoffDate);
-        }
-
-        new Tabulator(modalContent.querySelector('#monitoramento-table'), {
-            data: filteredDeliveries,
-            layout: "fitColumns",
-            columns: [
-                { title: "Obra", field: "Obra_Local" },
-                { title: "Emitente", field: "Emitente_Nome_Fornecedor" },
-                { title: "Valor", field: "Valor", formatter: "money", formatterParams: { decimal: ",", thousand: ".", symbol: "R$" } },
-                { title: "Inspeção Recebimento", field: "Insp_Recebimento" },
-            ],
+    function filterDeliveriesAsync(deliveries, filters) {
+        return new Promise(resolve => {
+            let result = [];
+            let chunkIndex = 0;
+            const chunkSize = 500;
+            function processChunk() {
+                const end = Math.min(chunkIndex + chunkSize, deliveries.length);
+                for (let i = chunkIndex; i < end; i++) {
+                    const d = deliveries[i];
+                    if (d.jsYear != filters.year) continue;
+                    if (filters.obraFilter && !d.Obra_Local.toLowerCase().includes(filters.obraFilter)) continue;
+                    if (filters.inspecaoFilter && !d.Insp_Recebimento.toLowerCase().includes(filters.inspecaoFilter)) continue;
+                    if (filters.naoConformeOnly && d.Insp_Recebimento === 'A') continue;
+                    if (filters.cutoffDate && d.jsDate < filters.cutoffDate) continue;
+                    result.push(d);
+                }
+                chunkIndex = end;
+                if (chunkIndex < deliveries.length) {
+                    setTimeout(processChunk, 0);
+                } else {
+                    resolve(result);
+                }
+            }
+            processChunk();
         });
     }
 
@@ -333,10 +389,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         formContainer.innerHTML = `
             <h5>Nova Classificação para ${year}</h5>
             <textarea id="justificativa-input" placeholder="Justificativa..."></textarea>
-            <button id="aprovar-btn">Aprovar</button>
-            <button id="reprovar-btn">Reprovar</button>
+            <div class="classification-buttons">
+                <button id="aprovar-btn">Aprovar</button>
+                <button id="reprovar-btn">Reprovar</button>
+            </div>
         `;
-
         modalContent.querySelector('#aprovar-btn').addEventListener('click', () => {
             handleClassification(supplier.id, year, 'Aprovado', modalContent.querySelector('#justificativa-input').value);
         });
@@ -346,7 +403,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     async function handleClassification(supplierId, year, status, justificativa) {
-        console.log(`Attempting to classify supplier ${supplierId} for year ${year} as ${status}`);
         try {
             await dataWriter.addRecord('Classificacao_Fornecedores', {
                 Fornecedor: supplierId,
@@ -363,7 +419,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         } catch (e) {
             console.error('Error adding classification:', e);
-            alert('Erro ao adicionar classificação. Verifique se a tabela e as colunas estão corretas.');
+            alert('Erro ao adicionar classificação.');
         }
     }
 
