@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let suppliers = new Map();
     let lens;
     let dataWriter;
+    let classificacaoRecords;
 
     try {
         await grist.ready();
@@ -29,11 +30,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         try {
-            const [deliveries, fornecedores] = await Promise.all([
+            const [deliveries, fornecedores, classificacoes] = await Promise.all([
                 lens.fetchTableRecords('Dados'),
-                lens.fetchTableRecords('Fornecedores')
+                lens.fetchTableRecords('Fornecedores'),
+                lens.fetchTableRecords('Classificacao_Fornecedores')
             ]);
             allDeliveries = deliveries;
+            classificacaoRecords = classificacoes;
 
             const supplierNames = new Map(fornecedores.map(f => [f.id, f.Nome_Fornecedor]));
 
@@ -52,8 +55,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         processDeliveries();
         populateFilters();
-        await renderDashboard(); // Make initial render async to fetch classifications
-        setupFilterListeners();
+        await renderDashboard(classificacaoRecords);
+        setupFilterListeners(classificacaoRecords);
     }
     
     function debounce(func, delay) {
@@ -64,12 +67,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
     }
 
-    function setupFilterListeners() {
-        const debouncedRender = debounce(renderDashboard, 300);
+    function setupFilterListeners(classificacaoRecords) {
+        const debouncedRender = debounce(() => renderDashboard(classificacaoRecords), 300);
         document.getElementById('search-input').addEventListener('input', debouncedRender);
         document.getElementById('obra-filter-input').addEventListener('input', debouncedRender);
-        document.getElementById('year-filter').addEventListener('change', renderDashboard);
-        document.getElementById('sort-order').addEventListener('change', renderDashboard);
+        document.getElementById('obra-only-filter').addEventListener('change', () => renderDashboard(classificacaoRecords));
+        document.getElementById('year-filter').addEventListener('change', () => renderDashboard(classificacaoRecords));
+        document.getElementById('sort-order').addEventListener('change', () => renderDashboard(classificacaoRecords));
     }
 
     function processDeliveries() {
@@ -114,14 +118,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 }
 
-async function renderDashboard() {
+async function renderDashboard(classificacaoRecords) {
     const container = document.getElementById('dashboard-container');
     container.innerHTML = '<div>Carregando...</div>';
 
-    const classificacaoRecords = await lens.fetchTableRecords('Classificacao_Fornecedores');
-
     const searchTerm = document.getElementById('search-input').value.toLowerCase();
     const selectedObra = document.getElementById('obra-filter-input').value;
+    const obraOnly = document.getElementById('obra-only-filter').checked;
     const selectedYear = document.getElementById('year-filter').value;
     const sortOrder = document.getElementById('sort-order').value;
 
@@ -129,7 +132,8 @@ async function renderDashboard() {
         const filteredDeliveries = supplier.deliveries.filter(d => {
             const yearMatch = !selectedYear || d.jsYear === parseInt(selectedYear);
             const obraMatch = !selectedObra || d.Obra_Local === selectedObra;
-            return obraMatch && yearMatch;
+            const obraOnlyMatch = !obraOnly || /^\d+$/.test(d.Obra_Local);
+            return yearMatch && obraMatch && obraOnlyMatch;
         });
 
         if (filteredDeliveries.length === 0) return null;
@@ -141,7 +145,18 @@ async function renderDashboard() {
         const nonConformingPercentage = totalDeliveries > 0 ? (nonConformingDeliveries.length / totalDeliveries) * 100 : 0;
         const nonConformingValuePercentage = totalValue > 0 ? (nonConformingValue / totalValue) * 100 : 0;
 
-        const currentYearClassification = classificacaoRecords.find(c => c.Fornecedor === supplier.id && c.Ano === new Date().getFullYear());
+        const supplierClassifications = classificacaoRecords.filter(c => c.Fornecedor === supplier.id);
+
+        supplierClassifications.sort((a, b) => {
+            if (a.Data_Classificacao && b.Data_Classificacao) {
+                return b.Data_Classificacao - a.Data_Classificacao;
+            }
+            if (a.Data_Classificacao) return -1;
+            if (b.Data_Classificacao) return 1;
+            return b.Ano - a.Ano;
+        });
+
+        const latestClassification = supplierClassifications.length > 0 ? supplierClassifications[0] : null;
 
         return {
             ...supplier,
@@ -152,7 +167,7 @@ async function renderDashboard() {
                 totalValue,
                 nonConformingValue,
                 nonConformingValuePercentage,
-                classification: currentYearClassification
+                classification: latestClassification
             }
         };
     }).filter(Boolean);
@@ -179,53 +194,61 @@ async function renderDashboard() {
         const ncValueColor = getStatusColor(supplier.metrics.nonConformingValuePercentage);
 
         let seal = '';
+        let outdatedIcon = '';
         if (supplier.metrics.classification) {
             const status = supplier.metrics.classification.Status;
             const date = new Date(supplier.metrics.classification.Data_Classificacao * 1000);
             const isOutdated = (new Date() - date) > 365 * 24 * 60 * 60 * 1000;
+
             if (isOutdated) {
-                seal = `<div class="status-chip warning">🟠 Sob observação</div>`;
-            } else if (status === 'Aprovado') {
+                outdatedIcon = '<span>🟠</span>';
+            }
+
+            if (status === 'Aprovado') {
                 seal = `<div class="status-chip approved">🟢 Aprovado</div>`;
             } else if (status === 'Reprovado') {
                 seal = `<div class="status-chip critical">🔴 Reprovado</div>`;
+            } else {
+                seal = `<div class="status-chip warning">⚪️ Sob observação</div>`;
             }
         }
 
         card.innerHTML = `
-            <div class="card-supplier-info">
+            <div class="card-header">
                 <h3 class="supplier-name">${supplier.name}</h3>
-                <div class="supplier-totals">
-                    <span>📦 ${supplier.metrics.totalDeliveries} entregas</span>
-                    <span>💰 ${supplier.metrics.totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                </div>
+                <div class="card-status">${seal} ${outdatedIcon}</div>
             </div>
-            <div class="card-metrics">
-                <div class="metric-item">
-                    <span class="metric-label">⚠️ NC (Qtd)</span>
-                    <div class="metric-value">
-                        <span>${supplier.metrics.nonConformingCount}</span>
+            <div class="card-meta">
+                <div class="meta-item">
+                    <span class="label">📦 Entregas</span>
+                    <span class="value value-num">${supplier.metrics.totalDeliveries}</span>
+                </div>
+                <div class="meta-item">
+                    <span class="label">💰 Valor Total</span>
+                    <span class="value">${supplier.metrics.totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                </div>
+                <div class="meta-item">
+                    <span class="label">⚠️ NC (Qtd)</span>
+                    <div class="value">
+                        <span class="value-num">${supplier.metrics.nonConformingCount}</span>
                         <span class="pill" style="background-color: ${ncCountColor.bg}; color: ${ncCountColor.text}">${supplier.metrics.nonConformingPercentage.toFixed(1)}%</span>
                     </div>
                 </div>
-                <div class="metric-item">
-                    <span class="metric-label">⚠️ NC (Valor)</span>
-                    <div class="metric-value">
+                <div class="meta-item">
+                    <span class="label">⚠️ NC (Valor)</span>
+                    <div class="value">
                         <span>${supplier.metrics.nonConformingValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                         <span class="pill" style="background-color: ${ncValueColor.bg}; color: ${ncValueColor.text}">${supplier.metrics.nonConformingValuePercentage.toFixed(1)}%</span>
                     </div>
                 </div>
             </div>
-            <div class="card-status">
-                ${seal}
-            </div>
         `;
-        card.addEventListener('click', () => openCustomDrawer(supplier));
+        card.addEventListener('click', () => openCustomDrawer(supplier, classificacaoRecords));
         container.appendChild(card);
     });
 }
 
-    async function openCustomDrawer(supplier) {
+    async function openCustomDrawer(supplier, classificacaoRecords) {
         const modalHeader = `
             <div class="modal-header">
                 <h3>${supplier.name}</h3>
@@ -268,20 +291,22 @@ async function renderDashboard() {
         const tabs = modalContent.querySelectorAll('.tab-link');
         const tabContents = modalContent.querySelectorAll('.tab-content');
         tabs.forEach(tab => {
-            tab.addEventListener('click', () => {
+            tab.addEventListener('click', async () => {
                 tabs.forEach(t => t.classList.remove('active'));
                 tab.classList.add('active');
                 tabContents.forEach(c => c.classList.remove('active'));
                 modalContent.querySelector(`#${tab.dataset.tab}`).classList.add('active');
+
+                if (tab.dataset.tab === 'tab-2' && !tab.dataset.loaded) {
+                    await renderMonitoramentoTab(modalContent, supplier, classificacaoRecords);
+                    tab.dataset.loaded = true;
+                }
             });
         });
-
-        await renderMonitoramentoTab(modalContent, supplier);
     }
 
-    async function renderMonitoramentoTab(modalContent, supplier) {
+    async function renderMonitoramentoTab(modalContent, supplier, classificacaoRecords) {
         try {
-            const classificacaoRecords = await lens.fetchTableRecords('Classificacao_Fornecedores');
             const supplierClassificacoes = classificacaoRecords.filter(c => c.Fornecedor === supplier.id).sort((a, b) => b.Ano - a.Ano);
             renderClassificacaoTable(modalContent, supplierClassificacoes);
         } catch (error) {
@@ -293,7 +318,7 @@ async function renderDashboard() {
         monitoramentoYearFilter.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
 
         const tableContainer = modalContent.querySelector('#monitoramento-table-container');
-        tableContainer.innerHTML = `<button id="load-deliveries-btn">Carregar Entregas</button><div id="monitoramento-table"></div>`;
+        tableContainer.innerHTML = '<div id="monitoramento-table"></div>';
 
         const table = new Tabulator(modalContent.querySelector('#monitoramento-table'), {
             data: [],
@@ -301,6 +326,7 @@ async function renderDashboard() {
             pagination: "local",
             paginationSize: 10,
             paginationSizeSelector: [15, 25, 50, 100],
+            placeholder: "Carregando...",
             columns: [
                 { title: "Obra", field: "Obra_Local" },
                 { title: "Emitente", field: "Emitente_Nome_Fornecedor" },
@@ -310,8 +336,7 @@ async function renderDashboard() {
         });
 
         const loadData = async () => {
-            tableContainer.querySelector('#load-deliveries-btn').disabled = true;
-            tableContainer.querySelector('#load-deliveries-btn').textContent = 'Carregando...';
+            table.setData([]); // Clear table and show placeholder
             const filters = {
                 year: modalContent.querySelector('#monitoramento-year-filter').value,
                 obraFilter: modalContent.querySelector('#monitoramento-obra-filter').value.toLowerCase(),
@@ -329,15 +354,22 @@ async function renderDashboard() {
 
             const filteredDeliveries = await filterDeliveriesAsync(supplier.deliveries, filters);
             table.setData(filteredDeliveries);
-            tableContainer.querySelector('#load-deliveries-btn').disabled = false;
-            tableContainer.querySelector('#load-deliveries-btn').textContent = 'Recarregar Entregas';
         };
 
-        modalContent.querySelector('#load-deliveries-btn').addEventListener('click', loadData);
+        // Load data immediately
+        loadData();
 
-        renderNewClassificacaoForm(modalContent, supplier, monitoramentoYearFilter.value);
+        // Add event listeners to filters to reload data
+        const debouncedLoadData = debounce(loadData, 300);
+        modalContent.querySelector('#monitoramento-year-filter').addEventListener('change', loadData);
+        modalContent.querySelector('#monitoramento-obra-filter').addEventListener('input', debouncedLoadData);
+        modalContent.querySelector('#monitoramento-inspecao-filter').addEventListener('input', debouncedLoadData);
+        modalContent.querySelector('#monitoramento-date-range-filter').addEventListener('change', loadData);
+        modalContent.querySelector('#monitoramento-nao-conforme-filter').addEventListener('change', loadData);
+
+        renderNewClassificacaoForm(modalContent, supplier, monitoramentoYearFilter.value, classificacaoRecords);
         monitoramentoYearFilter.addEventListener('change', () => {
-            renderNewClassificacaoForm(modalContent, supplier, monitoramentoYearFilter.value);
+            renderNewClassificacaoForm(modalContent, supplier, monitoramentoYearFilter.value, classificacaoRecords);
         });
     }
 
@@ -359,32 +391,19 @@ async function renderDashboard() {
 
     function filterDeliveriesAsync(deliveries, filters) {
         return new Promise(resolve => {
-            let result = [];
-            let chunkIndex = 0;
-            const chunkSize = 500;
-            function processChunk() {
-                const end = Math.min(chunkIndex + chunkSize, deliveries.length);
-                for (let i = chunkIndex; i < end; i++) {
-                    const d = deliveries[i];
-                    if (d.jsYear != filters.year) continue;
-                    if (filters.obraFilter && !d.Obra_Local.toLowerCase().includes(filters.obraFilter)) continue;
-                    if (filters.inspecaoFilter && !d.Insp_Recebimento.toLowerCase().includes(filters.inspecaoFilter)) continue;
-                    if (filters.naoConformeOnly && d.Insp_Recebimento === 'A') continue;
-                    if (filters.cutoffDate && d.jsDate < filters.cutoffDate) continue;
-                    result.push(d);
-                }
-                chunkIndex = end;
-                if (chunkIndex < deliveries.length) {
-                    setTimeout(processChunk, 0);
-                } else {
-                    resolve(result);
-                }
-            }
-            processChunk();
+            const filtered = deliveries.filter(d => {
+                if (d.jsYear != filters.year) return false;
+                if (filters.obraFilter && !d.Obra_Local.toLowerCase().includes(filters.obraFilter)) return false;
+                if (filters.inspecaoFilter && !d.Insp_Recebimento.toLowerCase().includes(filters.inspecaoFilter)) return false;
+                if (filters.naoConformeOnly && d.Insp_Recebimento === 'A') return false;
+                if (filters.cutoffDate && d.jsDate < filters.cutoffDate) return false;
+                return true;
+            });
+            resolve(filtered);
         });
     }
 
-    function renderNewClassificacaoForm(modalContent, supplier, year) {
+    function renderNewClassificacaoForm(modalContent, supplier, year, classificacaoRecords) {
         const formContainer = modalContent.querySelector('#new-classificacao-form');
         formContainer.innerHTML = `
             <h5>Nova Classificação para ${year}</h5>
@@ -395,14 +414,14 @@ async function renderDashboard() {
             </div>
         `;
         modalContent.querySelector('#aprovar-btn').addEventListener('click', () => {
-            handleClassification(supplier.id, year, 'Aprovado', modalContent.querySelector('#justificativa-input').value);
+            handleClassification(supplier.id, year, 'Aprovado', modalContent.querySelector('#justificativa-input').value, classificacaoRecords);
         });
         modalContent.querySelector('#reprovar-btn').addEventListener('click', () => {
-            handleClassification(supplier.id, year, 'Reprovado', modalContent.querySelector('#justificativa-input').value);
+            handleClassification(supplier.id, year, 'Reprovado', modalContent.querySelector('#justificativa-input').value, classificacaoRecords);
         });
     }
 
-    async function handleClassification(supplierId, year, status, justificativa) {
+    async function handleClassification(supplierId, year, status, justificativa, classificacaoRecords) {
         try {
             await dataWriter.addRecord('Classificacao_Fornecedores', {
                 Fornecedor: supplierId,
@@ -415,7 +434,8 @@ async function renderDashboard() {
             const modalContent = document.querySelector('.modal-content');
             if (modalContent) {
                 const supplier = suppliers.get(supplierId);
-                await renderMonitoramentoTab(modalContent, supplier);
+                classificacaoRecords = await lens.fetchTableRecords('Classificacao_Fornecedores');
+                await renderMonitoramentoTab(modalContent, supplier, classificacaoRecords);
             }
         } catch (e) {
             console.error('Error adding classification:', e);

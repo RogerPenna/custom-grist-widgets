@@ -32,19 +32,15 @@ body {
 
 /* Supplier Card Styles */
 .supplier-card {
-    background-color: #fff;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    display: grid;
+    grid-template-rows: auto auto;
+    gap: 10px 0;
     padding: 14px 18px;
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 2px 10px rgba(0,0,0,.08);
     cursor: pointer;
     transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-    height: auto;
-    min-height: 100px;
-    box-sizing: border-box;
 }
 
 .supplier-card:hover {
@@ -52,61 +48,76 @@ body {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-/* Card Sections */
-.card-supplier-info {
-    flex: 1;
-    min-width: 200px;
-}
-
-.card-metrics {
+/* HEADER: título à esquerda + selo à direita + separador embaixo */
+.card-header {
     display: flex;
-    gap: 20px;
-    flex: 2;
-    justify-content: center;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+    padding-bottom: 8px;
 }
 
-.card-status {
-    flex: 0.5;
-    display: flex;
-    justify-content: flex-end;
-    min-width: 120px;
+.card-header::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    background: #eee;
 }
 
-/* Supplier Info */
 .supplier-name {
     font-weight: bold;
     font-size: 16px;
-    color: #333;
-    margin: 0 0 5px 0;
-}
-
-.supplier-totals {
-    font-size: 13px;
-    color: #666;
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-}
-
-/* Metrics */
-.metric-item {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-}
-
-.metric-label {
-    font-size: 12px;
-    color: #666;
+    color: #2f2f2f;
     text-transform: uppercase;
+    margin: 0;
 }
 
-.metric-value {
+.card-status {
+    margin-left: 16px;
+    flex: 0 0 auto;
+}
+
+/* META: 2x2 grid for metrics */
+.card-meta {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px 22px; /* row-gap | column-gap */
+}
+
+.meta-item {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 14px;
-    font-weight: 500;
+    color: #444;
+}
+
+.meta-item .label {
+    font-size: 12px;
+    color: #777;
+    font-weight: 600;
+}
+
+.meta-item .value {
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.meta-item .value-num {
+    min-width: 56px;
+    text-align: right;
+    font-weight: 800;
+}
+
+@media (max-width: 720px) {
+    .card-meta {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
 }
 
 /* Pill Badge */

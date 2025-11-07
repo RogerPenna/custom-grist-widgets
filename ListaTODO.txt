@@ -222,6 +222,20 @@
   - **Problema:** O drawer não abria ao clicar em uma linha da tabela, mesmo com a configuração de `editMode` como 'drawer'. Os eventos `cellClick` e `rowClick` do Tabulator não estavam sendo disparados de forma confiável.
   - **Resolução:** Removido o manipulador de eventos do Tabulator (`rowClick`). Implementado um ouvinte de evento de clique nativo no contêiner da tabela (`tableContainer`). Este ouvinte usa delegação de eventos para detectar cliques em elementos de linha (`.tabulator-row`), obtém os dados da linha correspondente usando a API do Tabulator (`tabulatorTable.getRow()`) e, em seguida, chama a função `openDrawer` manualmente. Esta abordagem contorna o sistema de eventos interno do Tabulator, garantindo que os cliques sejam capturados e tratados de forma robusta.
 
+### Supplier Performance Dashboard
+
+- [DONE] **Performance Improvement:**
+  - Refactored the `filterDeliveriesAsync` function to be synchronous, significantly speeding up the loading of the "Monitoramento" tab.
+  - Implemented lazy loading for the "Monitoramento" tab, so data is only loaded when the tab is clicked.
+  - Centralized the fetching of `classificacaoRecords` to avoid redundant API calls.
+- [DONE] **New "Somente Obras" Filter:**
+  - Added a "Somente Obras" checkbox to the filter bar, which is on by default.
+  - The filter correctly shows only deliveries where `Obra_Local` is a purely numeric value.
+- [DONE] **Improved Classification Logic:**
+  - The logic for displaying the supplier classification seal has been corrected.
+  - It now uses the latest classification record based on `Data_Classificacao`, falling back to the highest `Ano`.
+  - An orange icon is now displayed if the latest classification is more than 12 months old.
+
 ### Bugs Atuais / Funcionalidades Pendentes (Table Widget)
 
 - [BUG] **Tabela Zebrada Lógica Invertida:** Ativar "Tabela Zebrada" desativa as listras; desativá-la as ativa. (Re-reportado pelo usuário).
