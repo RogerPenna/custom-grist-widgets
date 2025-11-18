@@ -1,0 +1,153 @@
+/* BSCWidget/bsc-widget.css */
+
+body {
+    font-family: sans-serif;
+    background-color: #f8f9fa;
+    color: #212529;
+    margin: 0;
+    overflow: visible;
+}
+
+#controls-container {
+    padding: 1em;
+    background-color: #e9ecef;
+    border-bottom: 1px solid #dee2e6;
+}
+
+#app {
+    max-width: 100%;
+    padding: 1em;
+    box-sizing: border-box;
+}
+
+.error {
+    color: #dc3545;
+    font-weight: bold;
+}
+
+.bsc-container h1 {
+    font-size: 1.5em;
+    color: #343a40;
+    border-bottom: 2px solid #dee2e6;
+    padding-bottom: 0.5em;
+    text-align: center;
+}
+
+.perspective {
+    margin-top: 1em;
+    margin-bottom: 1em;
+    padding: 1em;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+    cursor: pointer; /* Make it look clickable */
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s;
+    /* Colors are now applied via inline styles */
+}
+
+.perspective:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.12);
+}
+
+.perspective h2 {
+    font-size: 1.4em;
+    margin-top: 0;
+    margin-bottom: 1em;
+    text-align: left; /* Changed from center */
+}
+
+.arrow-down {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 20px;
+    margin: 0.5em 0;
+}
+
+.arrow-down::after {
+    content: '';
+    width: 0;
+    height: 0;
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-top: 10px solid #6c757d;
+}
+
+.objectives-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1em;
+    justify-content: center;
+}
+
+.objective {
+    border: none;
+    margin-top: 0;
+    padding: 1em;
+    flex: 1;
+    min-width: 250px;
+    border-radius: 5px;
+    color: #212529; /* Default text color for objectives */
+    /* Background color applied via inline style */
+}
+
+.objective h3 {
+    font-size: 1.1em;
+    margin-top: 0;
+    color: #343a40;
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+    padding-bottom: 0.5em;
+    margin-bottom: 0.5em;
+}
+
+/* Hide indicator lists as requested to simplify the view */
+.objective h4, .objective ul {
+    display: none;
+}
+
+.strategy {
+    margin-top: 0.5em;
+    padding: 0.4em 0.8em;
+    border-radius: 1em; /* Pill shape */
+    border: none;
+    cursor: default; /* No longer clickable */
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    /* Background color applied via inline style */
+}
+
+.strategy h5 {
+    margin: 0;
+    font-size: 0.9em;
+    color: #212529;
+    text-align: center;
+}
+
+/* Leader-line specific styles */
+.leader-line {
+    z-index: -1;
+}
+
+/* Hide the ref_model field in the drawer to preserve it on save */
+.drawer-field-row[data-col-id="ref_model"] {
+    display: none;
+}
+
+/* Styles for the custom color field renderer */
+.grf-color-swatch-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.grf-color-swatch {
+    width: 20px;
+    height: 20px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    flex-shrink: 0; /* Prevents the swatch from shrinking */
+}
+
+.grf-color-value {
+    font-family: monospace;
+    font-size: 0.9em;
+}

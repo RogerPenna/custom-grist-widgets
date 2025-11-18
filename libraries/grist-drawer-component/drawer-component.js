@@ -71,6 +71,9 @@ async function _handleDelete() {
 async function _handleSave() {
     const changes = {};
     const formElements = drawerPanel.querySelectorAll('[data-col-id]');
+    const formColIds = new Set(Array.from(formElements).map(el => el.dataset.colId));
+
+    // First, process the values from the form
     formElements.forEach(el => {
         const colId = el.dataset.colId;
         const colSchema = currentSchema[colId];
@@ -89,10 +92,23 @@ async function _handleSave() {
                     const parts = value.split('-');
                     value = Date.UTC(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10)) / 1000;
                 } else { value = new Date(value).getTime() / 1000; }
-            } else { value = el.value; }
+            } else if (colSchema.type.startsWith('Ref')) {
+                // Ensure reference values are numbers
+                value = el.value ? Number(el.value) : 0;
+            }
+            else { value = el.value; }
             changes[colId] = value;
         }
     });
+
+    // Now, ensure fields not in the form are preserved, IGNORING formula columns
+    for (const colId in currentSchema) {
+        const colSchema = currentSchema[colId];
+        if (!formColIds.has(colId) && !colSchema.isFormula && currentRecord.hasOwnProperty(colId)) {
+            changes[colId] = currentRecord[colId];
+        }
+    }
+
     if (Object.keys(changes).length > 0) {
         await dataWriter.updateRecord(currentTableId, currentRecordId, changes);
     }
@@ -316,6 +332,9 @@ async function _renderDrawerContent() {
         _addFormListeners();
         _validateForm();
     }
+
+    // Publish an event to notify that the drawer has finished rendering.
+    publish('drawer-rendered', { tableId: currentTableId, recordId: currentRecordId, isEditing: isEditing });
 }
 
 
