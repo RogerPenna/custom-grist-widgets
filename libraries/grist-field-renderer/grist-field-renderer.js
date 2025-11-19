@@ -1,4 +1,4 @@
-// --- START OF COMPLETE AND CORRECTED grist-field-renderer.js ---
+// libraries/grist-field-renderer/grist-field-renderer.js
 
 import { renderText } from './renderers/render-text.js';
 import { renderDate } from './renderers/render-date.js';
@@ -6,14 +6,16 @@ import { renderRef } from './renderers/render-ref.js';
 import { renderChoice } from './renderers/render-choice.js';
 import { renderRefList } from './renderers/render-reflist.js';
 import { renderBool } from './renderers/render-bool.js';
+import { renderColorPicker } from './renderers/render-color-picker.js';
+import { renderProgressBar } from './renderers/render-progress-bar.js';
 
-(function() {
-    if (document.getElementById('grf-styles')) return;
-    const link = document.createElement('link');
-    link.id = 'grf-styles';
-    link.rel = 'stylesheet';
-    link.href = '../libraries/grist-field-renderer/styles/renderer-styles.css';
-    document.head.appendChild(link);
+(function () {
+  if (document.getElementById('grf-styles')) return;
+  const link = document.createElement('link');
+  link.id = 'grf-styles';
+  link.rel = 'stylesheet';
+  link.href = '../libraries/grist-field-renderer/styles/renderer-styles.css';
+  document.head.appendChild(link);
 })();
 
 /**
@@ -39,7 +41,7 @@ export function getFieldStyle(record, colSchema, tableSchema) {
   }
 
   const wopts = colSchema.widgetOptions ? (typeof colSchema.widgetOptions === 'string' ? JSON.parse(colSchema.widgetOptions) : colSchema.widgetOptions) : {};
-  
+
   // Start with base column styles
   mergedStyle.fillColor = wopts.fillColor || null;
   mergedStyle.textColor = wopts.textColor || null;
@@ -91,19 +93,19 @@ export function getFieldStyle(record, colSchema, tableSchema) {
  * Aplica os estilos a um elemento do DOM.
  */
 function _applyStyles(element, fieldStyle) {
-    if (!element) return;
+  if (!element) return;
 
-    element.style.color = fieldStyle.textColor || '';
-    element.style.backgroundColor = fieldStyle.fillColor || '';
-    element.style.fontWeight = fieldStyle.fontBold ? 'bold' : '';
-    element.style.fontStyle = fieldStyle.fontItalic ? 'italic' : '';
-    element.style.textAlign = fieldStyle.alignment || '';
+  element.style.color = fieldStyle.textColor || '';
+  element.style.backgroundColor = fieldStyle.fillColor || '';
+  element.style.fontWeight = fieldStyle.fontBold ? 'bold' : '';
+  element.style.fontStyle = fieldStyle.fontItalic ? 'italic' : '';
+  element.style.textAlign = fieldStyle.alignment || '';
 
-    if (fieldStyle.fillColor || fieldStyle.textColor || fieldStyle.fontBold || fieldStyle.fontItalic) {
-        element.classList.add('has-conditional-style');
-    } else {
-        element.classList.remove('has-conditional-style');
-    }
+  if (fieldStyle.fillColor || fieldStyle.textColor || fieldStyle.fontBold || fieldStyle.fontItalic) {
+    element.classList.add('has-conditional-style');
+  } else {
+    element.classList.remove('has-conditional-style');
+  }
 }
 
 
@@ -112,91 +114,100 @@ function _applyStyles(element, fieldStyle) {
  * Ela despacha para os renderers específicos de cada tipo.
  */
 function renderSimpleText(options) {
-    const { container, colSchema, record, styling } = options;
-    const cellValue = record ? record[colSchema.colId] : null;
-    
-    container.innerHTML = '';
-    const textSpan = document.createElement('span');
+  const { container, colSchema, record, styling } = options;
+  const cellValue = record ? record[colSchema.colId] : null;
 
-    let displayText = cellValue;
-    if (Array.isArray(cellValue) && cellValue[0] === 'L') {
-        displayText = `[${cellValue.length - 1} items]`;
-    } else if (typeof cellValue === 'number' && (colSchema.type.startsWith('Ref:'))) {
-        displayText = `[Ref: ${cellValue}]`;
-    }
+  container.innerHTML = '';
+  const textSpan = document.createElement('span');
 
-    textSpan.textContent = String(displayText ?? '');
-    
-    if (styling) {
-        textSpan.style.color = styling.simpleTextColor || '#000000';
-        textSpan.style.fontFamily = styling.simpleTextFont || 'Calibri';
-        textSpan.style.fontSize = styling.simpleTextSize || '14px';
-    }
-    
-    container.appendChild(textSpan);
+  let displayText = cellValue;
+  if (Array.isArray(cellValue) && cellValue[0] === 'L') {
+    displayText = `[${cellValue.length - 1} items]`;
+  } else if (typeof cellValue === 'number' && (colSchema.type.startsWith('Ref:'))) {
+    displayText = `[Ref: ${cellValue}]`;
+  }
+
+  textSpan.textContent = String(displayText ?? '');
+
+  if (styling) {
+    textSpan.style.color = styling.simpleTextColor || '#000000';
+    textSpan.style.fontFamily = styling.simpleTextFont || 'Calibri';
+    textSpan.style.fontSize = styling.simpleTextSize || '14px';
+  }
+
+  container.appendChild(textSpan);
 }
 
 export async function renderField(options) {
-    const { container, colSchema, record, isEditing = false, labelElement, styleOverride, styling, tableLens, isChild = false } = options;
+  const { container, colSchema, record, isEditing = false, labelElement, styleOverride, styling, tableLens, isChild = false } = options;
 
-    if (isChild && colSchema.type.startsWith('RefList')) {
-        container.innerHTML = '<span class="error-msg">[Nested RefList not supported]</span>';
-        return;
-    }
+  if (isChild && colSchema.type.startsWith('RefList')) {
+    container.innerHTML = '<span class="error-msg">[Nested RefList not supported]</span>';
+    return;
+  }
 
-    let tableSchema = null;
-    if (tableLens && record && record.gristHelper_tableId) {
-        tableSchema = await tableLens.getTableSchema(record.gristHelper_tableId);
-    }
+  let tableSchema = null;
+  if (tableLens && record && record.gristHelper_tableId) {
+    tableSchema = await tableLens.getTableSchema(record.gristHelper_tableId);
+  }
 
-    const fieldStyle = getFieldStyle(record, colSchema, tableSchema);
+  const fieldStyle = getFieldStyle(record, colSchema, tableSchema);
 
-    if (!colSchema) { 
-        container.textContent = String(record[options.colId] ?? '');
-        return;
-    }
+  if (!colSchema) {
+    container.textContent = String(record[options.colId] ?? '');
+    return;
+  }
 
-    // Default to using Grist style if the option is not provided.
-    const useGristStyle = fieldStyle?.useGristStyle ?? true;
+  // Default to using Grist style if the option is not provided.
+  const useGristStyle = fieldStyle?.useGristStyle ?? true;
 
-    if (!useGristStyle) {
-        renderSimpleText({ container, colSchema, record, styling });
-        return;
-    }
+  if (!useGristStyle) {
+    renderSimpleText({ container, colSchema, record, styling });
+    return;
+  }
 
-    const cellValue = record ? record[colSchema.colId] : null;
-    container.innerHTML = '';
-    container.classList.remove('has-conditional-style');
+  const cellValue = record ? record[colSchema.colId] : null;
+  container.innerHTML = '';
+  container.classList.remove('has-conditional-style');
 
-    const isDisabled = isEditing && colSchema.isFormula;
-    container.classList.toggle('is-disabled', isDisabled);
-    
-    if (labelElement) {
-        // We probably don't want to apply conditional styles to the label
-        // _applyStyles(labelElement, ...);
-    }
+  const isDisabled = isEditing && colSchema.isFormula;
+  container.classList.toggle('is-disabled', isDisabled);
 
-    if (!isEditing) {
-        _applyStyles(container, fieldStyle);
-    }
+  if (labelElement) {
+    // We probably don't want to apply conditional styles to the label
+    // _applyStyles(labelElement, ...);
+  }
 
-    // Correctly pass refListConfig to the callOptions from the fieldStyle object
-    const callOptions = { ...options, container, cellValue, refListConfig: options.fieldStyle?.refListConfig };
+  if (!isEditing) {
+    _applyStyles(container, fieldStyle);
+  }
 
-    const type = colSchema.type || '';
-    if (type.startsWith('RefList:')) {
-        await renderRefList(callOptions);
-    } else if (type.startsWith('Ref:')) {
-        await renderRef(callOptions);
-    } else if (type.startsWith('Date')) {
-        renderDate(callOptions);
-    } else if (type === 'Choice' || type === 'ChoiceList') {
-        renderChoice(callOptions);
-    } else if (type === 'Bool') {
-        renderBool(callOptions);
-    } else {
-        renderText(callOptions);
-    }
+  // Correctly pass refListConfig to the callOptions from the fieldStyle object
+  const callOptions = { ...options, container, cellValue, refListConfig: options.fieldStyle?.refListConfig };
+
+  const type = colSchema.type || '';
+  const fieldOptions = options.fieldOptions || {};
+
+  if (fieldOptions.colorPicker) {
+    renderColorPicker(callOptions);
+    return;
+  }
+  if (fieldOptions.progressBar && (type === 'Numeric' || type === 'Int')) {
+    renderProgressBar(callOptions);
+    return;
+  }
+
+  if (type.startsWith('RefList:')) {
+    await renderRefList(callOptions);
+  } else if (type.startsWith('Ref:')) {
+    await renderRef(callOptions);
+  } else if (type.startsWith('Date')) {
+    renderDate(callOptions);
+  } else if (type === 'Choice' || type === 'ChoiceList') {
+    renderChoice(callOptions);
+  } else if (type === 'Bool') {
+    renderBool(callOptions);
+  } else {
+    renderText(callOptions);
+  }
 }
-
-// --- END OF COMPLETE AND CORRECTED grist-field-renderer.js ---

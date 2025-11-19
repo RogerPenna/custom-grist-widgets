@@ -168,8 +168,8 @@ function _isFieldEmpty(element, colSchema) {
     if (!element) return true;
     const type = colSchema.type || 'Any';
     let value;
-    if (element.type === 'checkbox') { value = element.checked; } 
-    else if (element.tagName === 'SELECT' && element.multiple) { value = Array.from(element.selectedOptions).map(opt => opt.value); } 
+    if (element.type === 'checkbox') { value = element.checked; }
+    else if (element.tagName === 'SELECT' && element.multiple) { value = Array.from(element.selectedOptions).map(opt => opt.value); }
     else { value = element.value; }
     if (type === 'Bool') return value !== true;
     if (type === 'ChoiceList' || type.startsWith('RefList')) return !value || value.length === 0;
@@ -237,7 +237,7 @@ function _initializeDrawerDOM() {
 
     const link = document.createElement('link'); link.rel = 'stylesheet'; link.href = '../libraries/grist-drawer-component/drawer-style.css'; document.head.appendChild(link);
     const style = document.createElement('style');
-    
+
     // CSS DE PRODUÇÃO FINAL
     style.textContent = `
         .drawer-header-buttons .icon, .drawer-close-btn .icon {
@@ -257,13 +257,13 @@ function _initializeDrawerDOM() {
         .grf-tooltip-trigger:hover:before, .grf-tooltip-trigger:hover:after { opacity: 1; visibility: visible; }
     `;
     document.head.appendChild(style);
-    
+
     drawerOverlay = document.createElement('div');
     drawerOverlay.id = 'grist-drawer-overlay';
-    
+
     drawerPanel = document.createElement('div');
     drawerPanel.id = 'grist-drawer-panel';
-    
+
     // --- HTML CORRIGIDO COM OS IDs DE ÍCONE CORRETOS DO SEU ARQUIVO ---
     drawerPanel.innerHTML = `
         <div class="drawer-header"><h2 id="drawer-title"></h2>
@@ -279,11 +279,11 @@ function _initializeDrawerDOM() {
             </div>
         </div>
         <div class="drawer-body"><div class="drawer-tabs"></div><div class="drawer-tab-panels"></div></div>`;
-    
+
     document.body.appendChild(drawerOverlay); document.body.appendChild(drawerPanel);
     drawerHeader = drawerPanel.querySelector('.drawer-header');
     drawerTitle = drawerPanel.querySelector('#drawer-title');
-    
+
     drawerPanel.querySelector('.drawer-close-btn').addEventListener('click', closeDrawer);
     drawerPanel.querySelector('#drawer-edit-btn').addEventListener('click', _handleEdit);
     drawerPanel.querySelector('#drawer-save-btn').addEventListener('click', _handleSave);
@@ -297,24 +297,24 @@ async function _renderDrawerContent() {
     const tabsContainer = drawerPanel.querySelector('.drawer-tabs');
     const panelsContainer = drawerPanel.querySelector('.drawer-tab-panels');
     tabsContainer.innerHTML = ''; panelsContainer.innerHTML = '';
-    
+
     // MUDANÇA AQUI: Lê a nova configuração styleOverrides
     const { tabs = null, refListFieldConfig = {}, styleOverrides = {} } = currentDrawerOptions;
-    
+
     const [cleanSchema, rawSchema] = await Promise.all([tableLens.getTableSchema(currentTableId), tableLens.getTableSchema(currentTableId, { mode: 'raw' })]);
     Object.keys(cleanSchema).forEach(colId => { if (rawSchema[colId] && rawSchema[colId].description) cleanSchema[colId].description = rawSchema[colId].description; });
     currentSchema = cleanSchema;
-    
+
     if (currentRecordId === 'new') {
         currentRecord = {};
     } else {
         currentRecord = await tableLens.fetchRecordById(currentTableId, currentRecordId);
     }
 
-    if (!currentRecord) { 
+    if (!currentRecord) {
         console.error("Drawer Error: Record not found and it is not a new record.");
-        closeDrawer(); 
-        return; 
+        closeDrawer();
+        return;
     }
 
     const rules = _getCombinedRules(currentRecord);
@@ -327,7 +327,7 @@ async function _renderDrawerContent() {
     } else {
         renderDefaultTabs(rules.hidden, rules.locked, rules.required, currentRecord, ruleIdToColIdMap, refListFieldConfig, styleOverrides);
     }
-    
+
     if (isEditing) {
         _addFormListeners();
         _validateForm();
@@ -366,7 +366,7 @@ function renderDefaultTabs(hiddenFields, lockedFields, requiredFields, record, r
     if (fieldOrder.length > 0) {
         const orderMap = new Map(fieldOrder.map((id, index) => [id, index]));
         mainCols.sort((a, b) => { const indexA = orderMap.get(a.colId); const indexB = orderMap.get(b.colId); if (indexA !== undefined && indexB !== undefined) return indexA - indexB; if (indexA !== undefined) return -1; if (indexB !== undefined) return 1; return (a.parentPos || 0) - (b.parentPos || 0); });
-    } else { mainCols.sort((a,b) => (a.parentPos || 0) - (b.parentPos || 0)); }
+    } else { mainCols.sort((a, b) => (a.parentPos || 0) - (b.parentPos || 0)); }
     const tabs = { "Principal": mainCols };
     if (helperCols.length > 0) { tabs["Dados do Sistema"] = helperCols; }
     Object.entries(tabs).forEach(([tabName, cols], index) => {
@@ -381,36 +381,68 @@ function renderDefaultTabs(hiddenFields, lockedFields, requiredFields, record, r
 }
 
 function renderSingleField(panelEl, colSchema, record, lockedFields, requiredFields, ruleIdToColIdMap, refListFieldConfig = {}, styleOverrides = {}) {
-    const row = document.createElement('div'); row.className = 'drawer-field-row'; row.dataset.colId = colSchema.colId;
-    const label = document.createElement('label'); label.className = 'drawer-field-label';
+
+    const row = document.createElement('div');
+    row.className = 'drawer-field-row';
+    row.dataset.colId = colSchema.colId;
+
+    const label = document.createElement('label');
+    label.className = 'drawer-field-label';
     const labelText = colSchema.label || colSchema.colId;
     const isFieldRequired = requiredFields.includes(colSchema.colId);
+
     let labelHtml = labelText;
-    if (isFieldRequired) { labelHtml += ` <span class="required-indicator">*</span>`; }
+    if (isFieldRequired) {
+        labelHtml += ` <span class="required-indicator">*</span>`;
+    }
+
     if (colSchema.description && colSchema.description.trim() !== '') {
         const sanitizedDescription = colSchema.description.replace(/"/g, '"');
         labelHtml += ` <span class="grf-tooltip-trigger" data-tooltip="${sanitizedDescription}">?</span>`;
     }
+
     label.innerHTML = labelHtml;
-    const valueContainer = document.createElement('div'); valueContainer.className = 'drawer-field-value';
-    row.appendChild(label); row.appendChild(valueContainer); panelEl.appendChild(row);
-    const isFieldLocked = lockedFields.includes(colSchema.colId);
-    
-    // MUDANÇA AQUI: Passa as regras de anulação de estilo para o renderField
+
+    const valueContainer = document.createElement('div');
+    valueContainer.className = 'drawer-field-value';
+
+    row.appendChild(label);
+    row.appendChild(valueContainer);
+    panelEl.appendChild(row);
+
     const renderOptions = {
         container: valueContainer,
+        colSchema: colSchema,
+        record: record,
+        isEditing: isEditing,
         labelElement: label,
-        colSchema,
-        record,
-        tableLens,
-        ruleIdToColIdMap,
-        isEditing,
-        isLocked: isFieldLocked,
-        styleOverride: styleOverrides[colSchema.colId] // Adiciona as regras específicas deste campo
+        styleOverride: styleOverrides[colSchema.colId],
+        tableLens: tableLens,
+        fieldOptions: {}
     };
+
+    const widgetOverride = currentDrawerOptions.widgetOverrides?.[colSchema.colId];
+    let widgetType = null;
+    let widgetOptions = {};
+
+    if (typeof widgetOverride === 'string') {
+        widgetType = widgetOverride;
+    } else if (typeof widgetOverride === 'object' && widgetOverride !== null) {
+        widgetType = widgetOverride.widget;
+        widgetOptions = widgetOverride.options || {};
+    }
+
+    if (widgetType === 'ColorPicker') {
+        renderOptions.fieldOptions.colorPicker = true;
+    } else if (widgetType === 'ProgressBar') {
+        renderOptions.fieldOptions.progressBar = true;
+        renderOptions.fieldOptions.widgetOptions = widgetOptions;
+    }
+
     if (colSchema.type.startsWith('RefList:') && refListFieldConfig[colSchema.colId]) {
         renderOptions.fieldConfig = refListFieldConfig[colSchema.colId];
     }
+
     renderField(renderOptions);
 }
 
@@ -420,7 +452,7 @@ export async function openDrawer(tableId, recordId, options = {}) {
     currentRecordId = recordId;
     // For new records, automatically enter edit mode.
     isEditing = recordId === 'new' || options.mode === 'edit' || false;
-    currentDrawerOptions = options; 
+    currentDrawerOptions = options;
     if (drawerPanel) { drawerPanel.classList.remove('is-modal'); }
     if (drawerOverlay) { drawerOverlay.classList.remove('is-modal-overlay'); }
     if (options.displayMode === 'modal') {

@@ -1,0 +1,55 @@
+export function renderProgressBar(options) {
+    const { container, cellValue, isEditing, isLocked, fieldOptions } = options;
+    const value = Number(cellValue) || 0;
+    const widgetOptions = fieldOptions?.widgetOptions || {};
+
+    if (isEditing && !isLocked) {
+        const input = document.createElement('input');
+        input.type = 'range';
+        input.min = 0;
+        input.max = 100;
+        input.value = value;
+        input.className = 'grf-form-input';
+        input.dataset.colId = options.colSchema.colId;
+        container.appendChild(input);
+
+        const percentageLabel = document.createElement('span');
+        percentageLabel.className = 'grf-progress-label';
+        percentageLabel.textContent = `${value}%`;
+        container.appendChild(percentageLabel);
+
+        input.addEventListener('input', () => {
+            percentageLabel.textContent = `${input.value}%`;
+        });
+
+    } else {
+        const progressWrapper = document.createElement('div');
+        progressWrapper.className = 'grf-progress-wrapper';
+
+        const progressBar = document.createElement('div');
+        progressBar.className = 'grf-progress-bar';
+        progressBar.style.width = `${value}%`;
+        progressBar.textContent = `${value}%`;
+
+        // Apply Stripes
+        if (widgetOptions.striped) {
+            progressBar.classList.add('grf-progress-bar-striped');
+        }
+
+        // Apply Dynamic Coloring
+        if (widgetOptions.colorRules && Array.isArray(widgetOptions.colorRules)) {
+            const sortedRules = [...widgetOptions.colorRules].sort((a, b) => a.threshold - b.threshold);
+            const matchingRule = sortedRules.find(rule => value <= rule.threshold);
+            if (matchingRule) {
+                progressBar.style.backgroundColor = matchingRule.color;
+            }
+        }
+
+        progressWrapper.appendChild(progressBar);
+        container.appendChild(progressWrapper);
+
+        if (isLocked) {
+            container.closest('.drawer-field-value')?.classList.add('is-locked-style');
+        }
+    }
+}
