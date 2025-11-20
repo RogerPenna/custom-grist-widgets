@@ -103,6 +103,37 @@ export async function renderRefList(options) {
         if (!isCollapsed) {
             container.innerHTML = '<p>Carregando...</p>';
         }
+        const relatedSchema = await tableLens.getTableSchema(referencedTableId);
+        const ruleMap = ruleIdToColIdMap || new Map();
+
+        // Handle new and old column formats
+        let columnsToDisplay;
+        const allPossibleCols = Object.values(relatedSchema).filter(c => c && !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos');
+
+        if (refListConfig && Array.isArray(refListConfig.columns) && refListConfig.columns.length > 0 && typeof refListConfig.columns[0] === 'object') {
+            // New format: array of objects
+            const sortConfig = refListConfig.columns.find(c => c.sort && c.sort !== 'none');
+            if (sortConfig) {
+                sortColumn = sortConfig.colId;
+                sortDirection = sortConfig.sort;
+            }
+            
+            columnsToDisplay = refListConfig.columns
+                .filter(c => c.visible)
+                .map(c => relatedSchema[c.colId])
+                .filter(Boolean); // Filter out undefined columns
+        } else {
+            // Old format or no config: array of strings or undefined
+            if (refListConfig && refListConfig.columns && refListConfig.columns.length > 0) {
+                const visibleColIds = new Set(refListConfig.columns);
+                columnsToDisplay = allPossibleCols.filter(col => visibleColIds.has(col.colId));
+            } else if (fieldConfig && typeof fieldConfig === 'object') {
+                columnsToDisplay = allPossibleCols.filter(col => fieldConfig[col.colId]?.showInTable === true);
+            } else {
+                columnsToDisplay = allPossibleCols;
+            }
+        }
+        
         let relatedRecords = await tableLens.fetchRelatedRecords(record, colSchema.colId);
         relatedRecords.sort((a, b) => { const vA = a[sortColumn], vB = b[sortColumn]; if (vA < vB) return sortDirection === 'asc' ? -1 : 1; if (vA > vB) return sortDirection === 'asc' ? 1 : -1; return 0; });
 
@@ -118,9 +149,6 @@ export async function renderRefList(options) {
         } else if (refListConfig && refListConfig.maxRows > 0) {
             recordsToRender = relatedRecords.slice(0, refListConfig.maxRows);
         }
-
-        const relatedSchema = await tableLens.getTableSchema(referencedTableId);
-        const ruleMap = ruleIdToColIdMap || new Map();
         
         if (isCollapsed) {
             // If collapsed, just update the count in the expand button
@@ -262,7 +290,7 @@ export async function renderRefList(options) {
                     title: gristCol.label || gristCol.colId,
                     field: gristCol.colId,
                     hozAlign: colConfig.align || 'left',
-                    headerFilter: tabulatorConfig.headerFilter !== false,
+                    headerFilter: false,
                     width: colConfig.width || undefined,
                     formatter: gristCellFormatter,
                     formatterParams: {
@@ -273,16 +301,29 @@ export async function renderRefList(options) {
             }).filter(col => col !== null);
 
             const tabulatorContainer = document.createElement('div');
+            tabulatorContainer.className = 'reflist-tabulator-container';
+            tabulatorContainer.style.maxHeight = '300px'; 
+            tabulatorContainer.style.overflowY = 'auto';
+            
+            const style = document.createElement('style');
+            style.textContent = `
+                .reflist-tabulator-container .tabulator-placeholder {
+                    padding: 4px !important;
+                }
+            `;
+            container.appendChild(style);
             container.appendChild(tabulatorContainer);
 
             new Tabulator(tabulatorContainer, {
-                height: "100%",
+                minHeight: 0, // Do not reserve height for empty table
                 data: recordsToRender,
                 columns: columns,
                 layout: tabulatorConfig.layout || "fitColumns",
                 pagination: tabulatorConfig.pagination?.enabled || false,
                 paginationSize: tabulatorConfig.pagination?.pageSize || 10,
-                paginationSizeSelector: tabulatorConfig.pagination?.enabled ? [5, 10, 20, 50, 100] : false,
+                paginationSizeSelector: false,
+                paginationButtonCount: 3,
+                placeholder: "<div style='text-align:center; color:#777;'>No records found</div>", // Removed padding
                 renderComplete: function() {
                     setTimeout(() => {
                         this.redraw(true);
@@ -297,26 +338,37 @@ export async function renderRefList(options) {
             table.className = 'grf-reflist-table';
             if (fieldConfig?._options?.zebra || refListConfig?.zebra) { table.classList.add('is-zebra-striped'); }
             
+            const style = document.createElement('style');
+            style.textContent = `
+                .grf-reflist-table th.asc::after { content: ' ▲'; color: green; }
+                .grf-reflist-table th.desc::after { content: ' ▼'; color: red; }
+            `;
+            container.appendChild(style);
+
             const thead = table.createTHead().insertRow();
-            const allPossibleCols = Object.values(relatedSchema).filter(c => c && !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos');
-            let columnsToDisplay;
-
-            if (refListConfig && refListConfig.columns && refListConfig.columns.length > 0) {
-                const visibleColIds = new Set(refListConfig.columns);
-                columnsToDisplay = allPossibleCols.filter(col => visibleColIds.has(col.colId));
-            } else if (fieldConfig && typeof fieldConfig === 'object') {
-                columnsToDisplay = allPossibleCols.filter(col => fieldConfig[col.colId]?.showInTable === true);
-            } else {
-                columnsToDisplay = allPossibleCols;
-            }
-            console.log("DEBUG: All possible columns:", allPossibleCols.map(c => c.colId));
-            console.log("DEBUG: Calculated columnsToDisplay:", columnsToDisplay.map(c => c.colId));
-
             const thActions = document.createElement('th'); thActions.textContent = 'Ações'; thead.appendChild(thActions);
             columnsToDisplay.forEach(c => {
-                const th = document.createElement('th'); th.textContent = c.label || c.colId;
+                const th = document.createElement('th');
+                th.textContent = c.label || c.colId;
                 th.style.cursor = 'pointer';
-                th.onclick = () => { sortColumn = c.colId; sortDirection = (sortDirection === 'asc') ? 'desc' : 'asc'; renderContent(); };
+
+                if (c.colId === sortColumn) {
+                    th.classList.add(sortDirection);
+                }
+
+                th.onclick = () => { 
+                    const currentSortCol = refListConfig.columns.find(col => col.colId === c.colId);
+                    if(currentSortCol) {
+                        const currentSort = currentSortCol.sort || 'none';
+                        let nextSort = 'asc';
+                        if(currentSort === 'asc') nextSort = 'desc';
+                        if(currentSort === 'desc') nextSort = 'none';
+                        
+                        refListConfig.columns.forEach(col => col.sort = 'none');
+                        currentSortCol.sort = nextSort;
+                    }
+                    renderContent(); 
+                };
                 thead.appendChild(th);
             });
             

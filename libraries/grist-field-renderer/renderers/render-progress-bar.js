@@ -30,14 +30,19 @@ export function renderProgressBar(options) {
         progressBar.className = 'grf-progress-bar';
         progressBar.style.width = `${value}%`;
         progressBar.textContent = `${value}%`;
+        progressBar.style.color = 'white';
+        progressBar.style.textShadow = '-1px -1px 0 #333, 1px -1px 0 #333, -1px 1px 0 #333, 1px 1px 0 #333';
 
         // Apply Stripes
         if (widgetOptions.striped) {
             progressBar.classList.add('grf-progress-bar-striped');
         }
 
-        // Apply Dynamic Coloring
-        if (widgetOptions.colorRules && Array.isArray(widgetOptions.colorRules)) {
+        // Apply Main Color as a base
+        progressBar.style.backgroundColor = widgetOptions.mainColor || '#4caf50'; // Default to green if no main color
+
+        // Apply Dynamic Coloring, overriding the main color if a rule matches
+        if (widgetOptions.colorRules && Array.isArray(widgetOptions.colorRules) && widgetOptions.colorRules.length > 0) {
             const sortedRules = [...widgetOptions.colorRules].sort((a, b) => a.threshold - b.threshold);
             const matchingRule = sortedRules.find(rule => value <= rule.threshold);
             if (matchingRule) {

@@ -1399,22 +1399,22 @@ export const CardConfigEditor = (() => {
                     </div>
                     <div class="form-group">
                         <label>Colunas da Tabela Relacionada:</label>
-                        <div id="fs-reflist-columns-config" style="max-height: 200px; overflow-y: auto; border: 1px solid #ccc; padding: 5px; border-radius: 4px;">
-                            ${Object.values(relatedSchema).filter(c => !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos').map(c => `
-                                <div>
-                                    <label>
-                                        <input type="checkbox" class="fs-reflist-col-checkbox" value="${c.colId}" ${currentRefListConfig.columns && currentRefListConfig.columns.includes(c.colId) ? 'checked' : ''}>
-                                        ${c.label || c.colId} (${c.type})
-                                    </label>
-                                </div>
-                            `).join('')}
-                        </div>
+                        <div id="fs-reflist-columns-manager"></div>
                     </div>
                 </div>
             `;
         }
 
         _fieldStylePopup.innerHTML = `
+            <style>
+                .col-manager-card { display: flex; align-items: center; background: #f4f4f4; border: 1px solid #ddd; border-radius: 4px; padding: 5px; margin-bottom: 5px; cursor: grab; }
+                .col-manager-card.dragging { opacity: 0.5; }
+                .col-manager-handle { margin-right: 8px; cursor: grab; }
+                .col-manager-label { flex-grow: 1; }
+                .col-manager-sort { margin-left: 8px; cursor: pointer; width: 20px; text-align: center; }
+                .col-manager-sort.asc::after { content: '▲'; color: green; }
+                .col-manager-sort.desc::after { content: '▼'; color: red; }
+            </style>
             <div class="field-style-popup-content">
                 <h3 style="margin-top:0;">Style: ${fieldDef.colId}</h3>
                 <div><label><input type="checkbox" id="fs-use-grist-style"> Use Grist Field Style</label></div>
@@ -1453,6 +1453,14 @@ export const CardConfigEditor = (() => {
         `;
         _mainContainer.appendChild(_fieldStylePopup);
 
+        if (isRefList) {
+            buildColumnsManager(
+                _fieldStylePopup.querySelector('#fs-reflist-columns-manager'),
+                await state.lens.getTableSchema(fieldSchema.type.split(':')[1]),
+                fieldDef.style.refListConfig || {}
+            );
+        }
+        
         const s = { ...DEFAULT_FIELD_STYLE, ...fieldDef.style };
         _fieldStylePopup.querySelector('#fs-card-rows').value = fieldDef.rowSpan || 1;
         _fieldStylePopup.querySelector('#fs-use-grist-style').checked = s.useGristStyle;
@@ -1471,6 +1479,18 @@ export const CardConfigEditor = (() => {
             widgetOptionsContainer.style.display = widgetType ? 'block' : 'none';
 
             if (widgetType === 'Progress Bar') {
+                // Main Color Option
+                const mainColorDiv = document.createElement('div');
+                mainColorDiv.className = 'form-group';
+                mainColorDiv.innerHTML = `
+                    <label>Main Color:</label>
+                    <input type="color" id="fs-pb-main-color" value="${tempWidgetOptions.mainColor || '#4caf50'}">
+                `;
+                widgetOptionsContainer.appendChild(mainColorDiv);
+                mainColorDiv.querySelector('input').addEventListener('input', (e) => {
+                    tempWidgetOptions.mainColor = e.target.value;
+                });
+
                 // Striped Option
                 const stripedDiv = document.createElement('div');
                 stripedDiv.className = 'form-group';
@@ -1627,10 +1647,18 @@ export const CardConfigEditor = (() => {
                 fieldDef.style.refListConfig.collapsible = _fieldStylePopup.querySelector('#fs-reflist-collapsible').checked;
                 fieldDef.style.refListConfig.zebra = _fieldStylePopup.querySelector('#fs-reflist-zebra').checked;
 
-                const selectedCols = [];
-                const colCheckboxes = _fieldStylePopup.querySelectorAll('input.fs-reflist-col-checkbox:checked');
-                colCheckboxes.forEach(checkbox => selectedCols.push(checkbox.value));
-                fieldDef.style.refListConfig.columns = selectedCols;
+                const columnsConfig = [];
+                const manager = _fieldStylePopup.querySelector('#fs-reflist-columns-manager');
+                if (manager) {
+                    manager.querySelectorAll('.col-manager-card').forEach(card => {
+                        columnsConfig.push({
+                            colId: card.dataset.colId,
+                            visible: card.querySelector('.col-manager-visible').checked,
+                            sort: card.querySelector('.col-manager-sort').dataset.sort || 'none'
+                        });
+                    });
+                }
+                fieldDef.style.refListConfig.columns = columnsConfig;
             }
 
             closePopup();
@@ -1638,6 +1666,124 @@ export const CardConfigEditor = (() => {
             updateDebugJson();
         });
     }
+    function buildColumnsManager(container, relatedSchema, currentConfig) {
+        if (!container) return;
+
+        let columns = currentConfig.columns || [];
+        if (!Array.isArray(columns) || columns.length === 0 || typeof columns[0] !== 'object') {
+            const visibleCols = new Set(Array.isArray(columns) ? columns : []);
+            columns = Object.values(relatedSchema)
+                .filter(c => !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos')
+                .map(c => ({
+                    colId: c.colId,
+                    visible: visibleCols.size > 0 ? visibleCols.has(c.colId) : true, // Default to visible if old format
+                    sort: 'none'
+                }));
+        }
+
+        container.innerHTML = ''; // Clear existing content
+
+        columns.forEach(colConfig => {
+            const colSchema = relatedSchema[colConfig.colId];
+            if (!colSchema) return;
+
+            const card = document.createElement('div');
+            card.className = 'col-manager-card';
+            card.dataset.colId = colConfig.colId;
+            card.draggable = true;
+
+            card.innerHTML = `
+                <span class="col-manager-handle">☰</span>
+                <label class="col-manager-label">
+                    <input type="checkbox" class="col-manager-visible" ${colConfig.visible ? 'checked' : ''}>
+                    ${colSchema.label || colConfig.colId}
+                </label>
+                <span class="col-manager-sort ${colConfig.sort || 'none'}" data-sort="${colConfig.sort || 'none'}" title="Click to change sort order (None, Asc, Desc)">↕</span>
+            `;
+
+            container.appendChild(card);
+        });
+
+        // Drag and Drop Logic
+        let draggedItem = null;
+        container.addEventListener('dragstart', e => {
+            draggedItem = e.target.closest('.col-manager-card');
+            if (draggedItem) {
+                setTimeout(() => {
+                    draggedItem.classList.add('dragging');
+                }, 0);
+            }
+        });
+
+        container.addEventListener('dragend', e => {
+            if (draggedItem) {
+                draggedItem.classList.remove('dragging');
+                draggedItem = null;
+            }
+        });
+
+        container.addEventListener('dragover', e => {
+            e.preventDefault();
+            const afterElement = getDragAfterElement(container, e.clientY);
+            const dragging = container.querySelector('.dragging');
+            if (dragging) {
+                if (afterElement == null) {
+                    container.appendChild(dragging);
+                } else {
+                    container.insertBefore(dragging, afterElement);
+                }
+            }
+        });
+
+        function getDragAfterElement(container, y) {
+            const draggableElements = [...container.querySelectorAll('.col-manager-card:not(.dragging)')];
+            return draggableElements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+                if (offset < 0 && offset > closest.offset) {
+                    return { offset: offset, element: child };
+                } else {
+                    return closest;
+                }
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
+        }
+
+        // Sort Logic
+        container.addEventListener('click', e => {
+            if (e.target.classList.contains('col-manager-sort')) {
+                const sortEl = e.target;
+                const currentSort = sortEl.dataset.sort || 'none';
+                let nextSort;
+
+                // Remove sort from all other columns
+                container.querySelectorAll('.col-manager-sort').forEach(el => {
+                    if (el !== sortEl) {
+                        el.dataset.sort = 'none';
+                        el.textContent = '↕'; // Reset to neutral icon
+                        el.classList.remove('asc', 'desc');
+                    }
+                });
+
+                if (currentSort === 'none') {
+                    nextSort = 'asc';
+                    sortEl.textContent = '▲';
+                } else if (currentSort === 'asc') {
+                    nextSort = 'desc';
+                    sortEl.textContent = '▼';
+                } else {
+                    nextSort = 'none';
+                    sortEl.textContent = '↕';
+                }
+
+                sortEl.dataset.sort = nextSort;
+                sortEl.classList.remove('asc', 'desc'); // Remove previous classes
+                if (nextSort !== 'none') {
+                    sortEl.classList.add(nextSort);
+                }
+            }
+        });
+    }
+
     function populateFieldSelect(selectEl, fieldList) { if (!selectEl) return; while (selectEl.options.length > 1) { selectEl.remove(1); } fieldList.forEach(f => { const opt = document.createElement("option"); opt.value = f; opt.textContent = f; selectEl.appendChild(opt); }); }
     return { render, read };
 })();

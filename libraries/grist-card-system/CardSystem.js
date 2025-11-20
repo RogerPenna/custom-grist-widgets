@@ -386,32 +386,37 @@ export const CardSystem = (() => {
             fieldBox.appendChild(labelEl);
           }
 
-          const valueContainer = document.createElement("div");
+          const fieldSchema = schema ? schema[f.colId] : null;
+          const isTabulatorRefList = fieldSchema && fieldSchema.type.startsWith('RefList:') && fieldStyle.refListConfig?.displayAs === 'tabulator';
 
-          // Apply new Field Box styles
-          const fb = styling.fieldBox || {};
-          if (fb.borderEnabled) {
-            valueContainer.style.border = `${fb.borderWidth || 1}px solid ${fb.borderColor || '#cccccc'}`;
-            valueContainer.style.borderRadius = `${fb.borderRadius || 4}px`;
-            valueContainer.style.padding = '4px 6px';
-            valueContainer.style.backgroundColor = fb.backgroundColor || '#ffffff';
+          let containerForField;
 
-            // Apply effect
-            switch (fb.effect) {
-              case 'bevel':
-                valueContainer.style.boxShadow = 'inset 0 2px 4px rgba(0,0,0,0.3)';
-                break;
-              case 'bevel-outset':
-                valueContainer.style.boxShadow = '-1px -1px 3px rgba(255,255,255,0.7), 1px 1px 3px rgba(0,0,0,0.2)';
-                break;
-              case 'shadow':
-                valueContainer.style.boxShadow = '0 2px 5px rgba(0,0,0,0.3)';
-                break;
-            }
-
+          if (isTabulatorRefList) {
+              containerForField = document.createElement('div');
+              fieldBox.appendChild(containerForField);
+          } else {
+              containerForField = document.createElement("div");
+              const fb = styling.fieldBox || {};
+              if (fb.borderEnabled) {
+                  containerForField.style.border = `${fb.borderWidth || 1}px solid ${fb.borderColor || '#cccccc'}`;
+                  containerForField.style.borderRadius = `${fb.borderRadius || 4}px`;
+                  containerForField.style.padding = '4px 6px';
+                  containerForField.style.backgroundColor = fb.backgroundColor || '#ffffff';
+                  switch (fb.effect) {
+                      case 'bevel':
+                          containerForField.style.boxShadow = 'inset 0 2px 4px rgba(0,0,0,0.3)';
+                          break;
+                      case 'bevel-outset':
+                          containerForField.style.boxShadow = '-1px -1px 3px rgba(255,255,255,0.7), 1px 1px 3px rgba(0,0,0,0.2)';
+                          break;
+                      case 'shadow':
+                          containerForField.style.boxShadow = '0 2px 5px rgba(0,0,0,0.3)';
+                          break;
+                  }
+              }
+              fieldBox.appendChild(containerForField);
           }
 
-          // Construct fieldOptions for custom widgets
           const fieldOptions = {};
           if (fieldStyle.widget === 'Color Picker' || fieldStyle.widget === 'color') {
             fieldOptions.colorPicker = true;
@@ -420,19 +425,17 @@ export const CardSystem = (() => {
             fieldOptions.widgetOptions = fieldStyle.widgetOptions;
           }
 
-          // Delegate rendering to the field renderer
           renderField({
-            container: valueContainer,
-            colSchema: schema ? schema[f.colId] : null,
+            container: containerForField,
+            colSchema: fieldSchema,
             record: record,
             isEditing: false,
             tableLens: tableLens,
-            fieldStyle: fieldStyle, // Pass the whole field style object
-            styling: styling, // Pass the global styling object
+            fieldStyle: fieldStyle,
+            styling: styling,
             fieldOptions: fieldOptions
           });
 
-          fieldBox.appendChild(valueContainer);
           cardEl.appendChild(fieldBox);
         }
       });
