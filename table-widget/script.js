@@ -85,6 +85,20 @@ document.addEventListener('DOMContentLoaded', async function () {
             }
         }
 
+        // Construct fieldOptions
+        const fieldOptions = {};
+        if (colConfig && colConfig.formatter === 'color') {
+            fieldOptions.colorPicker = true;
+            tempContainer.style.display = 'flex';
+            tempContainer.style.alignItems = 'center';
+        } else if (colConfig && colConfig.formatter === 'progress') {
+            fieldOptions.progressBar = true;
+            fieldOptions.widgetOptions = colConfig.formatterParams;
+            tempContainer.style.display = 'flex';
+            tempContainer.style.alignItems = 'center';
+            tempContainer.style.height = '100%';
+        }
+
         // onRendered callback will be called when the cell is rendered
         onRendered(async () => {
             await renderField({
@@ -93,7 +107,8 @@ document.addEventListener('DOMContentLoaded', async function () {
                 record: record,
                 isEditing: false,
                 tableLens: tableLens,
-                styling: {}
+                styling: {},
+                fieldOptions: fieldOptions
             });
         });
 
@@ -397,7 +412,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                     editable: isEditable, // Apply editability based on mode and locked status
                     validator: validators.length > 0 ? validators.join('|') : undefined, // Apply validators
                     formatter: formatter, // Use custom Grist formatter
-                    formatterParams: { 
+                    formatterParams: {
                         ...(colConfig.formatterParams || {}),
                         colConfig: colConfig,
                     },
@@ -414,9 +429,9 @@ document.addEventListener('DOMContentLoaded', async function () {
                 layout: currentConfig.layout || "fitColumns",
                 responsiveLayout: currentConfig.responsiveLayout || false,
                 responsiveLayoutCollapseUseFormatters: false, // Disable column formatters in collapsed view
-                responsiveLayoutCollapseFormatter: function(data) {
+                responsiveLayoutCollapseFormatter: function (data) {
                     const list = document.createElement("ul");
-                    data.forEach(function(col) {
+                    data.forEach(function (col) {
                         const item = document.createElement("li");
                         item.innerHTML = "<strong>" + col.title + "</strong>: " + col.value;
                         list.appendChild(item);
@@ -445,44 +460,44 @@ document.addEventListener('DOMContentLoaded', async function () {
                 tableContainer.classList.remove('custom-striped-enabled');
             }
             // Tabulator handles fixed header with height:"100%" and layout:"fitColumns" generally
-                        // No specific class needed for fixedHeader unless custom CSS is applied.
-                        console.log('Tabulator initialized.');
-            
-                        // Manual event delegation for row clicks as a workaround
-                        tableContainer.addEventListener('click', async (e) => {
-                            const rowElement = e.target.closest('.tabulator-row');
-                            if (!rowElement) return; // Click was not on a row
-            
-                            console.log("Manual row click detected.", { editMode: currentConfig.editMode, drawerId: currentConfig.drawerId });
-            
-                            if (currentConfig.editMode === 'drawer' && currentConfig.drawerId) {
-                                const row = tabulatorTable.getRow(rowElement);
-                                if (!row) {
-                                    console.error("Could not find Tabulator row component for the clicked element.");
-                                    return;
-                                }
-                                const rowId = row.getData().id;
-                                const tableId = currentConfig.tableId;
-            
-                                console.log("Attempting to open drawer from manual click:", { tableId, rowId });
-                                try {
-                                    const drawerConfigRecord = await tableLens.findRecord('Grf_config', { configId: currentConfig.drawerId });
-                                    if (drawerConfigRecord) {
-                                        const drawerConfigData = JSON.parse(drawerConfigRecord.configJson);
-                                        openDrawer(tableId, rowId, drawerConfigData);
-                                        console.log("openDrawer call completed from manual click.");
-                                    } else {
-                                        console.error(`Drawer config with ID "${currentConfig.drawerId}" not found.`);
-                                        alert(`Error: Drawer configuration with ID "${currentConfig.drawerId}" not found.`);
-                                    }
-                                } catch (error) {
-                                    console.error("Error fetching or opening drawer:", error);
-                                    alert("Error opening drawer: " + error.message);
-                                }
-                            }
-                        });
-            
-                        // Handle Add New Button visibility and functionality
+            // No specific class needed for fixedHeader unless custom CSS is applied.
+            console.log('Tabulator initialized.');
+
+            // Manual event delegation for row clicks as a workaround
+            tableContainer.addEventListener('click', async (e) => {
+                const rowElement = e.target.closest('.tabulator-row');
+                if (!rowElement) return; // Click was not on a row
+
+                console.log("Manual row click detected.", { editMode: currentConfig.editMode, drawerId: currentConfig.drawerId });
+
+                if (currentConfig.editMode === 'drawer' && currentConfig.drawerId) {
+                    const row = tabulatorTable.getRow(rowElement);
+                    if (!row) {
+                        console.error("Could not find Tabulator row component for the clicked element.");
+                        return;
+                    }
+                    const rowId = row.getData().id;
+                    const tableId = currentConfig.tableId;
+
+                    console.log("Attempting to open drawer from manual click:", { tableId, rowId });
+                    try {
+                        const drawerConfigRecord = await tableLens.findRecord('Grf_config', { configId: currentConfig.drawerId });
+                        if (drawerConfigRecord) {
+                            const drawerConfigData = JSON.parse(drawerConfigRecord.configJson);
+                            openDrawer(tableId, rowId, drawerConfigData);
+                            console.log("openDrawer call completed from manual click.");
+                        } else {
+                            console.error(`Drawer config with ID "${currentConfig.drawerId}" not found.`);
+                            alert(`Error: Drawer configuration with ID "${currentConfig.drawerId}" not found.`);
+                        }
+                    } catch (error) {
+                        console.error("Error fetching or opening drawer:", error);
+                        alert("Error opening drawer: " + error.message);
+                    }
+                }
+            });
+
+            // Handle Add New Button visibility and functionality
             if (currentConfig.enableAddNewBtn) {
                 addRowBtn.style.display = 'block';
                 addRowBtn.onclick = async () => {

@@ -212,7 +212,11 @@ export const TableConfigEditor = (() => {
                 let formatterParams = {};
                 if (formatter) {
                     item.querySelectorAll('.col-formatter-params .formatter-param-input').forEach(input => {
-                        formatterParams[input.dataset.paramKey] = input.value;
+                        let value = input.value;
+                        if (input.dataset.paramKey === 'colorRules') {
+                            try { value = JSON.parse(value); } catch (e) { console.error("Failed to parse colorRules", e); value = []; }
+                        }
+                        formatterParams[input.dataset.paramKey] = value;
                     });
                     item.querySelectorAll('.col-formatter-params .formatter-param-checkbox').forEach(checkbox => {
                         formatterParams[checkbox.dataset.paramKey] = checkbox.checked;
@@ -316,6 +320,7 @@ export const TableConfigEditor = (() => {
                         <option value="tickCross" ${colConfig?.formatter === 'tickCross' ? 'selected' : ''}>Tick/Cruz</option>
                         <option value="image" ${colConfig?.formatter === 'image' ? 'selected' : ''}>Imagem</option>
                         <option value="progress" ${colConfig?.formatter === 'progress' ? 'selected' : ''}>Progresso</option>
+                        <option value="color" ${colConfig?.formatter === 'color' ? 'selected' : ''}>Cor (Color Picker)</option>
                     </select>
                 </div>
                 <div id="col-formatter-params-${col.colId}" class="col-formatter-params" style="display: none;">
@@ -376,6 +381,9 @@ export const TableConfigEditor = (() => {
                 const max = colConfig?.formatterParams?.max || 100;
                 const legend = colConfig?.formatterParams?.legend ? 'checked' : '';
                 const legendSuffix = colConfig?.formatterParams?.legendSuffix || '';
+                const striped = colConfig?.formatterParams?.striped ? 'checked' : '';
+                const colorRules = colConfig?.formatterParams?.colorRules || [];
+
                 formatterParamsContainer.innerHTML = `
                     <div class="form-group">
                         <label for="progress-min-${col.colId}">Mínimo</label>
@@ -395,7 +403,65 @@ export const TableConfigEditor = (() => {
                         <label for="progress-suffix-${col.colId}">Sufixo</label>
                         <input type="text" id="progress-suffix-${col.colId}" class="formatter-param-input" data-param-key="legendSuffix" value="${legendSuffix}">
                     </div>
+                    <div class="form-group">
+                        <label class="config-toggle">
+                            <input type="checkbox" id="progress-striped-${col.colId}" class="formatter-param-checkbox" data-param-key="striped" ${striped}>
+                            Listrado (Striped)
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label>Regras de Cor Dinâmica</label>
+                        <div id="progress-color-rules-${col.colId}" class="color-rules-container"></div>
+                        <button type="button" class="btn btn-secondary btn-sm add-color-rule-btn" style="margin-top: 5px;">Adicionar Regra</button>
+                        <input type="hidden" class="formatter-param-input" data-param-key="colorRules" id="progress-color-rules-input-${col.colId}" value='${JSON.stringify(colorRules)}'>
+                    </div>
                 `;
+
+                // Logic for Color Rules
+                const rulesContainer = formatterParamsContainer.querySelector(`#progress-color-rules-${col.colId}`);
+                const rulesInput = formatterParamsContainer.querySelector(`#progress-color-rules-input-${col.colId}`);
+                const addRuleBtn = formatterParamsContainer.querySelector('.add-color-rule-btn');
+
+                let rules = [...colorRules];
+
+                const renderRules = () => {
+                    rulesContainer.innerHTML = '';
+                    rules.forEach((rule, index) => {
+                        const ruleRow = document.createElement('div');
+                        ruleRow.style.cssText = 'display: flex; gap: 5px; margin-bottom: 5px; align-items: center;';
+                        ruleRow.innerHTML = `
+                            <input type="number" placeholder="Val" class="rule-value" value="${rule.value}" style="width: 50px;">
+                            <input type="color" class="rule-color" value="${rule.color}">
+                            <button type="button" class="btn btn-danger btn-sm remove-rule-btn" style="padding: 0 5px;">x</button>
+                        `;
+
+                        ruleRow.querySelector('.rule-value').addEventListener('input', (e) => {
+                            rules[index].value = parseFloat(e.target.value);
+                            rulesInput.value = JSON.stringify(rules);
+                        });
+                        ruleRow.querySelector('.rule-color').addEventListener('input', (e) => {
+                            rules[index].color = e.target.value;
+                            rulesInput.value = JSON.stringify(rules);
+                        });
+                        ruleRow.querySelector('.remove-rule-btn').addEventListener('click', () => {
+                            rules.splice(index, 1);
+                            renderRules();
+                            rulesInput.value = JSON.stringify(rules);
+                        });
+                        rulesContainer.appendChild(ruleRow);
+                    });
+                };
+
+                addRuleBtn.addEventListener('click', () => {
+                    rules.push({ value: 0, color: '#000000' });
+                    renderRules();
+                    rulesInput.value = JSON.stringify(rules);
+                });
+
+                renderRules();
+            } else if (selectedFormatter === 'color') {
+                // No params for color picker yet
+                formatterParamsContainer.style.display = 'none';
             } else if (selectedFormatter === 'datetime') {
                 formatterParamsContainer.style.display = 'block';
                 const inputFormat = colConfig?.formatterParams?.inputFormat || 'YYYY-MM-DD HH:mm:ss';
@@ -451,7 +517,7 @@ export const TableConfigEditor = (() => {
                 e.preventDefault();
                 const afterElement = getDragAfterElement(list, e.clientY);
                 if (draggedItem && list.contains(draggedItem)) { // Allow reordering within the same list
-                     if (afterElement == null) {
+                    if (afterElement == null) {
                         list.appendChild(draggedItem);
                     } else {
                         list.insertBefore(draggedItem, afterElement);

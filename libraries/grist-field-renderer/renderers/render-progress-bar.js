@@ -45,6 +45,16 @@ export function renderProgressBar(options) {
             }
         }
 
+        // Apply Thickness
+        if (widgetOptions.thickness) {
+            const percentage = parseInt(widgetOptions.thickness, 10);
+            if (!isNaN(percentage)) {
+                const baseHeight = 20; // Default height in px from CSS
+                const newHeight = (baseHeight * percentage) / 100;
+                progressWrapper.style.height = `${newHeight}px`;
+            }
+        }
+
         progressWrapper.appendChild(progressBar);
         container.appendChild(progressWrapper);
 

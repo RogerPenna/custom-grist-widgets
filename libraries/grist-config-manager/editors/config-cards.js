@@ -6,7 +6,7 @@ export const CardConfigEditor = (() => {
     let _fieldStylePopup = null;
     let _iconPickerPopup = null;
     let allConfigs = []; // Variavel no escopo do módulo para persistir a lista de configs
-    
+
     // Lista de ícones extraída de icons.svg para uso no seletor 
     const AVAILABLE_ICONS = [
         "icon-link", "icon-link-broken", "icon-settings", "icon-edit", "icon-save", "icon-save-alt",
@@ -101,7 +101,7 @@ export const CardConfigEditor = (() => {
         const numRows = parseInt(layoutTab.querySelector("#cs-num-rows").value, 10) || DEFAULT_NUM_ROWS;
         const sidePanelTab = container.querySelector("[data-tab-section='actions']");
         const sidePanel = { size: sidePanelTab.querySelector("#cs-sp-size").value, drawerConfigId: sidePanelTab.querySelector("#cs-sp-drawer-config").value || null };
-        
+
         // Read iconSize from actions tab and add it to styling
         newStyling.iconSize = parseFloat(sidePanelTab.querySelector("#cs-icon-size").value) || 1.0;
 
@@ -109,12 +109,12 @@ export const CardConfigEditor = (() => {
     }
 
     const DEFAULT_FIELD_STYLE = { useGristStyle: true, labelVisible: true, labelPosition: 'above', labelFont: 'inherit', labelFontSize: 'inherit', labelColor: 'inherit', labelOutline: false, labelOutlineColor: '#ffffff', dataJustify: 'left', heightLimited: false, maxHeightRows: 1, isTitleField: false };
-    const DEFAULT_STYLING = { iconSize: 1.0, internalCardPadding: '10px',    fieldBox: { borderEnabled: false, borderColor: '#cccccc', borderWidth: 1, borderRadius: 4, backgroundColor: '#ffffff', effect: 'none' }, labelStyle: { bold: false, color: '#333333', font: 'Calibri', size: '12px' }, simpleTextColor: '#000000', simpleTextFont: 'Calibri', simpleTextSize: '14px', fieldBackground: { enabled: false, lightenPercentage: 15 }, iconGroups: [], groupBoxes: [], widgetBackgroundMode: "solid", widgetBackgroundSolidColor: "#f9f9f9", widgetBackgroundGradientType: "linear-gradient(to right, {c1}, {c2})", widgetBackgroundGradientColor1: "#f9f9f9", widgetBackgroundGradientColor2: "#e9e9e9", cardsColorMode: "solid", cardsColorSolidColor: "#ffffff", cardsColorGradientType: "linear-gradient(to right, {c1}, {c2})", cardsColorGradientColor1: "#ffffff", cardsColorGradientColor2: "#f0f0f0", cardsColorApplyText: false, cardBorderThickness: 0, cardBorderMode: "solid", cardBorderSolidColor: "#cccccc", cardTitleFontColor: "#000000", cardTitleFontStyle: "Calibri", cardTitleFontSize: "20px", cardTitleTopBarEnabled: false, cardTitleTopBarMode: "solid", cardTitleTopBarSolidColor: "#dddddd", cardTitleTopBarGradientType: "linear-gradient(to right, {c1}, {c2})", cardTitleTopBarGradientColor1: "#dddddd", cardTitleTopBarGradientColor2: "#cccccc", cardTitleTopBarLabelFontColor: "#000000", cardTitleTopBarLabelFontStyle: "Calibri", cardTitleTopBarLabelFontSize: "16px", cardTitleTopBarDataFontColor: "#333333", cardTitleTopBarDataFontStyle: "Calibri", cardTitleTopBarDataFontSize: "16px", handleAreaWidth: "8px", handleAreaMode: "solid", handleAreaSolidColor: "#40E0D0", widgetPadding: "10px", cardsSpacing: "15px", selectedCard: { enabled: false, scale: 1.05, colorEffect: "none" } };
+    const DEFAULT_STYLING = { iconSize: 1.0, internalCardPadding: '10px', fieldBox: { borderEnabled: false, borderColor: '#cccccc', borderWidth: 1, borderRadius: 4, backgroundColor: '#ffffff', effect: 'none' }, labelStyle: { bold: false, color: '#333333', font: 'Calibri', size: '12px' }, simpleTextColor: '#000000', simpleTextFont: 'Calibri', simpleTextSize: '14px', fieldBackground: { enabled: false, lightenPercentage: 15 }, iconGroups: [], groupBoxes: [], widgetBackgroundMode: "solid", widgetBackgroundSolidColor: "#f9f9f9", widgetBackgroundGradientType: "linear-gradient(to right, {c1}, {c2})", widgetBackgroundGradientColor1: "#f9f9f9", widgetBackgroundGradientColor2: "#e9e9e9", cardsColorMode: "solid", cardsColorSolidColor: "#ffffff", cardsColorGradientType: "linear-gradient(to right, {c1}, {c2})", cardsColorGradientColor1: "#ffffff", cardsColorGradientColor2: "#f0f0f0", cardsColorApplyText: false, cardBorderThickness: 0, cardBorderMode: "solid", cardBorderSolidColor: "#cccccc", cardTitleFontColor: "#000000", cardTitleFontStyle: "Calibri", cardTitleFontSize: "20px", cardTitleTopBarEnabled: false, cardTitleTopBarMode: "solid", cardTitleTopBarSolidColor: "#dddddd", cardTitleTopBarGradientType: "linear-gradient(to right, {c1}, {c2})", cardTitleTopBarGradientColor1: "#dddddd", cardTitleTopBarGradientColor2: "#cccccc", cardTitleTopBarLabelFontColor: "#000000", cardTitleTopBarLabelFontStyle: "Calibri", cardTitleTopBarLabelFontSize: "16px", cardTitleTopBarDataFontColor: "#333333", cardTitleTopBarDataFontStyle: "Calibri", cardTitleTopBarDataFontSize: "16px", handleAreaWidth: "8px", handleAreaMode: "solid", handleAreaSolidColor: "#40E0D0", widgetPadding: "10px", cardsSpacing: "15px", selectedCard: { enabled: false, scale: 1.05, colorEffect: "none" } };
     const DEFAULT_NUM_ROWS = 1; const NUM_COLS = 10; const CONFIG_WIDTH = 700; const COL_WIDTH = CONFIG_WIDTH / NUM_COLS;
-    
+
     function createTabButton(label, tabId, container) { const btn = document.createElement("button"); btn.type = "button"; btn.textContent = label; btn.className = 'config-tab-button'; btn.addEventListener("click", () => switchTab(tabId, container)); btn.dataset.tabId = tabId; return btn; }
     function switchTab(tabId, container) { const contentDiv = container.querySelector("#card-config-contents"); if (!contentDiv) return; contentDiv.querySelectorAll("[data-tab-section]").forEach(t => (t.style.display = "none")); container.querySelectorAll("[data-tab-id]").forEach(b => b.classList.remove('active')); const newActiveTab = contentDiv.querySelector(`[data-tab-section='${tabId}']`); if (newActiveTab) newActiveTab.style.display = "block"; const activeBtn = container.querySelector(`[data-tab-id='${tabId}']`); if (activeBtn) activeBtn.classList.add('active'); }
-    
+
     function renderIconGroupsUI(container) {
         container.innerHTML = ''; // Clear previous content
         const iconGroups = state.styling.iconGroups || [];
@@ -151,7 +151,7 @@ export const CardConfigEditor = (() => {
 
         _fieldStylePopup = document.createElement("div");
         _fieldStylePopup.className = 'field-style-popup icon-group-popup';
-        
+
         _fieldStylePopup.innerHTML = `
             <div class="field-style-popup-content">
                 <h3 style="margin-top:0;">Configure Icon Group</h3>
@@ -191,7 +191,7 @@ export const CardConfigEditor = (() => {
         };
 
         const buttonsContainer = _fieldStylePopup.querySelector('#popup-action-buttons-container');
-        
+
         // Temporarily clone the buttons array for editing
         let tempButtons = JSON.parse(JSON.stringify(group.buttons));
 
@@ -221,7 +221,7 @@ export const CardConfigEditor = (() => {
             group.name = _fieldStylePopup.querySelector('#group-name').value;
             group.alignment = _fieldStylePopup.querySelector('#group-alignment').value;
             group.buttons = tempButtons; // Save the modified buttons
-            
+
             closePopup();
             if (onSave) {
                 onSave();
@@ -406,13 +406,13 @@ export const CardConfigEditor = (() => {
                 <button id="icon-picker-cancel" type="button" class="btn btn-secondary">Cancel</button>
             </div>
         `;
-        
+
         _mainContainer.appendChild(_iconPickerPopup);
 
         _iconPickerPopup.querySelectorAll('.icon-option').forEach(iconEl => {
             iconEl.addEventListener('click', () => {
                 const selectedIcon = iconEl.dataset.iconId;
-                
+
                 inputElement.value = selectedIcon;
                 displayElement.innerHTML = `<svg class="icon"><use href="#${selectedIcon}"></use></svg>`;
                 buttonConfig.icon = selectedIcon;
@@ -578,7 +578,7 @@ export const CardConfigEditor = (() => {
         const setupCheckboxToggle = (checkboxId, controlsId, displayType = 'block') => {
             const checkbox = tabEl.querySelector(checkboxId);
             const controls = tabEl.querySelector(controlsId);
-            if (!checkbox || !controls) return () => {}; // Return empty function if elements not found
+            if (!checkbox || !controls) return () => { }; // Return empty function if elements not found
             const toggle = () => { controls.style.display = checkbox.checked ? displayType : 'none'; };
             checkbox.addEventListener('change', toggle);
             return toggle; // Return the toggle function itself
@@ -618,7 +618,7 @@ export const CardConfigEditor = (() => {
         populateFieldSelect(tabEl.querySelector("#cs-st-border-field"), allFields);
         populateFieldSelect(tabEl.querySelector("#cs-st-topbar-field"), allFields);
         populateFieldSelect(tabEl.querySelector("#cs-st-handle-field"), allFields);
-        
+
         populateStylingTab(tabEl);
 
         // Manually trigger all UI state updates after populating
@@ -626,7 +626,7 @@ export const CardConfigEditor = (() => {
         toggleFieldBgControls();
         toggleFieldBoxControls();
         updateTopBarColorInputsState();
-        tabEl.querySelectorAll('input[type="radio"]:checked').forEach(radio => { if(radio) radio.dispatchEvent(new Event('change')) });
+        tabEl.querySelectorAll('input[type="radio"]:checked').forEach(radio => { if (radio) radio.dispatchEvent(new Event('change')) });
 
         // Event listener for the Save Style as New Config button
         const saveStyleBtn = tabEl.querySelector('#cs-save-style-btn');
@@ -683,7 +683,7 @@ export const CardConfigEditor = (() => {
                         // Re-populate the styling tab to reflect changes
                         populateStylingTab(tabEl);
                         // Manually trigger UI updates for toggles etc.
-                        tabEl.querySelectorAll('input[type="radio"]:checked').forEach(radio => { if(radio) radio.dispatchEvent(new Event('change')) });
+                        tabEl.querySelectorAll('input[type="radio"]:checked').forEach(radio => { if (radio) radio.dispatchEvent(new Event('change')) });
                         // Also update the debug JSON
                         updateDebugJson();
                         alert(`Style "${selectedStyle.widgetTitle}" loaded successfully!`);
@@ -698,143 +698,144 @@ export const CardConfigEditor = (() => {
         }
     }
 
-    function populateStylingTab(tabEl) { const s = state.styling; let bgModeInput = tabEl.querySelector(`input[name='bgmode'][value='${s.widgetBackgroundMode}']`); if (bgModeInput) { bgModeInput.checked = true; } else { tabEl.querySelector("input[name='bgmode'][value='solid']").checked = true; } tabEl.querySelector("#cs-st-bgcolor").value = s.widgetBackgroundSolidColor; tabEl.querySelector("#cs-st-bggradient-type").value = s.widgetBackgroundGradientType || 'linear-gradient(to right, {c1}, {c2})'; tabEl.querySelector("#cs-st-bggradient-c1").value = s.widgetBackgroundGradientColor1 || '#f9f9f9'; tabEl.querySelector("#cs-st-bggradient-c2").value = s.widgetBackgroundGradientColor2 || '#e9e9e9'; tabEl.querySelector(`input[name='cardscolormode'][value='${s.cardsColorMode}']`).checked = true; tabEl.querySelector("#cs-st-cardcolor").value = s.cardsColorSolidColor; tabEl.querySelector("#cs-st-cardgradient-type").value = s.cardsColorGradientType || 'linear-gradient(to right, {c1}, {c2})'; tabEl.querySelector("#cs-st-cardgradient-c1").value = s.cardsColorGradientColor1 || '#ffffff'; tabEl.querySelector("#cs-st-cardgradient-c2").value = s.cardsColorGradientColor2 || '#f0f0f0'; tabEl.querySelector("#cs-st-cardscolorfield").value = s.cardsColorField || ""; tabEl.querySelector("#cs-st-cardscolor-apply-text").checked = s.cardsColorApplyText === true; tabEl.querySelector("#cs-st-border-thickness").value = s.cardBorderThickness; tabEl.querySelector(`input[name='bordermode'][value='${s.cardBorderMode}']`).checked = true; tabEl.querySelector("#cs-st-border-color").value = s.cardBorderSolidColor; tabEl.querySelector("#cs-st-border-field").value = s.cardBorderField || ""; tabEl.querySelector("#cs-st-titlecolor").value = s.cardTitleFontColor; tabEl.querySelector("#cs-st-titlefont").value = s.cardTitleFontStyle; tabEl.querySelector("#cs-st-titlesize").value = parseInt(s.cardTitleFontSize, 10); tabEl.querySelector("#cs-st-topbar-enabled").checked = s.cardTitleTopBarEnabled; tabEl.querySelector(`input[name='topbarmode'][value='${s.cardTitleTopBarMode}']`).checked = true; tabEl.querySelector("#cs-st-topbar-color").value = s.cardTitleTopBarSolidColor; tabEl.querySelector("#cs-st-topbargradient-type").value = s.cardTitleTopBarGradientType || 'linear-gradient(to right, {c1}, {c2})'; tabEl.querySelector("#cs-st-topbargradient-c1").value = s.cardTitleTopBarGradientColor1 || '#dddddd'; tabEl.querySelector("#cs-st-topbargradient-c2").value = s.cardTitleTopBarGradientColor2 || '#cccccc'; tabEl.querySelector("#cs-st-topbar-field").value = s.cardTitleTopBarField || ""; tabEl.querySelector("#cs-st-topbar-apply-text").checked = s.cardTitleTopBarApplyText === true;tabEl.querySelector("#cs-st-topbar-lblcolor").value = s.cardTitleTopBarLabelFontColor; tabEl.querySelector("#cs-st-topbar-lblfont").value = s.cardTitleTopBarLabelFontStyle; tabEl.querySelector("#cs-st-topbar-lblsize").value = parseInt(s.cardTitleTopBarLabelFontSize, 10); tabEl.querySelector("#cs-st-topbar-datacolor").value = s.cardTitleTopBarDataFontColor; tabEl.querySelector("#cs-st-topbar-datafont").value = s.cardTitleTopBarDataFontStyle; tabEl.querySelector("#cs-st-topbar-datasize").value = parseInt(s.cardTitleTopBarDataFontSize, 10); tabEl.querySelector("#cs-st-handle-width").value = parseInt(s.handleAreaWidth, 10); tabEl.querySelector(`input[name='handlemode'][value='${s.handleAreaMode}']`).checked = true; tabEl.querySelector("#cs-st-handle-color").value = s.handleAreaSolidColor; tabEl.querySelector("#cs-st-handle-field").value = s.handleAreaField || ""; tabEl.querySelector("#cs-st-padding").value = parseInt(s.widgetPadding, 10);    tabEl.querySelector("#cs-st-spacing").value = parseInt(s.cardsSpacing, 10);
-    tabEl.querySelector("#cs-st-internal-padding").value = parseInt(s.internalCardPadding, 10); tabEl.querySelector("#cs-st-sel-enabled").checked = s.selectedCard.enabled;     tabEl.querySelector("#cs-st-sel-scale").value = s.selectedCard ? ((s.selectedCard.scale - 1) * 100).toFixed(0) : 0;
-    s.fieldBackground = s.fieldBackground || {};
-    tabEl.querySelector("#cs-st-fieldbg-enabled").checked = s.fieldBackground.enabled === true;
-    tabEl.querySelector("#cs-st-fieldbg-lighten").value = s.fieldBackground.lightenPercentage || 15;
+    function populateStylingTab(tabEl) {
+        const s = state.styling; let bgModeInput = tabEl.querySelector(`input[name='bgmode'][value='${s.widgetBackgroundMode}']`); if (bgModeInput) { bgModeInput.checked = true; } else { tabEl.querySelector("input[name='bgmode'][value='solid']").checked = true; } tabEl.querySelector("#cs-st-bgcolor").value = s.widgetBackgroundSolidColor; tabEl.querySelector("#cs-st-bggradient-type").value = s.widgetBackgroundGradientType || 'linear-gradient(to right, {c1}, {c2})'; tabEl.querySelector("#cs-st-bggradient-c1").value = s.widgetBackgroundGradientColor1 || '#f9f9f9'; tabEl.querySelector("#cs-st-bggradient-c2").value = s.widgetBackgroundGradientColor2 || '#e9e9e9'; tabEl.querySelector(`input[name='cardscolormode'][value='${s.cardsColorMode}']`).checked = true; tabEl.querySelector("#cs-st-cardcolor").value = s.cardsColorSolidColor; tabEl.querySelector("#cs-st-cardgradient-type").value = s.cardsColorGradientType || 'linear-gradient(to right, {c1}, {c2})'; tabEl.querySelector("#cs-st-cardgradient-c1").value = s.cardsColorGradientColor1 || '#ffffff'; tabEl.querySelector("#cs-st-cardgradient-c2").value = s.cardsColorGradientColor2 || '#f0f0f0'; tabEl.querySelector("#cs-st-cardscolorfield").value = s.cardsColorField || ""; tabEl.querySelector("#cs-st-cardscolor-apply-text").checked = s.cardsColorApplyText === true; tabEl.querySelector("#cs-st-border-thickness").value = s.cardBorderThickness; tabEl.querySelector(`input[name='bordermode'][value='${s.cardBorderMode}']`).checked = true; tabEl.querySelector("#cs-st-border-color").value = s.cardBorderSolidColor; tabEl.querySelector("#cs-st-border-field").value = s.cardBorderField || ""; tabEl.querySelector("#cs-st-titlecolor").value = s.cardTitleFontColor; tabEl.querySelector("#cs-st-titlefont").value = s.cardTitleFontStyle; tabEl.querySelector("#cs-st-titlesize").value = parseInt(s.cardTitleFontSize, 10); tabEl.querySelector("#cs-st-topbar-enabled").checked = s.cardTitleTopBarEnabled; tabEl.querySelector(`input[name='topbarmode'][value='${s.cardTitleTopBarMode}']`).checked = true; tabEl.querySelector("#cs-st-topbar-color").value = s.cardTitleTopBarSolidColor; tabEl.querySelector("#cs-st-topbargradient-type").value = s.cardTitleTopBarGradientType || 'linear-gradient(to right, {c1}, {c2})'; tabEl.querySelector("#cs-st-topbargradient-c1").value = s.cardTitleTopBarGradientColor1 || '#dddddd'; tabEl.querySelector("#cs-st-topbargradient-c2").value = s.cardTitleTopBarGradientColor2 || '#cccccc'; tabEl.querySelector("#cs-st-topbar-field").value = s.cardTitleTopBarField || ""; tabEl.querySelector("#cs-st-topbar-apply-text").checked = s.cardTitleTopBarApplyText === true; tabEl.querySelector("#cs-st-topbar-lblcolor").value = s.cardTitleTopBarLabelFontColor; tabEl.querySelector("#cs-st-topbar-lblfont").value = s.cardTitleTopBarLabelFontStyle; tabEl.querySelector("#cs-st-topbar-lblsize").value = parseInt(s.cardTitleTopBarLabelFontSize, 10); tabEl.querySelector("#cs-st-topbar-datacolor").value = s.cardTitleTopBarDataFontColor; tabEl.querySelector("#cs-st-topbar-datafont").value = s.cardTitleTopBarDataFontStyle; tabEl.querySelector("#cs-st-topbar-datasize").value = parseInt(s.cardTitleTopBarDataFontSize, 10); tabEl.querySelector("#cs-st-handle-width").value = parseInt(s.handleAreaWidth, 10); tabEl.querySelector(`input[name='handlemode'][value='${s.handleAreaMode}']`).checked = true; tabEl.querySelector("#cs-st-handle-color").value = s.handleAreaSolidColor; tabEl.querySelector("#cs-st-handle-field").value = s.handleAreaField || ""; tabEl.querySelector("#cs-st-padding").value = parseInt(s.widgetPadding, 10); tabEl.querySelector("#cs-st-spacing").value = parseInt(s.cardsSpacing, 10);
+        tabEl.querySelector("#cs-st-internal-padding").value = parseInt(s.internalCardPadding, 10); tabEl.querySelector("#cs-st-sel-enabled").checked = s.selectedCard.enabled; tabEl.querySelector("#cs-st-sel-scale").value = s.selectedCard ? ((s.selectedCard.scale - 1) * 100).toFixed(0) : 0;
+        s.fieldBackground = s.fieldBackground || {};
+        tabEl.querySelector("#cs-st-fieldbg-enabled").checked = s.fieldBackground.enabled === true;
+        tabEl.querySelector("#cs-st-fieldbg-lighten").value = s.fieldBackground.lightenPercentage || 15;
 
-    tabEl.querySelector('#cs-st-simple-textcolor').value = s.simpleTextColor || '#000000';
-    tabEl.querySelector('#cs-st-simple-textfont').value = s.simpleTextFont || 'Calibri';
-    tabEl.querySelector('#cs-st-simple-textsize').value = parseInt(s.simpleTextSize, 10) || 14;
+        tabEl.querySelector('#cs-st-simple-textcolor').value = s.simpleTextColor || '#000000';
+        tabEl.querySelector('#cs-st-simple-textfont').value = s.simpleTextFont || 'Calibri';
+        tabEl.querySelector('#cs-st-simple-textsize').value = parseInt(s.simpleTextSize, 10) || 14;
 
-    const fb = s.fieldBox || {};
-    tabEl.querySelector('#cs-st-fbox-enabled').checked = fb.borderEnabled;
-    tabEl.querySelector('#cs-st-fbox-bcolor').value = fb.borderColor;
-    tabEl.querySelector('#cs-st-fbox-bwidth').value = fb.borderWidth;
-    tabEl.querySelector('#cs-st-fbox-bradius').value = fb.borderRadius;
-    tabEl.querySelector('#cs-st-fbox-bgcolor').value = fb.backgroundColor;
-    tabEl.querySelector('#cs-st-fbox-effect').value = fb.effect || 'none';
-    
-    const ls = s.labelStyle || {};
-    tabEl.querySelector('#cs-st-label-bold').checked = ls.bold;
-    tabEl.querySelector('#cs-st-label-color').value = ls.color;
-    tabEl.querySelector('#cs-st-label-font').value = ls.font;
-    tabEl.querySelector('#cs-st-label-size').value = parseInt(ls.size, 10);
-}
+        const fb = s.fieldBox || {};
+        tabEl.querySelector('#cs-st-fbox-enabled').checked = fb.borderEnabled;
+        tabEl.querySelector('#cs-st-fbox-bcolor').value = fb.borderColor;
+        tabEl.querySelector('#cs-st-fbox-bwidth').value = fb.borderWidth;
+        tabEl.querySelector('#cs-st-fbox-bradius').value = fb.borderRadius;
+        tabEl.querySelector('#cs-st-fbox-bgcolor').value = fb.backgroundColor;
+        tabEl.querySelector('#cs-st-fbox-effect').value = fb.effect || 'none';
+
+        const ls = s.labelStyle || {};
+        tabEl.querySelector('#cs-st-label-bold').checked = ls.bold;
+        tabEl.querySelector('#cs-st-label-color').value = ls.color;
+        tabEl.querySelector('#cs-st-label-font').value = ls.font;
+        tabEl.querySelector('#cs-st-label-size').value = parseInt(ls.size, 10);
+    }
     function readStylingTab(container) {
-    const tabEl = container;
-    const getCheckedValue = (name) => tabEl.querySelector(`input[name='${name}']:checked`)?.value;
-    const s = {};
-    Object.assign(s, DEFAULT_STYLING);
+        const tabEl = container;
+        const getCheckedValue = (name) => tabEl.querySelector(`input[name='${name}']:checked`)?.value;
+        const s = {};
+        Object.assign(s, DEFAULT_STYLING);
 
-    const bgMode = getCheckedValue('bgmode');
-    s.widgetBackgroundMode = bgMode;
-    if (bgMode === 'solid') {
-        s.widgetBackgroundSolidColor = tabEl.querySelector("#cs-st-bgcolor").value;
-    } else if (bgMode === 'gradient') {
-        s.widgetBackgroundGradientType = tabEl.querySelector("#cs-st-bggradient-type").value;
-        s.widgetBackgroundGradientColor1 = tabEl.querySelector("#cs-st-bggradient-c1").value;
-        s.widgetBackgroundGradientColor2 = tabEl.querySelector("#cs-st-bggradient-c2").value;
+        const bgMode = getCheckedValue('bgmode');
+        s.widgetBackgroundMode = bgMode;
+        if (bgMode === 'solid') {
+            s.widgetBackgroundSolidColor = tabEl.querySelector("#cs-st-bgcolor").value;
+        } else if (bgMode === 'gradient') {
+            s.widgetBackgroundGradientType = tabEl.querySelector("#cs-st-bggradient-type").value;
+            s.widgetBackgroundGradientColor1 = tabEl.querySelector("#cs-st-bggradient-c1").value;
+            s.widgetBackgroundGradientColor2 = tabEl.querySelector("#cs-st-bggradient-c2").value;
+        }
+
+        const cardsMode = getCheckedValue('cardscolormode');
+        s.cardsColorMode = cardsMode;
+        if (cardsMode === 'solid') {
+            s.cardsColorSolidColor = tabEl.querySelector("#cs-st-cardcolor").value;
+        } else if (cardsMode === 'gradient') {
+            s.cardsColorGradientType = tabEl.querySelector("#cs-st-cardgradient-type").value;
+            s.cardsColorGradientColor1 = tabEl.querySelector("#cs-st-cardgradient-c1").value;
+            s.cardsColorGradientColor2 = tabEl.querySelector("#cs-st-cardgradient-c2").value;
+        } else if (cardsMode === 'conditional') {
+            s.cardsColorField = tabEl.querySelector("#cs-st-cardscolorfield").value || null;
+            s.cardsColorApplyText = tabEl.querySelector("#cs-st-cardscolor-apply-text").checked;
+        }
+
+        s.cardBorderThickness = parseInt(tabEl.querySelector("#cs-st-border-thickness").value, 10) || 0;
+        const borderMode = getCheckedValue('bordermode');
+        s.cardBorderMode = borderMode;
+        if (borderMode === 'solid') {
+            s.cardBorderSolidColor = tabEl.querySelector("#cs-st-border-color").value;
+        } else if (borderMode === 'conditional') {
+            s.cardBorderField = tabEl.querySelector("#cs-st-border-field").value || null;
+        }
+
+        s.cardTitleFontColor = tabEl.querySelector("#cs-st-titlecolor").value;
+        s.cardTitleFontStyle = tabEl.querySelector("#cs-st-titlefont").value;
+        s.cardTitleFontSize = `${parseInt(tabEl.querySelector("#cs-st-titlesize").value, 10) || 20}px`;
+
+        s.cardTitleTopBarEnabled = tabEl.querySelector("#cs-st-topbar-enabled").checked;
+        const topBarMode = getCheckedValue('topbarmode');
+        s.cardTitleTopBarMode = topBarMode;
+        if (topBarMode === 'solid') {
+            s.cardTitleTopBarSolidColor = tabEl.querySelector("#cs-st-topbar-color").value;
+        } else if (topBarMode === 'gradient') {
+            s.cardTitleTopBarGradientType = tabEl.querySelector("#cs-st-topbargradient-type").value;
+            s.cardTitleTopBarGradientColor1 = tabEl.querySelector("#cs-st-topbargradient-c1").value;
+            s.cardTitleTopBarGradientColor2 = tabEl.querySelector("#cs-st-topbargradient-c2").value;
+        } else if (topBarMode === 'conditional') {
+            s.cardTitleTopBarField = tabEl.querySelector("#cs-st-topbar-field").value || null;
+            s.cardTitleTopBarApplyText = tabEl.querySelector("#cs-st-topbar-apply-text").checked; // <-- CORREÇÃO APLICADA
+        }
+
+        s.cardTitleTopBarLabelFontColor = tabEl.querySelector("#cs-st-topbar-lblcolor").value;
+        s.cardTitleTopBarLabelFontStyle = tabEl.querySelector("#cs-st-topbar-lblfont").value;
+        s.cardTitleTopBarLabelFontSize = `${parseInt(tabEl.querySelector("#cs-st-topbar-lblsize").value, 10) || 16}px`;
+        s.cardTitleTopBarDataFontColor = tabEl.querySelector("#cs-st-topbar-datacolor").value;
+        s.cardTitleTopBarDataFontStyle = tabEl.querySelector("#cs-st-topbar-datafont").value;
+        s.cardTitleTopBarDataFontSize = `${parseInt(tabEl.querySelector("#cs-st-topbar-datasize").value, 10) || 16}px`;
+
+        const handleMode = getCheckedValue('handlemode');
+        s.handleAreaMode = handleMode;
+        if (handleMode === 'solid') {
+            s.handleAreaSolidColor = tabEl.querySelector("#cs-st-handle-color").value;
+        } else if (handleMode === 'conditional') {
+            s.handleAreaField = tabEl.querySelector("#cs-st-handle-field").value || null;
+        }
+
+        s.handleAreaWidth = `${parseInt(tabEl.querySelector("#cs-st-handle-width").value, 10) || 8}px`;
+        s.widgetPadding = `${parseInt(tabEl.querySelector("#cs-st-padding").value, 10) || 0}px`;
+        s.cardsSpacing = `${parseInt(tabEl.querySelector("#cs-st-spacing").value, 10) || 0}px`;
+        s.internalCardPadding = `${parseInt(tabEl.querySelector("#cs-st-internal-padding").value, 10) || 10}px`;
+        s.selectedCard = { enabled: tabEl.querySelector("#cs-st-sel-enabled").checked, scale: 1 + ((parseInt(tabEl.querySelector("#cs-st-sel-scale").value, 10) || 0) / 100), colorEffect: "none" };
+
+        s.fieldBackground = {
+            enabled: tabEl.querySelector("#cs-st-fieldbg-enabled").checked,
+            lightenPercentage: parseInt(tabEl.querySelector("#cs-st-fieldbg-lighten").value, 10) || 15
+        };
+
+        s.groupBoxes = state.styling.groupBoxes || [];
+
+        s.simpleTextColor = tabEl.querySelector('#cs-st-simple-textcolor').value;
+        s.simpleTextFont = tabEl.querySelector('#cs-st-simple-textfont').value;
+        s.simpleTextSize = `${parseInt(tabEl.querySelector('#cs-st-simple-textsize').value, 10) || 14}px`;
+
+        s.fieldBox = {
+            borderEnabled: tabEl.querySelector('#cs-st-fbox-enabled').checked,
+            borderColor: tabEl.querySelector('#cs-st-fbox-bcolor').value,
+            borderWidth: parseInt(tabEl.querySelector('#cs-st-fbox-bwidth').value, 10),
+            borderRadius: parseInt(tabEl.querySelector('#cs-st-fbox-bradius').value, 10),
+            backgroundColor: tabEl.querySelector('#cs-st-fbox-bgcolor').value,
+            effect: tabEl.querySelector('#cs-st-fbox-effect').value
+        };
+
+        s.labelStyle = {
+            bold: tabEl.querySelector('#cs-st-label-bold').checked,
+            color: tabEl.querySelector('#cs-st-label-color').value,
+            font: tabEl.querySelector('#cs-st-label-font').value,
+            size: `${parseInt(tabEl.querySelector('#cs-st-label-size').value, 10)}px`
+        };
+
+        return s;
     }
-
-    const cardsMode = getCheckedValue('cardscolormode');
-    s.cardsColorMode = cardsMode;
-    if (cardsMode === 'solid') {
-        s.cardsColorSolidColor = tabEl.querySelector("#cs-st-cardcolor").value;
-    } else if (cardsMode === 'gradient') {
-        s.cardsColorGradientType = tabEl.querySelector("#cs-st-cardgradient-type").value;
-        s.cardsColorGradientColor1 = tabEl.querySelector("#cs-st-cardgradient-c1").value;
-        s.cardsColorGradientColor2 = tabEl.querySelector("#cs-st-cardgradient-c2").value;
-    } else if (cardsMode === 'conditional') {
-        s.cardsColorField = tabEl.querySelector("#cs-st-cardscolorfield").value || null;
-        s.cardsColorApplyText = tabEl.querySelector("#cs-st-cardscolor-apply-text").checked;
-    }
-
-    s.cardBorderThickness = parseInt(tabEl.querySelector("#cs-st-border-thickness").value, 10) || 0;
-    const borderMode = getCheckedValue('bordermode');
-    s.cardBorderMode = borderMode;
-    if (borderMode === 'solid') {
-        s.cardBorderSolidColor = tabEl.querySelector("#cs-st-border-color").value;
-    } else if (borderMode === 'conditional') {
-        s.cardBorderField = tabEl.querySelector("#cs-st-border-field").value || null;
-    }
-
-    s.cardTitleFontColor = tabEl.querySelector("#cs-st-titlecolor").value;
-    s.cardTitleFontStyle = tabEl.querySelector("#cs-st-titlefont").value;
-    s.cardTitleFontSize = `${parseInt(tabEl.querySelector("#cs-st-titlesize").value, 10) || 20}px`;
-
-    s.cardTitleTopBarEnabled = tabEl.querySelector("#cs-st-topbar-enabled").checked;
-    const topBarMode = getCheckedValue('topbarmode');
-    s.cardTitleTopBarMode = topBarMode;
-    if (topBarMode === 'solid') {
-        s.cardTitleTopBarSolidColor = tabEl.querySelector("#cs-st-topbar-color").value;
-    } else if (topBarMode === 'gradient') {
-        s.cardTitleTopBarGradientType = tabEl.querySelector("#cs-st-topbargradient-type").value;
-        s.cardTitleTopBarGradientColor1 = tabEl.querySelector("#cs-st-topbargradient-c1").value;
-        s.cardTitleTopBarGradientColor2 = tabEl.querySelector("#cs-st-topbargradient-c2").value;
-    } else if (topBarMode === 'conditional') {
-        s.cardTitleTopBarField = tabEl.querySelector("#cs-st-topbar-field").value || null;
-        s.cardTitleTopBarApplyText = tabEl.querySelector("#cs-st-topbar-apply-text").checked; // <-- CORREÇÃO APLICADA
-    }
-
-    s.cardTitleTopBarLabelFontColor = tabEl.querySelector("#cs-st-topbar-lblcolor").value;
-    s.cardTitleTopBarLabelFontStyle = tabEl.querySelector("#cs-st-topbar-lblfont").value;
-    s.cardTitleTopBarLabelFontSize = `${parseInt(tabEl.querySelector("#cs-st-topbar-lblsize").value, 10) || 16}px`;
-    s.cardTitleTopBarDataFontColor = tabEl.querySelector("#cs-st-topbar-datacolor").value;
-    s.cardTitleTopBarDataFontStyle = tabEl.querySelector("#cs-st-topbar-datafont").value;
-    s.cardTitleTopBarDataFontSize = `${parseInt(tabEl.querySelector("#cs-st-topbar-datasize").value, 10) || 16}px`;
-
-    const handleMode = getCheckedValue('handlemode');
-    s.handleAreaMode = handleMode;
-    if (handleMode === 'solid') {
-        s.handleAreaSolidColor = tabEl.querySelector("#cs-st-handle-color").value;
-    } else if (handleMode === 'conditional') {
-        s.handleAreaField = tabEl.querySelector("#cs-st-handle-field").value || null;
-    }
-
-    s.handleAreaWidth = `${parseInt(tabEl.querySelector("#cs-st-handle-width").value, 10) || 8}px`;
-    s.widgetPadding = `${parseInt(tabEl.querySelector("#cs-st-padding").value, 10) || 0}px`;
-    s.cardsSpacing = `${parseInt(tabEl.querySelector("#cs-st-spacing").value, 10) || 0}px`;
-    s.internalCardPadding = `${parseInt(tabEl.querySelector("#cs-st-internal-padding").value, 10) || 10}px`;
-    s.selectedCard = { enabled: tabEl.querySelector("#cs-st-sel-enabled").checked, scale: 1 + ((parseInt(tabEl.querySelector("#cs-st-sel-scale").value, 10) || 0) / 100), colorEffect: "none" };
-
-    s.fieldBackground = {
-        enabled: tabEl.querySelector("#cs-st-fieldbg-enabled").checked,
-        lightenPercentage: parseInt(tabEl.querySelector("#cs-st-fieldbg-lighten").value, 10) || 15
-    };
-
-    s.groupBoxes = state.styling.groupBoxes || [];
-
-    s.simpleTextColor = tabEl.querySelector('#cs-st-simple-textcolor').value;
-    s.simpleTextFont = tabEl.querySelector('#cs-st-simple-textfont').value;
-    s.simpleTextSize = `${parseInt(tabEl.querySelector('#cs-st-simple-textsize').value, 10) || 14}px`;
-
-    s.fieldBox = {
-        borderEnabled: tabEl.querySelector('#cs-st-fbox-enabled').checked,
-        borderColor: tabEl.querySelector('#cs-st-fbox-bcolor').value,
-        borderWidth: parseInt(tabEl.querySelector('#cs-st-fbox-bwidth').value, 10),
-        borderRadius: parseInt(tabEl.querySelector('#cs-st-fbox-bradius').value, 10),
-        backgroundColor: tabEl.querySelector('#cs-st-fbox-bgcolor').value,
-        effect: tabEl.querySelector('#cs-st-fbox-effect').value
-    };
-
-    s.labelStyle = {
-        bold: tabEl.querySelector('#cs-st-label-bold').checked,
-        color: tabEl.querySelector('#cs-st-label-color').value,
-        font: tabEl.querySelector('#cs-st-label-font').value,
-        size: `${parseInt(tabEl.querySelector('#cs-st-label-size').value, 10)}px`
-    };
-
-    return s;
-}
     // *** CORREÇÃO APLICADA AQUI ***
     // Removido `allConfigs` como parâmetro. A função agora usará a variável do módulo.
     function buildFieldsLayoutTab(contentArea) {
-    const tabEl = document.createElement("div");
-    tabEl.dataset.tabSection = "fld";
-    tabEl.style.display = "none";
-    tabEl.innerHTML = `
+        const tabEl = document.createElement("div");
+        tabEl.dataset.tabSection = "fld";
+        tabEl.style.display = "none";
+        tabEl.innerHTML = `
             <h3>Fields & Layout</h3>
             <div class="layout-controls">
                 <label>View Mode:</label>
@@ -862,171 +863,215 @@ export const CardConfigEditor = (() => {
                 <button type="button" id="cs-add-group-box-btn" class="btn-add-item" style="margin-top: 5px;">+ Add Group Box</button>
             </div>
         `;
-    contentArea.appendChild(tabEl);
-    if (state.viewMode === "burger") {
-        tabEl.querySelector("#cs-vm-burger").checked = true;
-    } else {
-        tabEl.querySelector("#cs-vm-click").checked = true;
-    }
-    const rowInput = tabEl.querySelector("#cs-num-rows");
-    rowInput.addEventListener("change", () => {
-        state.numRows = parseInt(rowInput.value, 10) || 1;
-        buildGridUI(tabEl.querySelector("#cs-layout-grid"), tabEl);
-    });
-    buildGridUI(tabEl.querySelector("#cs-layout-grid"), tabEl);
-    buildAvailableFieldsList(tabEl.querySelector("#cs-layout-fields"));
-
-    const addGroupBoxBtn = tabEl.querySelector('#cs-add-group-box-btn');
-    addGroupBoxBtn.addEventListener('click', () => {
-        if (!Array.isArray(state.styling.groupBoxes)) {
-            state.styling.groupBoxes = [];
+        contentArea.appendChild(tabEl);
+        if (state.viewMode === "burger") {
+            tabEl.querySelector("#cs-vm-burger").checked = true;
+        } else {
+            tabEl.querySelector("#cs-vm-click").checked = true;
         }
-        const newGroupBox = {
-            id: `gbox-${Date.now()}`,
-            name: `Group ${state.styling.groupBoxes.length + 1}`,
-            backgroundColor: '#e0e0e0',
-            row: -1, // Indicates it's not placed on the grid yet
-            col: -1,
-            colSpan: 3,
-            rowSpan: 2,
-        };
-        state.styling.groupBoxes.push(newGroupBox);
-        buildAvailableGroupBoxesList(tabEl.querySelector('#cs-group-box-list'));
-        updateDebugJson();
-    });
-
-    buildAvailableGroupBoxesList(tabEl.querySelector('#cs-group-box-list'));
-    buildGroupBoxGridUI(tabEl.querySelector('#cs-group-box-grid'));
-}
-
-function buildAvailableGroupBoxesList(container) {
-    if (!container) return;
-    container.innerHTML = "";
-    const unplacedGroupBoxes = (state.styling.groupBoxes || []).filter(g => g.row === -1);
-
-    if (!unplacedGroupBoxes.length) {
-        container.innerHTML = "<i>No available group boxes.</i>";
-        return;
-    }
-
-    unplacedGroupBoxes.forEach(gbox => {
-        const el = document.createElement("div");
-        el.className = 'available-field';
-        el.textContent = gbox.name;
-        el.dataset.gboxid = gbox.id;
-        el.draggable = true;
-        el.addEventListener("dragstart", e => {
-            e.dataTransfer.setData("text/gboxid", gbox.id);
+        const rowInput = tabEl.querySelector("#cs-num-rows");
+        rowInput.addEventListener("change", () => {
+            state.numRows = parseInt(rowInput.value, 10) || 1;
+            buildGridUI(tabEl.querySelector("#cs-layout-grid"), tabEl);
         });
-        container.appendChild(el);
-    });
-}
+        buildGridUI(tabEl.querySelector("#cs-layout-grid"), tabEl);
+        buildAvailableFieldsList(tabEl.querySelector("#cs-layout-fields"));
 
-function buildGroupBoxGridUI(gridEl) {
-    if (!gridEl) return;
-    gridEl.innerHTML = ""; // Clear previous state
-    
-    const placedGroupBoxes = (state.styling.groupBoxes || []).filter(g => g.row > -1);
-
-    placedGroupBoxes.forEach(gbox => {
-        const box = document.createElement("div");
-        box.className = 'layout-group-box'; // You'll need to style this class
-        box.style.position = 'absolute';
-        box.style.left = (gbox.col * COL_WIDTH) + "px";
-        box.style.top = (gbox.row * 40) + "px"; // Assuming 40px row height, adjust as needed
-        box.style.width = (gbox.colSpan * COL_WIDTH) + "px";
-        box.style.height = (gbox.rowSpan * 40) + "px"; // Assuming 40px row height
-        box.style.backgroundColor = gbox.backgroundColor;
-        box.style.opacity = 0.7;
-        box.style.zIndex = 0;
-        box.innerHTML = `<span class="group-box-name">${gbox.name}</span>`;
-
-        const gearIcon = document.createElement("div");
-        gearIcon.innerHTML = "⚙️";
-        gearIcon.className = 'field-box-icon gear'; // Reuse class
-        gearIcon.style.zIndex = "10";
-        gearIcon.addEventListener("click", e => {
-            e.stopPropagation();
-            openGroupBoxStylePopup(gbox);
-        });
-        box.appendChild(gearIcon);
-
-        const removeIcon = document.createElement("div");
-        removeIcon.innerHTML = "✕";
-        removeIcon.className = 'field-box-icon remove'; // Reuse class from field boxes
-        removeIcon.style.zIndex = "10";
-        removeIcon.addEventListener("click", e => {
-            e.stopPropagation();
-            const idx = state.styling.groupBoxes.findIndex(g => g.id === gbox.id);
-            if (idx > -1) {
-                state.styling.groupBoxes.splice(idx, 1);
+        const addGroupBoxBtn = tabEl.querySelector('#cs-add-group-box-btn');
+        addGroupBoxBtn.addEventListener('click', () => {
+            if (!Array.isArray(state.styling.groupBoxes)) {
+                state.styling.groupBoxes = [];
             }
-            buildGroupBoxGridUI(gridEl);
-            // No need to rebuild available list, as it was already on the grid
+            const newGroupBox = {
+                id: `gbox-${Date.now()}`,
+                name: `Group ${state.styling.groupBoxes.length + 1}`,
+                backgroundColor: '#e0e0e0',
+                row: -1, // Indicates it's not placed on the grid yet
+                col: -1,
+                colSpan: 3,
+                rowSpan: 2,
+            };
+            state.styling.groupBoxes.push(newGroupBox);
+            buildAvailableGroupBoxesList(tabEl.querySelector('#cs-group-box-list'));
             updateDebugJson();
         });
-        box.appendChild(removeIcon);
 
-        const handle = document.createElement("div");
-        handle.className = 'resize-handle';
-        box.appendChild(handle);
-        handle.addEventListener("mousedown", e => {
-            e.stopPropagation();
-            e.preventDefault();
-            
-            const startX = e.clientX;
-            const startY = e.clientY;
-            const origW = parseFloat(box.style.width);
-            const origH = parseFloat(box.style.height);
+        buildAvailableGroupBoxesList(tabEl.querySelector('#cs-group-box-list'));
+        buildGroupBoxGridUI(tabEl.querySelector('#cs-group-box-grid'));
+    }
 
-            const onMouseMove = moveEvt => {
-                let newWidth = origW + (moveEvt.clientX - startX);
-                let newHeight = origH + (moveEvt.clientY - startY);
-                box.style.width = newWidth + "px";
-                box.style.height = newHeight + "px";
-            };
+    function buildAvailableFieldsList(container) {
+        if (!container) return;
+        container.innerHTML = "";
 
-            const onMouseUp = () => {
-                document.removeEventListener("mousemove", onMouseMove);
-                document.removeEventListener("mouseup", onMouseUp);
-                
-                let newColSpan = Math.round(parseFloat(box.style.width) / COL_WIDTH);
-                let newRowSpan = Math.round(parseFloat(box.style.height) / 40); // Assuming 40px row height
+        const usedColIds = state.layout.map(f => f.colId);
+        const availableCols = state.fields.filter(f => !usedColIds.includes(f.colId));
 
-                gbox.colSpan = Math.max(1, Math.min(NUM_COLS - gbox.col, newColSpan));
-                gbox.rowSpan = Math.max(1, newRowSpan);
+        // Also include Icon Groups that are not in the layout
+        const iconGroups = state.styling.iconGroups || [];
+        const availableIconGroups = iconGroups.filter(g => !usedColIds.includes(g.id));
 
-                buildGroupBoxGridUI(gridEl);
-                updateDebugJson();
-            };
+        if (availableCols.length === 0 && availableIconGroups.length === 0) {
+            container.innerHTML = "<i>No available fields.</i>";
+            return;
+        }
 
-            document.addEventListener("mousemove", onMouseMove);
-            document.addEventListener("mouseup", onMouseUp);
+        // Render Icon Groups first
+        availableIconGroups.forEach(group => {
+            const el = document.createElement("div");
+            el.className = 'available-field available-icon-group';
+            el.textContent = `[Group] ${group.name}`;
+            el.dataset.colid = group.id;
+            el.draggable = true;
+            el.addEventListener("dragstart", e => {
+                e.dataTransfer.setData("text/colid", group.id);
+                e.dataTransfer.setData("text/isIconGroup", "true");
+            });
+            container.appendChild(el);
         });
-        
-        gridEl.appendChild(box);
-    });
-}
 
-function openGroupBoxStylePopup(gbox) {
-    if (_fieldStylePopup && _fieldStylePopup.parentNode) {
-        _fieldStylePopup.parentNode.removeChild(_fieldStylePopup);
+        // Render regular fields
+        availableCols.forEach(field => {
+            const el = document.createElement("div");
+            el.className = 'available-field';
+            el.textContent = field.label || field.colId;
+            el.dataset.colid = field.colId;
+            el.draggable = true;
+            el.addEventListener("dragstart", e => {
+                e.dataTransfer.setData("text/colid", field.colId);
+            });
+            container.appendChild(el);
+        });
     }
-    const existingBackdrop = document.querySelector('.popup-backdrop');
-    if (existingBackdrop) {
-        existingBackdrop.parentNode.removeChild(existingBackdrop);
+
+    function buildAvailableGroupBoxesList(container) {
+        if (!container) return;
+        container.innerHTML = "";
+        const unplacedGroupBoxes = (state.styling.groupBoxes || []).filter(g => g.row === -1);
+
+        if (!unplacedGroupBoxes.length) {
+            container.innerHTML = "<i>No available group boxes.</i>";
+            return;
+        }
+
+        unplacedGroupBoxes.forEach(gbox => {
+            const el = document.createElement("div");
+            el.className = 'available-field';
+            el.textContent = gbox.name;
+            el.dataset.gboxid = gbox.id;
+            el.draggable = true;
+            el.addEventListener("dragstart", e => {
+                e.dataTransfer.setData("text/gboxid", gbox.id);
+            });
+            container.appendChild(el);
+        });
     }
 
-    const backdrop = document.createElement('div');
-    backdrop.className = 'popup-backdrop';
-    backdrop.style.cssText = `position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 1050;`;
-    _mainContainer.appendChild(backdrop);
+    function buildGroupBoxGridUI(gridEl) {
+        if (!gridEl) return;
+        gridEl.innerHTML = ""; // Clear previous state
 
-    _fieldStylePopup = document.createElement("div");
-    _fieldStylePopup.style.cssText = `position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1060; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.3);`;
-    _fieldStylePopup.className = 'field-style-popup'; // Reuse class
+        const placedGroupBoxes = (state.styling.groupBoxes || []).filter(g => g.row > -1);
 
-    _fieldStylePopup.innerHTML = `
+        placedGroupBoxes.forEach(gbox => {
+            const box = document.createElement("div");
+            box.className = 'layout-group-box'; // You'll need to style this class
+            box.style.position = 'absolute';
+            box.style.left = (gbox.col * COL_WIDTH) + "px";
+            box.style.top = (gbox.row * 40) + "px"; // Assuming 40px row height, adjust as needed
+            box.style.width = (gbox.colSpan * COL_WIDTH) + "px";
+            box.style.height = (gbox.rowSpan * 40) + "px"; // Assuming 40px row height
+            box.style.backgroundColor = gbox.backgroundColor;
+            box.style.opacity = 0.7;
+            box.style.zIndex = 0;
+            box.innerHTML = `<span class="group-box-name">${gbox.name}</span>`;
+
+            const gearIcon = document.createElement("div");
+            gearIcon.innerHTML = "⚙️";
+            gearIcon.className = 'field-box-icon gear'; // Reuse class
+            gearIcon.style.zIndex = "10";
+            gearIcon.addEventListener("click", e => {
+                e.stopPropagation();
+                openGroupBoxStylePopup(gbox);
+            });
+            box.appendChild(gearIcon);
+
+            const removeIcon = document.createElement("div");
+            removeIcon.innerHTML = "✕";
+            removeIcon.className = 'field-box-icon remove'; // Reuse class from field boxes
+            removeIcon.style.zIndex = "10";
+            removeIcon.addEventListener("click", e => {
+                e.stopPropagation();
+                const idx = state.styling.groupBoxes.findIndex(g => g.id === gbox.id);
+                if (idx > -1) {
+                    state.styling.groupBoxes.splice(idx, 1);
+                }
+                buildGroupBoxGridUI(gridEl);
+                // No need to rebuild available list, as it was already on the grid
+                updateDebugJson();
+            });
+            box.appendChild(removeIcon);
+
+            const handle = document.createElement("div");
+            handle.className = 'resize-handle';
+            box.appendChild(handle);
+            handle.addEventListener("mousedown", e => {
+                e.stopPropagation();
+                e.preventDefault();
+
+                const startX = e.clientX;
+                const startY = e.clientY;
+                const origW = parseFloat(box.style.width);
+                const origH = parseFloat(box.style.height);
+
+                const onMouseMove = moveEvt => {
+                    let newWidth = origW + (moveEvt.clientX - startX);
+                    let newHeight = origH + (moveEvt.clientY - startY);
+                    box.style.width = newWidth + "px";
+                    box.style.height = newHeight + "px";
+                };
+
+                const onMouseUp = () => {
+                    document.removeEventListener("mousemove", onMouseMove);
+                    document.removeEventListener("mouseup", onMouseUp);
+
+                    let newColSpan = Math.round(parseFloat(box.style.width) / COL_WIDTH);
+                    let newRowSpan = Math.round(parseFloat(box.style.height) / 40); // Assuming 40px row height
+
+                    gbox.colSpan = Math.max(1, Math.min(NUM_COLS - gbox.col, newColSpan));
+                    gbox.rowSpan = Math.max(1, newRowSpan);
+
+                    buildGroupBoxGridUI(gridEl);
+                    updateDebugJson();
+                };
+
+                document.addEventListener("mousemove", onMouseMove);
+                document.addEventListener("mouseup", onMouseUp);
+            });
+
+            gridEl.appendChild(box);
+        });
+    }
+
+    function openGroupBoxStylePopup(gbox) {
+        if (_fieldStylePopup && _fieldStylePopup.parentNode) {
+            _fieldStylePopup.parentNode.removeChild(_fieldStylePopup);
+        }
+        const existingBackdrop = document.querySelector('.popup-backdrop');
+        if (existingBackdrop) {
+            existingBackdrop.parentNode.removeChild(existingBackdrop);
+        }
+
+        const backdrop = document.createElement('div');
+        backdrop.className = 'popup-backdrop';
+        backdrop.style.cssText = `position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 1050;`;
+        _mainContainer.appendChild(backdrop);
+
+        _fieldStylePopup = document.createElement("div");
+        _fieldStylePopup.style.cssText = `position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1060; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.3);`;
+        _fieldStylePopup.className = 'field-style-popup'; // Reuse class
+
+        _fieldStylePopup.innerHTML = `
         <h3 style="margin-top:0;">Edit Group Box</h3>
         <div class="form-group">
             <label>Name:</label>
@@ -1042,69 +1087,73 @@ function openGroupBoxStylePopup(gbox) {
         </div>
     `;
 
-    _mainContainer.appendChild(_fieldStylePopup);
+        _mainContainer.appendChild(_fieldStylePopup);
 
-    const closePopup = () => {
-        if (_fieldStylePopup && _fieldStylePopup.parentNode) {
-            _fieldStylePopup.parentNode.removeChild(_fieldStylePopup);
-            _fieldStylePopup = null;
-        }
-        const backdrop = document.querySelector('.popup-backdrop');
-        if (backdrop) {
-            backdrop.parentNode.removeChild(backdrop);
-        }
-    };
-
-    _fieldStylePopup.querySelector('#gbox-cancel').addEventListener('click', closePopup);
-    _fieldStylePopup.querySelector('#gbox-save').addEventListener('click', () => {
-        gbox.name = _fieldStylePopup.querySelector('#gbox-name').value;
-        gbox.backgroundColor = _fieldStylePopup.querySelector('#gbox-bgcolor').value;
-        
-        closePopup();
-        buildGroupBoxGridUI(_mainContainer.querySelector("#cs-group-box-grid"));
-        updateDebugJson();
-    });
-}
-    // *** CORREÇÃO APLICADA AQUI ***
-    // Removido `allConfigs` como parâmetro. A função agora usará a variável do módulo.
-    function buildGridUI(gridEl, tabEl) { gridEl.innerHTML = ""; for (let r = 0; r < state.numRows; r++) { const rowDiv = document.createElement("div"); rowDiv.className = 'layout-grid-row'; rowDiv.dataset.rowIndex = String(r); rowDiv.addEventListener("dragover", e => e.preventDefault()); rowDiv.addEventListener("drop", e => {
-    e.preventDefault();
-    const colId = e.dataTransfer.getData("text/colid");
-    const gboxId = e.dataTransfer.getData("text/gboxid");
-    const rect = rowDiv.getBoundingClientRect();
-    const col = Math.floor((e.clientX - rect.left) / COL_WIDTH);
-
-    if (colId) {
-        const isIconGroup = e.dataTransfer.getData("text/isIconGroup") === "true";
-        const newLayoutItem = {
-            colId,
-            row: r,
-            col,
-            colSpan: isIconGroup ? 2 : 2, // Default span for icon groups
-            rowSpan: 1,
-            style: { ...DEFAULT_FIELD_STYLE }
+        const closePopup = () => {
+            if (_fieldStylePopup && _fieldStylePopup.parentNode) {
+                _fieldStylePopup.parentNode.removeChild(_fieldStylePopup);
+                _fieldStylePopup = null;
+            }
+            const backdrop = document.querySelector('.popup-backdrop');
+            if (backdrop) {
+                backdrop.parentNode.removeChild(backdrop);
+            }
         };
 
-        if (isIconGroup) {
-            newLayoutItem.isIconGroup = true;
-        }
+        _fieldStylePopup.querySelector('#gbox-cancel').addEventListener('click', closePopup);
+        _fieldStylePopup.querySelector('#gbox-save').addEventListener('click', () => {
+            gbox.name = _fieldStylePopup.querySelector('#gbox-name').value;
+            gbox.backgroundColor = _fieldStylePopup.querySelector('#gbox-bgcolor').value;
 
-        state.layout.push(newLayoutItem);
-        buildGridUI(gridEl, tabEl);
-        buildAvailableFieldsList(_mainContainer.querySelector("#cs-layout-fields"));
-        updateDebugJson();
-    } else if (gboxId) {
-        const gbox = (state.styling.groupBoxes || []).find(g => g.id === gboxId);
-        if (gbox) {
-            gbox.row = r;
-            gbox.col = col;
+            closePopup();
             buildGroupBoxGridUI(_mainContainer.querySelector("#cs-group-box-grid"));
-            buildAvailableGroupBoxesList(_mainContainer.querySelector("#cs-group-box-list"));
             updateDebugJson();
+        });
+    }
+    // *** CORREÇÃO APLICADA AQUI ***
+    // Removido `allConfigs` como parâmetro. A função agora usará a variável do módulo.
+    function buildGridUI(gridEl, tabEl) {
+        gridEl.innerHTML = ""; for (let r = 0; r < state.numRows; r++) {
+            const rowDiv = document.createElement("div"); rowDiv.className = 'layout-grid-row'; rowDiv.dataset.rowIndex = String(r); rowDiv.addEventListener("dragover", e => e.preventDefault()); rowDiv.addEventListener("drop", e => {
+                e.preventDefault();
+                const colId = e.dataTransfer.getData("text/colid");
+                const gboxId = e.dataTransfer.getData("text/gboxid");
+                const rect = rowDiv.getBoundingClientRect();
+                const col = Math.floor((e.clientX - rect.left) / COL_WIDTH);
+
+                if (colId) {
+                    const isIconGroup = e.dataTransfer.getData("text/isIconGroup") === "true";
+                    const newLayoutItem = {
+                        colId,
+                        row: r,
+                        col,
+                        colSpan: isIconGroup ? 2 : 2, // Default span for icon groups
+                        rowSpan: 1,
+                        style: { ...DEFAULT_FIELD_STYLE }
+                    };
+
+                    if (isIconGroup) {
+                        newLayoutItem.isIconGroup = true;
+                    }
+
+                    state.layout.push(newLayoutItem);
+                    buildGridUI(gridEl, tabEl);
+                    buildAvailableFieldsList(_mainContainer.querySelector("#cs-layout-fields"));
+                    updateDebugJson();
+                } else if (gboxId) {
+                    const gbox = (state.styling.groupBoxes || []).find(g => g.id === gboxId);
+                    if (gbox) {
+                        gbox.row = r;
+                        gbox.col = col;
+                        buildGroupBoxGridUI(_mainContainer.querySelector("#cs-group-box-grid"));
+                        buildAvailableGroupBoxesList(_mainContainer.querySelector("#cs-group-box-list"));
+                        updateDebugJson();
+                    }
+                }
+            }); state.layout.filter(f => f.row === r).forEach(f => { rowDiv.appendChild(createFieldBoxInConfigUI(f, gridEl, tabEl)); }); gridEl.appendChild(rowDiv);
         }
     }
-}); state.layout.filter(f => f.row === r).forEach(f => { rowDiv.appendChild(createFieldBoxInConfigUI(f, gridEl, tabEl)); }); gridEl.appendChild(rowDiv); } }
-    
+
     // *** CORREÇÃO APLICADA AQUI ***
     // Removido `allConfigs` como parâmetro. A função agora usará a variável do módulo.
     function createFieldBoxInConfigUI(fieldDef, gridEl, tabEl) {
@@ -1125,17 +1174,15 @@ function openGroupBoxStylePopup(gbox) {
         box.style.left = (fieldDef.col * COL_WIDTH) + "px";
         box.style.width = (fieldDef.colSpan * COL_WIDTH) + "px";
         box.style.height = (((fieldDef.rowSpan || 1) * 40) - 8) + "px";
-        
-        if (!fieldDef.isIconGroup) {
-            const gearIcon = document.createElement("div");
-            gearIcon.innerHTML = "⚙️";
-            gearIcon.className = 'field-box-icon gear';
-            gearIcon.addEventListener("click", e => {
-                e.stopPropagation();
-                openFieldStylePopup(fieldDef, fieldSchema, gridEl, tabEl);
-            });
-            box.appendChild(gearIcon);
-        }
+
+        const gearIcon = document.createElement("div");
+        gearIcon.innerHTML = "⚙️";
+        gearIcon.className = 'field-box-icon gear';
+        gearIcon.addEventListener("click", e => {
+            e.stopPropagation();
+            openFieldStylePopup(fieldDef, fieldSchema, gridEl, tabEl);
+        });
+        box.appendChild(gearIcon);
 
         const removeIcon = document.createElement("div");
         removeIcon.innerHTML = "✕";
@@ -1143,22 +1190,14 @@ function openGroupBoxStylePopup(gbox) {
         removeIcon.addEventListener("click", e => {
             e.stopPropagation();
             const idx = state.layout.indexOf(fieldDef);
-            if (idx > -1) state.layout.splice(idx, 1);
-            buildGridUI(gridEl, tabEl);
-            buildAvailableFieldsList(_mainContainer.querySelector("#cs-layout-fields"));
-            updateDebugJson();
+            if (idx > -1) {
+                state.layout.splice(idx, 1);
+                buildGridUI(gridEl, tabEl);
+                buildAvailableFieldsList(_mainContainer.querySelector("#cs-layout-fields"));
+                updateDebugJson();
+            }
         });
         box.appendChild(removeIcon);
-
-        box.draggable = true;
-        box.addEventListener("dragstart", e => {
-            e.dataTransfer.setData("text/colid", fieldDef.colId);
-            if (fieldDef.isIconGroup) {
-                e.dataTransfer.setData("text/isIconGroup", "true");
-            }
-            const idx = state.layout.indexOf(fieldDef);
-            if (idx > -1) state.layout.splice(idx, 1);
-        });
 
         const handle = document.createElement("div");
         handle.className = 'resize-handle';
@@ -1166,9 +1205,8 @@ function openGroupBoxStylePopup(gbox) {
         handle.addEventListener("mousedown", e => {
             e.stopPropagation();
             e.preventDefault();
-            box.draggable = false;
-            const startX = e.clientX,
-                origW = parseFloat(box.style.width);
+            const startX = e.clientX;
+            const origW = parseFloat(box.style.width);
             const onMouseMove = moveEvt => {
                 let newWidth = origW + (moveEvt.clientX - startX);
                 box.style.width = newWidth + "px";
@@ -1176,57 +1214,19 @@ function openGroupBoxStylePopup(gbox) {
             const onMouseUp = () => {
                 document.removeEventListener("mousemove", onMouseMove);
                 document.removeEventListener("mouseup", onMouseUp);
-                let newSpan = Math.round(parseFloat(box.style.width) / COL_WIDTH);
-                fieldDef.colSpan = Math.max(1, Math.min(NUM_COLS - fieldDef.col, newSpan));
-                box.draggable = true;
+                let newColSpan = Math.round(parseFloat(box.style.width) / COL_WIDTH);
+                fieldDef.colSpan = Math.max(1, Math.min(NUM_COLS - fieldDef.col, newColSpan));
                 buildGridUI(gridEl, tabEl);
                 updateDebugJson();
             };
             document.addEventListener("mousemove", onMouseMove);
             document.addEventListener("mouseup", onMouseUp);
         });
+
         return box;
     }
-    function buildAvailableFieldsList(container) {
-        if (!container) return;
-        container.innerHTML = "";
-        const usedCols = state.layout.map(l => l.colId);
-
-        // Real fields from the table
-        const availableRealFields = state.fields.filter(f => !usedCols.includes(f.colId));
-
-        // Virtual fields for icon groups
-        const availableIconGroupFields = (state.styling.iconGroups || [])
-            .filter(group => !usedCols.includes(group.id))
-            .map(group => ({
-                colId: group.id,
-                label: `[Group] ${group.name}`,
-                isIconGroup: true
-            }));
-
-        const availableCols = [...availableRealFields, ...availableIconGroupFields];
-
-        if (!availableCols.length) {
-            container.innerHTML = "<i>All fields placed.</i>";
-            return;
-        }
-
-        availableCols.forEach(field => {
-            const el = document.createElement("div");
-            el.className = 'available-field';
-            el.textContent = field.label || field.colId;
-            el.dataset.colid = field.colId;
-            el.draggable = true;
-            el.addEventListener("dragstart", e => {
-                e.dataTransfer.setData("text/colid", field.colId);
-                if (field.isIconGroup) {
-                    e.dataTransfer.setData("text/isIconGroup", "true");
-                }
-            });
-            container.appendChild(el);
-        });
-    }
-    function buildActionsTab(contentArea) { const tabEl = document.createElement("div"); tabEl.dataset.tabSection = "actions";
+    function buildActionsTab(contentArea) {
+        const tabEl = document.createElement("div"); tabEl.dataset.tabSection = "actions";
         tabEl.style.display = "none";
         tabEl.innerHTML = `
             <h3>Card Actions & Navigation</h3>
@@ -1275,7 +1275,7 @@ function openGroupBoxStylePopup(gbox) {
             drawerConfigs.forEach(c => {
                 const option = document.createElement('option');
                 option.value = c.configId;
-                option.textContent = c.configId || `[Drawer Sem ID]`; 
+                option.textContent = c.configId || `[Drawer Sem ID]`;
                 drawerSelect.appendChild(option);
             });
         }
@@ -1346,11 +1346,11 @@ function openGroupBoxStylePopup(gbox) {
         backdrop.className = 'popup-backdrop';
         backdrop.style.cssText = `position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 1050;`;
         _mainContainer.appendChild(backdrop);
-        
+
         _fieldStylePopup = document.createElement("div");
         _fieldStylePopup.style.cssText = `position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1060; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); max-height: 80vh; overflow-y: auto;`;
         _fieldStylePopup.className = 'field-style-popup';
-        
+
         const isRefList = fieldSchema && fieldSchema.type.startsWith('RefList:');
         let refListOptionsHtml = '';
         if (isRefList) {
@@ -1414,20 +1414,157 @@ function openGroupBoxStylePopup(gbox) {
             `;
         }
 
-        _fieldStylePopup.innerHTML = ` <div class="field-style-popup-content"> <h3 style="margin-top:0;">Style: ${fieldDef.colId}</h3>
-        <div><label><input type="checkbox" id="fs-use-grist-style"> Use Grist Field Style</label></div>
-        <p class="help-text">If unchecked, the field will be rendered as simple text.</p>
-        <hr>
-        <div><label>Card Rows: <input type="number" id="fs-card-rows" min="1" style="width:50px;"></label></div>
-        <div><label><input type="checkbox" id="fs-lv"> Show Label</label></div> <div>Label Position: <label><input type="radio" name="fs-lp" value="above"> Above</label> <label><input type="radio" name="fs-lp" value="left"> Left</label> </div> <div>Data Justification: <select id="fs-dj"><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select> </div> <div><label><input type="checkbox" id="fs-hl"> Limit Height</label></div> <div id="fs-hl-rows" style="display:none;"><label>Max Rows: <input type="number" id="fs-hr" min="1" style="width:50px;"></label></div> <hr> <div><label><input type="checkbox" id="fs-itf"> Is a Title Field</label></div> <p class="help-text">Title Fields appear in the Top Bar if it's enabled.</p> ${refListOptionsHtml} <div class="popup-actions"> <button id="fs-cancel" type="button" class="btn btn-secondary">Cancel</button> <button id="fs-save" type="button" class="btn btn-primary">Save</button> </div> </div> `; _mainContainer.appendChild(_fieldStylePopup);        const s = { ...DEFAULT_FIELD_STYLE, ...fieldDef.style };
+        _fieldStylePopup.innerHTML = `
+            <div class="field-style-popup-content">
+                <h3 style="margin-top:0;">Style: ${fieldDef.colId}</h3>
+                <div><label><input type="checkbox" id="fs-use-grist-style"> Use Grist Field Style</label></div>
+                <p class="help-text">If unchecked, the field will be rendered as simple text.</p>
+                
+                <hr>
+                <h4>Widget</h4>
+                <div class="form-group">
+                    <label>Widget Type:</label>
+                    <select id="fs-widget-type">
+                        <option value="">Default (Text/Number)</option>
+                        <option value="Color Picker">Color Picker</option>
+                        <option value="Progress Bar">Progress Bar</option>
+                    </select>
+                </div>
+                <div id="fs-widget-options-container" style="display: none; border: 1px solid #eee; padding: 10px; border-radius: 4px; margin-bottom: 10px;">
+                    <!-- Widget specific options will be rendered here -->
+                </div>
+
+                <hr>
+                <div><label>Card Rows: <input type="number" id="fs-card-rows" min="1" style="width:50px;"></label></div>
+                <div><label><input type="checkbox" id="fs-lv"> Show Label</label></div>
+                <div>Label Position: <label><input type="radio" name="fs-lp" value="above"> Above</label> <label><input type="radio" name="fs-lp" value="left"> Left</label> </div>
+                <div>Data Justification: <select id="fs-dj"><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select> </div>
+                <div><label><input type="checkbox" id="fs-hl"> Limit Height</label></div>
+                <div id="fs-hl-rows" style="display:none;"><label>Max Rows: <input type="number" id="fs-hr" min="1" style="width:50px;"></label></div>
+                <hr>
+                <div><label><input type="checkbox" id="fs-itf"> Is a Title Field</label></div>
+                <p class="help-text">Title Fields appear in the Top Bar if it's enabled.</p>
+                ${refListOptionsHtml}
+                <div class="popup-actions">
+                    <button id="fs-cancel" type="button" class="btn btn-secondary">Cancel</button>
+                    <button id="fs-save" type="button" class="btn btn-primary">Save</button>
+                </div>
+            </div>
+        `;
+        _mainContainer.appendChild(_fieldStylePopup);
+
+        const s = { ...DEFAULT_FIELD_STYLE, ...fieldDef.style };
         _fieldStylePopup.querySelector('#fs-card-rows').value = fieldDef.rowSpan || 1;
         _fieldStylePopup.querySelector('#fs-use-grist-style').checked = s.useGristStyle;
-        _fieldStylePopup.querySelector('#fs-lv').checked = s.labelVisible; _fieldStylePopup.querySelector(`input[name='fs-lp'][value='${s.labelPosition}']`).checked = true; _fieldStylePopup.querySelector('#fs-dj').value = s.dataJustify; _fieldStylePopup.querySelector('#fs-hl').checked = s.heightLimited; _fieldStylePopup.querySelector('#fs-hl-rows').style.display = s.heightLimited ? 'block' : 'none'; _fieldStylePopup.querySelector('#fs-hr').value = s.maxHeightRows; _fieldStylePopup.querySelector('#fs-itf').checked = s.isTitleField;         _fieldStylePopup.querySelector('#fs-hl').addEventListener('change', e => { _fieldStylePopup.querySelector('#fs-hl-rows').style.display = e.target.checked ? 'block' : 'none'; });
+
+        // Widget UI Logic
+        const widgetSelect = _fieldStylePopup.querySelector('#fs-widget-type');
+        const widgetOptionsContainer = _fieldStylePopup.querySelector('#fs-widget-options-container');
+        widgetSelect.value = s.widget || "";
+
+        // Store temporary widget options
+        let tempWidgetOptions = s.widgetOptions ? JSON.parse(JSON.stringify(s.widgetOptions)) : {};
+
+        const renderWidgetOptions = () => {
+            const widgetType = widgetSelect.value;
+            widgetOptionsContainer.innerHTML = '';
+            widgetOptionsContainer.style.display = widgetType ? 'block' : 'none';
+
+            if (widgetType === 'Progress Bar') {
+                // Striped Option
+                const stripedDiv = document.createElement('div');
+                stripedDiv.className = 'form-group';
+                stripedDiv.innerHTML = `<label><input type="checkbox" id="fs-pb-striped" ${tempWidgetOptions.striped ? 'checked' : ''}> Striped</label>`;
+                widgetOptionsContainer.appendChild(stripedDiv);
+                stripedDiv.querySelector('input').addEventListener('change', (e) => {
+                    tempWidgetOptions.striped = e.target.checked;
+                });
+
+                // Thickness Option
+                const thicknessDiv = document.createElement('div');
+                thicknessDiv.className = 'form-group';
+                thicknessDiv.innerHTML = `
+                    <label>Thickness:</label>
+                    <select id="fs-pb-thickness" style="width: 100%;">
+                        <option value="100%" ${!tempWidgetOptions.thickness || tempWidgetOptions.thickness === '100%' ? 'selected' : ''}>100% (Default)</option>
+                        <option value="120%" ${tempWidgetOptions.thickness === '120%' ? 'selected' : ''}>120%</option>
+                        <option value="150%" ${tempWidgetOptions.thickness === '150%' ? 'selected' : ''}>150%</option>
+                        <option value="200%" ${tempWidgetOptions.thickness === '200%' ? 'selected' : ''}>200%</option>
+                    </select>
+                `;
+                widgetOptionsContainer.appendChild(thicknessDiv);
+                thicknessDiv.querySelector('select').addEventListener('change', (e) => {
+                    tempWidgetOptions.thickness = e.target.value;
+                });
+
+                // Dynamic Coloring Rules
+                const rulesDiv = document.createElement('div');
+                rulesDiv.innerHTML = `
+                    <label>Dynamic Coloring Rules:</label>
+                    <div id="fs-pb-rules-list" style="margin-bottom: 10px;"></div>
+                    <button type="button" id="fs-pb-add-rule" class="btn btn-sm btn-secondary">+ Add Rule</button>
+                `;
+                widgetOptionsContainer.appendChild(rulesDiv);
+
+                const rulesList = rulesDiv.querySelector('#fs-pb-rules-list');
+                const renderRules = () => {
+                    rulesList.innerHTML = '';
+                    (tempWidgetOptions.colorRules || []).forEach((rule, index) => {
+                        const ruleEl = document.createElement('div');
+                        ruleEl.style.display = 'flex';
+                        ruleEl.style.gap = '5px';
+                        ruleEl.style.marginBottom = '5px';
+                        ruleEl.style.alignItems = 'center';
+                        ruleEl.innerHTML = `
+                            <span><=</span>
+                            <input type="number" class="rule-threshold" value="${rule.threshold}" style="width: 60px;" placeholder="Val">
+                            <input type="color" class="rule-color" value="${rule.color}">
+                            <button type="button" class="btn btn-xs btn-danger remove-rule" data-index="${index}">x</button>
+                        `;
+                        rulesList.appendChild(ruleEl);
+
+                        ruleEl.querySelector('.rule-threshold').addEventListener('change', (e) => {
+                            tempWidgetOptions.colorRules[index].threshold = parseFloat(e.target.value);
+                        });
+                        ruleEl.querySelector('.rule-color').addEventListener('change', (e) => {
+                            tempWidgetOptions.colorRules[index].color = e.target.value;
+                        });
+                        ruleEl.querySelector('.remove-rule').addEventListener('click', (e) => {
+                            tempWidgetOptions.colorRules.splice(index, 1);
+                            renderRules();
+                        });
+                    });
+                };
+                renderRules();
+
+                rulesDiv.querySelector('#fs-pb-add-rule').addEventListener('click', () => {
+                    if (!tempWidgetOptions.colorRules) tempWidgetOptions.colorRules = [];
+                    tempWidgetOptions.colorRules.push({ threshold: 0, color: '#000000' });
+                    renderRules();
+                });
+            } else if (widgetType === 'Color Picker') {
+                widgetOptionsContainer.innerHTML = '<p class="help-text">Displays a color picker input.</p>';
+            }
+        };
+
+        widgetSelect.addEventListener('change', renderWidgetOptions);
+        renderWidgetOptions(); // Initial render
+
+        _fieldStylePopup.querySelector('#fs-lv').checked = s.labelVisible;
+        _fieldStylePopup.querySelector(`input[name='fs-lp'][value='${s.labelPosition}']`).checked = true;
+        _fieldStylePopup.querySelector('#fs-dj').value = s.dataJustify;
+        _fieldStylePopup.querySelector('#fs-hl').checked = s.heightLimited;
+        _fieldStylePopup.querySelector('#fs-hl-rows').style.display = s.heightLimited ? 'block' : 'none';
+        _fieldStylePopup.querySelector('#fs-hr').value = s.maxHeightRows;
+        _fieldStylePopup.querySelector('#fs-itf').checked = s.isTitleField;
+        _fieldStylePopup.querySelector('#fs-hl').addEventListener('change', e => {
+            _fieldStylePopup.querySelector('#fs-hl-rows').style.display = e.target.checked ? 'block' : 'none';
+        });
 
         if (isRefList) {
             const paginateCheckbox = _fieldStylePopup.querySelector('#fs-reflist-paginate');
             const pageSizeGroup = _fieldStylePopup.querySelector('#fs-reflist-pagesize-group');
-            if(paginateCheckbox && pageSizeGroup) {
+            if (paginateCheckbox && pageSizeGroup) {
                 paginateCheckbox.addEventListener('change', () => {
                     pageSizeGroup.style.display = paginateCheckbox.checked ? 'block' : 'none';
                 });
@@ -1437,7 +1574,7 @@ function openGroupBoxStylePopup(gbox) {
             const cardConfigGroup = _fieldStylePopup.querySelector('#fs-reflist-card-config-group');
             const tabulatorConfigGroup = _fieldStylePopup.querySelector('#fs-reflist-tabulator-config-group');
             const simpleTableOptions = _fieldStylePopup.querySelector('#fs-reflist-simple-table-options');
-            if(displayAsSelect && cardConfigGroup && tabulatorConfigGroup && simpleTableOptions) {
+            if (displayAsSelect && cardConfigGroup && tabulatorConfigGroup && simpleTableOptions) {
                 const toggleOptions = () => {
                     cardConfigGroup.style.display = displayAsSelect.value === 'cards' ? 'block' : 'none';
                     tabulatorConfigGroup.style.display = displayAsSelect.value === 'tabulator' ? 'block' : 'none';
@@ -1448,7 +1585,7 @@ function openGroupBoxStylePopup(gbox) {
             }
         }
 
-                const closePopup = () => {
+        const closePopup = () => {
             if (_fieldStylePopup && _fieldStylePopup.parentNode) {
                 _fieldStylePopup.parentNode.removeChild(_fieldStylePopup);
                 _fieldStylePopup = null;
@@ -1457,47 +1594,51 @@ function openGroupBoxStylePopup(gbox) {
             if (backdrop) {
                 backdrop.parentNode.removeChild(backdrop);
             }
-        }; _fieldStylePopup.querySelector('#fs-cancel').addEventListener('click', closePopup); _fieldStylePopup.querySelector('#fs-save').addEventListener('click', () => { 
-        fieldDef.rowSpan = parseInt(_fieldStylePopup.querySelector('#fs-card-rows').value, 10) || 1;
-        const newStyle = { 
-            useGristStyle: _fieldStylePopup.querySelector('#fs-use-grist-style').checked,
-            labelVisible: _fieldStylePopup.querySelector('#fs-lv').checked, 
-            labelPosition: _fieldStylePopup.querySelector('input[name="fs-lp"]:checked').value, 
-            dataJustify: _fieldStylePopup.querySelector('#fs-dj').value, 
-            heightLimited: _fieldStylePopup.querySelector('#fs-hl').checked, 
-            maxHeightRows: parseInt(_fieldStylePopup.querySelector('#fs-hr').value, 10) || 1, 
-            isTitleField: _fieldStylePopup.querySelector('#fs-itf').checked 
-        }; 
-        fieldDef.style = { ...DEFAULT_FIELD_STYLE, ...newStyle }; 
+        };
+        _fieldStylePopup.querySelector('#fs-cancel').addEventListener('click', closePopup);
+        _fieldStylePopup.querySelector('#fs-save').addEventListener('click', () => {
+            fieldDef.rowSpan = parseInt(_fieldStylePopup.querySelector('#fs-card-rows').value, 10) || 1;
+            const newStyle = {
+                useGristStyle: _fieldStylePopup.querySelector('#fs-use-grist-style').checked,
+                labelVisible: _fieldStylePopup.querySelector('#fs-lv').checked,
+                labelPosition: _fieldStylePopup.querySelector('input[name="fs-lp"]:checked').value,
+                dataJustify: _fieldStylePopup.querySelector('#fs-dj').value,
+                heightLimited: _fieldStylePopup.querySelector('#fs-hl').checked,
+                maxHeightRows: parseInt(_fieldStylePopup.querySelector('#fs-hr').value, 10) || 1,
+                isTitleField: _fieldStylePopup.querySelector('#fs-itf').checked,
+                widget: _fieldStylePopup.querySelector('#fs-widget-type').value,
+                widgetOptions: tempWidgetOptions
+            };
+            fieldDef.style = { ...DEFAULT_FIELD_STYLE, ...newStyle };
 
-        if (isRefList && _fieldStylePopup) {
-            fieldDef.style.refListConfig = fieldDef.style.refListConfig || {};
+            if (isRefList && _fieldStylePopup) {
+                fieldDef.style.refListConfig = fieldDef.style.refListConfig || {};
 
-            const maxRowsInput = _fieldStylePopup.querySelector('#fs-reflist-max-rows');
-            if (maxRowsInput) {
-                fieldDef.style.refListConfig.maxRows = parseInt(maxRowsInput.value, 10);
+                const maxRowsInput = _fieldStylePopup.querySelector('#fs-reflist-max-rows');
+                if (maxRowsInput) {
+                    fieldDef.style.refListConfig.maxRows = parseInt(maxRowsInput.value, 10);
+                }
+
+                fieldDef.style.refListConfig.displayAs = _fieldStylePopup.querySelector('#fs-reflist-display-as').value;
+                fieldDef.style.refListConfig.cardConfigId = _fieldStylePopup.querySelector('#fs-reflist-card-config-id').value;
+                fieldDef.style.refListConfig.tabulatorConfigId = _fieldStylePopup.querySelector('#fs-reflist-tabulator-config-id').value;
+                fieldDef.style.refListConfig.paginate = _fieldStylePopup.querySelector('#fs-reflist-paginate').checked;
+                fieldDef.style.refListConfig.pageSize = parseInt(_fieldStylePopup.querySelector('#fs-reflist-page-size').value, 10) || 5;
+                fieldDef.style.refListConfig.collapsible = _fieldStylePopup.querySelector('#fs-reflist-collapsible').checked;
+                fieldDef.style.refListConfig.zebra = _fieldStylePopup.querySelector('#fs-reflist-zebra').checked;
+
+                const selectedCols = [];
+                const colCheckboxes = _fieldStylePopup.querySelectorAll('input.fs-reflist-col-checkbox:checked');
+                colCheckboxes.forEach(checkbox => selectedCols.push(checkbox.value));
+                fieldDef.style.refListConfig.columns = selectedCols;
             }
 
-            fieldDef.style.refListConfig.displayAs = _fieldStylePopup.querySelector('#fs-reflist-display-as').value;
-            fieldDef.style.refListConfig.cardConfigId = _fieldStylePopup.querySelector('#fs-reflist-card-config-id').value;
-            fieldDef.style.refListConfig.tabulatorConfigId = _fieldStylePopup.querySelector('#fs-reflist-tabulator-config-id').value;
-            fieldDef.style.refListConfig.paginate = _fieldStylePopup.querySelector('#fs-reflist-paginate').checked;
-                            fieldDef.style.refListConfig.pageSize = parseInt(_fieldStylePopup.querySelector('#fs-reflist-page-size').value, 10) || 5;
-                            fieldDef.style.refListConfig.collapsible = _fieldStylePopup.querySelector('#fs-reflist-collapsible').checked;
-                            fieldDef.style.refListConfig.zebra = _fieldStylePopup.querySelector('#fs-reflist-zebra').checked;
-            
-                            const selectedCols = [];            const colCheckboxes = _fieldStylePopup.querySelectorAll('input.fs-reflist-col-checkbox:checked');
-            colCheckboxes.forEach(checkbox => selectedCols.push(checkbox.value));
-            fieldDef.style.refListConfig.columns = selectedCols;
-        }
-        
-        closePopup(); 
-        buildGridUI(gridEl, tabEl);
-        updateDebugJson(); 
-        }); 
+            closePopup();
+            buildGridUI(gridEl, tabEl);
+            updateDebugJson();
+        });
     }
-    function populateFieldSelect(selectEl, fieldList) { if(!selectEl) return; while (selectEl.options.length > 1) { selectEl.remove(1); } fieldList.forEach(f => { const opt = document.createElement("option"); opt.value = f; opt.textContent = f; selectEl.appendChild(opt); }); }
+    function populateFieldSelect(selectEl, fieldList) { if (!selectEl) return; while (selectEl.options.length > 1) { selectEl.remove(1); } fieldList.forEach(f => { const opt = document.createElement("option"); opt.value = f; opt.textContent = f; selectEl.appendChild(opt); }); }
     return { render, read };
 })();
 
-// --- END OF CORRECTED config-cards.js ---
