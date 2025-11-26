@@ -180,6 +180,16 @@ export async function renderField(options) {
 
   if (!isEditing) {
     _applyStyles(container, fieldStyle);
+    
+    // --- NEW: Apply Card-Specific Data Styles overrides ---
+    if (styling && options.fieldStyle && options.fieldStyle.dataStyle) {
+        const ds = options.fieldStyle.dataStyle;
+        if (ds.font) container.style.fontFamily = ds.font;
+        if (ds.size) container.style.fontSize = ds.size;
+        if (ds.color) container.style.color = ds.color; // Override conditional formatting text color if set
+        if (ds.bold) container.style.fontWeight = 'bold';
+        if (ds.italic) container.style.fontStyle = 'italic';
+    }
   }
 
   // Correctly pass refListConfig to the callOptions from the fieldStyle object

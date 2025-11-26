@@ -109,7 +109,7 @@ export const CardConfigEditor = (() => {
     }
 
     const DEFAULT_FIELD_STYLE = { useGristStyle: true, labelVisible: true, labelPosition: 'above', labelFont: 'inherit', labelFontSize: 'inherit', labelColor: 'inherit', labelOutline: false, labelOutlineColor: '#ffffff', dataJustify: 'left', heightLimited: false, maxHeightRows: 1, isTitleField: false };
-    const DEFAULT_STYLING = { iconSize: 1.0, internalCardPadding: '10px', fieldBox: { borderEnabled: false, borderColor: '#cccccc', borderWidth: 1, borderRadius: 4, backgroundColor: '#ffffff', effect: 'none' }, labelStyle: { bold: false, color: '#333333', font: 'Calibri', size: '12px' }, simpleTextColor: '#000000', simpleTextFont: 'Calibri', simpleTextSize: '14px', fieldBackground: { enabled: false, lightenPercentage: 15 }, iconGroups: [], groupBoxes: [], widgetBackgroundMode: "solid", widgetBackgroundSolidColor: "#f9f9f9", widgetBackgroundGradientType: "linear-gradient(to right, {c1}, {c2})", widgetBackgroundGradientColor1: "#f9f9f9", widgetBackgroundGradientColor2: "#e9e9e9", cardsColorMode: "solid", cardsColorSolidColor: "#ffffff", cardsColorGradientType: "linear-gradient(to right, {c1}, {c2})", cardsColorGradientColor1: "#ffffff", cardsColorGradientColor2: "#f0f0f0", cardsColorApplyText: false, cardBorderThickness: 0, cardBorderMode: "solid", cardBorderSolidColor: "#cccccc", cardTitleFontColor: "#000000", cardTitleFontStyle: "Calibri", cardTitleFontSize: "20px", cardTitleTopBarEnabled: false, cardTitleTopBarMode: "solid", cardTitleTopBarSolidColor: "#dddddd", cardTitleTopBarGradientType: "linear-gradient(to right, {c1}, {c2})", cardTitleTopBarGradientColor1: "#dddddd", cardTitleTopBarGradientColor2: "#cccccc", cardTitleTopBarLabelFontColor: "#000000", cardTitleTopBarLabelFontStyle: "Calibri", cardTitleTopBarLabelFontSize: "16px", cardTitleTopBarDataFontColor: "#333333", cardTitleTopBarDataFontStyle: "Calibri", cardTitleTopBarDataFontSize: "16px", handleAreaWidth: "8px", handleAreaMode: "solid", handleAreaSolidColor: "#40E0D0", widgetPadding: "10px", cardsSpacing: "15px", selectedCard: { enabled: false, scale: 1.05, colorEffect: "none" } };
+    const DEFAULT_STYLING = { iconSize: 1.0, internalCardPadding: '10px', fieldBox: { borderEnabled: false, borderColor: '#cccccc', borderWidth: 1, borderRadius: 4, backgroundColor: '#ffffff', effect: 'none' }, labelStyle: { bold: false, color: '#333333', font: 'Calibri', size: '12px' }, simpleTextColor: '#000000', simpleTextFont: 'Calibri', simpleTextSize: '14px', fieldBackground: { enabled: false, lightenPercentage: 15 }, iconGroups: [], groupBoxes: [], widgetBackgroundMode: "solid", widgetBackgroundSolidColor: "#f9f9f9", widgetBackgroundGradientType: "linear-gradient(to right, {c1}, {c2})", widgetBackgroundGradientColor1: "#f9f9f9", widgetBackgroundGradientColor2: "#e9e9e9", cardsColorMode: "solid", cardsColorSolidColor: "#ffffff", cardsColorGradientType: "linear-gradient(to right, {c1}, {c2})", cardsColorGradientColor1: "#ffffff", cardsColorGradientColor2: "#f0f0f0", cardsColorApplyText: false, cardsColorTextField: null, cardsColorFontField: null, cardBorderThickness: 0, cardBorderMode: "solid", cardBorderSolidColor: "#cccccc", cardTitleFontColor: "#000000", cardTitleFontStyle: "Calibri", cardTitleFontSize: "20px", cardTitleTopBarEnabled: false, cardTitleTopBarMode: "solid", cardTitleTopBarSolidColor: "#dddddd", cardTitleTopBarGradientType: "linear-gradient(to right, {c1}, {c2})", cardTitleTopBarGradientColor1: "#dddddd", cardTitleTopBarGradientColor2: "#cccccc", cardTitleTopBarLabelFontColor: "#000000", cardTitleTopBarLabelFontStyle: "Calibri", cardTitleTopBarLabelFontSize: "16px", cardTitleTopBarDataFontColor: "#333333", cardTitleTopBarDataFontStyle: "Calibri", cardTitleTopBarDataFontSize: "16px", handleAreaWidth: "8px", handleAreaMode: "solid", handleAreaSolidColor: "#40E0D0", widgetPadding: "10px", cardsSpacing: "15px", selectedCard: { enabled: false, scale: 1.05, colorEffect: "none" }, showDebugInfo: false, cardsColumnLimit: 1, cardsColumnMode: 'fixed' };
     const DEFAULT_NUM_ROWS = 1; const NUM_COLS = 10; const CONFIG_WIDTH = 700; const COL_WIDTH = CONFIG_WIDTH / NUM_COLS;
 
     function createTabButton(label, tabId, container) { const btn = document.createElement("button"); btn.type = "button"; btn.textContent = label; btn.className = 'config-tab-button'; btn.addEventListener("click", () => switchTab(tabId, container)); btn.dataset.tabId = tabId; return btn; }
@@ -457,7 +457,8 @@ export const CardConfigEditor = (() => {
                     <legend><b>Cards Color</b></legend>
                     <label><input type="radio" name="cardscolormode" value="solid"> Solid</label>
                     <label><input type="radio" name="cardscolormode" value="gradient"> Gradient</label>
-                    <label><input type="radio" name="cardscolormode" value="conditional"> By Field</label>
+                    <label><input type="radio" name="cardscolormode" value="conditional"> By Choice Options</label>
+                    <label><input type="radio" name="cardscolormode" value="text-value"> By Field Value</label>
                     <div class="style-control-group" data-mode="solid"><input type="color" id="cs-st-cardcolor"></div>
                     <div class="style-control-group" data-mode="gradient" style="display:none;">
                         <select id="cs-st-cardgradient-type"><option value="linear-gradient(to right, {c1}, {c2})">Linear H</option><option value="linear-gradient(to bottom, {c1}, {c2})">Linear V</option><option value="radial-gradient(circle, {c1}, {c2})">Radial</option></select>
@@ -469,10 +470,28 @@ export const CardConfigEditor = (() => {
                             <label><input type="checkbox" id="cs-st-cardscolor-apply-text"> Também aplicar cor de texto do campo</label>
                         </div>
                     </div>
+                    <div class="style-control-group" data-mode="text-value" style="display:none;">
+                        <div style="margin-bottom: 5px;">
+                             <label style="display:block; font-size: 0.9em;">Background Color Source:</label>
+                             <select id="cs-st-cardscolor-text-field"><option value="">-- Select Field (e.g. #RRGGBB) --</option></select>
+                        </div>
+                        <div>
+                             <label style="display:block; font-size: 0.9em;">Font Color Source (Optional):</label>
+                             <select id="cs-st-cardscolor-font-field"><option value="">-- Select Field (e.g. #RRGGBB) --</option></select>
+                        </div>
+                    </div>
                 </fieldset>
                 <fieldset><legend><b>Card Border</b></legend>Thickness (px): <input type="number" id="cs-st-border-thickness" min="0" style="width:60px"> <br><label><input type="radio" name="bordermode" value="solid"> Solid</label> <label><input type="radio" name="bordermode" value="conditional"> By Field</label><div class="style-control-group" data-mode="solid"><input type="color" id="cs-st-border-color"></div><div class="style-control-group" data-mode="conditional" style="display:none;"><select id="cs-st-border-field"><option value="">-- field --</option></select></div></fieldset>
                 <fieldset class="title-control-group" data-title-mode="no-bar"><legend><b>Card Title (when Top Bar is OFF)</b></legend>Color: <input type="color" id="cs-st-titlecolor"> Font: <select id="cs-st-titlefont"><option>Calibri</option><option>Arial</option><option>Times New Roman</option></select> Size: <input type="number" id="cs-st-titlesize" min="8" style="width:60px">px</fieldset>
-                <fieldset><legend><b>Handle Area</b></legend>Width (px): <input type="number" id="cs-st-handle-width" min="1" style="width:60px"> <br><label><input type="radio" name="handlemode" value="solid"> Solid</label> <label><input type="radio" name="handlemode" value="conditional"> By Field</label><div class="style-control-group" data-mode="solid"><input type="color" id="cs-st-handle-color"></div><div class="style-control-group" data-mode="conditional" style="display:none;"><select id="cs-st-handle-field"><option value="">-- field --</option></select></div></fieldset>
+                <fieldset><legend><b>Handle Area</b></legend>Width (px): <input type="number" id="cs-st-handle-width" min="0" style="width:60px"> <br><label><input type="radio" name="handlemode" value="solid"> Solid</label> <label><input type="radio" name="handlemode" value="conditional"> By Field</label><div class="style-control-group" data-mode="solid"><input type="color" id="cs-st-handle-color"></div><div class="style-control-group" data-mode="conditional" style="display:none;"><select id="cs-st-handle-field"><option value="">-- field --</option></select></div></fieldset>
+                <fieldset>
+                    <legend><b>Grid Columns</b></legend>
+                    <label>Max Columns: <input type="number" id="cs-st-col-limit" min="1" max="20" style="width:50px;"></label>
+                    <div style="margin-top: 5px;">
+                        <label title="If fewer cards than Max Cols, cards are smaller (1/Max width)."><input type="radio" name="cs-st-col-mode" value="fixed"> Fixed Width</label><br>
+                        <label title="If fewer cards than Max Cols, cards expand to fill row."><input type="radio" name="cs-st-col-mode" value="responsive"> Responsive Fill</label>
+                    </div>
+                </fieldset>
                 <fieldset><legend><b>Layout Spacing</b></legend>Widget Padding (px): <input type="number" id="cs-st-padding" min="0" style="width:60px"> <br>Card Spacing (px): <input type="number" id="cs-st-spacing" min="0" style="width:60px"> <br>Internal Card Padding (px): <input type="number" id="cs-st-internal-padding" min="0" style="width:60px"></fieldset>
                 <fieldset>
                     <legend><b>Field Background</b></legend>
@@ -567,6 +586,10 @@ export const CardConfigEditor = (() => {
                     </div>
                 </fieldset>
                 <fieldset><legend><b>Simple Text Style</b></legend><p class="help-text">For fields where "Use Grist Field Style" is disabled.</p>Color: <input type="color" id="cs-st-simple-textcolor"> Font: <select id="cs-st-simple-textfont"><option>Calibri</option><option>Arial</option><option>Times New Roman</option></select> Size: <input type="number" id="cs-st-simple-textsize" min="8" style="width:60px">px</fieldset>
+                <fieldset>
+                    <legend><b>Debug</b></legend>
+                    <label><input type="checkbox" id="cs-st-show-debug"> Show Schema Debug Info (TableLens output)</label>
+                </fieldset>
             </div>
         `;
         contentArea.appendChild(tabEl);
@@ -615,6 +638,8 @@ export const CardConfigEditor = (() => {
         // --- Populate Data & Initialize UI State ---
         const allFields = state.fields.map(f => f.colId);
         populateFieldSelect(tabEl.querySelector("#cs-st-cardscolorfield"), allFields);
+        populateFieldSelect(tabEl.querySelector("#cs-st-cardscolor-text-field"), allFields);
+        populateFieldSelect(tabEl.querySelector("#cs-st-cardscolor-font-field"), allFields);
         populateFieldSelect(tabEl.querySelector("#cs-st-border-field"), allFields);
         populateFieldSelect(tabEl.querySelector("#cs-st-topbar-field"), allFields);
         populateFieldSelect(tabEl.querySelector("#cs-st-handle-field"), allFields);
@@ -699,7 +724,15 @@ export const CardConfigEditor = (() => {
     }
 
     function populateStylingTab(tabEl) {
-        const s = state.styling; let bgModeInput = tabEl.querySelector(`input[name='bgmode'][value='${s.widgetBackgroundMode}']`); if (bgModeInput) { bgModeInput.checked = true; } else { tabEl.querySelector("input[name='bgmode'][value='solid']").checked = true; } tabEl.querySelector("#cs-st-bgcolor").value = s.widgetBackgroundSolidColor; tabEl.querySelector("#cs-st-bggradient-type").value = s.widgetBackgroundGradientType || 'linear-gradient(to right, {c1}, {c2})'; tabEl.querySelector("#cs-st-bggradient-c1").value = s.widgetBackgroundGradientColor1 || '#f9f9f9'; tabEl.querySelector("#cs-st-bggradient-c2").value = s.widgetBackgroundGradientColor2 || '#e9e9e9'; tabEl.querySelector(`input[name='cardscolormode'][value='${s.cardsColorMode}']`).checked = true; tabEl.querySelector("#cs-st-cardcolor").value = s.cardsColorSolidColor; tabEl.querySelector("#cs-st-cardgradient-type").value = s.cardsColorGradientType || 'linear-gradient(to right, {c1}, {c2})'; tabEl.querySelector("#cs-st-cardgradient-c1").value = s.cardsColorGradientColor1 || '#ffffff'; tabEl.querySelector("#cs-st-cardgradient-c2").value = s.cardsColorGradientColor2 || '#f0f0f0'; tabEl.querySelector("#cs-st-cardscolorfield").value = s.cardsColorField || ""; tabEl.querySelector("#cs-st-cardscolor-apply-text").checked = s.cardsColorApplyText === true; tabEl.querySelector("#cs-st-border-thickness").value = s.cardBorderThickness; tabEl.querySelector(`input[name='bordermode'][value='${s.cardBorderMode}']`).checked = true; tabEl.querySelector("#cs-st-border-color").value = s.cardBorderSolidColor; tabEl.querySelector("#cs-st-border-field").value = s.cardBorderField || ""; tabEl.querySelector("#cs-st-titlecolor").value = s.cardTitleFontColor; tabEl.querySelector("#cs-st-titlefont").value = s.cardTitleFontStyle; tabEl.querySelector("#cs-st-titlesize").value = parseInt(s.cardTitleFontSize, 10); tabEl.querySelector("#cs-st-topbar-enabled").checked = s.cardTitleTopBarEnabled; tabEl.querySelector(`input[name='topbarmode'][value='${s.cardTitleTopBarMode}']`).checked = true; tabEl.querySelector("#cs-st-topbar-color").value = s.cardTitleTopBarSolidColor; tabEl.querySelector("#cs-st-topbargradient-type").value = s.cardTitleTopBarGradientType || 'linear-gradient(to right, {c1}, {c2})'; tabEl.querySelector("#cs-st-topbargradient-c1").value = s.cardTitleTopBarGradientColor1 || '#dddddd'; tabEl.querySelector("#cs-st-topbargradient-c2").value = s.cardTitleTopBarGradientColor2 || '#cccccc'; tabEl.querySelector("#cs-st-topbar-field").value = s.cardTitleTopBarField || ""; tabEl.querySelector("#cs-st-topbar-apply-text").checked = s.cardTitleTopBarApplyText === true; tabEl.querySelector("#cs-st-topbar-lblcolor").value = s.cardTitleTopBarLabelFontColor; tabEl.querySelector("#cs-st-topbar-lblfont").value = s.cardTitleTopBarLabelFontStyle; tabEl.querySelector("#cs-st-topbar-lblsize").value = parseInt(s.cardTitleTopBarLabelFontSize, 10); tabEl.querySelector("#cs-st-topbar-datacolor").value = s.cardTitleTopBarDataFontColor; tabEl.querySelector("#cs-st-topbar-datafont").value = s.cardTitleTopBarDataFontStyle; tabEl.querySelector("#cs-st-topbar-datasize").value = parseInt(s.cardTitleTopBarDataFontSize, 10); tabEl.querySelector("#cs-st-handle-width").value = parseInt(s.handleAreaWidth, 10); tabEl.querySelector(`input[name='handlemode'][value='${s.handleAreaMode}']`).checked = true; tabEl.querySelector("#cs-st-handle-color").value = s.handleAreaSolidColor; tabEl.querySelector("#cs-st-handle-field").value = s.handleAreaField || ""; tabEl.querySelector("#cs-st-padding").value = parseInt(s.widgetPadding, 10); tabEl.querySelector("#cs-st-spacing").value = parseInt(s.cardsSpacing, 10);
+        const s = state.styling; let bgModeInput = tabEl.querySelector(`input[name='bgmode'][value='${s.widgetBackgroundMode}']`); if (bgModeInput) { bgModeInput.checked = true; } else { tabEl.querySelector("input[name='bgmode'][value='solid']").checked = true; } tabEl.querySelector("#cs-st-bgcolor").value = s.widgetBackgroundSolidColor; tabEl.querySelector("#cs-st-bggradient-type").value = s.widgetBackgroundGradientType || 'linear-gradient(to right, {c1}, {c2})'; tabEl.querySelector("#cs-st-bggradient-c1").value = s.widgetBackgroundGradientColor1 || '#f9f9f9'; tabEl.querySelector("#cs-st-bggradient-c2").value = s.widgetBackgroundGradientColor2 || '#e9e9e9'; tabEl.querySelector(`input[name='cardscolormode'][value='${s.cardsColorMode}']`).checked = true; tabEl.querySelector("#cs-st-cardcolor").value = s.cardsColorSolidColor; tabEl.querySelector("#cs-st-cardgradient-type").value = s.cardsColorGradientType || 'linear-gradient(to right, {c1}, {c2})'; tabEl.querySelector("#cs-st-cardgradient-c1").value = s.cardsColorGradientColor1 || '#ffffff'; tabEl.querySelector("#cs-st-cardgradient-c2").value = s.cardsColorGradientColor2 || '#f0f0f0'; tabEl.querySelector("#cs-st-cardscolorfield").value = s.cardsColorField || ""; tabEl.querySelector("#cs-st-cardscolor-apply-text").checked = s.cardsColorApplyText === true;
+        tabEl.querySelector("#cs-st-cardscolor-text-field").value = s.cardsColorTextField || ""; tabEl.querySelector("#cs-st-cardscolor-font-field").value = s.cardsColorFontField || "";
+        tabEl.querySelector("#cs-st-border-thickness").value = s.cardBorderThickness; tabEl.querySelector(`input[name='bordermode'][value='${s.cardBorderMode}']`).checked = true; tabEl.querySelector("#cs-st-border-color").value = s.cardBorderSolidColor; tabEl.querySelector("#cs-st-border-field").value = s.cardBorderField || ""; tabEl.querySelector("#cs-st-titlecolor").value = s.cardTitleFontColor; tabEl.querySelector("#cs-st-titlefont").value = s.cardTitleFontStyle; tabEl.querySelector("#cs-st-titlesize").value = parseInt(s.cardTitleFontSize, 10); tabEl.querySelector("#cs-st-topbar-enabled").checked = s.cardTitleTopBarEnabled; tabEl.querySelector(`input[name='topbarmode'][value='${s.cardTitleTopBarMode}']`).checked = true; tabEl.querySelector("#cs-st-topbar-color").value = s.cardTitleTopBarSolidColor; tabEl.querySelector("#cs-st-topbargradient-type").value = s.cardTitleTopBarGradientType || 'linear-gradient(to right, {c1}, {c2})'; tabEl.querySelector("#cs-st-topbargradient-c1").value = s.cardTitleTopBarGradientColor1 || '#dddddd'; tabEl.querySelector("#cs-st-topbargradient-c2").value = s.cardTitleTopBarGradientColor2 || '#cccccc'; tabEl.querySelector("#cs-st-topbar-field").value = s.cardTitleTopBarField || ""; tabEl.querySelector("#cs-st-topbar-apply-text").checked = s.cardTitleTopBarApplyText === true; tabEl.querySelector("#cs-st-topbar-lblcolor").value = s.cardTitleTopBarLabelFontColor; tabEl.querySelector("#cs-st-topbar-lblfont").value = s.cardTitleTopBarLabelFontStyle; tabEl.querySelector("#cs-st-topbar-lblsize").value = parseInt(s.cardTitleTopBarLabelFontSize, 10); tabEl.querySelector("#cs-st-topbar-datacolor").value = s.cardTitleTopBarDataFontColor; tabEl.querySelector("#cs-st-topbar-datafont").value = s.cardTitleTopBarDataFontStyle;         tabEl.querySelector("#cs-st-topbar-datasize").value = parseInt(s.cardTitleTopBarDataFontSize, 10); tabEl.querySelector("#cs-st-handle-width").value = parseInt(s.handleAreaWidth, 10); tabEl.querySelector(`input[name='handlemode'][value='${s.handleAreaMode}']`).checked = true; tabEl.querySelector("#cs-st-handle-color").value = s.handleAreaSolidColor; tabEl.querySelector("#cs-st-handle-field").value = s.handleAreaField || ""; tabEl.querySelector("#cs-st-padding").value = parseInt(s.widgetPadding, 10); tabEl.querySelector("#cs-st-spacing").value = parseInt(s.cardsSpacing, 10);
+        
+        tabEl.querySelector("#cs-st-col-limit").value = s.cardsColumnLimit || 1;
+        const colMode = s.cardsColumnMode || 'fixed';
+        const colModeRadio = tabEl.querySelector(`input[name="cs-st-col-mode"][value="${colMode}"]`);
+        if (colModeRadio) colModeRadio.checked = true;
+
         tabEl.querySelector("#cs-st-internal-padding").value = parseInt(s.internalCardPadding, 10); tabEl.querySelector("#cs-st-sel-enabled").checked = s.selectedCard.enabled; tabEl.querySelector("#cs-st-sel-scale").value = s.selectedCard ? ((s.selectedCard.scale - 1) * 100).toFixed(0) : 0;
         s.fieldBackground = s.fieldBackground || {};
         tabEl.querySelector("#cs-st-fieldbg-enabled").checked = s.fieldBackground.enabled === true;
@@ -722,6 +755,8 @@ export const CardConfigEditor = (() => {
         tabEl.querySelector('#cs-st-label-color').value = ls.color;
         tabEl.querySelector('#cs-st-label-font').value = ls.font;
         tabEl.querySelector('#cs-st-label-size').value = parseInt(ls.size, 10);
+
+        tabEl.querySelector('#cs-st-show-debug').checked = s.showDebugInfo === true;
     }
     function readStylingTab(container) {
         const tabEl = container;
@@ -750,6 +785,9 @@ export const CardConfigEditor = (() => {
         } else if (cardsMode === 'conditional') {
             s.cardsColorField = tabEl.querySelector("#cs-st-cardscolorfield").value || null;
             s.cardsColorApplyText = tabEl.querySelector("#cs-st-cardscolor-apply-text").checked;
+        } else if (cardsMode === 'text-value') {
+            s.cardsColorTextField = tabEl.querySelector("#cs-st-cardscolor-text-field").value || null;
+            s.cardsColorFontField = tabEl.querySelector("#cs-st-cardscolor-font-field").value || null;
         }
 
         s.cardBorderThickness = parseInt(tabEl.querySelector("#cs-st-border-thickness").value, 10) || 0;
@@ -794,8 +832,13 @@ export const CardConfigEditor = (() => {
             s.handleAreaField = tabEl.querySelector("#cs-st-handle-field").value || null;
         }
 
-        s.handleAreaWidth = `${parseInt(tabEl.querySelector("#cs-st-handle-width").value, 10) || 8}px`;
+        const handleVal = parseInt(tabEl.querySelector("#cs-st-handle-width").value, 10);
+        s.handleAreaWidth = `${isNaN(handleVal) ? 8 : handleVal}px`;
         s.widgetPadding = `${parseInt(tabEl.querySelector("#cs-st-padding").value, 10) || 0}px`;
+        
+        s.cardsColumnLimit = parseInt(tabEl.querySelector("#cs-st-col-limit").value, 10) || 1;
+        s.cardsColumnMode = tabEl.querySelector('input[name="cs-st-col-mode"]:checked')?.value || 'fixed';
+
         s.cardsSpacing = `${parseInt(tabEl.querySelector("#cs-st-spacing").value, 10) || 0}px`;
         s.internalCardPadding = `${parseInt(tabEl.querySelector("#cs-st-internal-padding").value, 10) || 10}px`;
         s.selectedCard = { enabled: tabEl.querySelector("#cs-st-sel-enabled").checked, scale: 1 + ((parseInt(tabEl.querySelector("#cs-st-sel-scale").value, 10) || 0) / 100), colorEffect: "none" };
@@ -826,6 +869,8 @@ export const CardConfigEditor = (() => {
             font: tabEl.querySelector('#cs-st-label-font').value,
             size: `${parseInt(tabEl.querySelector('#cs-st-label-size').value, 10)}px`
         };
+
+        s.showDebugInfo = tabEl.querySelector('#cs-st-show-debug').checked;
 
         return s;
     }
@@ -1435,6 +1480,32 @@ export const CardConfigEditor = (() => {
                 </div>
 
                 <hr>
+                <h4>Data Font Style</h4>
+                <div class="form-group">
+                    <label>Font Family:</label>
+                    <select id="fs-data-font">
+                        <option value="">Inherit (Default)</option>
+                        <option value="Arial">Arial</option>
+                        <option value="Calibri">Calibri</option>
+                        <option value="Times New Roman">Times New Roman</option>
+                        <option value="Courier New">Courier New</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Font Size (px):</label>
+                    <input type="number" id="fs-data-size" min="8" style="width: 60px;" placeholder="Default">
+                </div>
+                <div class="form-group">
+                    <label>Font Color:</label>
+                    <input type="color" id="fs-data-color" value="#000000"> 
+                    <label><input type="checkbox" id="fs-data-color-default" checked> Use Default</label>
+                </div>
+                <div class="form-group">
+                    <label><input type="checkbox" id="fs-data-bold"> Bold</label>
+                    <label><input type="checkbox" id="fs-data-italic" style="margin-left: 15px;"> Italic</label>
+                </div>
+
+                <hr>
                 <div><label>Card Rows: <input type="number" id="fs-card-rows" min="1" style="width:50px;"></label></div>
                 <div><label><input type="checkbox" id="fs-lv"> Show Label</label></div>
                 <div>Label Position: <label><input type="radio" name="fs-lp" value="above"> Above</label> <label><input type="radio" name="fs-lp" value="left"> Left</label> </div>
@@ -1570,6 +1641,30 @@ export const CardConfigEditor = (() => {
         widgetSelect.addEventListener('change', renderWidgetOptions);
         renderWidgetOptions(); // Initial render
 
+        // --- Populate Data Font Style UI ---
+        const ds = s.dataStyle || {};
+        _fieldStylePopup.querySelector('#fs-data-font').value = ds.font || "";
+        _fieldStylePopup.querySelector('#fs-data-size').value = ds.size ? parseInt(ds.size, 10) : "";
+        _fieldStylePopup.querySelector('#fs-data-bold').checked = ds.bold === true;
+        _fieldStylePopup.querySelector('#fs-data-italic').checked = ds.italic === true;
+        
+        const colorInput = _fieldStylePopup.querySelector('#fs-data-color');
+        const colorDefaultCheckbox = _fieldStylePopup.querySelector('#fs-data-color-default');
+        
+        if (ds.color) {
+            colorInput.value = ds.color;
+            colorDefaultCheckbox.checked = false;
+            colorInput.disabled = false;
+        } else {
+            colorInput.value = "#000000";
+            colorDefaultCheckbox.checked = true;
+            colorInput.disabled = true;
+        }
+
+        colorDefaultCheckbox.addEventListener('change', (e) => {
+            colorInput.disabled = e.target.checked;
+        });
+
         _fieldStylePopup.querySelector('#fs-lv').checked = s.labelVisible;
         _fieldStylePopup.querySelector(`input[name='fs-lp'][value='${s.labelPosition}']`).checked = true;
         _fieldStylePopup.querySelector('#fs-dj').value = s.dataJustify;
@@ -1627,7 +1722,14 @@ export const CardConfigEditor = (() => {
                 maxHeightRows: parseInt(_fieldStylePopup.querySelector('#fs-hr').value, 10) || 1,
                 isTitleField: _fieldStylePopup.querySelector('#fs-itf').checked,
                 widget: _fieldStylePopup.querySelector('#fs-widget-type').value,
-                widgetOptions: tempWidgetOptions
+                widgetOptions: tempWidgetOptions,
+                dataStyle: {
+                    font: _fieldStylePopup.querySelector('#fs-data-font').value,
+                    size: _fieldStylePopup.querySelector('#fs-data-size').value ? `${_fieldStylePopup.querySelector('#fs-data-size').value}px` : null,
+                    color: _fieldStylePopup.querySelector('#fs-data-color-default').checked ? null : _fieldStylePopup.querySelector('#fs-data-color').value,
+                    bold: _fieldStylePopup.querySelector('#fs-data-bold').checked,
+                    italic: _fieldStylePopup.querySelector('#fs-data-italic').checked
+                }
             };
             fieldDef.style = { ...DEFAULT_FIELD_STYLE, ...newStyle };
 

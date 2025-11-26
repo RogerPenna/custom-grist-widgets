@@ -48,6 +48,9 @@ export const DrawerConfigEditor = (() => {
                 <label for="drawerWidthSelector">Largura:</label>
                 <select id="drawerWidthSelector">${['25%', '40%', '50%', '60%', '75%'].map(w => `<option value="${w}" ${configData.width === w ? 'selected' : ''}>${w}</option>`).join('')}</select>
             </div>
+            <div class="drawer-config-section">
+                 <label><input type="checkbox" id="showDebugInfoCheckbox" ${configData.showDebugInfo ? 'checked' : ''}> Show Schema Debug Info (in Drawer)</label>
+            </div>
             <div id="workflowConfigContainer"></div>
             <div class="config-section-title">Layout e Regras de Campos</div>
             <div id="stageSelectorContainer" class="drawer-config-section" style="display: none;">
@@ -107,6 +110,7 @@ export const DrawerConfigEditor = (() => {
             tableId: currentTableId,
             displayMode: container.querySelector('#displayModeSelector').value,
             width: container.querySelector('#drawerWidthSelector').value,
+            showDebugInfo: container.querySelector('#showDebugInfoCheckbox')?.checked || false,
             tabs: [],
             refListFieldConfig: {},
             styleOverrides: {},
@@ -241,6 +245,7 @@ export const DrawerConfigEditor = (() => {
         const currentWidgetOverride = configData.widgetOverrides?.[col.colId];
 
         if (col.type === 'Text') {
+            const isColorPicker = currentWidgetOverride === 'ColorPicker' || currentWidgetOverride?.widget === 'ColorPicker';
             widgetConfigHtml = `
             <div class="field-card-extra-actions">
                  <button type="button" class="btn btn-secondary btn-sm toggle-widget-config">Configurar Widget</button>
@@ -248,8 +253,8 @@ export const DrawerConfigEditor = (() => {
             <div class="widget-config-panel" style="display: none;">
                 <h5>Tipo de Widget para "${col.label}"</h5>
                 <div class="widget-config-list">
-                    <label><input type="radio" name="widget-type-${col.colId}" value="" ${!currentWidgetOverride ? 'checked' : ''}> Padrão (Texto)</label>
-                    <label><input type="radio" name="widget-type-${col.colId}" value="ColorPicker" ${currentWidgetOverride === 'ColorPicker' ? 'checked' : ''}> Seletor de Cor</label>
+                    <label><input type="radio" name="widget-type-${col.colId}" value="" ${!isColorPicker ? 'checked' : ''}> Padrão (Texto)</label>
+                    <label><input type="radio" name="widget-type-${col.colId}" value="ColorPicker" ${isColorPicker ? 'checked' : ''}> Seletor de Cor</label>
                 </div>
             </div>
         `;

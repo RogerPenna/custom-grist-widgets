@@ -31,7 +31,7 @@ export const CardSystem = (() => {
     labelStyle: { bold: false, color: '#333333', font: 'Calibri', size: '12px' },
     widgetBackgroundMode: "solid", widgetBackgroundSolidColor: "#f9f9f9", widgetBackgroundGradientType: "linear-gradient(to right, {c1}, {c2})", widgetBackgroundGradientColor1: "#f9f9f9", widgetBackgroundGradientColor2: "#e9e9e9",
     cardsColorMode: "solid", cardsColorSolidColor: "#ffffff", cardsColorGradientType: "linear-gradient(to right, {c1}, {c2})", cardsColorGradientColor1: "#ffffff", cardsColorGradientColor2: "#f0f0f0",
-    cardsColorApplyText: false, // <-- NOVA PROPRIEDADE
+    cardsColorApplyText: false, cardsColorTextField: null, cardsColorFontField: null, // <-- NOVA PROPRIEDADE
     cardBorderThickness: 0, cardBorderMode: "solid", cardBorderSolidColor: "#cccccc",
     cardTitleFontColor: "#000000", cardTitleFontStyle: "Calibri", cardTitleFontSize: "20px",
     cardTitleTopBarEnabled: false, cardTitleTopBarMode: "solid", cardTitleTopBarSolidColor: "#dddddd", cardTitleTopBarGradientType: "linear-gradient(to right, {c1}, {c2})", cardTitleTopBarGradientColor1: "#dddddd", cardTitleTopBarGradientColor2: "#cccccc", cardTitleTopBarLabelFontColor: "#000000", cardTitleTopBarLabelFontStyle: "Calibri", cardTitleTopBarLabelFontSize: "16px", cardTitleTopBarDataFontColor: "#333333", cardTitleTopBarDataFontStyle: "Calibri", cardTitleTopBarDataFontSize: "16px",
@@ -109,14 +109,33 @@ export const CardSystem = (() => {
     container.style.background = resolveStyle(null, null, styling.widgetBackgroundMode, styling.widgetBackgroundSolidColor, { type: styling.widgetBackgroundGradientType, c1: styling.widgetBackgroundGradientColor1, c2: styling.widgetBackgroundGradientColor2 }, styling.widgetBackgroundField);
     container.style.padding = styling.widgetPadding;
 
+    // --- Grid Layout Logic (Final Fixed Version) ---
+    const colLimit = styling.cardsColumnLimit || 1;
+    const colMode = styling.cardsColumnMode || 'fixed';
+    let numCols = colLimit;
+
+    if (colMode === 'responsive') {
+        const totalRecords = records.length;
+        numCols = Math.min(totalRecords, colLimit);
+        if (numCols < 1) numCols = 1;
+    }
+
+    container.style.display = 'grid';
+    container.style.gridTemplateColumns = `repeat(${numCols}, 1fr)`;
+    container.style.gridAutoRows = 'min-content'; // Essential for nested grids
+    container.style.gap = styling.cardsSpacing;
+    // ---------------------------------------------------
+
     records.forEach((record) => {
       const cardEl = document.createElement("div");
       cardEl.className = "cs-card";
       cardEl.style.display = "grid";
       cardEl.style.gridTemplateRows = `repeat(${numRows}, auto)`;
+      
       cardEl.style.gridTemplateColumns = `repeat(${NUM_COLS}, 1fr)`;
       cardEl.style.gap = "4px";
-      cardEl.style.marginBottom = styling.cardsSpacing;
+      // cardEl.style.marginBottom = styling.cardsSpacing; // Removed: grid gap handles spacing now
+      cardEl.style.alignSelf = "start"; // Essential: Prevent vertical stretching
       cardEl.style.borderRadius = "8px";
       cardEl.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)";
       cardEl.style.position = "relative";
@@ -124,7 +143,7 @@ export const CardSystem = (() => {
       cardEl.style.transition = "all 0.2s ease-in-out";
 
       const internalPadding = parseInt(styling.internalCardPadding, 10) || 10;
-      const handleWidth = parseInt(styling.handleAreaWidth, 10) || 8;
+      const handleWidth = parseInt(styling.handleAreaWidth, 10); // Don't default to 8 if 0
 
       cardEl.style.padding = `${internalPadding}px`;
       cardEl.style.paddingLeft = `${internalPadding + handleWidth}px`;
@@ -143,6 +162,15 @@ export const CardSystem = (() => {
         } else {
           // Fallback se o campo configurado não for encontrado no schema
           cardEl.style.background = styling.cardsColorSolidColor;
+        }
+      } else if (styling.cardsColorMode === 'text-value') {
+        if (styling.cardsColorTextField) {
+             const bgVal = record[styling.cardsColorTextField];
+             if (bgVal) cardEl.style.background = bgVal;
+        }
+        if (styling.cardsColorFontField) {
+             const fontVal = record[styling.cardsColorFontField];
+             if (fontVal) cardEl.style.color = fontVal;
         }
       } else {
         // A lógica antiga para Solid e Gradient permanece a mesma
@@ -167,6 +195,11 @@ export const CardSystem = (() => {
       handleEl.style.borderTopLeftRadius = "8px";
       handleEl.style.borderBottomLeftRadius = "8px";
       cardEl.appendChild(handleEl);
+      
+      if (handleWidth === 0) { // If width is 0, hide the handle completely
+        handleEl.style.display = "none";
+      }
+
       if (viewMode === "burger") {
         const burger = document.createElement("span");
         burger.innerHTML = "☰";
@@ -332,7 +365,8 @@ export const CardSystem = (() => {
         if (!record.hasOwnProperty(f.colId)) return;
         if (styling.cardTitleTopBarEnabled && fieldStyle.isTitleField) return;
 
-        if (f.row >= 0 && f.row < numRows) {
+        // Removed 'f.row < numRows' check to allow implicit grid rows
+        if (f.row >= 0) {
           const fieldBox = document.createElement("div");
           fieldBox.style.gridRow = `${f.row + 1} / span ${f.rowSpan || 1}`;
           fieldBox.style.gridColumn = `${f.col + 1} / span ${f.colSpan || 1}`;
@@ -348,7 +382,11 @@ export const CardSystem = (() => {
 
           fieldBox.style.display = "flex";
           fieldBox.style.flexDirection = (fieldStyle.labelPosition === 'left' ? "row" : "column");
-          fieldBox.style.gap = (fieldStyle.labelPosition === 'left' ? "8px" : "2px");
+          
+          // Fix for spacing issue when label is hidden:
+          // Only apply gap if label is visible
+          fieldBox.style.gap = fieldStyle.labelVisible ? (fieldStyle.labelPosition === 'left' ? "8px" : "2px") : "0px";
+          
           fieldBox.style.alignItems = (fieldStyle.labelPosition === 'left' ? "center" : "stretch");
 
           if (fieldStyle.labelVisible) {
@@ -441,6 +479,18 @@ export const CardSystem = (() => {
       });
       container.appendChild(cardEl);
     });
+
+    // --- DEBUG INFO RENDER ---
+    if (styling.showDebugInfo) {
+        const debugDiv = document.createElement('div');
+        debugDiv.style.marginTop = '20px';
+        debugDiv.style.padding = '10px';
+        debugDiv.style.border = '1px solid red';
+        debugDiv.style.backgroundColor = '#fff0f0';
+        debugDiv.innerHTML = `<h3>Schema Debug Info (TableLens)</h3>
+        <textarea rows="10" style="width: 100%; font-family: monospace;">${JSON.stringify(_lastSchema, null, 2)}</textarea>`;
+        container.appendChild(debugDiv);
+    }
   }
 
   // Function to filter records based on a search term

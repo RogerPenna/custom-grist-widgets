@@ -70,35 +70,54 @@ async function _handleDelete() {
 
 async function _handleSave() {
     const changes = {};
-    const formElements = drawerPanel.querySelectorAll('[data-col-id]');
+    // Use more specific selector to only target inputs inside the value container
+    const formElements = drawerPanel.querySelectorAll('.drawer-field-value [data-col-id]');
     const formColIds = new Set(Array.from(formElements).map(el => el.dataset.colId));
+
+    console.log('[Drawer Debug] _handleSave called. Found formElements:', formElements.length);
+    console.log('[Drawer Debug] Form Column IDs:', Array.from(formColIds));
 
     // First, process the values from the form
     formElements.forEach(el => {
         const colId = el.dataset.colId;
         const colSchema = currentSchema[colId];
-        if (colSchema && !colSchema.isFormula) {
-            let value;
-            if (colSchema.type === 'Bool' && el.tagName === 'SELECT') {
-                if (el.value === 'true') value = true; else if (el.value === 'false') value = false; else value = null;
-            } else if (colSchema.type === 'ChoiceList' && el.tagName === 'SELECT' && el.multiple) {
-                const selectedOptions = Array.from(el.selectedOptions).map(opt => opt.value);
-                value = selectedOptions.length > 0 ? ['L', ...selectedOptions] : null;
-            } else if (el.type === 'checkbox') {
-                value = el.checked;
-            } else if (colSchema.type.startsWith('Date')) {
-                value = el.value;
-                if (!value) { value = null; } else if (colSchema.type === 'Date') {
-                    const parts = value.split('-');
-                    value = Date.UTC(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10)) / 1000;
-                } else { value = new Date(value).getTime() / 1000; }
-            } else if (colSchema.type.startsWith('Ref')) {
-                // Ensure reference values are numbers
-                value = el.value ? Number(el.value) : 0;
-            }
-            else { value = el.value; }
-            changes[colId] = value;
+        
+        console.log(`[Drawer Debug] Processing element for ${colId}. Tag: ${el.tagName}, Type: ${el.type}, Value: '${el.value}'`);
+
+        if (!colSchema) {
+            console.warn(`[Drawer Debug] Schema NOT FOUND for ${colId}. Skipping.`);
+            return;
         }
+
+        if (colSchema.isFormula) {
+             console.log(`[Drawer Debug] Field ${colId} is a FORMULA. Skipping save.`);
+             return; 
+        }
+
+        let value;
+        if (colSchema.type === 'Bool' && el.tagName === 'SELECT') {
+            if (el.value === 'true') value = true; else if (el.value === 'false') value = false; else value = null;
+        } else if (colSchema.type === 'ChoiceList' && el.tagName === 'SELECT' && el.multiple) {
+            const selectedOptions = Array.from(el.selectedOptions).map(opt => opt.value);
+            value = selectedOptions.length > 0 ? ['L', ...selectedOptions] : null;
+        } else if (el.type === 'checkbox') {
+            value = el.checked;
+        } else if (el.type === 'color') {
+                value = el.value;
+        } else if (colSchema.type.startsWith('Date')) {
+            value = el.value;
+            if (!value) { value = null; } else if (colSchema.type === 'Date') {
+                const parts = value.split('-');
+                value = Date.UTC(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10)) / 1000;
+            } else { value = new Date(value).getTime() / 1000; }
+        } else if (colSchema.type.startsWith('Ref')) {
+            // Ensure reference values are numbers
+            value = el.value ? Number(el.value) : 0;
+        }
+        else { value = el.value; }
+        
+        console.log(`[Drawer Debug] Value resolved for ${colId}:`, value);
+        changes[colId] = value;
     });
 
     // Now, ensure fields not in the form are preserved, IGNORING formula columns
@@ -109,8 +128,12 @@ async function _handleSave() {
         }
     }
 
+    console.log('[Drawer Debug] Final changes object:', changes);
+
     if (Object.keys(changes).length > 0) {
         await dataWriter.updateRecord(currentTableId, currentRecordId, changes);
+    } else {
+        console.warn('[Drawer Debug] No changes detected to save.');
     }
     publish('data-changed', { tableId: currentTableId, recordId: currentRecordId, action: 'update' });
     isEditing = false;
@@ -335,6 +358,17 @@ async function _renderDrawerContent() {
 
     // Publish an event to notify that the drawer has finished rendering.
     publish('drawer-rendered', { tableId: currentTableId, recordId: currentRecordId, isEditing: isEditing });
+
+    // --- DEBUG INFO RENDER ---
+    if (currentDrawerOptions.showDebugInfo) {
+        const debugDiv = document.createElement('div');
+        debugDiv.style.padding = '10px';
+        debugDiv.style.borderTop = '2px solid red';
+        debugDiv.style.backgroundColor = '#fff0f0';
+        debugDiv.innerHTML = `<h3>Schema Debug Info (TableLens)</h3>
+        <textarea rows="10" style="width: 100%; font-family: monospace;">${JSON.stringify(currentSchema, null, 2)}</textarea>`;
+        drawerPanel.querySelector('.drawer-body').appendChild(debugDiv);
+    }
 }
 
 
@@ -397,7 +431,7 @@ function renderSingleField(panelEl, colSchema, record, lockedFields, requiredFie
     }
 
     if (colSchema.description && colSchema.description.trim() !== '') {
-        const sanitizedDescription = colSchema.description.replace(/"/g, '"');
+        const sanitizedDescription = colSchema.description.replace(/"/g, '&quot;');
         labelHtml += ` <span class="grf-tooltip-trigger" data-tooltip="${sanitizedDescription}">?</span>`;
     }
 
@@ -410,11 +444,15 @@ function renderSingleField(panelEl, colSchema, record, lockedFields, requiredFie
     row.appendChild(valueContainer);
     panelEl.appendChild(row);
 
+    // Treat formula columns as locked to prevent editing in UI, matching save logic
+    const isLocked = lockedFields.includes(colSchema.colId); // Reverted: Do not auto-lock formulas.
+
     const renderOptions = {
         container: valueContainer,
         colSchema: colSchema,
         record: record,
         isEditing: isEditing,
+        isLocked: isLocked, // Pass explicit locked state (includes formulas)
         labelElement: label,
         styleOverride: styleOverrides[colSchema.colId],
         tableLens: tableLens,
