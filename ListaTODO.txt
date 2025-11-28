@@ -4,6 +4,40 @@
 
 ### Tarefas Concluídas
 
+- [DONE] **Card Grid Layout (Multicoluna):**
+  - Implementado layout de grid responsivo para o sistema de cards.
+  - Adicionadas opções de configuração "Grid Columns" no ConfigManager:
+    - `Max Columns`: Define o número máximo de colunas.
+    - `Distribution Mode`: 'Fixed Width' ou 'Responsive Fill'.
+  - Refatorado o `CardSystem.js` para usar CSS Grid no container principal e calcular colunas dinamicamente.
+  - Resolvidos problemas de "merging" e "spilling" de conteúdo ajustando `gridAutoRows` e removendo restrições de altura explícita nos cards.
+
+- [DONE] **Estilização de Dados de Campo Individual:**
+  - Adicionada seção "Data Font Style" no popup de configuração de campo (`config-cards.js`).
+  - Permite configurar Fonte, Tamanho (px), Cor (override), Negrito e Itálico para cada campo individualmente.
+  - Atualizado `grist-field-renderer.js` para aplicar essas sobreposições de estilo.
+
+- [DONE] **Estilização Avançada de Grupos de Ícones:**
+  - Refatorada a UI de configuração de Ícones para um layout Master-Detail (3 colunas).
+  - Adicionado suporte a formas de botão (Círculo/Quadrado).
+  - Adicionado suporte a conteúdo de Texto (Letras) em vez de apenas ícones.
+  - Adicionados controles de cor de fundo (Sólido, Transparente, Overlay Adaptativo).
+  - Adicionado controle de `Overlay Effect` (Lighten/Darken) e `Opacity` para fundos semi-transparentes que se adaptam à cor do card.
+  - Adicionado controle de Borda (Cor e Largura).
+  - Adicionado controle de `Vertical Offset` para posicionar o grupo de ícones (ex: offset negativo para "flutuar" acima do card).
+  - Ajustado o tamanho do ícone SVG para 85% e fonte para 22px para melhor legibilidade e "respiro".
+  - Corrigido problema de cor de ícones SVG não respeitando a cor de texto configurada (uso de `currentColor`).
+
+- [DONE] **Correções no Drawer:**
+  - Resolvido problema onde o Drawer não salvava campos identificados incorretamente como fórmulas.
+  - Ajustada a lógica de `renderSingleField` para não bloquear edição de campos fórmula visualmente (embora o salvamento seja ignorado para fórmulas reais).
+  - Corrigido a persistência da configuração de `ColorPicker` no editor do Drawer.
+  - Implementado "Show Schema Debug Info" no Drawer e no CardViewer para facilitar diagnósticos.
+
+- [DONE] **Correção de Layout de Card:**
+  - Removido o espaçamento extra (gap) que persistia quando o label de um campo estava oculto.
+  - Corrigido o comportamento do `handle` do card: agora pode ser ocultado definindo a largura como `0`.
+
 - [DONE] **Implementar funcionalidade de Salvar/Carregar Estilos de Card:**
   - Adicionado tipo de componente "Card Style" ao Gerenciador de Configurações.
   - Implementado editor simplificado (`config-card-style.js`) para estilos de card.
@@ -131,6 +165,11 @@
   - **Resolução:** Implementado um mecanismo para impedir a renderização de RefLists aninhadas. A função `renderField` agora aceita um parâmetro `isChild` e, se detectar que está tentando renderizar uma RefList dentro de outra, exibe uma mensagem de erro em vez de entrar em recursão.
 
 ### Próximas Tarefas
+
+- [PENDING] **Implementar "Receiving Field" (JSON UI Protocol):**
+  - Criar um Widget/Renderer "Dynamic Components" que aceita um JSON string de uma coluna.
+  - O JSON define elementos de UI genéricos (pills, lists, progress bars) e ações.
+  - Isso permitirá criar dashboards complexos e links de navegação (como no BSC) usando fórmulas do Grist, sem hardcoding no CardViewer.
 
 - [DONE] **Filter module not updating correctly:** When using the filter bar, deleting characters or changing the search term after an initial filter does not correctly update the displayed cards. The filter seems to be applied to an already filtered set of records, instead of always filtering the original, complete dataset.
 
