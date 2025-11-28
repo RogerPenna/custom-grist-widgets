@@ -31,7 +31,7 @@ export const CardSystem = (() => {
     labelStyle: { bold: false, color: '#333333', font: 'Calibri', size: '12px' },
     widgetBackgroundMode: "solid", widgetBackgroundSolidColor: "#f9f9f9", widgetBackgroundGradientType: "linear-gradient(to right, {c1}, {c2})", widgetBackgroundGradientColor1: "#f9f9f9", widgetBackgroundGradientColor2: "#e9e9e9",
     cardsColorMode: "solid", cardsColorSolidColor: "#ffffff", cardsColorGradientType: "linear-gradient(to right, {c1}, {c2})", cardsColorGradientColor1: "#ffffff", cardsColorGradientColor2: "#f0f0f0",
-    cardsColorApplyText: false, cardsColorTextField: null, cardsColorFontField: null, // <-- NOVA PROPRIEDADE
+    cardsColorApplyText: false, cardsColorTextField: null, cardsColorFontField: null, cardsColorOverlayEffect: 'darken', cardsColorOverlayOpacity: 10, // <-- NOVA PROPRIEDADE
     cardBorderThickness: 0, cardBorderMode: "solid", cardBorderSolidColor: "#cccccc",
     cardTitleFontColor: "#000000", cardTitleFontStyle: "Calibri", cardTitleFontSize: "20px",
     cardTitleTopBarEnabled: false, cardTitleTopBarMode: "solid", cardTitleTopBarSolidColor: "#dddddd", cardTitleTopBarGradientType: "linear-gradient(to right, {c1}, {c2})", cardTitleTopBarGradientColor1: "#dddddd", cardTitleTopBarGradientColor2: "#cccccc", cardTitleTopBarLabelFontColor: "#000000", cardTitleTopBarLabelFontStyle: "Calibri", cardTitleTopBarLabelFontSize: "16px", cardTitleTopBarDataFontColor: "#333333", cardTitleTopBarDataFontStyle: "Calibri", cardTitleTopBarDataFontSize: "16px",
@@ -106,8 +106,12 @@ export const CardSystem = (() => {
       return;
     }
 
-    container.style.background = resolveStyle(null, null, styling.widgetBackgroundMode, styling.widgetBackgroundSolidColor, { type: styling.widgetBackgroundGradientType, c1: styling.widgetBackgroundGradientColor1, c2: styling.widgetBackgroundGradientColor2 }, styling.widgetBackgroundField);
-    container.style.padding = styling.widgetPadding;
+    if (styling.widgetBackgroundMode === 'transparent' || currentOptions.isRefList) {
+        container.style.background = 'transparent';
+    } else {
+        container.style.background = resolveStyle(null, null, styling.widgetBackgroundMode, styling.widgetBackgroundSolidColor, { type: styling.widgetBackgroundGradientType, c1: styling.widgetBackgroundGradientColor1, c2: styling.widgetBackgroundGradientColor2 }, styling.widgetBackgroundField);
+    }
+    container.style.padding = currentOptions.isRefList ? '0px' : styling.widgetPadding;
 
     // --- Grid Layout Logic (Final Fixed Version) ---
     const colLimit = styling.cardsColumnLimit || 1;
@@ -148,13 +152,16 @@ export const CardSystem = (() => {
       cardEl.style.padding = `${internalPadding}px`;
       cardEl.style.paddingLeft = `${internalPadding + handleWidth}px`;
 
+      let finalCardColor = styling.cardsColorSolidColor; // Default fallback
+
       // --- INÍCIO DA LÓGICA DE ESTILO DO CARD ATUALIZADA ---
       if (styling.cardsColorMode === 'conditional' && styling.cardsColorField) {
         const colSchema = schema[styling.cardsColorField];
         if (colSchema) {
           const fieldStyle = getFieldStyle(record, colSchema, schema);
           // Aplica a cor de fundo (com fallback para a cor sólida padrão)
-          cardEl.style.background = fieldStyle.fillColor || styling.cardsColorSolidColor;
+          finalCardColor = fieldStyle.fillColor || styling.cardsColorSolidColor;
+          cardEl.style.background = finalCardColor;
           // APLICA A COR DE TEXTO SE A OPÇÃO ESTIVER MARCADA
           if (styling.cardsColorApplyText && fieldStyle.textColor) {
             cardEl.style.color = fieldStyle.textColor;
@@ -166,15 +173,25 @@ export const CardSystem = (() => {
       } else if (styling.cardsColorMode === 'text-value') {
         if (styling.cardsColorTextField) {
              const bgVal = record[styling.cardsColorTextField];
-             if (bgVal) cardEl.style.background = bgVal;
+             if (bgVal) {
+                 finalCardColor = bgVal;
+                 cardEl.style.background = bgVal;
+             }
         }
         if (styling.cardsColorFontField) {
              const fontVal = record[styling.cardsColorFontField];
              if (fontVal) cardEl.style.color = fontVal;
         }
+      } else if (styling.cardsColorMode === 'overlay') {
+          const opacity = (parseInt(styling.cardsColorOverlayOpacity, 10) || 0) / 100;
+          const isDarken = styling.cardsColorOverlayEffect === 'darken';
+          const rgb = isDarken ? '0, 0, 0' : '255, 255, 255';
+          finalCardColor = `rgba(${rgb}, ${opacity})`;
+          cardEl.style.background = finalCardColor;
       } else {
         // A lógica antiga para Solid e Gradient permanece a mesma
-        cardEl.style.background = resolveStyle(record, schema, styling.cardsColorMode, styling.cardsColorSolidColor, { type: styling.cardsColorGradientType, c1: styling.cardsColorGradientColor1, c2: styling.cardsColorGradientColor2 }, styling.cardsColorField);
+        finalCardColor = resolveStyle(record, schema, styling.cardsColorMode, styling.cardsColorSolidColor, { type: styling.cardsColorGradientType, c1: styling.cardsColorGradientColor1, c2: styling.cardsColorGradientColor2 }, styling.cardsColorField);
+        cardEl.style.background = finalCardColor;
       }
       // --- FIM DA LÓGICA DE ESTILO DO CARD ATUALIZADA ---
 
@@ -289,6 +306,14 @@ export const CardSystem = (() => {
           groupContainer.style.display = "flex";
           groupContainer.style.gap = "8px";
           groupContainer.style.alignItems = "center";
+          
+          // Vertical Offset
+          if (groupConfig.verticalOffset) {
+              groupContainer.style.transform = `translateY(${groupConfig.verticalOffset}px)`;
+              // Ensure it can overlap if needed, though grid cells might clip. 
+              // z-index might be needed if it goes outside.
+              groupContainer.style.zIndex = "10"; 
+          }
 
           let justifyContent = "center";
           if (groupConfig.alignment === 'left') justifyContent = "flex-start";
@@ -298,23 +323,85 @@ export const CardSystem = (() => {
           groupConfig.buttons.forEach(buttonConfig => {
             const actionButton = document.createElement("button");
             actionButton.className = "cs-action-button";
-            actionButton.innerHTML = getIcon(buttonConfig.icon || 'icon-link');
+            
+            // --- New Styling Logic (Updated) ---
+            const isText = buttonConfig.buttonStyle === 'text';
+            const shape = groupConfig.shape || 'square';
+            const fgColor = groupConfig.iconColor || '#000000';
+            const borderWidth = groupConfig.borderWidth !== undefined ? groupConfig.borderWidth : 1;
+            
+            // Calculate Background
+            let bgColor = '#f0f0f0';
+            if (groupConfig.bgMode === 'transparent') {
+                bgColor = 'transparent';
+            } else if (groupConfig.bgMode === 'solid') {
+                bgColor = groupConfig.backgroundColor || '#f0f0f0';
+            } else if (groupConfig.bgMode === 'overlay') {
+                // Adaptive/Overlay (standalone config)
+                const op = (parseInt(groupConfig.overlayOpacity, 10) || 20) / 100;
+                const rgb = groupConfig.overlayEffect === 'darken' ? '0,0,0' : '255,255,255';
+                bgColor = `rgba(${rgb}, ${op})`;
+            } else if (groupConfig.bgMode === 'match-card') {
+                // Match Card Color + Adjust
+                const effect = groupConfig.overlayEffect || 'lighten';
+                const opacity = groupConfig.overlayOpacity || 20;
+                bgColor = adjustColor(finalCardColor, opacity, effect);
+            } else {
+                // Fallback for legacy
+                bgColor = groupConfig.transparentBackground ? 'transparent' : (groupConfig.backgroundColor || '#f0f0f0');
+            }
+
+            if (isText) {
+                actionButton.textContent = (buttonConfig.text || 'Tx').substring(0, 3); // Limit length
+                actionButton.style.fontFamily = 'sans-serif';
+                actionButton.style.fontWeight = 'bold';
+                actionButton.style.fontSize = '22px'; // Increased from 20px
+            } else {
+                actionButton.innerHTML = getIcon(buttonConfig.icon || 'icon-link');
+            }
+
             actionButton.title = buttonConfig.tooltip || '';
             const iconSize = styling.iconSize || 1.0;
             actionButton.style.width = `${32 * iconSize}px`;
             actionButton.style.height = `${32 * iconSize}px`;
-            actionButton.style.border = "1px solid #ccc";
-            actionButton.style.background = "#f0f0f0";
-            actionButton.style.borderRadius = "5px";
+            
+            // Border Logic
+            actionButton.style.border = groupConfig.borderColor ? `${borderWidth}px solid ${groupConfig.borderColor}` : `${borderWidth}px solid #ccc`;
+            
+            actionButton.style.background = bgColor;
+            actionButton.style.color = fgColor;
+            actionButton.style.borderRadius = shape === 'circle' ? "50%" : "5px";
+            
+            // SVG Fill color fix and Sizing
+            const svgIcon = actionButton.querySelector('svg.icon');
+            if (svgIcon) {
+                // Most Grist icons are stroked. We force stroke to current color.
+                // We avoid forcing fill to currentColor to prevent line icons from filling up.
+                // If an icon is filled, it usually doesn't use stroke.
+                // Best effort: reset fill to allow symbol definition, force stroke if it's main.
+                
+                // Actually, simply setting width/height and letting CSS handle currentColor via inheritance is best.
+                // If it was black, maybe 'color' property wasn't propagating?
+                // Explicitly setting it on the SVG might help.
+                svgIcon.style.color = fgColor; 
+                
+                // We will NOT force fill/stroke here to respect the symbol's own definition (some are fill, some stroke).
+                // Ideally, the SVG symbol uses `currentColor`.
+                
+                svgIcon.style.width = '85%'; // Increased from 75%
+                svgIcon.style.height = '85%';
+            }
+
             actionButton.style.cursor = "pointer";
             actionButton.style.padding = "4px";
             actionButton.style.display = "flex";
             actionButton.style.justifyContent = "center";
             actionButton.style.alignItems = "center";
-            actionButton.style.transition = "background-color 0.2s";
+            actionButton.style.transition = "opacity 0.2s";
 
-            actionButton.addEventListener('mouseenter', () => actionButton.style.background = '#e0e0e0');
-            actionButton.addEventListener('mouseleave', () => actionButton.style.background = '#f0f0f0');
+            actionButton.addEventListener('mouseenter', () => actionButton.style.opacity = '0.8');
+            actionButton.addEventListener('mouseleave', () => actionButton.style.opacity = '1');
+            // -------------------------
 
             actionButton.addEventListener("click", (e) => {
               e.stopPropagation();
@@ -365,7 +452,6 @@ export const CardSystem = (() => {
         if (!record.hasOwnProperty(f.colId)) return;
         if (styling.cardTitleTopBarEnabled && fieldStyle.isTitleField) return;
 
-        // Removed 'f.row < numRows' check to allow implicit grid rows
         if (f.row >= 0) {
           const fieldBox = document.createElement("div");
           fieldBox.style.gridRow = `${f.row + 1} / span ${f.rowSpan || 1}`;
@@ -552,8 +638,14 @@ export const CardSystem = (() => {
     return solidColor;
   }
 
-  function lightenHexColor(hex, percent) {
-    if (!hex || !hex.startsWith('#')) return hex;
+  function adjustColor(hex, percent, effect) {
+    if (!hex) return hex;
+    // Handle RGB/RGBA if passed from computed style
+    if (hex.startsWith('rgb')) {
+        // Simple parsing for now, or fallback
+        return hex; 
+    }
+    if (!hex.startsWith('#')) return hex;
 
     let r = parseInt(hex.slice(1, 3), 16);
     let g = parseInt(hex.slice(3, 5), 16);
@@ -561,9 +653,16 @@ export const CardSystem = (() => {
 
     const p = percent / 100;
 
-    r = Math.round(Math.min(255, r + (255 - r) * p));
-    g = Math.round(Math.min(255, g + (255 - g) * p));
-    b = Math.round(Math.min(255, b + (255 - b) * p));
+    if (effect === 'darken') {
+        r = Math.round(Math.max(0, r - (r * p)));
+        g = Math.round(Math.max(0, g - (g * p)));
+        b = Math.round(Math.max(0, b - (b * p)));
+    } else {
+        // Lighten (default)
+        r = Math.round(Math.min(255, r + (255 - r) * p));
+        g = Math.round(Math.min(255, g + (255 - g) * p));
+        b = Math.round(Math.min(255, b + (255 - b) * p));
+    }
 
     const toHex = c => c.toString(16).padStart(2, '0');
     return `#${toHex(r)}${toHex(g)}${toHex(b)}`;

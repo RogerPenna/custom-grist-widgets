@@ -1,5 +1,5 @@
 // libraries/grist-field-renderer/renderers/render-reflist.js
-import { CardSystem } from '../../grist-card-system/CardSystem.js';
+// import { CardSystem } from '../../grist-card-system/CardSystem.js'; // REMOVED to break circular dependency
 import { openModal } from '../../grist-modal-component/modal-component.js';
 import { GristDataWriter } from '../../grist-data-writer.js';
 import { renderField } from '../grist-field-renderer.js';
@@ -11,8 +11,8 @@ async function handleAdd(options) {
     const { tableId, onUpdate, dataWriter, tableLens, backRefCol, parentRecId, parentTableId, parentRefListColId, parentRecord, fieldConfig } = options;
     if (!parentRecId || typeof parentRecId !== 'number' || parentRecId <= 0) { alert("Ação 'Adicionar' bloqueada."); return; }
     const schema = await tableLens.getTableSchema(tableId);
-    
-    const modalOptions = { title: `Adicionar em ${tableId}`, tableId, record: {}, schema, onSave: async () => {} };
+
+    const modalOptions = { title: `Adicionar em ${tableId}`, tableId, record: {}, schema, onSave: async () => { } };
     if (backRefCol && parentRecId) { modalOptions.record[backRefCol] = parentRecId; }
 
     if (fieldConfig && typeof fieldConfig === 'object') {
@@ -20,7 +20,7 @@ async function handleAdd(options) {
         modalOptions.lockedFields = Object.keys(fieldConfig).filter(key => fieldConfig[key].lockInModal);
         modalOptions.requiredFields = Object.keys(fieldConfig).filter(key => fieldConfig[key].requireInModal);
     }
-    
+
     modalOptions.onSave = async (newRecordFromForm) => {
         const finalRecord = { ...newRecordFromForm };
         if (backRefCol && parentRecId) { finalRecord[backRefCol] = parentRecId; }
@@ -41,15 +41,15 @@ async function handleAdd(options) {
 async function handleEdit(tableId, recordId, onUpdate, dataWriter, tableLens, fieldConfig) {
     const schema = await tableLens.getTableSchema(tableId);
     const record = await tableLens.fetchRecordById(tableId, recordId);
-    
+
     const modalOptions = { title: `Editando Registro ${recordId}`, tableId, record, schema, onSave: async (changes) => { await dataWriter.updateRecord(tableId, recordId, changes); onUpdate(); } };
-    
+
     if (fieldConfig && typeof fieldConfig === 'object') {
         modalOptions.hiddenFields = Object.keys(fieldConfig).filter(key => fieldConfig[key].hideInModal);
         modalOptions.lockedFields = Object.keys(fieldConfig).filter(key => fieldConfig[key].lockInModal);
         modalOptions.requiredFields = Object.keys(fieldConfig).filter(key => fieldConfig[key].requireInModal);
     }
-    
+
     openModal(modalOptions);
 }
 
@@ -65,10 +65,10 @@ export async function renderRefList(options) {
     const iconPath = '../libraries/icons/icons.svg';
     container.innerHTML = '';
     if (isLocked) container.closest('.drawer-field')?.classList.add('is-locked-style');
-    
+
     const referencedTableId = colSchema.type.split(':')[1];
     let sortColumn = 'manualSort', sortDirection = 'asc';
-    
+
     const closeAllMenus = () => { document.querySelectorAll('.reflist-action-menu-dropdown.is-open').forEach(d => d.classList.remove('is-open')); };
 
     const renderContent = async () => {
@@ -117,7 +117,7 @@ export async function renderRefList(options) {
                 sortColumn = sortConfig.colId;
                 sortDirection = sortConfig.sort;
             }
-            
+
             columnsToDisplay = refListConfig.columns
                 .filter(c => c.visible)
                 .map(c => relatedSchema[c.colId])
@@ -133,7 +133,7 @@ export async function renderRefList(options) {
                 columnsToDisplay = allPossibleCols;
             }
         }
-        
+
         let relatedRecords = await tableLens.fetchRelatedRecords(record, colSchema.colId);
         relatedRecords.sort((a, b) => { const vA = a[sortColumn], vB = b[sortColumn]; if (vA < vB) return sortDirection === 'asc' ? -1 : 1; if (vA > vB) return sortDirection === 'asc' ? 1 : -1; return 0; });
 
@@ -149,7 +149,7 @@ export async function renderRefList(options) {
         } else if (refListConfig && refListConfig.maxRows > 0) {
             recordsToRender = relatedRecords.slice(0, refListConfig.maxRows);
         }
-        
+
         if (isCollapsed) {
             // If collapsed, just update the count in the expand button
             const expandButton = container.querySelector('.reflist-expand-button');
@@ -189,12 +189,12 @@ export async function renderRefList(options) {
             const addButton = document.createElement('button');
             addButton.className = 'add-btn';
             addButton.style.marginBottom = '5px';
-            if(isLocked) {
+            if (isLocked) {
                 addButton.disabled = true;
                 addButton.title = 'Este campo está travado.';
             }
             addButton.innerHTML = `<svg class="icon"><use href="${iconPath}#icon-add"></use></svg> Adicionar`;
-            
+
             if (refListConfig && refListConfig.collapsible) {
                 header.insertAdjacentElement('afterend', addButton);
             } else {
@@ -204,7 +204,7 @@ export async function renderRefList(options) {
                 header.appendChild(actionsDiv);
             }
         }
-        
+
         if (refListConfig?.displayAs === 'cards') {
             const cardConfigId = refListConfig.cardConfigId;
             if (!cardConfigId) {
@@ -221,7 +221,9 @@ export async function renderRefList(options) {
             const cardsContainer = document.createElement('div');
             container.appendChild(cardsContainer);
 
-            CardSystem.renderCards(cardsContainer, recordsToRender, cardConfig, relatedSchema, tableLens);
+            // Dynamic import to break circular dependency
+            const { CardSystem } = await import('../../grist-card-system/CardSystem.js');
+            CardSystem.renderCards(cardsContainer, recordsToRender, { ...cardConfig, isRefList: true }, relatedSchema, tableLens);
 
         } else if (refListConfig?.displayAs === 'tabulator') {
             const tabulatorConfigId = refListConfig.tabulatorConfigId;
@@ -302,9 +304,9 @@ export async function renderRefList(options) {
 
             const tabulatorContainer = document.createElement('div');
             tabulatorContainer.className = 'reflist-tabulator-container';
-            tabulatorContainer.style.maxHeight = '300px'; 
+            tabulatorContainer.style.maxHeight = '300px';
             tabulatorContainer.style.overflowY = 'auto';
-            
+
             const style = document.createElement('style');
             style.textContent = `
                 .reflist-tabulator-container .tabulator-placeholder {
@@ -324,7 +326,7 @@ export async function renderRefList(options) {
                 paginationSizeSelector: false,
                 paginationButtonCount: 3,
                 placeholder: "<div style='text-align:center; color:#777;'>No records found</div>", // Removed padding
-                renderComplete: function() {
+                renderComplete: function () {
                     setTimeout(() => {
                         this.redraw(true);
                     }, 0);
@@ -337,7 +339,7 @@ export async function renderRefList(options) {
             const table = document.createElement('table');
             table.className = 'grf-reflist-table';
             if (fieldConfig?._options?.zebra || refListConfig?.zebra) { table.classList.add('is-zebra-striped'); }
-            
+
             const style = document.createElement('style');
             style.textContent = `
                 .grf-reflist-table th.asc::after { content: ' ▲'; color: green; }
@@ -356,22 +358,22 @@ export async function renderRefList(options) {
                     th.classList.add(sortDirection);
                 }
 
-                th.onclick = () => { 
+                th.onclick = () => {
                     const currentSortCol = refListConfig.columns.find(col => col.colId === c.colId);
-                    if(currentSortCol) {
+                    if (currentSortCol) {
                         const currentSort = currentSortCol.sort || 'none';
                         let nextSort = 'asc';
-                        if(currentSort === 'asc') nextSort = 'desc';
-                        if(currentSort === 'desc') nextSort = 'none';
-                        
+                        if (currentSort === 'asc') nextSort = 'desc';
+                        if (currentSort === 'desc') nextSort = 'none';
+
                         refListConfig.columns.forEach(col => col.sort = 'none');
                         currentSortCol.sort = nextSort;
                     }
-                    renderContent(); 
+                    renderContent();
                 };
                 thead.appendChild(th);
             });
-            
+
             const tbody = table.createTBody();
             for (const relRec of recordsToRender) {
                 const tr = tbody.insertRow();
@@ -380,8 +382,8 @@ export async function renderRefList(options) {
                 const menuBtn = document.createElement('button');
                 menuBtn.className = 'reflist-action-menu-btn';
                 menuBtn.disabled = isLocked;
-                menuBtn.innerHTML = `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>`; 
-                
+                menuBtn.innerHTML = `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>`;
+
                 const dropdown = document.createElement('div');
                 dropdown.className = 'reflist-action-menu-dropdown';
                 dropdown.innerHTML = `
@@ -448,8 +450,8 @@ export async function renderRefList(options) {
         const backReferenceColumn = Object.values(relatedSchema).find(col => col?.type === `Ref:${primaryTableId}`);
         const backReferenceColId = backReferenceColumn ? backReferenceColumn.colId : null;
         const finalAddButton = container.querySelector('.add-btn');
-        if(finalAddButton) {
-             finalAddButton.onclick = () => handleAdd({ tableId: referencedTableId, onUpdate: renderContent, dataWriter, tableLens, backRefCol: backReferenceColId, parentRecId: record.id, parentTableId: primaryTableId, parentRefListColId: colSchema.colId, parentRecord: record, fieldConfig });
+        if (finalAddButton) {
+            finalAddButton.onclick = () => handleAdd({ tableId: referencedTableId, onUpdate: renderContent, dataWriter, tableLens, backRefCol: backReferenceColId, parentRecId: record.id, parentTableId: primaryTableId, parentRefListColId: colSchema.colId, parentRecord: record, fieldConfig });
         }
     };
 
