@@ -28,6 +28,11 @@
   - Ajustado o tamanho do ícone SVG para 85% e fonte para 22px para melhor legibilidade e "respiro".
   - Corrigido problema de cor de ícones SVG não respeitando a cor de texto configurada (uso de `currentColor`).
 
+- [DONE] **BSC Widget Integration Fixes:**
+  - **Card Coloring:** Implemented logic to patch card configuration when rendering raw data (bypassing Grist's conditional formatting rules). It now forces `text-value` mode if `corfundocard` and `corfontecard` columns exist.
+  - **Click Actions:** Added event listener for `grf-card-clicked` to correctly open the configured Drawer component with the appropriate record and table context.
+  - **Icon Visibility:** Resolved issue where SVG icons were invisible by explicitly setting `fill="currentColor"` and `stroke="currentColor"` in `CardSystem.js`.
+
 - [DONE] **Correções no Drawer:**
   - Resolvido problema onde o Drawer não salvava campos identificados incorretamente como fórmulas.
   - Ajustada a lógica de `renderSingleField` para não bloquear edição de campos fórmula visualmente (embora o salvamento seja ignorado para fórmulas reais).

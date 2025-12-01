@@ -184,14 +184,27 @@ export const CardSystem = (() => {
              const fontVal = record[styling.cardsColorFontField];
              if (fontVal) cardEl.style.color = fontVal;
         }
-      } else if (styling.cardsColorMode === 'overlay') {
+      } else if (styling.cardsColorMode === 'solid' && styling.cardsColorField) {
+          const bgVal = record[styling.cardsColorField];
+          if (bgVal) {
+              finalCardColor = bgVal;
+              cardEl.style.background = bgVal;
+          } else {
+              cardEl.style.background = styling.cardsColorSolidColor; // Fallback to configured solid color
+          }
+          if (styling.cardsColorApplyText && styling.cardsColorFontField) { // Apply font color if configured
+               const fontVal = record[styling.cardsColorFontField];
+               if (fontVal) cardEl.style.color = fontVal;
+          }
+      }
+      else if (styling.cardsColorMode === 'overlay') {
           const opacity = (parseInt(styling.cardsColorOverlayOpacity, 10) || 0) / 100;
           const isDarken = styling.cardsColorOverlayEffect === 'darken';
           const rgb = isDarken ? '0, 0, 0' : '255, 255, 255';
           finalCardColor = `rgba(${rgb}, ${opacity})`;
           cardEl.style.background = finalCardColor;
       } else {
-        // A lógica antiga para Solid e Gradient permanece a mesma
+        // This is the true fallback for solid color if no field is specified, or for gradient
         finalCardColor = resolveStyle(record, schema, styling.cardsColorMode, styling.cardsColorSolidColor, { type: styling.cardsColorGradientType, c1: styling.cardsColorGradientColor1, c2: styling.cardsColorGradientColor2 }, styling.cardsColorField);
         cardEl.style.background = finalCardColor;
       }
@@ -377,18 +390,11 @@ export const CardSystem = (() => {
             // SVG Fill color fix and Sizing
             const svgIcon = actionButton.querySelector('svg.icon');
             if (svgIcon) {
-                // Most Grist icons are stroked. We force stroke to current color.
-                // We avoid forcing fill to currentColor to prevent line icons from filling up.
-                // If an icon is filled, it usually doesn't use stroke.
-                // Best effort: reset fill to allow symbol definition, force stroke if it's main.
-                
-                // Actually, simply setting width/height and letting CSS handle currentColor via inheritance is best.
-                // If it was black, maybe 'color' property wasn't propagating?
-                // Explicitly setting it on the SVG might help.
-                svgIcon.style.color = fgColor; 
-                
-                // We will NOT force fill/stroke here to respect the symbol's own definition (some are fill, some stroke).
-                // Ideally, the SVG symbol uses `currentColor`.
+                // Explicitly set fill/stroke to current color to ensure visibility
+                // We use the calculated fgColor which handles the contrast logic.
+                svgIcon.style.color = fgColor;
+                svgIcon.setAttribute('fill', 'currentColor');
+                svgIcon.setAttribute('stroke', 'currentColor');
                 
                 svgIcon.style.width = '85%'; // Increased from 75%
                 svgIcon.style.height = '85%';

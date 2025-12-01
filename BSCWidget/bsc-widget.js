@@ -31,6 +31,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Silent listener to prevent "No listeners" warning from the drawer component.
         subscribe('drawer-rendered', () => { });
 
+        // Listen for card clicks from CardSystem
+        subscribe('grf-card-clicked', async (data) => {
+            console.log("BSC Widget: Card clicked event received.", data);
+            if (data && data.drawerConfigId) {
+                try {
+                    // Fetch the Drawer Configuration first
+                    const drawerConfigRecord = await tableLens.findRecord('Grf_config', { configId: data.drawerConfigId });
+                    if (!drawerConfigRecord) {
+                        console.error(`BSC Widget: Drawer config '${data.drawerConfigId}' not found.`);
+                        return;
+                    }
+                    const drawerConfig = JSON.parse(drawerConfigRecord.configJson);
+                    
+                    // Call openDrawer with correct signature: (tableId, recordId, options)
+                    openDrawer(data.tableId, data.recordId, drawerConfig);
+                } catch (e) {
+                    console.error("BSC Widget: Error opening drawer:", e);
+                }
+            }
+        });
+
         // --- Core Grist and rendering logic ---
 
         console.log("BSC Widget: Calling grist.ready...");
@@ -141,6 +162,27 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!bscData) { return; }
             mainContainer.innerHTML = ""; // Clear existing content
 
+            // Helper to patch config if Conditional Formatting is impossible but color columns exist
+            function patchConfigForBSC(config, schema) {
+                if (!config || !config.styling) return config;
+                // If mode is 'conditional' (which fails in BSC) and we have explicit color columns, switch mode.
+                if (config.styling.cardsColorMode === 'conditional') {
+                    if (schema['corfundocard']) {
+                        console.log("BSC Widget: Patching config to use 'corfundocard' instead of conditional formatting.");
+                        const newConfig = JSON.parse(JSON.stringify(config)); // Deep copy
+                        newConfig.styling.cardsColorMode = 'text-value';
+                        newConfig.styling.cardsColorTextField = 'corfundocard';
+                        if (schema['corfontecard']) {
+                            newConfig.styling.cardsColorFontField = 'corfontecard';
+                            // Ensure text application is enabled if font field is present
+                            newConfig.styling.cardsColorApplyText = true;
+                        }
+                        return newConfig;
+                    }
+                }
+                return config;
+            }
+
             // We will render each Perspective as a "Container" and Objectives as "Cards" inside it.
             // However, CardSystem renders a list of cards. 
             // So we can use CardSystem to render the Objectives list for EACH Perspective.
@@ -150,19 +192,22 @@ document.addEventListener('DOMContentLoaded', async () => {
                 try {
                     const cardConfigRecord = await tableLens.findRecord('Grf_config', { configId: widgetConfig.perspectivesConfigId });
                     if (cardConfigRecord) {
-                        const cardConfig = JSON.parse(cardConfigRecord.configJson);
+                        let cardConfig = JSON.parse(cardConfigRecord.configJson);
                         cardConfig.tableLens = tableLens; // Inject tableLens
                         
                         // Fetch schema for Perspectives table (where bscData.perspectives comes from)
                         const perspectiveSchema = await tableLens.getTableSchema('Perspectivas');
                         
+                        // PATCH CONFIG IF NEEDED
+                        cardConfig = patchConfigForBSC(cardConfig, perspectiveSchema);
+
                         // Create a container for the cards
                         const cardsContainer = document.createElement('div');
                         cardsContainer.className = 'bsc-perspectives-grid';
                         // We let CardSystem handle the grid layout if configured there, 
                         // or we can enforce a specific layout here if the BSC requirement demands it (e.g. 1 column).
                         // For now, let's trust the Card Config to define the layout (e.g. 1 column for standard BSC).
-                        
+
                         await CardSystem.renderCards(cardsContainer, bscData.perspectives, cardConfig, perspectiveSchema);
                         mainContainer.appendChild(cardsContainer);
                         
@@ -296,20 +341,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         // --- Configuration Handling ---
-
-        async function loadIcons() {
-            try {
-                const response = await fetch('../libraries/icons/icons.svg');
-                if (!response.ok) return;
-                const svgText = await response.text();
-                const div = document.createElement('div');
-                div.style.display = 'none';
-                div.innerHTML = svgText;
-                document.body.insertBefore(div, document.body.firstChild);
-            } catch (error) {
-                console.error('Failed to load icon file:', error);
-            }
-        }
 
         const getIcon = (id) => `<svg class="icon"><use href="#${id}"></use></svg>`;
 
@@ -461,7 +492,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         // --- Initial Load ---
-        await loadIcons();
         await initializeAndUpdate();
 
     } catch (fatalError) {
