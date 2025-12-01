@@ -6,7 +6,8 @@ body {
     color: #212529;
 }
 
-h1, h2 {
+h1,
+h2 {
     color: #343a40;
 }
 
@@ -74,12 +75,14 @@ label {
     margin-bottom: 5px;
 }
 
-input[type="text"], textarea {
+input[type="text"],
+textarea {
     width: 100%;
     padding: 8px;
     border: 1px solid #ced4da;
     border-radius: 4px;
-    box-sizing: border-box; /* Importante para o padding não estourar a largura */
+    box-sizing: border-box;
+    /* Importante para o padding não estourar a largura */
     font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
 }
 
@@ -96,13 +99,28 @@ textarea {
     font-weight: bold;
 }
 
-.btn-primary { background-color: #0d6efd; color: white; width: 100%; }
-.btn-success { background-color: #198754; color: white; }
-.btn-danger { background-color: #dc3545; color: white; margin-left: 10px; }
+.btn-primary {
+    background-color: #0d6efd;
+    color: white;
+    width: 100%;
+}
+
+.btn-success {
+    background-color: #198754;
+    color: white;
+}
+
+.btn-danger {
+    background-color: #dc3545;
+    color: white;
+    margin-left: 10px;
+}
+
 /* --- NOVOS ESTILOS PARA A UI UNIFICADA DO DRAWER --- */
 .drawer-config-section {
     margin-top: 20px;
 }
+
 .drawer-config-section h4 {
     margin-top: 0;
     border-bottom: 1px solid #dee2e6;
@@ -135,24 +153,28 @@ textarea {
 }
 
 .field-card-label {
-    flex-grow: 1; /* Faz o nome do campo ocupar o espaço disponível */
+    flex-grow: 1;
+    /* Faz o nome do campo ocupar o espaço disponível */
     font-weight: 500;
 }
 
 .field-card-controls {
     display: flex;
     align-items: center;
-    gap: 20px; /* Espaço entre os controles */
+    gap: 20px;
+    /* Espaço entre os controles */
     font-size: 12px;
 }
 
 .field-card-controls label {
     display: flex;
     align-items: center;
-    gap: 5px; /* Espaço entre o checkbox e o texto */
+    gap: 5px;
+    /* Espaço entre o checkbox e o texto */
     cursor: pointer;
     font-weight: normal;
 }
+
 /* --- NOVOS ESTILOS PARA O SISTEMA DE ABAS --- */
 .add-tab-btn {
     display: block;
@@ -161,6 +183,7 @@ textarea {
     background-color: #6c757d;
     border: 1px solid #5c636a;
 }
+
 .add-tab-btn:hover {
     background-color: #5c636a;
 }
@@ -171,9 +194,11 @@ textarea {
     padding: 8px 12px;
     margin-bottom: 8px;
     margin-top: 10px;
-    background-color: #e9ecef; /* Cor de fundo para destacar */
+    background-color: #e9ecef;
+    /* Cor de fundo para destacar */
     border: 1px solid #ced4da;
-    border-left: 5px solid #0d6efd; /* Borda colorida para identificar */
+    border-left: 5px solid #0d6efd;
+    /* Borda colorida para identificar */
     border-radius: 4px;
     cursor: grab;
     user-select: none;
@@ -192,11 +217,13 @@ textarea {
     padding: 4px;
     border-radius: 3px;
 }
+
 .tab-card-input:focus {
     outline: none;
     background-color: white;
     box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.25);
 }
+
 .delete-tab-btn {
     background: none;
     border: none;
@@ -205,23 +232,28 @@ textarea {
     opacity: 0.5;
     margin-left: 8px;
 }
+
 .delete-tab-btn:hover {
     opacity: 1;
     color: #dc3545;
 }
+
 /* Adicionar estas regras no final de ConfigManager/config-manager-style.css */
 
 .field-card {
-    flex-wrap: wrap; /* Permite que os itens quebrem para a próxima linha */
+    flex-wrap: wrap;
+    /* Permite que os itens quebrem para a próxima linha */
 }
 
 .field-card-extra-actions {
-    flex-basis: 100%; /* Ocupa a linha inteira */
+    flex-basis: 100%;
+    /* Ocupa a linha inteira */
     margin-top: 8px;
 }
 
 .reflist-config-panel {
-    flex-basis: 100%; /* Ocupa a linha inteira, forçando a quebra */
+    flex-basis: 100%;
+    /* Ocupa a linha inteira, forçando a quebra */
     background-color: #f8f9fa;
     border: 1px solid #dee2e6;
     border-radius: 4px;
@@ -248,8 +280,9 @@ textarea {
     align-items: center;
     gap: 6px;
 }
+
 .field-card {
-    flex-wrap: wrap; 
+    flex-wrap: wrap;
 }
 
 .field-card-extra-actions {
@@ -262,9 +295,11 @@ textarea {
     background-color: #fdfdfd;
     border: 1px solid #dee2e6;
     border-radius: 4px;
-    padding: 0; /* Removido para a tabela ocupar todo o espaço */
+    padding: 0;
+    /* Removido para a tabela ocupar todo o espaço */
     margin-top: 8px;
-    overflow-x: auto; /* Permite rolagem horizontal se a tabela for muito larga */
+    overflow-x: auto;
+    /* Permite rolagem horizontal se a tabela for muito larga */
 }
 
 .reflist-config-table {
@@ -284,7 +319,8 @@ textarea {
 .reflist-config-table thead th {
     background-color: #f1f3f5;
     font-weight: 600;
-    position: sticky; /* Mantém o cabeçalho visível ao rolar */
+    position: sticky;
+    /* Mantém o cabeçalho visível ao rolar */
     top: 0;
 }
 
@@ -297,6 +333,7 @@ textarea {
     height: 16px;
     cursor: pointer;
 }
+
 .workflow-section {
     background-color: #f8f9fa;
     border: 1px solid #dee2e6;
@@ -347,46 +384,49 @@ textarea {
 #stageSelector {
     font-weight: bold;
 }
+
 .copy-stage-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
 }
 
 .copy-stage-content {
-  background: white;
-  padding: 20px;
-  border-radius: 5px;
-  min-width: 350px;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    background: white;
+    padding: 20px;
+    border-radius: 5px;
+    min-width: 350px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
 }
 
 .copy-stage-content h3 {
-  margin-top: 0;
+    margin-top: 0;
 }
 
 .copy-stage-list {
-  margin: 15px 0;
-  max-height: 200px;
-  overflow-y: auto;
-  border: 1px solid #ccc;
-  padding: 10px;
+    margin: 15px 0;
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #ccc;
+    padding: 10px;
 }
+
 .copy-stage-list div {
-  margin-bottom: 5px;
+    margin-bottom: 5px;
 }
 
 .copy-stage-actions {
-  text-align: right;
-  margin-top: 15px;
+    text-align: right;
+    margin-top: 15px;
 }
+
 /*
 =====================================================
   ESTILOS PARA O EDITOR DE CARDS
@@ -395,140 +435,295 @@ textarea {
 
 /* Abas do editor */
 .config-tabs {
-  display: flex;
-  border-bottom: 1px solid #ccc;
+    display: flex;
+    border-bottom: 1px solid #ccc;
 }
+
 .config-tab-button {
-  padding: 10px 15px;
-  border: none;
-  background-color: #f0f0f0;
-  cursor: pointer;
-  border-bottom: 3px solid transparent;
-  flex-grow: 1;
+    padding: 10px 15px;
+    border: none;
+    background-color: #f0f0f0;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    flex-grow: 1;
 }
+
 .config-tab-button.active {
-  background-color: #fff;
-  border-bottom-color: #007bff;
+    background-color: #fff;
+    border-bottom-color: #007bff;
 }
 
 /* Conteúdo das abas */
 .config-content {
-  padding-top: 15px;
+    padding-top: 15px;
 }
 
 /* Grid de Estilos */
 .styling-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 15px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
 }
+
 .styling-grid .full-width {
-  grid-column: 1 / -1;
+    grid-column: 1 / -1;
 }
+
 .top-bar-config {
-  display: flex;
-  gap: 20px;
-  margin-top: 10px;
-  flex-wrap: wrap;
+    display: flex;
+    gap: 20px;
+    margin-top: 10px;
+    flex-wrap: wrap;
 }
 
 /* Controles da Aba de Layout */
 .layout-controls {
-  display: flex;
-  gap: 15px;
-  align-items: center;
-  margin-bottom: 10px;
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    margin-bottom: 10px;
 }
+
 .layout-controls .spacer {
-  flex-grow: 1;
+    flex-grow: 1;
 }
+
 .help-text {
-  font-size: 12px;
-  color: #666;
-  margin: 5px 0 15px;
+    font-size: 12px;
+    color: #666;
+    margin: 5px 0 15px;
 }
 
 /* Grid de Layout para Arrastar e Soltar */
 .layout-grid {
-  border: 1px solid #ccc;
-  width: 700px;
-  margin-bottom: 15px;
-  position: relative;
-  background-image: linear-gradient(to right, #e0e0e0 1px, transparent 1px);
-  background-size: var(--col-width) 100%;
+    border: 1px solid #ccc;
+    width: 700px;
+    margin-bottom: 15px;
+    position: relative;
+    background-image: linear-gradient(to right, #e0e0e0 1px, transparent 1px);
+    background-size: var(--col-width) 100%;
 }
+
 .layout-grid-row {
-  position: relative;
-  width: 100%;
-  height: 50px;
-  border-bottom: 1px dashed #ccc;
-  box-sizing: border-box;
+    position: relative;
+    width: 100%;
+    height: 50px;
+    border-bottom: 1px dashed #ccc;
+    box-sizing: border-box;
 }
+
 .layout-grid-row:last-child {
-  border-bottom: none;
+    border-bottom: none;
 }
 
 /* Caixa de Campo já Posicionada no Grid */
 .layout-field-box {
-  position: absolute;
-  top: 4px;
-  height: 42px;
-  border: 1px solid #007bff;
-  background: #e7f3ff;
-  border-radius: 4px;
-  box-sizing: border-box;
-  padding: 4px 4px 4px 22px;
-  overflow: hidden;
-  cursor: move;
-  color: #333;
-  font-size: 14px;
-  display: flex;
-  align-items: center;
+    position: absolute;
+    top: 4px;
+    height: 42px;
+    border: 1px solid #007bff;
+    background: #e7f3ff;
+    border-radius: 4px;
+    box-sizing: border-box;
+    padding: 4px 4px 4px 22px;
+    overflow: hidden;
+    cursor: move;
+    color: #333;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
 }
+
 .field-box-icon {
-  position: absolute;
-  top: 4px;
-  cursor: pointer;
-  font-size: 12px;
+    position: absolute;
+    top: 4px;
+    cursor: pointer;
+    font-size: 12px;
 }
-.field-box-icon.gear { left: 4px; }
-.field-box-icon.remove { right: 24px; color: #dc3545; }
+
+.field-box-icon.gear {
+    left: 4px;
+}
+
+.field-box-icon.remove {
+    right: 24px;
+    color: #dc3545;
+}
 
 .resize-handle {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 8px;
-  height: 100%;
-  cursor: ew-resize;
-  background-color: rgba(0, 123, 255, 0.5);
-  border-top-right-radius: 4px;
-  border-bottom-right-radius: 4px;
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 8px;
+    height: 100%;
+    cursor: ew-resize;
+    background-color: rgba(0, 123, 255, 0.5);
+    border-top-right-radius: 4px;
+    border-bottom-right-radius: 4px;
 }
 
 /* Lista de Campos Disponíveis */
 .available-fields-container {
-  border-top: 1px solid #ccc;
-  padding-top: 15px;
+    border-top: 1px solid #ccc;
+    padding-top: 15px;
 }
+
 .available-fields-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 8px;
-}
-.available-field {
-  border: 1px solid #999;
-  padding: 5px 10px;
-  background: #eee;
-  cursor: grab;
-  border-radius: 4px;
-}
-.available-field:active {
-  cursor: grabbing;
-}
-/*
+    display: flex;
+    /*
 #genericJsonEditor.hidden {
     display: none;
 }
 */
+
+    /* --- Config Manager Overlay & Modal Styles --- */
+    .grf-cm-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 10000;
+        /* High z-index to sit on top of everything */
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .grf-cm-modal {
+        background-color: white;
+        width: 90%;
+        max-width: 1200px;
+        height: 90%;
+        max-height: 90vh;
+        border-radius: 8px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .grf-cm-header {
+        padding: 15px 20px;
+        border-bottom: 1px solid #dee2e6;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background-color: #f8f9fa;
+    }
+
+    .grf-cm-header h1 {
+        margin: 0;
+        font-size: 1.25rem;
+        color: #343a40;
+    }
+
+    .grf-cm-close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        line-height: 1;
+        color: #6c757d;
+        cursor: pointer;
+    }
+
+    .grf-cm-close:hover {
+        color: #343a40;
+    }
+
+    .grf-cm-body {
+        flex-grow: 1;
+        overflow: auto;
+        padding: 0;
+        /* Padding is handled by internal containers */
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* Main Container Layout fixes for Modal */
+    .grf-cm-main-container {
+        display: flex;
+        flex-grow: 1;
+        height: 100%;
+        overflow: hidden;
+    }
+
+    .grf-cm-sidebar {
+        width: 300px;
+        flex-shrink: 0;
+        border-right: 1px solid #dee2e6;
+        display: flex;
+        flex-direction: column;
+        background-color: #f8f9fa;
+        height: 100%;
+        overflow-y: auto;
+        padding: 20px;
+        box-sizing: border-box;
+    }
+
+    .grf-cm-editor-panel {
+        flex-grow: 1;
+        padding: 20px;
+        overflow-y: auto;
+        background-color: white;
+    }
+
+    /* Adjustments for existing classes when inside modal */
+    .grf-cm-modal .main-container {
+        border: none;
+        padding: 0;
+        min-height: 0;
+        height: 100%;
+        border-radius: 0;
+    }
+
+    /* Controls Container in Sidebar */
+    .grf-cm-controls-container {
+        margin-bottom: 15px;
+    }
+
+    .grf-cm-filter-controls,
+    .grf-cm-new-controls {
+        margin-bottom: 10px;
+    }
+
+    .grf-cm-new-controls {
+        display: flex;
+        gap: 5px;
+    }
+
+    #cm-new-type-selector {
+        flex-grow: 1;
+    }
+
+    /* Setup Guide Styles */
+    .grf-cm-setup-guide {
+        padding: 40px;
+        max-width: 800px;
+        margin: 0 auto;
+    }
+
+    .grf-setup-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+    }
+
+    .grf-setup-table th,
+    .grf-setup-table td {
+        border: 1px solid #dee2e6;
+        padding: 10px;
+        text-align: left;
+    }
+
+    .grf-setup-table th {
+        background-color: #e9ecef;
+    }
+
+    .grf-copy-btn {
+        font-size: 0.8em;
+        padding: 2px 6px;
+        margin-left: 8px;
+        cursor: pointer;
+    }

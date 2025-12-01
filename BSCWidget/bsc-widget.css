@@ -1,11 +1,69 @@
 /* BSCWidget/bsc-widget.css */
 
-body {
+html, body {
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
     font-family: sans-serif;
     background-color: #f8f9fa;
     color: #212529;
-    margin: 0;
-    overflow: visible;
+    overflow: hidden;
+}
+
+#app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    position: relative; /* Ensure relative positioning for absolute children */
+}
+
+/* --- Tab Navigation Styles --- */
+.main-menu-tabs {
+    display: flex;
+    background-color: #343a40;
+    padding: 0 10px;
+}
+
+.tab-btn {
+    background: none;
+    border: none;
+    color: #adb5bd;
+    padding: 10px 20px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 500;
+    border-bottom: 3px solid transparent;
+    transition: color 0.2s, border-color 0.2s;
+}
+
+.tab-btn:hover {
+    color: #fff;
+}
+
+.tab-btn.active {
+    color: #fff;
+    border-bottom-color: #0d6efd;
+}
+
+.tab-content {
+    display: none;
+    flex-grow: 1;
+    overflow: auto;
+    padding: 10px;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* Generic Icon Style to prevent huge icons */
+.icon {
+    width: 1.2em;
+    height: 1.2em;
+    fill: currentColor;
+    vertical-align: middle;
 }
 
 #controls-container {
@@ -38,22 +96,24 @@ body {
     margin-bottom: 1em;
     padding: 1em;
     border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.08);
-    cursor: pointer; /* Make it look clickable */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+    cursor: pointer;
+    /* Make it look clickable */
     transition: transform 0.2s ease-in-out, box-shadow 0.2s;
     /* Colors are now applied via inline styles */
 }
 
 .perspective:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 12px rgba(0,0,0,0.12);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.12);
 }
 
 .perspective h2 {
     font-size: 1.4em;
     margin-top: 0;
     margin-bottom: 1em;
-    text-align: left; /* Changed from center */
+    text-align: left;
+    /* Changed from center */
 }
 
 .arrow-down {
@@ -87,7 +147,8 @@ body {
     flex: 1;
     min-width: 250px;
     border-radius: 5px;
-    color: #212529; /* Default text color for objectives */
+    color: #212529;
+    /* Default text color for objectives */
     /* Background color applied via inline style */
 }
 
@@ -95,23 +156,26 @@ body {
     font-size: 1.1em;
     margin-top: 0;
     color: #343a40;
-    border-bottom: 1px solid rgba(0,0,0,0.1);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
     padding-bottom: 0.5em;
     margin-bottom: 0.5em;
 }
 
 /* Hide indicator lists as requested to simplify the view */
-.objective h4, .objective ul {
+.objective h4,
+.objective ul {
     display: none;
 }
 
 .strategy {
     margin-top: 0.5em;
     padding: 0.4em 0.8em;
-    border-radius: 1em; /* Pill shape */
+    border-radius: 1em;
+    /* Pill shape */
     border: none;
-    cursor: default; /* No longer clickable */
-    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    cursor: default;
+    /* No longer clickable */
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
     /* Background color applied via inline style */
 }
 
@@ -144,10 +208,111 @@ body {
     height: 20px;
     border: 1px solid #ccc;
     border-radius: 3px;
-    flex-shrink: 0; /* Prevents the swatch from shrinking */
+    flex-shrink: 0;
+    /* Prevents the swatch from shrinking */
 }
 
 .grf-color-value {
     font-family: monospace;
     font-size: 0.9em;
+}
+
+/* --- Styles for Settings Popover (from table-widget) --- */
+#settings-gear-btn {
+    position: fixed;
+    top: 5px;
+    right: 5px;
+    width: 32px;
+    height: 32px;
+    background-color: #f0f0f0;
+    border: 1px solid #ccc;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1001;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+#settings-gear-btn:hover {
+    background-color: #e0e0e0;
+}
+
+#settings-gear-btn .icon {
+    width: 20px;
+    height: 20px;
+    color: #333;
+}
+
+#config-popover-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    z-index: 1002;
+}
+
+.config-popover {
+    position: fixed;
+    top: 40px;
+    right: 5px;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+    padding: 15px;
+    z-index: 1003;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.config-popover label {
+    display: block;
+    font-size: 0.8em;
+    font-weight: bold;
+    margin-bottom: 4px;
+}
+
+.config-popover .input-group {
+    display: flex;
+}
+
+.config-popover input[type="text"] {
+    border: 1px solid #ccc;
+    border-radius: 4px 0 0 4px;
+    padding: 6px;
+    font-size: 0.9em;
+}
+
+.config-popover .config-popover-btn {
+    padding: 5px 10px;
+    border: 1px solid #ccc;
+    background-color: #f0f0f0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#popover-link-btn {
+    border-left: none;
+    border-radius: 0 4px 4px 0;
+}
+
+.status-placeholder {
+    padding: 20px;
+    text-align: center;
+    font-style: italic;
+    color: #666;
+}
+
+.status-placeholder-error {
+    padding: 20px;
+    background-color: #fffbe6;
+    border: 1px solid #ffe58f;
+    color: #9f6000;
 }

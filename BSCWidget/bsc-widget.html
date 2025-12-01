@@ -1,19 +1,93 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BSC Widget</title>
     <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/mdbassit/Coloris@latest/dist/coloris.min.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/mdbassit/Coloris@latest/dist/coloris.min.css" />
     <link rel="stylesheet" href="bsc-widget.css">
+    <link rel="stylesheet" href="../libraries/grist-config-manager/ConfigManagerComponent.css">
+    <!-- Import CardSystem Styles if needed, but they are usually inline or in a separate file.
+         Assuming CardSystem styles are self-contained or I need to add them.
+         Actually CardSystem.js adds some styles, but we might need general card styles. -->
+    <script>
+        window.onerror = function (message, source, lineno, colno, error) {
+            console.error("Global Error Caught:", message, source, lineno, colno, error);
+            var div = document.createElement('div');
+            div.style.color = 'red';
+            div.style.background = '#ffe6e6';
+            div.style.padding = '10px';
+            div.style.border = '1px solid red';
+            div.style.margin = '10px';
+            div.style.whiteSpace = 'pre-wrap';
+            div.innerHTML = '<b>Global Error:</b> ' + message + '<br>Source: ' + source + ':' + lineno + '<br>Stack: ' + (error ? error.stack : 'N/A');
+            document.body.prepend(div);
+        };
+    </script>
 </head>
+
 <body>
-    <div id="controls-container"></div>
-    <div id="app">
-        <p>BSC Widget initializing... Please select a model from the dropdown.</p>
+    <div id="app-container">
+        <!-- Main Menu Tabs -->
+        <div class="main-menu-tabs">
+            <button class="tab-btn active" data-tab="bsc">BSC Map</button>
+            <button class="tab-btn" data-tab="swot">SWOT</button>
+            <button class="tab-btn" data-tab="pestal">PESTAL</button>
+        </div>
+
+        <!-- Tab Content Containers -->
+        <div id="tab-content-bsc" class="tab-content active">
+            <div id="controls-container">
+                <div id="model-selector-container">
+                    <label for="model-selector">Modelo:</label>
+                    <select id="model-selector">
+                        <option value="">Selecione um modelo...</option>
+                    </select>
+                </div>
+                <div id="status-container">
+                    <!-- Status messages will appear here -->
+                </div>
+                <div id="settings-icon" title="Configurações">
+                    <!-- Gear Icon SVG -->
+                    <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path
+                            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+                        </path>
+                    </svg>
+                </div>
+            </div>
+            <div id="main-container">
+                <!-- BSC Content will be rendered here -->
+            </div>
+        </div>
+
+        <div id="tab-content-swot" class="tab-content">
+            <h2>SWOT Analysis</h2>
+            <p>Placeholder for SWOT analysis tool.</p>
+        </div>
+
+        <div id="tab-content-pestal" class="tab-content">
+            <h2>PESTAL Analysis</h2>
+            <p>Placeholder for PESTAL analysis tool.</p>
+        </div>
     </div>
+
+    <!-- SVG Definitions for Arrows -->
+    <svg style="position: absolute; width: 0; height: 0; overflow: hidden;" aria-hidden="true">
+        <defs>
+            <marker id="arrowhead" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#666" />
+            </marker>
+        </defs>
+    </svg>
+
     <script src="https://cdn.jsdelivr.net/gh/mdbassit/Coloris@latest/dist/coloris.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/leader-line@1.0.5/leader-line.min.js"></script>
     <script type="module" src="bsc-widget.js"></script>
 </body>
+
 </html>

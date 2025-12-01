@@ -133,6 +133,8 @@ export const CardSystem = (() => {
     records.forEach((record) => {
       const cardEl = document.createElement("div");
       cardEl.className = "cs-card";
+      cardEl.id = `record-${record.id}`; // ID for linking
+      cardEl.dataset.recordId = record.id; // Data attribute for finding
       cardEl.style.display = "grid";
       cardEl.style.gridTemplateRows = `repeat(${numRows}, auto)`;
       

@@ -3,258 +3,473 @@
 import { GristTableLens } from '../libraries/grist-table-lens/grist-table-lens.js';
 import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js';
 import { subscribe } from '../libraries/grist-event-bus/grist-event-bus.js';
+import { open as openConfigManager } from '../libraries/grist-config-manager/ConfigManagerComponent.js';
+// import { CardSystem } from '../libraries/grist-card-system/CardSystem.js'; // REMOVED to avoid static import issues
 
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log("BSC Widget script loaded.");
+    try {
+        console.log("BSC Widget: DOMContentLoaded fired. Starting initialization...");
 
-    const appContainer = document.getElementById('app');
-    const controlsContainer = document.getElementById('controls-container');
-    if (!appContainer || !controlsContainer) {
-        document.body.innerHTML = "<p class='error'>Fatal Error: HTML container not found.</p>";
-        return;
-    }
+        const appContainer = document.getElementById('app-container');
+        const controlsContainer = document.getElementById('controls-container');
+        const mainContainer = document.getElementById('main-container');
+        const statusContainer = document.getElementById('status-container');
+        const modelSelector = document.getElementById('model-selector');
+        const settingsIcon = document.getElementById('settings-icon');
 
-    let activeLines = [];
+        if (!appContainer || !controlsContainer) {
+            document.body.innerHTML = "<p class='error'>Fatal Error: HTML container not found.</p>";
+            return;
+        }
 
-    // Hardcoded configuration for the Perspective drawer.
-    // This avoids needing a record in the Grf_config table.
-    // The format uses a `tabs` array, as expected by the drawer component.
-    const PERSPECTIVE_DRAWER_CONFIG = {
-        title: "Edit Perspective",
-        tabs: [
-            {
-                title: "Properties",
-                fields: [
-                    "Name",
-                    "corfundocard",
-                    "corfontecard"
-                ]
-            }
-        ]
-        // NOTE: We do NOT include "ref_model" here. The drawer's save function
-        // has been improved to be non-destructive, so it will preserve the
-        // original value of any field not rendered in the form.
-    };
+        let activeLines = [];
+        let widgetConfig = { useColoris: false }; // Default config
+        let currentConfigId = null;
+        let isInitialized = false;
+        let currentModelId = null;
 
-    // 1. Initialize Grist and the Table Lens
-    grist.ready({ requiredAccess: 'full' });
-    const tableLens = new GristTableLens(grist);
+        // Silent listener to prevent "No listeners" warning from the drawer component.
+        subscribe('drawer-rendered', () => { });
 
-    // 2. Helper function for color manipulation
-    function lightenColor(hex, percent) {
-        if (!hex || typeof hex !== 'string') return '#f0f0f0';
-        let r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
-        let p = percent / 100;
-        r = Math.min(255, Math.round(r + (255 - r) * p));
-        g = Math.min(255, Math.round(g + (255 - g) * p));
-        b = Math.min(255, Math.round(b + (255 - b) * p));
-        return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
-    }
+        // --- Core Grist and rendering logic ---
 
-    // 3. Core data-fetching function
-    async function fetchFullBscStructure(modelId, lens) {
-        console.log(`Fetching BSC structure for Model ID: ${modelId}`);
-        appContainer.innerHTML = `<p>Loading structure for Model ${modelId}...</p>`;
-        try {
-            const [modelRecord, allPerspectives, allObjectives, allStrategies, allIndicators] = await Promise.all([
+        console.log("BSC Widget: Calling grist.ready...");
+        grist.ready({ requiredAccess: 'full' });
+        console.log("BSC Widget: Initializing GristTableLens...");
+        const tableLens = new GristTableLens(grist);
+
+        // Dynamic import for CardSystem
+        console.log("BSC Widget: Dynamically importing CardSystem...");
+        const { CardSystem } = await import('../libraries/grist-card-system/CardSystem.js');
+        console.log("BSC Widget: CardSystem imported successfully.");
+
+        // --- Tab Handling ---
+        const tabs = document.querySelectorAll('.tab-btn');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const target = tab.dataset.tab;
+
+                // Update Tab Buttons
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+
+                // Update Tab Content
+                tabContents.forEach(content => {
+                    content.classList.remove('active');
+                    if (content.id === `tab-content-${target}`) {
+                        content.classList.add('active');
+                    }
+                });
+
+                // Redraw arrows if switching back to BSC
+                if (target === 'bsc' && currentModelId) {
+                    // We need to redraw arrows because their positions might have changed or they were hidden
+                    // Re-fetching structure might be overkill, but ensures consistency.
+                    // For now, let's just trigger a re-render if we have data.
+                    fetchFullBscStructure(currentModelId, tableLens).then(renderBsc);
+                }
+            });
+        });
+
+        // --- BSC Logic ---
+
+        function lightenColor(hex, percent) {
+            if (!hex || typeof hex !== 'string') return '#f0f0f0';
+            let r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
+            let p = percent / 100;
+            r = Math.min(255, Math.round(r + (255 - r) * p));
+            g = Math.min(255, Math.round(g + (255 - g) * p));
+            b = Math.min(255, Math.round(b + (255 - b) * p));
+            return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+        }
+
+        async function fetchFullBscStructure(modelId, lens) {
+            console.log(`Fetching BSC structure for Model ID: ${modelId}`);
+            const [modelRecord, allPerspectives, allObjectives] = await Promise.all([
                 lens.findRecord('Modelos', { id: modelId }),
                 lens.fetchTableRecords('Perspectivas'),
                 lens.fetchTableRecords('Objetivos'),
-                lens.fetchTableRecords('Estrategias'),
-                lens.fetchTableRecords('Indicadores')
             ]);
             if (!modelRecord) { throw new Error(`Model with ID ${modelId} not found.`); }
-            const perspectivesForModel = allPerspectives.filter(p => p.ref_model === modelId).map(p => ({
-                ...p,
-                objectives: allObjectives.filter(o => o.ref_persp === p.id).map(o => ({
-                    ...o,
-                    strategies: allStrategies.filter(s => s.ref_obj === o.id).map(s => ({
-                        ...s,
-                        indicators: allIndicators.filter(i => i.ref_strategy === s.id)
-                    })),
-                    indicators: allIndicators.filter(i => (i.ref_objective || []).includes(o.id))
-                }))
-            }));
-            return { ...modelRecord, perspectives: perspectivesForModel };
-        } catch (error) {
-            console.error("Error fetching BSC structure:", error);
-            appContainer.innerHTML = `<p class="error">Error: ${error.message}</p>`;
-            return null;
-        }
-    }
 
-    // 4. Rendering and arrow-drawing functions
-    function drawObjectiveArrows(bscData) {
-        activeLines.forEach(line => line.remove());
-        activeLines = [];
-        if (!bscData || !bscData.perspectives) return;
-        setTimeout(() => {
-            bscData.perspectives.forEach(p => {
-                p.objectives.forEach(o => {
-                    if (o.ref_obj > 0) {
-                        const startElem = document.getElementById(`objective-${o.ref_obj}`);
-                        const endElem = document.getElementById(`objective-${o.id}`);
-                        if (startElem && endElem) {
-                            try {
-                                activeLines.push(new LeaderLine(startElem, endElem, {
-                                    color: 'rgba(0, 86, 168, 0.6)', size: 3, path: 'fluid', endPlug: 'arrow1'
-                                }));
-                            } catch (e) { console.error("LeaderLine error:", e); }
+            // Sort perspectives by 'Ordem' if available, otherwise by ID
+            const perspectivesForModel = allPerspectives
+                .filter(p => p.ref_model === modelId)
+                .sort((a, b) => (a.Ordem || a.id) - (b.Ordem || b.id))
+                .map(p => ({
+                    ...p,
+                    objectives: allObjectives.filter(o => o.ref_persp === p.id)
+                }));
+            return { ...modelRecord, perspectives: perspectivesForModel };
+        }
+
+        function drawObjectiveArrows(bscData) {
+            activeLines.forEach(line => line.remove());
+            activeLines = [];
+            if (!bscData || !bscData.perspectives) return;
+
+            // Wait for DOM update
+            setTimeout(() => {
+                bscData.perspectives.forEach(p => {
+                    p.objectives.forEach(o => {
+                        if (o.ref_obj > 0) {
+                            // CardSystem uses id="record-{id}"
+                            const startElem = document.getElementById(`record-${o.ref_obj}`);
+                            const endElem = document.getElementById(`record-${o.id}`);
+                            
+                            if (startElem && endElem) {
+                                try {
+                                    activeLines.push(new LeaderLine(startElem, endElem, {
+                                        color: 'rgba(0, 86, 168, 0.6)',
+                                        size: 3,
+                                        path: 'fluid',
+                                        endPlug: 'arrow1',
+                                        startSocket: 'bottom',
+                                        endSocket: 'top'
+                                    }));
+                                } catch (e) { console.error("LeaderLine error:", e); }
+                            }
                         }
+                    });
+                });
+            }, 500); // Increased timeout slightly
+        }
+
+        async function renderBsc(bscData) {
+            if (!bscData) { return; }
+            mainContainer.innerHTML = ""; // Clear existing content
+
+            // We will render each Perspective as a "Container" and Objectives as "Cards" inside it.
+            // However, CardSystem renders a list of cards. 
+            // So we can use CardSystem to render the Objectives list for EACH Perspective.
+
+            // Render Perspectives using CardSystem if configured
+            if (widgetConfig.perspectivesConfigId) {
+                try {
+                    const cardConfigRecord = await tableLens.findRecord('Grf_config', { configId: widgetConfig.perspectivesConfigId });
+                    if (cardConfigRecord) {
+                        const cardConfig = JSON.parse(cardConfigRecord.configJson);
+                        cardConfig.tableLens = tableLens; // Inject tableLens
+                        
+                        // Fetch schema for Perspectives table (where bscData.perspectives comes from)
+                        const perspectiveSchema = await tableLens.getTableSchema('Perspectivas');
+                        
+                        // Create a container for the cards
+                        const cardsContainer = document.createElement('div');
+                        cardsContainer.className = 'bsc-perspectives-grid';
+                        // We let CardSystem handle the grid layout if configured there, 
+                        // or we can enforce a specific layout here if the BSC requirement demands it (e.g. 1 column).
+                        // For now, let's trust the Card Config to define the layout (e.g. 1 column for standard BSC).
+                        
+                        await CardSystem.renderCards(cardsContainer, bscData.perspectives, cardConfig, perspectiveSchema);
+                        mainContainer.appendChild(cardsContainer);
+                        
+                        // Arrow drawing needs to happen after rendering
+                        // We need to ensure CardSystem renders IDs for objectives. 
+                        // Assumption: The "Perspective Card" contains a RefList field for Objectives, 
+                        // and THAT RefList is configured to show as Cards.
+                        // We need to find the Objective DOM elements.
+                        // Currently CardSystem doesn't guarantee IDs. We might need to patch CardSystem.
+                        drawObjectiveArrows(bscData);
+                        return;
+                    }
+                } catch (e) {
+                    console.error("Error rendering Perspectives with CardSystem:", e);
+                    mainContainer.innerHTML = `<p class="error">Error rendering Perspectives: ${e.message}</p>`;
+                    return;
+                }
+            }
+
+            // Fallback: Legacy Hardcoded Rendering (if no config selected)
+            const perspectivesContainer = document.createElement('div');
+            perspectivesContainer.className = 'bsc-perspectives-container';
+            perspectivesContainer.style.display = 'flex';
+            perspectivesContainer.style.flexDirection = 'column';
+            perspectivesContainer.style.gap = '20px';
+
+            for (const p of bscData.perspectives) {
+                const perspectiveEl = document.createElement('div');
+                perspectiveEl.className = 'perspective-block';
+                perspectiveEl.dataset.perspectiveId = p.id;
+                perspectiveEl.style.border = `2px solid ${p.corfundocard || '#005ea8'}`;
+                perspectiveEl.style.borderRadius = '8px';
+                perspectiveEl.style.padding = '10px';
+                perspectiveEl.style.backgroundColor = '#fff';
+
+                // Perspective Header
+                const header = document.createElement('div');
+                header.innerHTML = `<h2 style="color: ${p.corfundocard || '#005ea8'}; margin: 0 0 10px 0;">${p.Name}</h2>`;
+                perspectiveEl.appendChild(header);
+
+                // Objectives Container
+                const objectivesContainer = document.createElement('div');
+                objectivesContainer.className = 'objectives-list';
+                perspectiveEl.appendChild(objectivesContainer);
+
+                // Use CardSystem to render objectives
+                // Fetch configured card options or use default
+                let cardOptions = {};
+                let objSchemaToUse = {
+                    Nome: { type: 'Text', label: 'Objetivo' },
+                    id: { type: 'Int', label: 'ID' }
+                }; // Default minimal schema
+
+                if (widgetConfig.objectivesConfigId) {
+                    try {
+                        const cardConfigRecord = await tableLens.findRecord('Grf_config', { configId: widgetConfig.objectivesConfigId });
+                        if (cardConfigRecord) {
+                            cardOptions = JSON.parse(cardConfigRecord.configJson);
+                            cardOptions.tableLens = tableLens; // Inject tableLens
+                            // We should also fetch the full schema for the table defined in the card config
+                            // But here we are rendering p.objectives which is already data.
+                            // We need the schema for the renderField logic.
+                            // Assuming p.objectives comes from 'Objetivos' table.
+                            objSchemaToUse = await tableLens.getTableSchema('Objetivos');
+                        }
+                    } catch (e) {
+                        console.error("Error loading objectives card config:", e);
+                        // Fallback will be used
+                    }
+                }
+
+                // Default Fallback if no config or error
+                if (!cardOptions.layout) {
+                     cardOptions = {
+                        tableLens: tableLens, 
+                        layout: [
+                            { colId: 'Nome', row: 0, col: 0, colSpan: 10, style: { labelVisible: false, isTitleField: true } }
+                        ],
+                        styling: {
+                            widgetPadding: '0px',
+                            cardsSpacing: '5px',
+                            internalCardPadding: '8px',
+                            cardsColorMode: 'solid',
+                            cardsColorSolidColor: lightenColor(p.corfundocard || '#005ea8', 80),
+                            cardBorderThickness: 1,
+                            cardBorderSolidColor: p.corfundocard || '#005ea8'
+                        },
+                        numRows: 1
+                    };
+                }
+
+                // We need to manually add IDs to the rendered cards for arrows to work
+                // CardSystem doesn't natively support custom IDs on the card element easily without modifying it.
+                // BUT, we can wrap the CardSystem output or modify it after rendering.
+                // Let's render first.
+                await CardSystem.renderCards(objectivesContainer, p.objectives, cardOptions, objSchemaToUse);
+
+                // Post-process to add IDs for arrows
+                // We assume the order is preserved.
+                const renderedCards = objectivesContainer.querySelectorAll('.cs-card');
+                p.objectives.forEach((obj, index) => {
+                    if (renderedCards[index]) {
+                        renderedCards[index].id = `objective-${obj.id}`;
+                        // Make it look like a card
+                        renderedCards[index].style.cursor = 'pointer';
+                        renderedCards[index].onclick = (e) => {
+                            e.stopPropagation();
+                            // Open Objective Drawer? Or Perspective?
+                            // User requirement: "The BSC Widget will act as an intermediary... connecting arrows to the Objectives cards inside the perspective cards."
+                            // Clicking an objective usually opens its details.
+                            console.log("Clicked Objective:", obj);
+                        };
                     }
                 });
-            });
-        }, 100);
-    }
 
-    function renderBsc(bscData) {
-        if (!bscData) { return; }
-        let html = `<div class="bsc-container"><h1>Model: ${bscData.Nome}</h1>`;
-        bscData.perspectives.forEach((p, index) => {
-            const bgColor = p.corfundocard || '#005ea8';
-            const fontColor = p.corfontecard || '#ffffff';
-            const lighterBg = lightenColor(bgColor, 60);
-            // Add data-perspective-id to the perspective div
-            html += `<div class="perspective" data-perspective-id="${p.id}" style="background-color: ${bgColor}; color: ${fontColor};"><h2>${p.Name}</h2><div class="objectives-container">`;
-            p.objectives.forEach(o => {
-                html += `<div class="objective" id="objective-${o.id}" style="background-color: ${lighterBg};"><h3>${o.Nome}</h3>`;
-                if (o.strategies.length > 0) {
-                    html += `<h4>Strategies:</h4>`;
-                    o.strategies.forEach(s => {
-                        // No longer needs a data-id for clicks
-                        html += `<div class="strategy" style="background-color: ${lightenColor(bgColor, 80)};"><h5>${s.Name}</h5></div>`;
-                    });
+                perspectivesContainer.appendChild(perspectiveEl);
+
+                // Add arrow down between perspectives (visual only)
+                if (p !== bscData.perspectives[bscData.perspectives.length - 1]) {
+                    const arrowDiv = document.createElement('div');
+                    arrowDiv.style.textAlign = 'center';
+                    arrowDiv.style.fontSize = '24px';
+                    arrowDiv.style.color = '#ccc';
+                    arrowDiv.innerHTML = '&#8595;'; // Down arrow entity
+                    perspectivesContainer.appendChild(arrowDiv);
                 }
-                html += `</div>`;
-            });
-            html += `</div></div>`;
-            if (index < bscData.perspectives.length - 1) { html += `<div class="arrow-down"></div>`; }
-        });
-        html += `</div>`;
-        appContainer.innerHTML = html;
-        drawObjectiveArrows(bscData);
-    }
+            }
 
-    // 5. Dropdown creation
-    async function createModelDropdown() {
-        controlsContainer.innerHTML = "<p>Loading models...</p>";
-        try {
-            // Get previously saved options first
-            const savedOptions = await grist.getOptions();
+            mainContainer.appendChild(perspectivesContainer);
+            drawObjectiveArrows(bscData);
+        }
 
-            const allModels = await tableLens.fetchTableRecords('Modelos');
-            if (!allModels || allModels.length === 0) {
-                controlsContainer.innerHTML = "<p class='error'>No 'Modelos' records found.</p>";
+        // --- Configuration Handling ---
+
+        async function loadIcons() {
+            try {
+                const response = await fetch('../libraries/icons/icons.svg');
+                if (!response.ok) return;
+                const svgText = await response.text();
+                const div = document.createElement('div');
+                div.style.display = 'none';
+                div.innerHTML = svgText;
+                document.body.insertBefore(div, document.body.firstChild);
+            } catch (error) {
+                console.error('Failed to load icon file:', error);
+            }
+        }
+
+        const getIcon = (id) => `<svg class="icon"><use href="#${id}"></use></svg>`;
+
+        function openSettingsPopover(event) {
+            event.stopPropagation();
+            closeSettingsPopover(); // Close any existing popover
+
+            const isLinked = !!currentConfigId;
+
+            const overlay = document.createElement('div');
+            overlay.id = 'config-popover-overlay';
+            overlay.onclick = closeSettingsPopover;
+            document.body.appendChild(overlay);
+
+            const popover = document.createElement('div');
+            popover.className = 'config-popover';
+            popover.onclick = e => e.stopPropagation();
+
+            popover.innerHTML = `
+                <div>
+                    <label for="popover-config-id">Config ID</label>
+                    <div class="input-group">
+                        <input type="text" id="popover-config-id" value="${currentConfigId || ''}" placeholder="Paste ID here...">
+                        <button id="popover-link-btn" class="config-popover-btn" title="${isLinked ? 'Unlink' : 'Link'}">
+                            ${isLinked ? getIcon('icon-link') : getIcon('icon-link-broken')}
+                        </button>
+                    </div>
+                </div>
+                <button id="popover-manager-btn" class="config-popover-btn" title="Open Configuration Manager">
+                    ${getIcon('icon-settings')}
+                </button>
+            `;
+            document.body.appendChild(popover);
+
+            popover.querySelector('#popover-link-btn').onclick = () => {
+                const newId = popover.querySelector('#popover-config-id').value.trim();
+                grist.setOptions({ configId: newId || null });
+                closeSettingsPopover();
+            };
+
+            popover.querySelector('#popover-manager-btn').onclick = () => {
+                closeSettingsPopover();
+                openConfigManager(grist, { initialConfigId: currentConfigId, componentTypes: ['BSC'] });
+            };
+        }
+
+        function closeSettingsPopover() {
+            const popover = document.querySelector('.config-popover');
+            if (popover) popover.remove();
+            const overlay = document.getElementById('config-popover-overlay');
+            if (overlay) overlay.remove();
+        }
+
+        function renderStatus(message) {
+            statusContainer.innerHTML = `<span class="status-message">${message}</span>`;
+            // Auto-clear after 5 seconds if it's not an error
+            if (!message.includes("Error") && !message.includes("not configured")) {
+                setTimeout(() => { statusContainer.innerHTML = ""; }, 5000);
+            }
+        }
+
+        async function initializeAndUpdate() {
+            renderStatus("Loading configuration...");
+            try {
+                const options = await grist.getOptions() || {};
+                currentConfigId = options.configId || null;
+
+                if (!currentConfigId) {
+                    renderStatus("Widget not configured. Link a Config ID.");
+                    return;
+                }
+
+                const configRecord = await tableLens.findRecord('Grf_config', { configId: currentConfigId });
+                if (configRecord && configRecord.configJson) {
+                    widgetConfig = JSON.parse(configRecord.configJson);
+                    console.log("Loaded widget config:", widgetConfig);
+                } else {
+                    renderStatus(`Error: Config "${currentConfigId}" not found.`);
+                    return;
+                }
+
+                await createModelDropdown();
+                renderStatus("Ready.");
+
+            } catch (error) {
+                console.error("Error during initialization:", error);
+                renderStatus(`Error: ${error.message}`);
+            }
+        }
+
+        async function createModelDropdown() {
+            // Only recreate if empty or needed
+            if (modelSelector.options.length > 1) return;
+
+            try {
+                console.log("Attempting to fetch records from 'Modelos' table...");
+                const allModels = await tableLens.fetchTableRecords('Modelos');
+                console.log("Fetched models:", allModels);
+
+                if (!allModels || allModels.length === 0) {
+                    console.warn("No 'Modelos' records found or table is empty.");
+                    renderStatus("No 'Modelos' records found.");
+                    return;
+                }
+
+                modelSelector.innerHTML = `<option value="" disabled selected>Select a Model...</option>`;
+                allModels.forEach(model => {
+                    console.log("Adding model option:", model);
+                    modelSelector.innerHTML += `<option value="${model.id}">${model.Nome || `Model ID ${model.id}`}</option>`;
+                });
+
+                modelSelector.addEventListener('change', async (event) => {
+                    currentModelId = event.target.value;
+                    if (currentModelId) {
+                        const fullStructure = await fetchFullBscStructure(parseInt(currentModelId, 10), tableLens);
+                        renderBsc(fullStructure);
+                    }
+                });
+
+            } catch (error) {
+                console.error("Failed to create model dropdown:", error);
+                renderStatus(`Failed to load Models: ${error.message}`);
+            }
+        }
+
+        // --- Event Listeners ---
+
+        if (settingsIcon) {
+            settingsIcon.onclick = openSettingsPopover;
+        }
+
+        grist.onOptions(async (options) => {
+            if (!isInitialized) {
+                isInitialized = true;
                 return;
             }
-            const selectEl = document.createElement('select');
-            selectEl.id = 'model-selector';
-            selectEl.innerHTML = `<option value="" disabled selected>Select a Model...</option>`;
-            allModels.forEach(model => {
-                selectEl.innerHTML += `<option value="${model.id}">${model.Nome || `Model ID ${model.id}`}</option>`;
-            });
-
-            selectEl.addEventListener('change', async (event) => {
-                const selectedModelId = event.target.value;
-                if (selectedModelId) {
-                    // Save the selection
-                    await grist.setOptions({ selectedModelId: selectedModelId });
-                    const fullStructure = await fetchFullBscStructure(parseInt(selectedModelId, 10), tableLens);
-                    renderBsc(fullStructure);
-                }
-            });
-
-            controlsContainer.innerHTML = '';
-            const label = document.createElement('label');
-            label.htmlFor = 'model-selector';
-            label.textContent = 'BSC Model: ';
-            controlsContainer.appendChild(label);
-            controlsContainer.appendChild(selectEl);
-            
-            // If a model was previously selected, restore it
-            if (savedOptions && savedOptions.selectedModelId) {
-                selectEl.value = savedOptions.selectedModelId;
-                // Manually trigger the change event to load the data
-                selectEl.dispatchEvent(new Event('change'));
-            } else {
-                appContainer.innerHTML = '<p>Please select a model from the dropdown above.</p>';
+            if (options && options.configId !== currentConfigId) {
+                console.log(`Config ID changed. Re-initializing.`);
+                await initializeAndUpdate();
             }
+        });
 
-        } catch (error) {
-            console.error("Failed to create model dropdown:", error);
-            controlsContainer.innerHTML = `<p class="error">Failed to load 'Modelos': ${error.message}</p>`;
-        }
-    }
-
-    // 6. NEW: Isolated function to enhance the drawer for colors
-    function enhanceDrawerForColors() {
-        // Use a timeout to wait for the drawer to be rendered in the DOM
-        setTimeout(() => {
-            const drawer = document.getElementById('grist-drawer-panel');
-            if (!drawer) return;
-
-            ['corfundocard', 'corfontecard'].forEach(colId => {
-                const fieldRow = drawer.querySelector(`.drawer-field-row[data-col-id="${colId}"]`);
-                if (!fieldRow) return;
-
-                const input = fieldRow.querySelector('input, textarea');
-                if (input) { // We are in EDIT mode
-                    // Add a class to target with Coloris
-                    input.classList.add('bsc-color-picker');
-                } else { // We are in VIEW mode
-                    const valueContainer = fieldRow.querySelector('.drawer-field-value');
-                    const colorValue = valueContainer.textContent;
-                    if (colorValue) {
-                        valueContainer.innerHTML = `
-                            <div class="grf-color-swatch-container">
-                                <span class="grf-color-swatch" style="background-color: ${colorValue};"></span>
-                                <span class="grf-color-value">${colorValue}</span>
-                            </div>
-                        `;
-                    }
-                }
-            });
-
-            // Initialize Coloris on all elements with our specific class
-            if (window.Coloris) {
-                Coloris({
-                    el: '.bsc-color-picker',
-                    themeMode: 'dark', // Optional: a nice theme
-                    alpha: false
-                });
+        grist.onRecords(async () => {
+            // Only re-render if we have a selected model
+            if (currentModelId) {
+                const fullStructure = await fetchFullBscStructure(parseInt(currentModelId, 10), tableLens);
+                renderBsc(fullStructure);
             }
-        }, 150); // A small delay
+        });
+
+        // --- Initial Load ---
+        await loadIcons();
+        await initializeAndUpdate();
+
+    } catch (fatalError) {
+        console.error("FATAL ERROR in BSC Widget:", fatalError);
+        document.body.innerHTML = `<div style="color:red; padding:20px; border:2px solid red;">
+            <h1>Fatal Error</h1>
+            <p>${fatalError.message}</p>
+            <pre>${fatalError.stack}</pre>
+        </div>`;
     }
-
-
-    // 7. Event Listeners
-    appContainer.addEventListener('click', async (event) => {
-        const perspectiveCard = event.target.closest('.perspective');
-        if (perspectiveCard) {
-            const perspectiveId = parseInt(perspectiveCard.dataset.perspectiveId, 10);
-            console.log(`Perspective card clicked. ID: ${perspectiveId}. Opening drawer...`);
-            // Open the drawer. The 'drawer-rendered' event will handle the enhancement.
-            openDrawer('Perspectivas', perspectiveId, PERSPECTIVE_DRAWER_CONFIG);
-        }
-    });
-
-    // Listen for the drawer to finish rendering, then enhance it.
-    subscribe('drawer-rendered', (data) => {
-        // We only care about the drawer for the 'Perspectivas' table.
-        if (data.tableId === 'Perspectivas') {
-            console.log("Drawer was rendered. Enhancing for colors...");
-            enhanceDrawerForColors();
-        }
-    });
-
-    grist.on('records', () => {
-        console.log("Data changed in Grist, re-creating model dropdown...");
-        activeLines.forEach(line => line.remove());
-        activeLines = [];
-        createModelDropdown();
-    });
-
-    // Initial Load
-    createModelDropdown();
 });
-

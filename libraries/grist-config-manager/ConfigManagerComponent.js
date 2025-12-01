@@ -6,6 +6,7 @@ import { CardConfigEditor } from './editors/config-cards.js';
 import { DrawerConfigEditor } from './editors/config-drawer.js';
 import { CardStyleConfigEditor } from './editors/config-card-style.js';
 import { TableConfigEditor } from './editors/config-table.js';
+import { BscConfigEditor } from './editors/config-bsc.js';
 
 let overlay = null;
 let _grist = null;
@@ -15,6 +16,7 @@ const COMPONENT_TYPE_COLORS = {
     'Drawer': '#198754', // green
     'CardStyle': '#6c757d', // grey
     'Table': '#fd7e14', // orange
+    'BSC': '#6f42c1', // purple
     'default': '#6c757d' // grey
 };
 
@@ -113,7 +115,14 @@ async function renderMainUI(container, initialConfigId, componentTypes) {
                 </div>
             </div>`;
 
-        const editorMap = { 'CardSystem': CardConfigEditor, 'Drawer': DrawerConfigEditor, 'CardStyle': CardStyleConfigEditor, 'Table': TableConfigEditor };
+        const editorMap = { 
+            'CardSystem': CardConfigEditor, 
+            'Drawer': DrawerConfigEditor, 
+            'CardStyle': CardStyleConfigEditor, 
+            'Table': TableConfigEditor, 
+            'BSC': BscConfigEditor, 
+            'StrategicPlanning': BscConfigEditor // Alias for future/safety
+        };
         const configListEl = container.querySelector('#cm-config-list');
         const editorContentEl = container.querySelector('#cm-editor-content');
         const formEl = container.querySelector('#cm-config-form');
@@ -318,7 +327,7 @@ async function renderMainUI(container, initialConfigId, componentTypes) {
 export function open(grist, options = {}) {
     if (overlay) return;
     _grist = grist;
-    const { initialConfigId = null, componentTypes = ['Card System', 'Drawer', 'Card Style', 'Table'] } = options;
+    const { initialConfigId = null, componentTypes = ['Card System', 'Drawer', 'Card Style', 'Table', 'BSC'] } = options;
     overlay = document.createElement('div');
     overlay.className = 'grf-cm-overlay';
     overlay.innerHTML = `<div class="grf-cm-modal"><div class="grf-cm-header"><h1>Gerenciador de Configurações</h1><button class="grf-cm-close">×</button></div><div class="grf-cm-body"><p>Carregando...</p></div></div>`;
