@@ -8,7 +8,9 @@ export const BscConfigEditor = (() => {
         state = {
             useColoris: options.useColoris || false,
             drawerConfigId: options.drawerConfigId || null,
-            perspectivesConfigId: options.perspectivesConfigId || null, // New: Perspectives Card Config
+            perspectivesConfigId: options.perspectivesConfigId || null, // Default / Mapa Estratégico
+            qualityConfigId: options.qualityConfigId || null, // New: Objetivos Qualidade
+            requirementsConfigId: options.requirementsConfigId || null, // New: Requisitos Partes Interessadas
             receivedConfigs: receivedConfigs
         };
 
@@ -47,7 +49,9 @@ export const BscConfigEditor = (() => {
         return {
             useColoris: genTab ? genTab.querySelector('#bsc-cfg-use-coloris').checked : state.useColoris,
             drawerConfigId: actTab ? actTab.querySelector('#bsc-cfg-drawer-id').value : state.drawerConfigId,
-            perspectivesConfigId: colsTab ? colsTab.querySelector('#bsc-cfg-persp-card-id').value : state.perspectivesConfigId
+            perspectivesConfigId: colsTab ? colsTab.querySelector('#bsc-cfg-persp-card-id').value : state.perspectivesConfigId,
+            qualityConfigId: colsTab ? colsTab.querySelector('#bsc-cfg-quality-card-id').value : state.qualityConfigId,
+            requirementsConfigId: colsTab ? colsTab.querySelector('#bsc-cfg-req-card-id').value : state.requirementsConfigId
         };
     }
 
@@ -108,8 +112,9 @@ export const BscConfigEditor = (() => {
 
         // Filter for Card System configs
         const cardConfigs = state.receivedConfigs.filter(c => c.componentType === 'Card System');
-        const optionsHtml = cardConfigs.map(c =>
-            `<option value="${c.configId}" ${c.configId === state.perspectivesConfigId ? 'selected' : ''}>
+        
+        const createOptions = (selectedId) => cardConfigs.map(c =>
+            `<option value="${c.configId}" ${c.configId === selectedId ? 'selected' : ''}>
                 ${c.widgetTitle} (${c.configId})
             </option>`
         ).join('');
@@ -117,17 +122,33 @@ export const BscConfigEditor = (() => {
         tabEl.innerHTML = `
             <h3>Display Settings</h3>
             <fieldset>
-                <legend><b>Map Display</b></legend>
+                <legend><b>Map Display Configuration (by Model Type)</b></legend>
+                
                 <div class="form-group">
-                    <label for="bsc-cfg-persp-card-id">Perspectives Card Configuration:</label>
+                    <label for="bsc-cfg-persp-card-id">Mapa Estratégico:</label>
                     <select id="bsc-cfg-persp-card-id" class="form-control">
-                        <option value="">-- Default (Simple List) --</option>
-                        ${optionsHtml}
+                        <option value="">-- Default --</option>
+                        ${createOptions(state.perspectivesConfigId)}
                     </select>
-                    <p class="help-text">
-                        Select a "Card System" configuration to control how Perspectives are rendered in the BSC Map.
-                        The Objectives inside them should be configured within that Card configuration.
-                    </p>
+                    <p class="help-text">Controls rendering for "Mapa Estratégico".</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="bsc-cfg-quality-card-id">Objetivos Qualidade:</label>
+                    <select id="bsc-cfg-quality-card-id" class="form-control">
+                        <option value="">-- Same as Default --</option>
+                        ${createOptions(state.qualityConfigId)}
+                    </select>
+                    <p class="help-text">Controls rendering for "Objetivos Qualidade".</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="bsc-cfg-req-card-id">Requisitos Partes Interessadas:</label>
+                    <select id="bsc-cfg-req-card-id" class="form-control">
+                        <option value="">-- Same as Default --</option>
+                        ${createOptions(state.requirementsConfigId)}
+                    </select>
+                    <p class="help-text">Controls rendering for "Requisitos Partes Interessadas".</p>
                 </div>
             </fieldset>
         `;

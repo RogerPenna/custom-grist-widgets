@@ -70,6 +70,36 @@ async function renderMainUI(container, initialConfigId, componentTypes) {
             return;
         }
 
+        // --- Event Listener for Saving Card Styles ---
+        container.addEventListener('grf-save-card-style', async (e) => {
+            console.log("ConfigManager: Caught grf-save-card-style event", e.detail);
+            const { configJson, componentType, description } = e.detail;
+            
+            const styleName = prompt("Enter a name for this new Card Style:", "My New Style");
+            if (!styleName) return; // User cancelled
+
+            const newRecord = {
+                widgetTitle: styleName,
+                configId: `style_${Date.now()}`,
+                description: description || '[STYLE]',
+                componentType: componentType,
+                configJson: configJson
+            };
+
+            try {
+                await dataWriter.addRecord(CONFIG_TABLE, newRecord);
+                alert(`Style "${styleName}" saved successfully!`);
+                // Reload to show in list
+                allConfigs = await tableLens.fetchTableRecords(CONFIG_TABLE);
+                loadList(filterTypeSelectorEl.value);
+                // Re-render the current editor to update the "Load Style" dropdown
+                if (selectedConfig) displayConfig(selectedConfig);
+            } catch (err) {
+                console.error("Error saving style record:", err);
+                alert(`Failed to save style: ${err.message}`);
+            }
+        });
+
         let allConfigs = await tableLens.fetchTableRecords(CONFIG_TABLE);
 
         const createTypeOption = (type) => {

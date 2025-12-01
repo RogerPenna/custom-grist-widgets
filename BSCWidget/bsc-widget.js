@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const mainContainer = document.getElementById('main-container');
         const statusContainer = document.getElementById('status-container');
         const modelSelector = document.getElementById('model-selector');
-        const settingsIcon = document.getElementById('settings-icon');
+        const settingsIcon = document.getElementById('settings-gear-btn');
 
         if (!appContainer || !controlsContainer) {
             document.body.innerHTML = "<p class='error'>Fatal Error: HTML container not found.</p>";
@@ -183,14 +183,26 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return config;
             }
 
+            // Determine which Card Config to use based on Model Type
+            const modelType = bscData.TipoModelo; // Assuming fetchFullBscStructure returns this in the root object (modelRecord)
+            console.log(`BSC Widget: Rendering for Model Type: '${modelType}'`);
+
+            let targetConfigId = widgetConfig.perspectivesConfigId; // Default / Mapa Estratégico
+
+            if (modelType === 'Objetivos Qualidade' && widgetConfig.qualityConfigId) {
+                targetConfigId = widgetConfig.qualityConfigId;
+            } else if (modelType === 'Requisitos Partes Interessadas' && widgetConfig.requirementsConfigId) {
+                targetConfigId = widgetConfig.requirementsConfigId;
+            }
+
             // We will render each Perspective as a "Container" and Objectives as "Cards" inside it.
             // However, CardSystem renders a list of cards. 
             // So we can use CardSystem to render the Objectives list for EACH Perspective.
 
             // Render Perspectives using CardSystem if configured
-            if (widgetConfig.perspectivesConfigId) {
+            if (targetConfigId) {
                 try {
-                    const cardConfigRecord = await tableLens.findRecord('Grf_config', { configId: widgetConfig.perspectivesConfigId });
+                    const cardConfigRecord = await tableLens.findRecord('Grf_config', { configId: targetConfigId });
                     if (cardConfigRecord) {
                         let cardConfig = JSON.parse(cardConfigRecord.configJson);
                         cardConfig.tableLens = tableLens; // Inject tableLens
@@ -383,7 +395,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             popover.querySelector('#popover-manager-btn').onclick = () => {
                 closeSettingsPopover();
-                openConfigManager(grist, { initialConfigId: currentConfigId, componentTypes: ['BSC'] });
+                openConfigManager(grist, { initialConfigId: currentConfigId, componentTypes: ['BSC', 'Card System', 'Drawer', 'Card Style', 'Table'] });
             };
         }
 
@@ -407,6 +419,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             try {
                 const options = await grist.getOptions() || {};
                 currentConfigId = options.configId || null;
+                // Load last used model
+                if (options.lastModelId) {
+                    currentModelId = options.lastModelId;
+                }
 
                 if (!currentConfigId) {
                     renderStatus("Widget not configured. Link a Config ID.");
@@ -433,7 +449,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         async function createModelDropdown() {
             // Only recreate if empty or needed
-            if (modelSelector.options.length > 1) return;
+            if (modelSelector.options.length > 1) {
+                // If already populated, ensure the current model is selected
+                if (currentModelId) {
+                    modelSelector.value = currentModelId;
+                }
+                return;
+            }
 
             try {
                 console.log("Attempting to fetch records from 'Modelos' table...");
@@ -454,11 +476,27 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 modelSelector.addEventListener('change', async (event) => {
                     currentModelId = event.target.value;
+                    // Save selection
+                    await grist.setOptions({ ...await grist.getOptions(), lastModelId: currentModelId });
+                    
                     if (currentModelId) {
                         const fullStructure = await fetchFullBscStructure(parseInt(currentModelId, 10), tableLens);
                         renderBsc(fullStructure);
                     }
                 });
+
+                // If we loaded a lastModelId, select it and render now
+                if (currentModelId) {
+                    modelSelector.value = currentModelId;
+                    // Check if the selected model actually exists in the list
+                    if (modelSelector.value === currentModelId) {
+                         const fullStructure = await fetchFullBscStructure(parseInt(currentModelId, 10), tableLens);
+                         renderBsc(fullStructure);
+                    } else {
+                        console.warn(`Saved model ID ${currentModelId} not found in available models.`);
+                        currentModelId = null; // Reset if invalid
+                    }
+                }
 
             } catch (error) {
                 console.error("Failed to create model dropdown:", error);

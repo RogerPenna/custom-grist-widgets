@@ -39,6 +39,16 @@
   - Corrigido a persistência da configuração de `ColorPicker` no editor do Drawer.
   - Implementado "Show Schema Debug Info" no Drawer e no CardViewer para facilitar diagnósticos.
 
+- [DONE] **BSC Widget Improvements:**
+  - **Multi-Model Config:** Updated `config-bsc.js` and `bsc-widget.js` to support selecting different Card Configurations for "Mapa Estratégico", "Objetivos Qualidade", and "Requisitos Partes Interessadas" based on the `TipoModelo` field.
+  - **Model Persistence:** Implemented saving and loading of the last selected model ID in `bsc-widget.js`, improving UX by restoring the previous view on reload.
+  - **UI/UX Polish:**
+    - Moved the Settings gear icon to the top-right over the dark menu bar for better visibility and consistency.
+    - Styled the gear icon with white stroke (no fill) for clarity against the dark background.
+    - Refined the "Modelo" selector layout (thinner, inline label) using Flexbox.
+    - Updated the `openConfigManager` call to expose all component types (BSC, Card System, Drawer, etc.) from the BSC Widget.
+  - **Fix "Save Style":** Implemented the missing `grf-save-card-style` event listener in `ConfigManagerComponent.js`, restoring the ability to save Card System styles as new configurations.
+
 - [DONE] **Correção de Layout de Card:**
   - Removido o espaçamento extra (gap) que persistia quando o label de um campo estava oculto.
   - Corrigido o comportamento do `handle` do card: agora pode ser ocultado definindo a largura como `0`.
