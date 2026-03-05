@@ -67,10 +67,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let currentConfig = null;
     let currentConfigId = null;
+    let currentTheme = 'night'; // Default to night
     let isInitialized = false;
 
     async function initializeAndUpdate() {
-        console.log(`[DEBUG] Entering initializeAndUpdate. Current configId: ${currentConfigId}`);
+        console.log(`[DEBUG] Entering initializeAndUpdate. Current configId: ${currentConfigId}, theme: ${currentTheme}`);
+        
+        // Apply theme to body
+        document.body.classList.remove('night-theme', 'light-theme');
+        if (currentTheme === 'night') {
+            document.body.classList.add('night-theme');
+        } else {
+            document.body.classList.add('light-theme');
+        }
+
         renderStatus("Carregando...");
 
         // Helper to check for table and column integrity
@@ -266,7 +276,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         popover.onclick = e => e.stopPropagation();
         
         popover.innerHTML = `
-            <div>
+            <div class="popover-section">
                 <label for="popover-config-id">Config ID</label>
                 <div class="input-group">
                     <input type="text" id="popover-config-id" value="${activeConfigId}" placeholder="Cole o ID aqui...">
@@ -275,8 +285,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </button>
                 </div>
             </div>
+            <div class="popover-section">
+                <label>Tema</label>
+                <div class="theme-toggle-group">
+                    <button id="theme-night-btn" class="config-popover-btn ${currentTheme === 'night' ? 'active' : ''}">Night</button>
+                    <button id="theme-light-btn" class="config-popover-btn ${currentTheme === 'light' ? 'active' : ''}">Light</button>
+                </div>
+            </div>
             <button id="popover-manager-btn" class="config-popover-btn" title="Abrir Gerenciador de Configurações">
-                ${getIcon('icon-settings')}
+                ${getIcon('icon-settings')} Gerenciar
             </button>
         `;
         document.body.appendChild(popover);
@@ -286,10 +303,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             grist.setOptions({ configId: newId || null });
             closeSettingsPopover();
         };
+
+        popover.querySelector('#theme-night-btn').onclick = () => {
+            grist.setOptions({ theme: 'night' });
+            closeSettingsPopover();
+        };
+
+        popover.querySelector('#theme-light-btn').onclick = () => {
+            grist.setOptions({ theme: 'light' });
+            closeSettingsPopover();
+        };
         
         popover.querySelector('#popover-manager-btn').onclick = () => {
             closeSettingsPopover();
-openConfigManager(grist, { initialConfigId: currentConfigId, componentTypes: ['Card System', 'Drawer', 'Card Style', 'Table'] });
+            openConfigManager(grist, { initialConfigId: currentConfigId, componentTypes: ['Card System', 'Drawer', 'Card Style', 'Table'] });
         };
     }
 
@@ -316,9 +343,12 @@ openConfigManager(grist, { initialConfigId: currentConfigId, componentTypes: ['C
     grist.onOptions(async (options) => {
         console.log("Evento onOptions disparado. Opções recebidas:", options);
         const newConfigId = options?.configId || null;
-        if (newConfigId !== currentConfigId || !isInitialized) {
+        const newTheme = options?.theme || 'night'; // Default to night
+        
+        if (newConfigId !== currentConfigId || newTheme !== currentTheme || !isInitialized) {
             isInitialized = true;
             currentConfigId = newConfigId;
+            currentTheme = newTheme;
             await initializeAndUpdate();
         }
     });

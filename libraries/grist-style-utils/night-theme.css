@@ -1,0 +1,114 @@
+/* Night Theme - Inspired by Stitch Enterprise Dashboard */
+:root {
+    --primary-color: #0f3bbd;
+    --background-color: #101522;
+    --sidebar-color: #111522;
+    --card-background: #1c2336;
+    --border-color: #232c48;
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --hover-background: #1e293b;
+    --font-family: 'Manrope', sans-serif;
+    
+    /* Grist specific overrides if needed */
+    --grist-font-family: 'Manrope', sans-serif;
+}
+
+body.night-theme {
+    background-color: var(--background-color);
+    color: var(--text-primary);
+    font-family: var(--font-family);
+}
+
+.night-theme .card {
+    background-color: var(--card-background);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+
+.night-theme .card h2, 
+.night-theme .card h3 {
+    color: var(--text-primary);
+}
+
+.night-theme .card p {
+    color: var(--text-secondary);
+}
+
+.night-theme .btn-primary {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+}
+
+.night-theme .sidebar {
+    background-color: var(--sidebar-color);
+    border-right: 1px solid var(--border-color);
+}
+
+.night-theme input, 
+.night-theme select, 
+.night-theme textarea {
+    background-color: var(--border-color);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+
+.night-theme table {
+    border-collapse: collapse;
+}
+
+.night-theme th {
+    background-color: rgba(35, 44, 72, 0.5);
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.night-theme td {
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+
+.night-theme .status-placeholder {
+    color: var(--text-secondary);
+    background-color: var(--card-background);
+    border-color: var(--border-color);
+}
+
+.night-theme #settings-gear-btn {
+    background-color: var(--card-background);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    border: 1px solid var(--border-color);
+}
+
+.night-theme #settings-gear-btn:hover {
+    background-color: var(--hover-background);
+}
+
+.night-theme .config-popover {
+    background-color: var(--card-background);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+}
+
+.night-theme .config-popover label {
+    color: var(--text-secondary);
+}
+
+.night-theme .config-popover input {
+    background-color: var(--background-color);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+.night-theme .config-popover-btn {
+    background-color: var(--hover-background);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+.night-theme .config-popover-btn:hover {
+    background-color: var(--primary-color);
+}
