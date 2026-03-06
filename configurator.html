@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configurador de Páginas</title>
+    
+    <link rel="stylesheet" href="libraries/grist-config-manager/ConfigManagerComponent.css">
+    <link rel="stylesheet" href="libraries/grist-field-renderer/styles/renderer-styles.css">
+    
+    <style>
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            font-family: 'Manrope', sans-serif;
+            background-color: #f8fafc;
+        }
+        #configurator-container {
+            width: 100%; height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .grf-cm-main-container {
+            height: auto !important;
+            min-height: 85vh;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+        }
+    </style>
+</head>
+<body>
+    <div id="configurator-container">
+        <div id="loading">Iniciando Configurador com Ponte de Dados...</div>
+    </div>
+
+    <script type="module">
+        import { GristRestAdapter } from './libraries/headless-rest-adapter.js';
+        import { renderMainUI } from './libraries/grist-config-manager/ConfigManagerComponent.js';
+
+        async function init() {
+            const container = document.getElementById('configurator-container');
+            const urlParams = new URLSearchParams(window.location.search);
+            
+            const docId = urlParams.get('docId');
+            
+            // IMPORTANTE: Agora usamos a nossa PROPRIO servidor como base para a API
+            // O GristRestAdapter enviará para http://localhost:3000/grist-proxy/...
+            const proxyUrl = window.location.origin + "/grist-proxy";
+
+            if (!docId) {
+                container.innerHTML = '<div style="color: red; padding: 20px;">Erro: Document ID ausente.</div>';
+                return;
+            }
+
+            // O adaptador agora fala com o PROXY, não com o Grist direto
+            // A API Key não é necessária no JS (o Proxy a injetará com segurança)
+            const adapter = new GristRestAdapter({ 
+                gristUrl: proxyUrl, 
+                docId: docId, 
+                apiKey: "" 
+            });
+            
+            window.grist = {
+                docApi: adapter.docApi,
+                ready: () => {},
+                onOptions: () => {},
+                onRecords: () => {},
+                setOptions: () => {}
+            };
+            
+            // Patch listTables usando a rota do Proxy
+            window.grist.docApi.listTables = async () => {
+                const res = await fetch(`${proxyUrl}/api/docs/${docId}/tables`);
+                const data = await res.json();
+                return data.tables.map(t => t.id);
+            };
+
+            container.innerHTML = '';
+            await renderMainUI(window.grist, container, null, ['Card System', 'Drawer', 'Card Style', 'Table', 'BSC']);
+        }
+        init();
+    </script>
+</body>
+</html>

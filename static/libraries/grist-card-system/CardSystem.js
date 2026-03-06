@@ -1,0 +1,680 @@
+import { getFieldStyle, renderField } from '../grist-field-renderer/grist-field-renderer.js';
+import { publish } from '../grist-event-bus/grist-event-bus.js';
+
+/*******************************************************************
+ * CardSystem: A pure visualization component for the Grist Framework.
+ *
+ * - Renders "cards" using a 10-column grid layout based on provided options.
+ * - Receives all its configuration (styling, layout, etc.) via an 'options' object.
+ * - Does NOT contain any self-configuration UI.
+ * - Emits a 'grf-card-clicked' event on click/burger icon click.
+ *******************************************************************/
+export const CardSystem = (() => {
+  //--------------------------------------------------------------------
+  // 1) Internal State + Defaults
+  //--------------------------------------------------------------------
+  let _displayedRecords = []; // Store currently displayed records
+  let _lastOptions = {};      // Store last options for filtering
+  let _lastSchema = {};       // Store last schema for filtering
+  let _container = null;      // Store the container element
+  let _originalRecords = [];  // Store the original, unfiltered records
+
+  const DEFAULT_FIELD_STYLE = {
+    labelVisible: true, labelPosition: 'above', labelFont: 'inherit', labelFontSize: 'inherit', labelColor: 'inherit', labelOutline: false, labelOutlineColor: '#ffffff', dataJustify: 'left', heightLimited: false, maxHeightRows: 1, isTitleField: false
+  };
+
+  const DEFAULT_STYLING = {
+    iconGroups: [],
+    iconSize: 1.0,
+    internalCardPadding: '10px',
+    fieldBox: { borderEnabled: false, borderColor: '#cccccc', borderWidth: 1, borderRadius: 4, backgroundColor: '#ffffff', effect: 'none' },
+    labelStyle: { bold: false, color: '#333333', font: 'Calibri', size: '12px' },
+    widgetBackgroundMode: "solid", widgetBackgroundSolidColor: "#f9f9f9", widgetBackgroundGradientType: "linear-gradient(to right, {c1}, {c2})", widgetBackgroundGradientColor1: "#f9f9f9", widgetBackgroundGradientColor2: "#e9e9e9",
+    cardsColorMode: "solid", cardsColorSolidColor: "#ffffff", cardsColorGradientType: "linear-gradient(to right, {c1}, {c2})", cardsColorGradientColor1: "#ffffff", cardsColorGradientColor2: "#f0f0f0",
+    cardsColorApplyText: false, cardsColorTextField: null, cardsColorFontField: null, cardsColorOverlayEffect: 'darken', cardsColorOverlayOpacity: 10, // <-- NOVA PROPRIEDADE
+    cardBorderThickness: 0, cardBorderMode: "solid", cardBorderSolidColor: "#cccccc",
+    cardTitleFontColor: "#000000", cardTitleFontStyle: "Calibri", cardTitleFontSize: "20px",
+    cardTitleTopBarEnabled: false, cardTitleTopBarMode: "solid", cardTitleTopBarSolidColor: "#dddddd", cardTitleTopBarGradientType: "linear-gradient(to right, {c1}, {c2})", cardTitleTopBarGradientColor1: "#dddddd", cardTitleTopBarGradientColor2: "#cccccc", cardTitleTopBarLabelFontColor: "#000000", cardTitleTopBarLabelFontStyle: "Calibri", cardTitleTopBarLabelFontSize: "16px", cardTitleTopBarDataFontColor: "#333333", cardTitleTopBarDataFontStyle: "Calibri", cardTitleTopBarDataFontSize: "16px",
+    handleAreaWidth: "8px", handleAreaMode: "solid", handleAreaSolidColor: "#40E0D0",
+    widgetPadding: "10px", cardsSpacing: "15px",
+    cardTitleTopBarApplyText: false,
+    selectedCard: { enabled: false, scale: 1.05, colorEffect: "none" }
+  };
+
+  const DEFAULT_NUM_ROWS = 1;
+  const NUM_COLS = 10;
+
+  // Helper to load icons.svg
+  let iconsLoaded = false;
+  async function loadIcons() {
+    if (iconsLoaded) return;
+    try {
+      const response = await fetch('../libraries/icons/icons.svg');
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const svgText = await response.text();
+      const div = document.createElement('div');
+      div.style.display = 'none';
+      div.innerHTML = svgText;
+      document.body.insertBefore(div, document.body.firstChild);
+      iconsLoaded = true;
+    } catch (error) {
+      console.error('Falha ao carregar o arquivo de \u00edcones:', error);
+    }
+  }
+  const getIcon = (id) => `<svg class="icon"><use href="#${id}"></use></svg>`;
+
+  function _injectTooltipStyles() {
+    if (document.getElementById('grf-tooltip-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'grf-tooltip-styles';
+    style.textContent = `
+        .grf-tooltip-trigger { position: relative; display: inline-block; margin-left: 8px; width: 16px; height: 16px; border-radius: 50%; background-color: #adb5bd; color: white; font-size: 11px; font-weight: bold; text-align: center; line-height: 16px; cursor: help; }
+        .grf-tooltip-trigger:before, .grf-tooltip-trigger:after { position: absolute; left: 50%; transform: translateX(-50%); opacity: 0; visibility: hidden; transition: opacity 0.2s ease, visibility 0.2s ease; z-index: 10; }
+        .grf-tooltip-trigger:after { content: attr(data-tooltip); bottom: 150%; background-color: rgba(0, 0, 0, 0.8); color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; font-weight: normal; line-height: 1.4; white-space: pre-wrap; width: 250px; }
+        .grf-tooltip-trigger:before { content: ''; bottom: 150%; margin-bottom: -5px; border-style: solid; border-width: 5px 5px 0 5px; border-color: rgba(0, 0, 0, 0.8) transparent transparent transparent; }
+        .grf-tooltip-trigger:hover:before, .grf-tooltip-trigger:hover:after { opacity: 1; visibility: visible; }
+    `;
+    document.head.appendChild(style);
+  }
+
+  //--------------------------------------------------------------------
+  // 2) Public renderCards(container, records, options, schema)
+  //--------------------------------------------------------------------
+  async function renderCards(container, records, options, schema) { // Added async
+    _injectTooltipStyles();
+    await loadIcons(); // Call loadIcons here
+    const currentOptions = options || {};
+    const tableLens = currentOptions.tableLens; // Extract tableLens
+    const styling = { ...DEFAULT_STYLING, ...currentOptions.styling, selectedCard: { ...DEFAULT_STYLING.selectedCard, ...(currentOptions.styling?.selectedCard || {}) } };
+    const layout = currentOptions.layout || [];
+    console.log("DEBUG: CardSystem received layout:", JSON.stringify(layout, null, 2));
+    const viewMode = currentOptions.viewMode || 'click';
+    const numRows = currentOptions.numRows || DEFAULT_NUM_ROWS;
+
+    // Store records for filtering and display
+    _displayedRecords = records;
+    if (_originalRecords.length === 0) { // Only set original records on initial load
+      _originalRecords = records;
+    }
+    _lastOptions = currentOptions;
+    _lastSchema = schema;
+    _container = container;
+
+    container.innerHTML = "";
+    if (!records || !records.length) {
+      container.textContent = "No records found.";
+      return;
+    }
+
+    if (styling.widgetBackgroundMode === 'transparent' || currentOptions.isRefList) {
+        container.style.background = 'transparent';
+    } else {
+        container.style.background = resolveStyle(null, null, styling.widgetBackgroundMode, styling.widgetBackgroundSolidColor, { type: styling.widgetBackgroundGradientType, c1: styling.widgetBackgroundGradientColor1, c2: styling.widgetBackgroundGradientColor2 }, styling.widgetBackgroundField);
+    }
+    container.style.padding = currentOptions.isRefList ? '0px' : styling.widgetPadding;
+
+    // --- Grid Layout Logic (Final Fixed Version) ---
+    const colLimit = styling.cardsColumnLimit || 1;
+    const colMode = styling.cardsColumnMode || 'fixed';
+    let numCols = colLimit;
+
+    if (colMode === 'responsive') {
+        const totalRecords = records.length;
+        numCols = Math.min(totalRecords, colLimit);
+        if (numCols < 1) numCols = 1;
+    }
+
+    container.style.display = 'grid';
+    container.style.gridTemplateColumns = `repeat(${numCols}, 1fr)`;
+    container.style.gridAutoRows = 'min-content'; // Essential for nested grids
+    container.style.gap = styling.cardsSpacing;
+    // ---------------------------------------------------
+
+    records.forEach((record) => {
+      const cardEl = document.createElement("div");
+      cardEl.className = "cs-card";
+      cardEl.id = `record-${record.id}`; // ID for linking
+      cardEl.dataset.recordId = record.id; // Data attribute for finding
+      cardEl.style.display = "grid";
+      cardEl.style.gridTemplateRows = `repeat(${numRows}, auto)`;
+      
+      cardEl.style.gridTemplateColumns = `repeat(${NUM_COLS}, 1fr)`;
+      cardEl.style.gap = "4px";
+      // cardEl.style.marginBottom = styling.cardsSpacing; // Removed: grid gap handles spacing now
+      cardEl.style.alignSelf = "start"; // Essential: Prevent vertical stretching
+      cardEl.style.borderRadius = "8px";
+      cardEl.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)";
+      cardEl.style.position = "relative";
+      cardEl.style.minHeight = "60px";
+      cardEl.style.transition = "all 0.2s ease-in-out";
+
+      const internalPadding = parseInt(styling.internalCardPadding, 10) || 10;
+      const handleWidth = parseInt(styling.handleAreaWidth, 10); // Don't default to 8 if 0
+
+      cardEl.style.padding = `${internalPadding}px`;
+      cardEl.style.paddingLeft = `${internalPadding + handleWidth}px`;
+
+      let finalCardColor = styling.cardsColorSolidColor; // Default fallback
+
+      // --- INÍCIO DA LÓGICA DE ESTILO DO CARD ATUALIZADA ---
+      if (styling.cardsColorMode === 'conditional' && styling.cardsColorField) {
+        const colSchema = schema[styling.cardsColorField];
+        if (colSchema) {
+          const fieldStyle = getFieldStyle(record, colSchema, schema);
+          // Aplica a cor de fundo (com fallback para a cor sólida padrão)
+          finalCardColor = fieldStyle.fillColor || styling.cardsColorSolidColor;
+          cardEl.style.background = finalCardColor;
+          // APLICA A COR DE TEXTO SE A OPÇÃO ESTIVER MARCADA
+          if (styling.cardsColorApplyText && fieldStyle.textColor) {
+            cardEl.style.color = fieldStyle.textColor;
+          }
+        } else {
+          // Fallback se o campo configurado não for encontrado no schema
+          cardEl.style.background = styling.cardsColorSolidColor;
+        }
+      } else if (styling.cardsColorMode === 'text-value') {
+        if (styling.cardsColorTextField) {
+             const bgVal = record[styling.cardsColorTextField];
+             if (bgVal) {
+                 finalCardColor = bgVal;
+                 cardEl.style.background = bgVal;
+             }
+        }
+        if (styling.cardsColorFontField) {
+             const fontVal = record[styling.cardsColorFontField];
+             if (fontVal) cardEl.style.color = fontVal;
+        }
+      } else if (styling.cardsColorMode === 'solid' && styling.cardsColorField) {
+          const bgVal = record[styling.cardsColorField];
+          if (bgVal) {
+              finalCardColor = bgVal;
+              cardEl.style.background = bgVal;
+          } else {
+              cardEl.style.background = styling.cardsColorSolidColor; // Fallback to configured solid color
+          }
+          if (styling.cardsColorApplyText && styling.cardsColorFontField) { // Apply font color if configured
+               const fontVal = record[styling.cardsColorFontField];
+               if (fontVal) cardEl.style.color = fontVal;
+          }
+      }
+      else if (styling.cardsColorMode === 'overlay') {
+          const opacity = (parseInt(styling.cardsColorOverlayOpacity, 10) || 0) / 100;
+          const isDarken = styling.cardsColorOverlayEffect === 'darken';
+          const rgb = isDarken ? '0, 0, 0' : '255, 255, 255';
+          finalCardColor = `rgba(${rgb}, ${opacity})`;
+          cardEl.style.background = finalCardColor;
+      } else {
+        // This is the true fallback for solid color if no field is specified, or for gradient
+        finalCardColor = resolveStyle(record, schema, styling.cardsColorMode, styling.cardsColorSolidColor, { type: styling.cardsColorGradientType, c1: styling.cardsColorGradientColor1, c2: styling.cardsColorGradientColor2 }, styling.cardsColorField);
+        cardEl.style.background = finalCardColor;
+      }
+      // --- FIM DA LÓGICA DE ESTILO DO CARD ATUALIZADA ---
+
+      if (styling.cardBorderThickness > 0) {
+        const borderColor = resolveStyle(record, schema, styling.cardBorderMode, styling.cardBorderSolidColor, null, styling.cardBorderField);
+        cardEl.style.border = `${styling.cardBorderThickness}px solid ${borderColor}`;
+      } else {
+        cardEl.style.border = "none";
+      }
+
+      const handleEl = document.createElement("div");
+      handleEl.style.position = "absolute";
+      handleEl.style.left = "0";
+      handleEl.style.top = "0";
+      handleEl.style.bottom = "0";
+      handleEl.style.width = styling.handleAreaWidth;
+      handleEl.style.background = resolveStyle(record, schema, styling.handleAreaMode, styling.handleAreaSolidColor, null, styling.handleAreaField);
+      handleEl.style.borderTopLeftRadius = "8px";
+      handleEl.style.borderBottomLeftRadius = "8px";
+      cardEl.appendChild(handleEl);
+      
+      if (handleWidth === 0) { // If width is 0, hide the handle completely
+        handleEl.style.display = "none";
+      }
+
+      if (viewMode === "burger") {
+        const burger = document.createElement("span");
+        burger.innerHTML = "☰";
+        burger.style.cssText = "position: absolute; left: 8px; top: 8px; font-size: 18px; color: #555; cursor: pointer; z-index: 2;";
+        handleEl.appendChild(burger);
+        burger.addEventListener("click", (e) => { e.stopPropagation(); handleCardClick(record, currentOptions); });
+        cardEl.style.cursor = "default";
+      } else {
+        cardEl.style.cursor = "pointer";
+        cardEl.addEventListener("click", () => { handleCardClick(record, currentOptions); });
+      }
+
+      if (styling.selectedCard?.enabled) {
+        cardEl.addEventListener("mouseenter", () => { cardEl.style.transform = `scale(${styling.selectedCard.scale})`; cardEl.style.boxShadow = "0 6px 12px rgba(0,0,0,0.2)"; });
+        cardEl.addEventListener("mouseleave", () => { cardEl.style.transform = "scale(1)"; cardEl.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)"; });
+      }
+
+      const titleFields = layout.filter(f => f.style?.isTitleField);
+      if (styling.cardTitleTopBarEnabled && titleFields.length > 0) {
+        const topBarEl = document.createElement("div");
+        topBarEl.style.gridRow = "1 / span 1";
+        topBarEl.style.gridColumn = `1 / span ${NUM_COLS}`;
+        topBarEl.style.padding = "4px 8px";
+        topBarEl.style.display = "flex";
+        topBarEl.style.alignItems = "center";
+        topBarEl.style.gap = "16px";
+        if (styling.cardTitleTopBarMode === 'conditional' && styling.cardTitleTopBarField) {
+          const colSchema = schema[styling.cardTitleTopBarField];
+          if (colSchema) {
+            const fieldStyle = getFieldStyle(record, colSchema, schema);
+
+            // Aplica a cor de fundo (com fallback)
+            topBarEl.style.background = fieldStyle.fillColor || styling.cardTitleTopBarSolidColor;
+
+            // APLICA A COR DE TEXTO SE A OPÇÃO ESTIVER MARCADA
+            // Nota: Isso afetará os labels "Label Style" e "Data Style" se eles não tiverem uma cor própria definida.
+            if (styling.cardTitleTopBarApplyText && fieldStyle.textColor) {
+              topBarEl.style.color = fieldStyle.textColor;
+            }
+          } else {
+            topBarEl.style.background = styling.cardTitleTopBarSolidColor;
+          }
+        } else {
+          // A lógica antiga para Solid e Gradient permanece
+          topBarEl.style.background = resolveStyle(record, schema, styling.cardTitleTopBarMode, styling.cardTitleTopBarSolidColor, { type: styling.cardTitleTopBarGradientType, c1: styling.cardTitleTopBarGradientColor1, c2: styling.cardTitleTopBarGradientColor2 }, styling.cardTitleTopBarField);
+        }
+        topBarEl.style.borderTopLeftRadius = "8px";
+        topBarEl.style.borderTopRightRadius = "8px";
+        cardEl.appendChild(topBarEl);
+
+        titleFields.forEach(f => {
+          const fieldStyle = { ...DEFAULT_FIELD_STYLE, ...f.style };
+          const tContainer = document.createElement("div");
+          tContainer.style.display = "flex";
+          tContainer.style.flexDirection = (fieldStyle.labelPosition === 'left' ? "row" : "column");
+          tContainer.style.gap = "4px";
+          if (fieldStyle.labelVisible) {
+            const lblEl = document.createElement("div");
+            const fieldSchema = schema ? schema[f.colId] : null;
+            lblEl.textContent = fieldSchema ? (fieldSchema.label || f.colId) : f.colId;
+            lblEl.style.fontFamily = styling.cardTitleTopBarLabelFontStyle;
+            lblEl.style.fontSize = styling.cardTitleTopBarLabelFontSize;
+            lblEl.style.color = styling.cardTitleTopBarLabelFontColor;
+            tContainer.appendChild(lblEl);
+          }
+          const dataEl = document.createElement("div");
+          dataEl.textContent = String(record[f.colId] ?? "");
+          dataEl.style.fontFamily = styling.cardTitleTopBarDataFontStyle;
+          dataEl.style.fontSize = styling.cardTitleTopBarDataFontSize;
+          dataEl.style.color = styling.cardTitleTopBarDataFontColor;
+          tContainer.appendChild(dataEl);
+          topBarEl.appendChild(tContainer);
+        });
+      }
+
+
+
+      layout.forEach(f => {
+        if (f.isIconGroup) {
+          const groupConfig = (styling.iconGroups || []).find(g => g.id === f.colId);
+          if (!groupConfig || !groupConfig.buttons || groupConfig.buttons.length === 0) return;
+
+          const groupContainer = document.createElement("div");
+          groupContainer.style.gridRow = `${f.row + 1} / span ${f.rowSpan || 1}`;
+          groupContainer.style.gridColumn = `${f.col + 1} / span ${f.colSpan || 1}`;
+          groupContainer.style.padding = "4px";
+          groupContainer.style.display = "flex";
+          groupContainer.style.gap = "8px";
+          groupContainer.style.alignItems = "center";
+          
+          // Vertical Offset
+          if (groupConfig.verticalOffset) {
+              groupContainer.style.transform = `translateY(${groupConfig.verticalOffset}px)`;
+              // Ensure it can overlap if needed, though grid cells might clip. 
+              // z-index might be needed if it goes outside.
+              groupContainer.style.zIndex = "10"; 
+          }
+
+          let justifyContent = "center";
+          if (groupConfig.alignment === 'left') justifyContent = "flex-start";
+          if (groupConfig.alignment === 'right') justifyContent = "flex-end";
+          groupContainer.style.justifyContent = justifyContent;
+
+          groupConfig.buttons.forEach(buttonConfig => {
+            const actionButton = document.createElement("button");
+            actionButton.className = "cs-action-button";
+            
+            // --- New Styling Logic (Updated) ---
+            const isText = buttonConfig.buttonStyle === 'text';
+            const shape = groupConfig.shape || 'square';
+            const fgColor = groupConfig.iconColor || '#000000';
+            const borderWidth = groupConfig.borderWidth !== undefined ? groupConfig.borderWidth : 1;
+            
+            // Calculate Background
+            let bgColor = '#f0f0f0';
+            if (groupConfig.bgMode === 'transparent') {
+                bgColor = 'transparent';
+            } else if (groupConfig.bgMode === 'solid') {
+                bgColor = groupConfig.backgroundColor || '#f0f0f0';
+            } else if (groupConfig.bgMode === 'overlay') {
+                // Adaptive/Overlay (standalone config)
+                const op = (parseInt(groupConfig.overlayOpacity, 10) || 20) / 100;
+                const rgb = groupConfig.overlayEffect === 'darken' ? '0,0,0' : '255,255,255';
+                bgColor = `rgba(${rgb}, ${op})`;
+            } else if (groupConfig.bgMode === 'match-card') {
+                // Match Card Color + Adjust
+                const effect = groupConfig.overlayEffect || 'lighten';
+                const opacity = groupConfig.overlayOpacity || 20;
+                bgColor = adjustColor(finalCardColor, opacity, effect);
+            } else {
+                // Fallback for legacy
+                bgColor = groupConfig.transparentBackground ? 'transparent' : (groupConfig.backgroundColor || '#f0f0f0');
+            }
+
+            if (isText) {
+                actionButton.textContent = (buttonConfig.text || 'Tx').substring(0, 3); // Limit length
+                actionButton.style.fontFamily = 'sans-serif';
+                actionButton.style.fontWeight = 'bold';
+                actionButton.style.fontSize = '22px'; // Increased from 20px
+            } else {
+                actionButton.innerHTML = getIcon(buttonConfig.icon || 'icon-link');
+            }
+
+            actionButton.title = buttonConfig.tooltip || '';
+            const iconSize = styling.iconSize || 1.0;
+            actionButton.style.width = `${32 * iconSize}px`;
+            actionButton.style.height = `${32 * iconSize}px`;
+            
+            // Border Logic
+            actionButton.style.border = groupConfig.borderColor ? `${borderWidth}px solid ${groupConfig.borderColor}` : `${borderWidth}px solid #ccc`;
+            
+            actionButton.style.background = bgColor;
+            actionButton.style.color = fgColor;
+            actionButton.style.borderRadius = shape === 'circle' ? "50%" : "5px";
+            
+            // SVG Fill color fix and Sizing
+            const svgIcon = actionButton.querySelector('svg.icon');
+            if (svgIcon) {
+                // Explicitly set fill/stroke to current color to ensure visibility
+                // We use the calculated fgColor which handles the contrast logic.
+                svgIcon.style.color = fgColor;
+                svgIcon.setAttribute('fill', 'currentColor');
+                svgIcon.setAttribute('stroke', 'currentColor');
+                
+                svgIcon.style.width = '85%'; // Increased from 75%
+                svgIcon.style.height = '85%';
+            }
+
+            actionButton.style.cursor = "pointer";
+            actionButton.style.padding = "4px";
+            actionButton.style.display = "flex";
+            actionButton.style.justifyContent = "center";
+            actionButton.style.alignItems = "center";
+            actionButton.style.transition = "opacity 0.2s";
+
+            actionButton.addEventListener('mouseenter', () => actionButton.style.opacity = '0.8');
+            actionButton.addEventListener('mouseleave', () => actionButton.style.opacity = '1');
+            // -------------------------
+
+            actionButton.addEventListener("click", (e) => {
+              e.stopPropagation();
+
+              if (buttonConfig.actionType === 'triggerWidget') {
+                const configIdToPublish = buttonConfig.targetConfigId || currentOptions.configId;
+                if (!configIdToPublish) {
+                  console.warn("CardSystem: Cannot publish grf-trigger-widget. configId is missing in button configuration and current widget options.");
+                  return;
+                }
+                let rowIdsToPublish = [];
+                let filterValueToPublish = record.id; // Default to record.id
+
+                if (buttonConfig.sourceRefListColumn) {
+                  const refListValue = record[buttonConfig.sourceRefListColumn];
+                  if (Array.isArray(refListValue) && refListValue[0] === 'L') {
+                    rowIdsToPublish = refListValue.slice(1);
+                    filterValueToPublish = rowIdsToPublish; // Use the array of IDs for filtering
+                  } else {
+                    console.warn(`CardSystem: sourceRefListColumn '${buttonConfig.sourceRefListColumn}' is not a valid RefList in record. Falling back to record.id.`);
+                  }
+                }
+
+                publish('grf-trigger-widget', {
+                  configId: configIdToPublish,
+                  sourceRecord: record,
+                  rowIds: rowIdsToPublish, // Pass the array of row IDs
+                  filterValue: filterValueToPublish, // Pass either single ID or array of IDs
+                  componentType: buttonConfig.targetComponentType,
+                  filterTargetColumn: buttonConfig.filterTargetColumn
+                });
+              } else {
+                publish('grf-navigation-action-triggered', {
+                  config: buttonConfig,
+                  sourceRecord: record,
+                  tableId: currentOptions.tableId
+                });
+              }
+            });
+            groupContainer.appendChild(actionButton);
+          });
+
+          cardEl.appendChild(groupContainer);
+          return;
+        }
+
+        const fieldStyle = { ...DEFAULT_FIELD_STYLE, ...f.style };
+        if (!record.hasOwnProperty(f.colId)) return;
+        if (styling.cardTitleTopBarEnabled && fieldStyle.isTitleField) return;
+
+        if (f.row >= 0) {
+          const fieldBox = document.createElement("div");
+          fieldBox.style.gridRow = `${f.row + 1} / span ${f.rowSpan || 1}`;
+          fieldBox.style.gridColumn = `${f.col + 1} / span ${f.colSpan || 1}`;
+          if (f.row === 0) {
+            console.log(`Applying style to ${f.colId}:`, fieldBox.style.gridColumn);
+          } fieldBox.style.padding = "4px";
+
+          if (styling.fieldBackground?.enabled) {
+            const cardBaseColor = resolveStyle(record, schema, styling.cardsColorMode, styling.cardsColorSolidColor, null, styling.cardsColorField);
+            fieldBox.style.backgroundColor = lightenHexColor(cardBaseColor, styling.fieldBackground.lightenPercentage || 15);
+            fieldBox.style.borderRadius = '4px';
+          }
+
+          fieldBox.style.display = "flex";
+          fieldBox.style.flexDirection = (fieldStyle.labelPosition === 'left' ? "row" : "column");
+          
+          // Fix for spacing issue when label is hidden:
+          // Only apply gap if label is visible
+          fieldBox.style.gap = fieldStyle.labelVisible ? (fieldStyle.labelPosition === 'left' ? "8px" : "2px") : "0px";
+          
+          fieldBox.style.alignItems = (fieldStyle.labelPosition === 'left' ? "center" : "stretch");
+
+          if (fieldStyle.labelVisible) {
+            const labelEl = document.createElement("div");
+            const fieldSchema = schema ? schema[f.colId] : null;
+            let labelText = fieldSchema ? (fieldSchema.label || f.colId) : f.colId;
+
+            // Append item count for RefList fields
+            if (fieldSchema && fieldSchema.type.startsWith('RefList:')) {
+              const refListValue = record[f.colId];
+              const count = Array.isArray(refListValue) && refListValue[0] === 'L' ? refListValue.length - 1 : 0;
+              labelText += ` (${count} itens)`;
+            }
+
+            let labelHtml = labelText;
+            if (fieldSchema && fieldSchema.description && fieldSchema.description.trim() !== '') {
+              const sanitizedDescription = fieldSchema.description.replace(/"/g, '&quot;');
+              labelHtml += ` <span class="grf-tooltip-trigger" data-tooltip="${sanitizedDescription}">?</span>`;
+            }
+
+            labelEl.innerHTML = labelHtml;
+            const ls = styling.labelStyle || {};
+            labelEl.style.fontWeight = ls.bold ? 'bold' : 'normal';
+            labelEl.style.color = ls.color;
+            labelEl.style.fontFamily = ls.font;
+            labelEl.style.fontSize = ls.size;
+
+            if (fieldStyle.isTitleField && !styling.cardTitleTopBarEnabled) {
+              // Override with title styles if it's a title field
+              labelEl.style.fontWeight = "bold";
+              labelEl.style.color = styling.cardTitleFontColor;
+              labelEl.style.fontSize = styling.cardTitleFontSize;
+              labelEl.style.fontFamily = styling.cardTitleFontStyle;
+            }
+            fieldBox.appendChild(labelEl);
+          }
+
+          const fieldSchema = schema ? schema[f.colId] : null;
+          const isTabulatorRefList = fieldSchema && fieldSchema.type.startsWith('RefList:') && fieldStyle.refListConfig?.displayAs === 'tabulator';
+
+          let containerForField;
+
+          if (isTabulatorRefList) {
+              containerForField = document.createElement('div');
+              fieldBox.appendChild(containerForField);
+          } else {
+              containerForField = document.createElement("div");
+              const fb = styling.fieldBox || {};
+              if (fb.borderEnabled) {
+                  containerForField.style.border = `${fb.borderWidth || 1}px solid ${fb.borderColor || '#cccccc'}`;
+                  containerForField.style.borderRadius = `${fb.borderRadius || 4}px`;
+                  containerForField.style.padding = '4px 6px';
+                  containerForField.style.backgroundColor = fb.backgroundColor || '#ffffff';
+                  switch (fb.effect) {
+                      case 'bevel':
+                          containerForField.style.boxShadow = 'inset 0 2px 4px rgba(0,0,0,0.3)';
+                          break;
+                      case 'bevel-outset':
+                          containerForField.style.boxShadow = '-1px -1px 3px rgba(255,255,255,0.7), 1px 1px 3px rgba(0,0,0,0.2)';
+                          break;
+                      case 'shadow':
+                          containerForField.style.boxShadow = '0 2px 5px rgba(0,0,0,0.3)';
+                          break;
+                  }
+              }
+              fieldBox.appendChild(containerForField);
+          }
+
+          const fieldOptions = {};
+          if (fieldStyle.widget === 'Color Picker' || fieldStyle.widget === 'color') {
+            fieldOptions.colorPicker = true;
+          } else if (fieldStyle.widget === 'Progress Bar' || fieldStyle.widget === 'progress') {
+            fieldOptions.progressBar = true;
+            fieldOptions.widgetOptions = fieldStyle.widgetOptions;
+          }
+
+          renderField({
+            container: containerForField,
+            colSchema: fieldSchema,
+            record: record,
+            isEditing: false,
+            tableLens: tableLens,
+            fieldStyle: fieldStyle,
+            styling: styling,
+            fieldOptions: fieldOptions
+          });
+
+          cardEl.appendChild(fieldBox);
+        }
+      });
+      container.appendChild(cardEl);
+    });
+
+    // --- DEBUG INFO RENDER ---
+    if (styling.showDebugInfo) {
+        const debugDiv = document.createElement('div');
+        debugDiv.style.marginTop = '20px';
+        debugDiv.style.padding = '10px';
+        debugDiv.style.border = '1px solid red';
+        debugDiv.style.backgroundColor = '#fff0f0';
+        debugDiv.innerHTML = `<h3>Schema Debug Info (TableLens)</h3>
+        <textarea rows="10" style="width: 100%; font-family: monospace;">${JSON.stringify(_lastSchema, null, 2)}</textarea>`;
+        container.appendChild(debugDiv);
+    }
+  }
+
+  // Function to filter records based on a search term
+  function filterRecords(searchTerm) {
+    if (!_container) {
+      console.error("Card container not found for filtering.");
+      return;
+    }
+    const filteredRecords = _originalRecords.filter(record => {
+      const lowerCaseSearchTerm = searchTerm.toLowerCase();
+      return Object.keys(_lastSchema).some(colId => {
+        const colSchema = _lastSchema[colId];
+        // Exclude Grist helper fields (e.g., 'id', 'manualSort', 'gristHelper_...')
+        if (colId === 'id' || colId === 'manualSort' || colId.startsWith('gristHelper_')) {
+          return false;
+        }
+
+        let valueToSearch = record[colId];
+        let stringValue = '';
+
+        if (colSchema.type === 'Bool') {
+          stringValue = (valueToSearch === true) ? 'sim' : (valueToSearch === false) ? 'não' : '';
+        } else if (valueToSearch !== null && valueToSearch !== undefined) {
+          stringValue = String(valueToSearch).toLowerCase();
+        }
+
+        console.log(`Checking field '${colId}' with value: '${stringValue}' for search term: '${lowerCaseSearchTerm}'`);
+        return stringValue.includes(lowerCaseSearchTerm);
+      });
+    });
+    // We need to pass the current options and schema to renderCards for it to work correctly
+    // This assumes that the last options and schema used for rendering are still available or can be reconstructed.
+    // For simplicity, we'll re-fetch them or store them if needed. For now, let's assume they are passed.
+    // A more robust solution might involve storing the last used options/schema in _CardSystem state.
+    renderCards(_container, filteredRecords, _lastOptions, _lastSchema);
+  }
+
+  function handleCardClick(record, options) {
+    const drawerConfigId = options?.sidePanel?.drawerConfigId;
+    const tableId = options?.tableId;
+    if (!drawerConfigId || !tableId) {
+      console.warn("Nenhuma a\u00e7\u00e3o de clique configurada. Verifique a aba 'Actions' na configura\u00e7\u00e3o do card.", { options });
+      return;
+    }
+    publish('grf-card-clicked', {
+      drawerConfigId: drawerConfigId,
+      recordId: record.id,
+      tableId: tableId
+    });
+  }
+
+  function resolveStyle(record, schema, mode, solidColor, gradientOptions, fieldName) {
+    if (mode === 'gradient' && gradientOptions?.type) { return gradientOptions.type.replace('{c1}', gradientOptions.c1).replace('{c2}', gradientOptions.c2); }
+    if (mode === 'conditional' && fieldName && record && schema?.[fieldName]) {
+      const colSchema = schema[fieldName];
+      const fieldStyle = getFieldStyle(record, colSchema, schema);
+      return fieldStyle.fillColor || solidColor;
+    }
+    return solidColor;
+  }
+
+  function adjustColor(hex, percent, effect) {
+    if (!hex) return hex;
+    // Handle RGB/RGBA if passed from computed style
+    if (hex.startsWith('rgb')) {
+        // Simple parsing for now, or fallback
+        return hex; 
+    }
+    if (!hex.startsWith('#')) return hex;
+
+    let r = parseInt(hex.slice(1, 3), 16);
+    let g = parseInt(hex.slice(3, 5), 16);
+    let b = parseInt(hex.slice(5, 7), 16);
+
+    const p = percent / 100;
+
+    if (effect === 'darken') {
+        r = Math.round(Math.max(0, r - (r * p)));
+        g = Math.round(Math.max(0, g - (g * p)));
+        b = Math.round(Math.max(0, b - (b * p)));
+    } else {
+        // Lighten (default)
+        r = Math.round(Math.min(255, r + (255 - r) * p));
+        g = Math.round(Math.min(255, g + (255 - g) * p));
+        b = Math.round(Math.min(255, b + (255 - b) * p));
+    }
+
+    const toHex = c => c.toString(16).padStart(2, '0');
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+  }
+
+  return { renderCards, filterRecords };
+})();

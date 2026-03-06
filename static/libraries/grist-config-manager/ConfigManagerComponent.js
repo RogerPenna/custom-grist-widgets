@@ -58,19 +58,13 @@ function close() {
     overlay = null;
 }
 
-export async function renderMainUI(grist, container, initialConfigId, componentTypes) {
-    console.log("ConfigManager: renderMainUI inicializado com grist:", grist);
-    const activeGrist = grist || window.grist;
-    if (!activeGrist) {
-        console.error("ConfigManager: Objeto grist não encontrado!");
-        throw new Error("ConfigManager: Instância do Grist não fornecida.");
-    }
+export async function renderMainUI(container, initialConfigId, componentTypes) {
     const CONFIG_TABLE = 'Grf_config';
-    const tableLens = new GristTableLens(activeGrist);
-    const dataWriter = new GristDataWriter(activeGrist);
+    const tableLens = new GristTableLens(_grist);
+    const dataWriter = new GristDataWriter(_grist);
 
     try {
-        const allTableIds = await activeGrist.docApi.listTables();
+        const allTableIds = await _grist.docApi.listTables();
         if (!allTableIds.includes(CONFIG_TABLE)) {
             renderSetupInstructions(container);
             return;
