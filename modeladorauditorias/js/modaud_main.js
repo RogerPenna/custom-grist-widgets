@@ -1041,7 +1041,7 @@ async function executarClonagem(origemId, destinosIds, idsParaClonar = null) {
         const perguntasTableMeta = allTables.find(t => t.tableId === 'Modelos_Perguntas');
         const colunasMeta = allColumns.filter(c => String(c.parentId) === String(perguntasTableMeta.id));
         const colunasParaCopiar = colunasMeta
-            .filter(c => !c.isFormula && c.colId !== 'id' && c.colId !== 'manualSort')
+            .filter(c => (!c.formula || c.formula.trim() === '') && c.colId !== 'id' && c.colId !== 'manualSort')
             .map(c => c.colId);
 
         for (const destinoId of destinosIds) {

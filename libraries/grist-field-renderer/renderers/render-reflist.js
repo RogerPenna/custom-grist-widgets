@@ -42,7 +42,12 @@ async function handleEdit(tableId, recordId, onUpdate, dataWriter, tableLens, fi
     const schema = await tableLens.getTableSchema(tableId);
     const record = await tableLens.fetchRecordById(tableId, recordId);
 
-    const modalOptions = { title: `Editando Registro ${recordId}`, tableId, record, schema, onSave: async (changes) => { await dataWriter.updateRecord(tableId, recordId, changes); onUpdate(); } };
+    const modalOptions = { 
+        title: `Editando Registro ${recordId}`, 
+        tableId, record, schema, 
+        tableLens, // INJEÇÃO NECESSÁRIA
+        onSave: async (changes) => { await dataWriter.updateRecord(tableId, recordId, changes); onUpdate(); } 
+    };
 
     if (fieldConfig && typeof fieldConfig === 'object') {
         modalOptions.hiddenFields = Object.keys(fieldConfig).filter(key => fieldConfig[key].hideInModal);
@@ -61,7 +66,10 @@ export async function renderRefList(options) {
     const { container, record, colSchema, tableLens, isLocked, fieldConfig, ruleIdToColIdMap, refListConfig } = options;
     let isCollapsed = container.dataset.collapsed === 'true' || (container.dataset.collapsed === undefined && options.refListConfig?.collapsible);
     container.dataset.collapsed = isCollapsed;
-    const dataWriter = new GristDataWriter(grist);
+    
+    // CORREÇÃO: Usa o adaptador do tableLens se disponível para o DataWriter
+    const dataWriter = (tableLens && tableLens.docApi) ? new GristDataWriter(tableLens.docApi) : new GristDataWriter(window.grist);
+    
     const iconPath = '../libraries/icons/icons.svg';
     container.innerHTML = '';
     if (isLocked) container.closest('.drawer-field')?.classList.add('is-locked-style');
@@ -359,15 +367,17 @@ export async function renderRefList(options) {
                 }
 
                 th.onclick = () => {
-                    const currentSortCol = refListConfig.columns.find(col => col.colId === c.colId);
-                    if (currentSortCol) {
-                        const currentSort = currentSortCol.sort || 'none';
-                        let nextSort = 'asc';
-                        if (currentSort === 'asc') nextSort = 'desc';
-                        if (currentSort === 'desc') nextSort = 'none';
+                    if (refListConfig && Array.isArray(refListConfig.columns)) {
+                        const currentSortCol = refListConfig.columns.find(col => col.colId === c.colId);
+                        if (currentSortCol) {
+                            const currentSort = currentSortCol.sort || 'none';
+                            let nextSort = 'asc';
+                            if (currentSort === 'asc') nextSort = 'desc';
+                            if (currentSort === 'desc') nextSort = 'none';
 
-                        refListConfig.columns.forEach(col => col.sort = 'none');
-                        currentSortCol.sort = nextSort;
+                            refListConfig.columns.forEach(col => col.sort = 'none');
+                            currentSortCol.sort = nextSort;
+                        }
                     }
                     renderContent();
                 };

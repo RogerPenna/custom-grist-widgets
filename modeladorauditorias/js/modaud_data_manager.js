@@ -82,7 +82,7 @@ export async function getContextDataFromRefColumn(refColId) {
         console.warn(`Coluna '${refColId}' não tem uma 'Show Column' configurada. Tentando adivinhar a melhor coluna de texto.`);
         // Tentativa de adivinhação mais inteligente se displayCol não estiver configurada
         const contextColumns = allColumns.filter(c => c.parentId === contextTableMeta.id);
-        const bestTextColumn = contextColumns.find(c => c.type === 'Text' && !c.isFormula) || contextColumns.find(c => c.type === 'Text');
+        const bestTextColumn = contextColumns.find(c => c.type === 'Text' && (!c.formula || c.formula.trim() === '')) || contextColumns.find(c => c.type === 'Text');
         if (bestTextColumn) {
             displayColId = bestTextColumn.colId;
         }

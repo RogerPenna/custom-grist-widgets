@@ -114,7 +114,7 @@ export const GristTableLens = function(gristInstance) {
                     label: String(entry.label || entry.colId),
                     type: entry.type,
                     widgetOptions: wopts,
-                    isFormula: !!entry.isFormula,
+                    isFormula: entry.formula && String(entry.formula).trim() !== '',
                     formula: entry.formula,
                     rules: entry.rules,
                     displayCol: entry.displayCol,

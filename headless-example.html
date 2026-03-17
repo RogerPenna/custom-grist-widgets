@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Headless Grist Widget Example</title>
+    <!-- Libraries -->
+    <link rel="stylesheet" href="libraries/grist-card-system/card-system-style.css">
+    <link rel="stylesheet" href="libraries/grist-field-renderer/styles/renderer-styles.css">
+    <style>
+        body { font-family: sans-serif; margin: 20px; background: #f0f2f5; }
+        #card-container { margin-top: 20px; }
+        .controls { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <h1>Headless Grist Widget</h1>
+        <p>This widget is running outside of Grist using the REST API.</p>
+        <button id="refresh-btn">Refresh Data</button>
+    </div>
+
+    <div id="card-container"></div>
+
+    <script type="module">
+        import { GristRestAdapter } from './libraries/headless-rest-adapter.js';
+        import { HeadlessTableLens } from './libraries/headless-table-lens.js';
+        import { CardSystem } from './libraries/grist-card-system/CardSystem.js';
+
+        // Configuration - in a real app these could come from env vars or GDP Proxy headers
+        const config = {
+            gristUrl: 'https://docs.getgrist.com',
+            docId: 'REPLACE_WITH_YOUR_DOC_ID',
+            apiKey: 'REPLACE_WITH_YOUR_API_KEY'
+        };
+
+        const adapter = new GristRestAdapter(config);
+        const tableLens = new HeadlessTableLens(adapter);
+        const container = document.getElementById('card-container');
+
+        async function init() {
+            const tableId = 'Your_Table_Name'; // Change to your table
+            const configId = 'your_config_id'; // Change to your config ID in Grf_config
+            
+            try {
+                // 1. Fetch Configuration
+                const widgetConfig = await tableLens.fetchConfig(configId);
+                
+                // 2. Fetch Records & Schema
+                const records = await tableLens.fetchTableRecords(tableId);
+                const schema = await tableLens.getTableSchema(tableId);
+
+                // 3. Render using the standard CardSystem
+                CardSystem.renderCards(container, records, {
+                    ...widgetConfig,
+                    tableLens: tableLens // Pass tableLens for advanced field rendering
+                }, schema);
+
+            } catch (error) {
+                console.error("Initialization error:", error);
+                container.innerHTML = `<p style="color:red">Error: ${error.message}</p>`;
+            }
+        }
+
+        document.getElementById('refresh-btn').onclick = init;
+
+        init();
+    </script>
+</body>
+</html>
