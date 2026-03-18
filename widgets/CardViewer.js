@@ -1,5 +1,4 @@
-// widgets/CardViewer.js - VERSÃO UNIVERSAL FINAL (RESTORED + HEADLESS)
-
+// widgets/CardViewer.js - VERSÃO UNIVERSAL DEFINITIVA (MODO GRIST + HEADLESS)
 import { GristTableLens } from '../libraries/grist-table-lens/grist-table-lens.js';
 import { open as openConfigManager } from '../libraries/grist-config-manager/ConfigManagerComponent.js';
 import { CardSystem } from '../libraries/grist-card-system/CardSystem.js';
@@ -7,6 +6,7 @@ import { subscribe } from '../libraries/grist-event-bus/grist-event-bus.js';
 import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js';
 import { GristRestAdapter } from '../libraries/headless-rest-adapter.js';
 import { HeadlessTableLens } from '../libraries/headless-table-lens.js';
+import { GristFilterBar } from '../libraries/grist-filter-bar/grist-filter-bar.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
     const appContainer = document.getElementById('app-container');
@@ -17,9 +17,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     let tableLens;
     let currentConfig = null;
     let currentConfigId = urlConfigId || null;
+    let currentTheme = 'night';
     let isInitialized = false;
 
-    // --- DETECÇÃO DE AMBIENTE ---
+    // --- 1. DETECÇÃO DE AMBIENTE ---
     if (urlConfigId) {
         console.log("[CardViewer] Modo Headless Ativo.");
         const restAdapter = new GristRestAdapter({
@@ -33,7 +34,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         tableLens = new GristTableLens(grist);
     }
 
-    // --- CARREGAMENTO DE ASSETS ---
+    // --- 2. INICIALIZAÇÃO DA BARRA DE FILTROS ---
+    const filterBarContainer = document.getElementById('filter-bar-container');
+    if (filterBarContainer) {
+        try {
+            const response = await fetch('../libraries/grist-filter-bar/grist-filter-bar.html');
+            if (response.ok) {
+                filterBarContainer.innerHTML = await response.text();
+                new GristFilterBar({
+                    onFilter: (searchTerm) => CardSystem.filterRecords(searchTerm)
+                });
+            }
+        } catch (e) { console.error('Erro ao carregar barra de filtros:', e); }
+    }
+
+    // --- 3. CARREGAMENTO DE ÍCONES ---
     async function loadIcons() {
         try {
             const response = await fetch('/libraries/icons/icons.svg');
@@ -46,8 +61,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     await loadIcons();
 
-    // --- RENDERIZAÇÃO ---
+    // --- 4. LÓGICA DE RENDERIZAÇÃO ---
     async function initializeAndUpdate() {
+        // Aplica o tema
+        document.body.classList.remove('night-theme', 'light-theme');
+        document.body.classList.add(`${currentTheme}-theme`);
+
         if (!currentConfigId) {
             appContainer.innerHTML = '<div class="status-placeholder">Widget pronto. Use a engrenagem ⚙️ para vincular um ID de configuração.</div>';
             addSettingsGear();
@@ -67,13 +86,21 @@ document.addEventListener('DOMContentLoaded', async () => {
             currentConfig = JSON.parse(configRecord.configJson);
             const tableId = currentConfig.tableId;
 
-            const [records, cleanSchema] = await Promise.all([
+            const [records, cleanSchema, rawSchema] = await Promise.all([
                 tableLens.fetchTableRecords(tableId),
-                tableLens.getTableSchema(tableId)
+                tableLens.getTableSchema(tableId),
+                tableLens.getTableSchema(tableId, { mode: 'raw' })
             ]);
-            
+
+            // Enriquece o schema com descrições
+            Object.keys(cleanSchema).forEach(colId => {
+                if (rawSchema[colId] && rawSchema[colId].description) {
+                    cleanSchema[colId].description = rawSchema[colId].description;
+                }
+            });
+
             appContainer.innerHTML = '';
-            CardSystem.renderCards(appContainer, records, { ...currentConfig, tableLens }, cleanSchema);
+            CardSystem.renderCards(appContainer, records, { ...currentConfig, tableLens }, cleanSchema); 
             addSettingsGear();
 
         } catch (e) {
@@ -83,12 +110,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // --- UI DE CONFIGURAÇÃO (ENGRENAGEM) ---
+    // --- 5. UI DE CONFIGURAÇÃO ---
     function addSettingsGear() {
         if (document.getElementById('settings-gear-btn')) return;
         const gearBtn = document.createElement('div');
         gearBtn.id = 'settings-gear-btn';
         gearBtn.innerHTML = '⚙️';
+        gearBtn.title = 'Configurações do Widget';
         gearBtn.onclick = openSettingsPopover;
         document.body.appendChild(gearBtn);
     }
@@ -103,19 +131,37 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <label>Vincular ID de Configuração</label>
                 <input type="text" id="popover-config-id" value="${currentConfigId || ''}" placeholder="Ex: GestMud_123">
             </div>
-            <button id="popover-link-btn" class="config-popover-btn">Salvar Vínculo</button>
-            <button id="popover-mgr-btn" class="config-popover-btn" style="background:#666;">Abrir Configurador</button>
+            <div class="popover-section">
+                <label>Tema</label>
+                <div class="theme-toggle-group">
+                    <button id="theme-night-btn" class="config-popover-btn ${currentTheme === 'night' ? 'active' : ''}">Escuro</button>
+                    <button id="theme-light-btn" class="config-popover-btn ${currentTheme === 'light' ? 'active' : ''}">Claro</button>
+                </div>
+            </div>
+            <button id="popover-link-btn" class="config-popover-btn">Salvar Alterações</button>
+            <button id="popover-mgr-btn" class="config-popover-btn" style="background:#64748b;">Abrir Configurador</button>
         `;
         document.body.appendChild(popover);
 
         popover.querySelector('#popover-link-btn').onclick = () => {
             const newId = document.getElementById('popover-config-id').value.trim();
             if (urlConfigId) {
-                // No portal admin, não salvamos no grist.setOptions, apenas avisamos
-                alert("No Portal Admin, altere o ID no menu de configurações do Dashboard.");
+                alert("No Dashboard, altere o ID nas configurações do portal.");
             } else {
                 grist.setOptions({ configId: newId });
             }
+            closeSettingsPopover();
+        };
+
+        popover.querySelector('#theme-night-btn').onclick = () => {
+            if (!urlConfigId) grist.setOptions({ theme: 'night' });
+            else { currentTheme = 'night'; initializeAndUpdate(); }
+            closeSettingsPopover();
+        };
+
+        popover.querySelector('#theme-light-btn').onclick = () => {
+            if (!urlConfigId) grist.setOptions({ theme: 'light' });
+            else { currentTheme = 'light'; initializeAndUpdate(); }
             closeSettingsPopover();
         };
 
@@ -130,28 +176,38 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (p) p.remove();
     }
 
-    // --- INICIALIZAÇÃO E EVENTOS ---
+    // --- 6. EVENTOS E SUBSCRIPÇÕES ---
     grist.ready({ requiredAccess: 'full' });
 
-    // Se estiver no Dashboard (Headless), inicia imediatamente
     if (urlConfigId) {
         isInitialized = true;
         await initializeAndUpdate();
     }
 
-    // No Grist, espera pelas opções
     grist.onOptions(async (options) => {
         const newId = options?.configId || null;
-        if (newId !== currentConfigId || !isInitialized) {
+        const newTheme = options?.theme || 'night';
+        if (newId !== currentConfigId || newTheme !== currentTheme || !isInitialized) {
             isInitialized = true;
             currentConfigId = newId;
+            currentTheme = newTheme;
             await initializeAndUpdate();
         }
     });
 
-    // Subscrição do clique no card
     subscribe('grf-card-clicked', async (data) => {
         const rec = await tableLens.findRecord('Grf_config', { configId: data.drawerConfigId });
-        if (rec) openDrawer(data.tableId, data.recordId, JSON.parse(rec.configJson));
+        if (rec) openDrawer(data.tableId, data.recordId, { ...JSON.parse(rec.configJson), tableLens });
+    });
+
+    subscribe('grf-navigation-action-triggered', async (eventData) => {
+        const config = eventData.config;
+        const sourceRecord = eventData.sourceRecord;
+        if (config.actionType === 'openUrlFromColumn') {
+            const url = sourceRecord[config.urlColumn];
+            if (url) window.open(url, '_blank');
+        } else if (config.actionType === 'navigateToGristPage') {
+            alert(`Navegando para página ${config.targetPageId} (Filtro: ${config.targetFilterColumn}=${sourceRecord[config.sourceValueColumn]})`);
+        }
     });
 });

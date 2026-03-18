@@ -2,21 +2,33 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Headless Grist Widget Example</title>
-    <!-- Libraries -->
+    <title>Headless Grist Widget - LIVE TEST</title>
     <link rel="stylesheet" href="libraries/grist-card-system/card-system-style.css">
     <link rel="stylesheet" href="libraries/grist-field-renderer/styles/renderer-styles.css">
+    <link rel="stylesheet" href="libraries/grist-drawer-component/drawer-style.css">
     <style>
-        body { font-family: sans-serif; margin: 20px; background: #f0f2f5; }
+        body { font-family: 'Manrope', sans-serif; margin: 20px; background: #f8fafc; color: #1e293b; }
         #card-container { margin-top: 20px; }
-        .controls { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .controls { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; }
+        .btn { background: #3b82f6; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 700; transition: all 0.2s; }
+        .btn:hover { background: #2563eb; }
+        .status { margin-top: 10px; font-size: 13px; color: #64748b; }
     </style>
 </head>
 <body>
     <div class="controls">
-        <h1>Headless Grist Widget</h1>
-        <p>This widget is running outside of Grist using the REST API.</p>
-        <button id="refresh-btn">Refresh Data</button>
+        <h1 style="margin-top:0; font-size:24px;">Headless Widget - Teste Local</h1>
+        <p>Este widget está rodando fora do Grist, consumindo dados via <b>Proxy Local</b>.</p>
+        
+        <div style="display:flex; gap:10px; margin-bottom:15px;">
+            <div style="flex:1;">
+                <label style="display:block; font-size:11px; font-weight:800; color:#94a3b8; text-transform:uppercase;">Config ID</label>
+                <input type="text" id="config-id-input" value="GestMud_123" style="width:100%; padding:8px; border:1px solid #e2e8f0; border-radius:6px;">
+            </div>
+            <button id="refresh-btn" class="btn">Carregar Widget</button>
+        </div>
+        
+        <div id="status" class="status">Pronto para iniciar.</div>
     </div>
 
     <div id="card-container"></div>
@@ -25,44 +37,71 @@
         import { GristRestAdapter } from './libraries/headless-rest-adapter.js';
         import { HeadlessTableLens } from './libraries/headless-table-lens.js';
         import { CardSystem } from './libraries/grist-card-system/CardSystem.js';
+        import { openDrawer } from './libraries/grist-drawer-component/drawer-component.js';
+        import { subscribe } from './libraries/grist-event-bus/grist-event-bus.js';
 
-        // Configuration - in a real app these could come from env vars or GDP Proxy headers
+        const statusEl = document.getElementById('status');
+        const container = document.getElementById('card-container');
+        const configIdInput = document.getElementById('config-id-input');
+
+        // Configuração para o Proxy Local
         const config = {
-            gristUrl: 'https://docs.getgrist.com',
-            docId: 'REPLACE_WITH_YOUR_DOC_ID',
-            apiKey: 'REPLACE_WITH_YOUR_API_KEY'
+            gristUrl: window.location.origin + '/grist-proxy',
+            docId: 'qiVPiRA3ULcU', // DocId padrão de teste
+            apiKey: 'none'         // Proxy já possui a chave
         };
 
         const adapter = new GristRestAdapter(config);
         const tableLens = new HeadlessTableLens(adapter);
-        const container = document.getElementById('card-container');
 
         async function init() {
-            const tableId = 'Your_Table_Name'; // Change to your table
-            const configId = 'your_config_id'; // Change to your config ID in Grf_config
+            const configId = configIdInput.value.trim();
+            statusEl.textContent = `Buscando configuração "${configId}"...`;
+            container.innerHTML = '';
             
             try {
-                // 1. Fetch Configuration
-                const widgetConfig = await tableLens.fetchConfig(configId);
+                // 1. Fetch Configuration da tabela Grf_config
+                const configRecord = await tableLens.findRecord('Grf_config', { configId });
+                if (!configRecord) throw new Error(`Configuração "${configId}" não encontrada.`);
                 
+                const widgetConfig = JSON.parse(configRecord.configJson);
+                const tableId = widgetConfig.tableId;
+                
+                statusEl.textContent = `Carregando dados da tabela "${tableId}"...`;
+
                 // 2. Fetch Records & Schema
                 const records = await tableLens.fetchTableRecords(tableId);
                 const schema = await tableLens.getTableSchema(tableId);
 
-                // 3. Render using the standard CardSystem
+                statusEl.textContent = `Renderizando ${records.length} registros...`;
+
+                // 3. Render usando CardSystem (Motor Headless)
                 CardSystem.renderCards(container, records, {
                     ...widgetConfig,
-                    tableLens: tableLens // Pass tableLens for advanced field rendering
+                    tableLens: tableLens 
                 }, schema);
+
+                statusEl.textContent = "Widget carregado com sucesso via API.";
 
             } catch (error) {
                 console.error("Initialization error:", error);
-                container.innerHTML = `<p style="color:red">Error: ${error.message}</p>`;
+                statusEl.textContent = `Erro: ${error.message}`;
+                container.innerHTML = `<p style="color:red; background:#fee2e2; padding:15px; border-radius:8px; border:1px solid #ef4444;">${error.message}</p>`;
             }
         }
 
-        document.getElementById('refresh-btn').onclick = init;
+        // Suporte ao clique no card (abrir Drawer Headless)
+        subscribe('grf-card-clicked', async (data) => {
+            const rec = await tableLens.findRecord('Grf_config', { configId: data.drawerConfigId });
+            if (rec) {
+                openDrawer(data.tableId, data.recordId, { 
+                    ...JSON.parse(rec.configJson), 
+                    tableLens: tableLens // Injeta o motor headless na Drawer!
+                });
+            }
+        });
 
+        document.getElementById('refresh-btn').onclick = init;
         init();
     </script>
 </body>
