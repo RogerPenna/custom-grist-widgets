@@ -1,4 +1,4 @@
-// widgets/CardViewer.js - VERSÃO UNIVERSAL DEFINITIVA (MODO GRIST + HEADLESS)
+// widgets/CardViewer.js - VERSÃO UNIVERSAL DEFINITIVA (FIX: THEME & PERSISTENCE)
 import { GristTableLens } from '../libraries/grist-table-lens/grist-table-lens.js';
 import { open as openConfigManager } from '../libraries/grist-config-manager/ConfigManagerComponent.js';
 import { CardSystem } from '../libraries/grist-card-system/CardSystem.js';
@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let tableLens;
     let currentConfig = null;
     let currentConfigId = urlConfigId || null;
-    let currentTheme = 'night';
+    let currentTheme = 'light';
     let isInitialized = false;
 
     // --- 1. DETECÇÃO DE AMBIENTE ---
@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         tableLens = new HeadlessTableLens(restAdapter);
     } else {
         console.log("[CardViewer] Modo Grist Standard.");
-        tableLens = new GristTableLens(grist);
+        tableLens = new GristTableLens(window.grist);
     }
 
     // --- 2. INICIALIZAÇÃO DA BARRA DE FILTROS ---
@@ -51,25 +51,36 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- 3. CARREGAMENTO DE ÍCONES ---
     async function loadIcons() {
         try {
-            const response = await fetch('/libraries/icons/icons.svg');
+            const response = await fetch('../libraries/icons/icons.svg');
+            if (!response.ok) throw new Error("Status " + response.status);
             const svgText = await response.text();
             const div = document.createElement('div');
             div.style.display = 'none';
             div.innerHTML = svgText;
             document.body.insertBefore(div, document.body.firstChild);
-        } catch (e) { console.error('Falha ao carregar ícones:', e); }
+        } catch (e) { 
+            console.warn('Tentando caminho relativo para ícones...');
+            try {
+                const response = await fetch('../libraries/icons/icons.svg');
+                const svgText = await response.text();
+                const div = document.createElement('div');
+                div.style.display = 'none';
+                div.innerHTML = svgText;
+                document.body.insertBefore(div, document.body.firstChild);
+            } catch (e2) { console.error('Falha crítica nos ícones:', e2); }
+        }
     }
     await loadIcons();
 
     // --- 4. LÓGICA DE RENDERIZAÇÃO ---
     async function initializeAndUpdate() {
-        // Aplica o tema
         document.body.classList.remove('night-theme', 'light-theme');
         document.body.classList.add(`${currentTheme}-theme`);
 
+        if (!urlConfigId) addSettingsGear();
+
         if (!currentConfigId) {
             appContainer.innerHTML = '<div class="status-placeholder">Widget pronto. Use a engrenagem ⚙️ para vincular um ID de configuração.</div>';
-            addSettingsGear();
             return;
         }
 
@@ -78,8 +89,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             const configRecord = await tableLens.findRecord('Grf_config', { configId: currentConfigId });
             if (!configRecord) {
-                appContainer.innerHTML = `<div class="status-placeholder">Erro: Configuração "${currentConfigId}" não encontrada.</div>`;
-                addSettingsGear();
+                appContainer.innerHTML = `<div class="status-placeholder">Configuração "${currentConfigId}" não encontrada.</div>`;
                 return;
             }
 
@@ -92,7 +102,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 tableLens.getTableSchema(tableId, { mode: 'raw' })
             ]);
 
-            // Enriquece o schema com descrições
             Object.keys(cleanSchema).forEach(colId => {
                 if (rawSchema[colId] && rawSchema[colId].description) {
                     cleanSchema[colId].description = rawSchema[colId].description;
@@ -101,12 +110,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             appContainer.innerHTML = '';
             CardSystem.renderCards(appContainer, records, { ...currentConfig, tableLens }, cleanSchema); 
-            addSettingsGear();
 
         } catch (e) {
             console.error(e);
-            appContainer.innerHTML = `<div class="status-placeholder">Erro: ${e.message}</div>`;
-            addSettingsGear();
+            appContainer.innerHTML = `<div class="status-placeholder" style="color:red">Erro: ${e.message}</div>`;
         }
     }
 
@@ -116,29 +123,36 @@ document.addEventListener('DOMContentLoaded', async () => {
         const gearBtn = document.createElement('div');
         gearBtn.id = 'settings-gear-btn';
         gearBtn.innerHTML = '⚙️';
-        gearBtn.title = 'Configurações do Widget';
+        gearBtn.title = 'Configurações';
         gearBtn.onclick = openSettingsPopover;
         document.body.appendChild(gearBtn);
     }
 
     function openSettingsPopover(event) {
         event.stopPropagation();
-        closeSettingsPopover();
+        const existing = document.querySelector('.config-popover');
+        if (existing) { existing.remove(); return; }
+
         const popover = document.createElement('div');
         popover.className = 'config-popover';
+        
+        // O tema só aparece no modo Headless para testes. No Grist, focamos no ID.
+        const themeSection = urlConfigId ? `
+            <div class="popover-section">
+                <label>Tema (Preview)</label>
+                <div class="theme-toggle-group">
+                    <button id="theme-night-btn" class="${currentTheme === 'night' ? 'active' : ''}">Escuro</button>
+                    <button id="theme-light-btn" class="${currentTheme === 'light' ? 'active' : ''}">Claro</button>
+                </div>
+            </div>` : '';
+
         popover.innerHTML = `
             <div class="popover-section">
-                <label>Vincular ID de Configuração</label>
+                <label>ID de Configuração</label>
                 <input type="text" id="popover-config-id" value="${currentConfigId || ''}" placeholder="Ex: GestMud_123">
             </div>
-            <div class="popover-section">
-                <label>Tema</label>
-                <div class="theme-toggle-group">
-                    <button id="theme-night-btn" class="config-popover-btn ${currentTheme === 'night' ? 'active' : ''}">Escuro</button>
-                    <button id="theme-light-btn" class="config-popover-btn ${currentTheme === 'light' ? 'active' : ''}">Claro</button>
-                </div>
-            </div>
-            <button id="popover-link-btn" class="config-popover-btn">Salvar Alterações</button>
+            ${themeSection}
+            <button id="popover-link-btn" class="config-popover-btn">Salvar Vínculo</button>
             <button id="popover-mgr-btn" class="config-popover-btn" style="background:#64748b;">Abrir Configurador</button>
         `;
         document.body.appendChild(popover);
@@ -146,47 +160,48 @@ document.addEventListener('DOMContentLoaded', async () => {
         popover.querySelector('#popover-link-btn').onclick = () => {
             const newId = document.getElementById('popover-config-id').value.trim();
             if (urlConfigId) {
-                alert("No Dashboard, altere o ID nas configurações do portal.");
+                alert("No Modo Headless, altere via menu do Dashboard.");
             } else {
-                grist.setOptions({ configId: newId });
+                // Ao salvar no Grist, enviamos o objeto completo para não perder nada
+                window.grist.setOptions({ 
+                    configId: newId,
+                    theme: currentTheme 
+                });
             }
-            closeSettingsPopover();
+            popover.remove();
         };
 
-        popover.querySelector('#theme-night-btn').onclick = () => {
-            if (!urlConfigId) grist.setOptions({ theme: 'night' });
-            else { currentTheme = 'night'; initializeAndUpdate(); }
-            closeSettingsPopover();
-        };
-
-        popover.querySelector('#theme-light-btn').onclick = () => {
-            if (!urlConfigId) grist.setOptions({ theme: 'light' });
-            else { currentTheme = 'light'; initializeAndUpdate(); }
-            closeSettingsPopover();
-        };
+        if (urlConfigId) {
+            popover.querySelector('#theme-night-btn').onclick = () => {
+                currentTheme = 'night';
+                initializeAndUpdate();
+                popover.remove();
+            };
+            popover.querySelector('#theme-light-btn').onclick = () => {
+                currentTheme = 'light';
+                initializeAndUpdate();
+                popover.remove();
+            };
+        }
 
         popover.querySelector('#popover-mgr-btn').onclick = () => {
-            closeSettingsPopover();
-            openConfigManager(grist, { initialConfigId: currentConfigId, componentTypes: ['Card System'] });
+            popover.remove();
+            openConfigManager(window.grist, { initialConfigId: currentConfigId, componentTypes: ['Card System'] });
         };
-    }
-
-    function closeSettingsPopover() {
-        const p = document.querySelector('.config-popover');
-        if (p) p.remove();
     }
 
     // --- 6. EVENTOS E SUBSCRIPÇÕES ---
-    grist.ready({ requiredAccess: 'full' });
+    window.grist.ready({ requiredAccess: 'full' });
 
     if (urlConfigId) {
         isInitialized = true;
         await initializeAndUpdate();
     }
 
-    grist.onOptions(async (options) => {
+    window.grist.onOptions(async (options) => {
         const newId = options?.configId || null;
-        const newTheme = options?.theme || 'night';
+        const newTheme = options?.theme || 'light';
+        
         if (newId !== currentConfigId || newTheme !== currentTheme || !isInitialized) {
             isInitialized = true;
             currentConfigId = newId;
@@ -196,18 +211,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     subscribe('grf-card-clicked', async (data) => {
-        const rec = await tableLens.findRecord('Grf_config', { configId: data.drawerConfigId });
-        if (rec) openDrawer(data.tableId, data.recordId, { ...JSON.parse(rec.configJson), tableLens });
-    });
-
-    subscribe('grf-navigation-action-triggered', async (eventData) => {
-        const config = eventData.config;
-        const sourceRecord = eventData.sourceRecord;
-        if (config.actionType === 'openUrlFromColumn') {
-            const url = sourceRecord[config.urlColumn];
-            if (url) window.open(url, '_blank');
-        } else if (config.actionType === 'navigateToGristPage') {
-            alert(`Navegando para página ${config.targetPageId} (Filtro: ${config.targetFilterColumn}=${sourceRecord[config.sourceValueColumn]})`);
-        }
+        try {
+            const rec = await tableLens.findRecord('Grf_config', { configId: data.drawerConfigId });
+            if (rec && window.GristDrawer) {
+                await window.GristDrawer.open(data.tableId, data.recordId, { 
+                    ...JSON.parse(rec.configJson), 
+                    tableLens: tableLens 
+                });
+            }
+        } catch (e) { console.error("Erro ao abrir drawer:", e); }
     });
 });
