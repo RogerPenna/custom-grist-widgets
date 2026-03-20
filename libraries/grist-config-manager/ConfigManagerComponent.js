@@ -370,5 +370,5 @@ export function open(grist, options = {}) {
     document.body.appendChild(overlay);
     overlay.querySelector('.grf-cm-close').onclick = close;
     overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
-    renderMainUI(overlay.querySelector('.grf-cm-body'), initialConfigId, componentTypes);
+    renderMainUI(grist, overlay.querySelector('.grf-cm-body'), initialConfigId, componentTypes);
 }

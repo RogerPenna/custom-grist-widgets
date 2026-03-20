@@ -31,6 +31,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Silent listener to prevent "No listeners" warning from the drawer component.
         subscribe('drawer-rendered', () => { });
 
+        // Refresh UI when data is changed in the drawer
+        subscribe('data-changed', async (info) => {
+            console.log("BSC Widget: Data changed event received.", info);
+            if (currentModelId) {
+                const fullStructure = await fetchFullBscStructure(parseInt(currentModelId, 10), tableLens);
+                renderBsc(fullStructure);
+            }
+        });
+
         // Listen for card clicks from CardSystem
         subscribe('grf-card-clicked', async (data) => {
             console.log("BSC Widget: Card clicked event received.", data);

@@ -195,27 +195,34 @@ export const DrawerConfigEditor = (() => {
                 // Read Widget Overrides
                 const widgetConfigPanel = item.querySelector('.widget-config-panel');
                 if (widgetConfigPanel) {
-                    const widgetTypeInput = widgetConfigPanel.querySelector('input[name="widget-type-' + colId + '"]:checked');
-                    const widgetType = widgetTypeInput?.value;
+                    const isColorPicker = widgetConfigPanel.querySelector('.is-color-picker-checkbox')?.checked;
+                    const widgetTypeRadio = widgetConfigPanel.querySelector('.widget-type-radio:checked');
+                    const widgetType = widgetTypeRadio?.value;
 
-                    if (widgetType) {
-                        if (widgetType === 'ProgressBar') {
-                            const striped = widgetConfigPanel.querySelector('.progress-striped')?.checked || false;
-                            const rules = [];
-                            widgetConfigPanel.querySelectorAll('.color-rule-row').forEach(row => {
-                                const threshold = parseFloat(row.querySelector('.rule-threshold').value);
-                                const color = row.querySelector('.rule-color').value;
-                                if (!isNaN(threshold)) {
-                                    rules.push({ threshold, color });
-                                }
-                            });
-                            drawerConfig.widgetOverrides[colId] = {
-                                widget: 'ProgressBar',
-                                options: { striped, colorRules: rules }
-                            };
-                        } else {
-                            drawerConfig.widgetOverrides[colId] = { widget: widgetType, options: {} };
-                        }
+                    if (isColorPicker) {
+                        drawerConfig.widgetOverrides[colId] = {
+                            widget: 'ColorPicker',
+                            options: {
+                                mode: widgetConfigPanel.querySelector('.color-mode-select').value,
+                                swatches: widgetConfigPanel.querySelector('.color-swatches-input').value.trim()
+                            }
+                        };
+                    } else if (widgetType === 'ProgressBar') {
+                        const striped = widgetConfigPanel.querySelector('.progress-striped')?.checked || false;
+                        const rules = [];
+                        widgetConfigPanel.querySelectorAll('.color-rule-row').forEach(row => {
+                            const threshold = parseFloat(row.querySelector('.rule-threshold').value);
+                            const color = row.querySelector('.rule-color').value;
+                            if (!isNaN(threshold)) {
+                                rules.push({ threshold, color });
+                            }
+                        });
+                        drawerConfig.widgetOverrides[colId] = {
+                            widget: 'ProgressBar',
+                            options: { striped, colorRules: rules }
+                        };
+                    } else if (widgetType) {
+                        drawerConfig.widgetOverrides[colId] = { widget: widgetType, options: {} };
                     }
                 }
             }
@@ -245,16 +252,33 @@ export const DrawerConfigEditor = (() => {
         const currentWidgetOverride = configData.widgetOverrides?.[col.colId];
 
         if (col.type === 'Text') {
-            const isColorPicker = currentWidgetOverride === 'ColorPicker' || currentWidgetOverride?.widget === 'ColorPicker';
+            const widgetCfg = configData.widgetOverrides?.[col.colId] || {};
+            const isColorWidget = widgetCfg === 'ColorPicker' || widgetCfg?.widget === 'ColorPicker';
+            const colorMode = widgetCfg?.options?.mode || 'picker';
+            const swatches = widgetCfg?.options?.swatches || '';
+
             widgetConfigHtml = `
             <div class="field-card-extra-actions">
                  <button type="button" class="btn btn-secondary btn-sm toggle-widget-config">Configurar Widget</button>
             </div>
-            <div class="widget-config-panel" style="display: none;">
-                <h5>Tipo de Widget para "${col.label}"</h5>
-                <div class="widget-config-list">
-                    <label><input type="radio" name="widget-type-${col.colId}" value="" ${!isColorPicker ? 'checked' : ''}> Padrão (Texto)</label>
-                    <label><input type="radio" name="widget-type-${col.colId}" value="ColorPicker" ${isColorPicker ? 'checked' : ''}> Seletor de Cor</label>
+            <div class="widget-config-panel" style="display: none; padding: 10px; background: #f1f5f9; border-radius: 4px; margin-top: 5px;">
+                <h5>Configuração de Cor para "${col.label}"</h5>
+                <div class="drawer-config-section">
+                    <label><input type="checkbox" class="is-color-picker-checkbox" ${isColorWidget ? 'checked' : ''}> Habilitar Componente de Cor</label>
+                </div>
+                <div class="color-options-container" style="display: ${isColorWidget ? 'block' : 'none'}; margin-top: 10px; border-top: 1px solid #ddd; padding-top: 10px;">
+                    <div class="drawer-config-section">
+                        <label>Modo de Exibição:</label>
+                        <select class="color-mode-select">
+                            <option value="picker" ${colorMode === 'picker' ? 'selected' : ''}>Apenas Seletor (Color Picker)</option>
+                            <option value="swatches" ${colorMode === 'swatches' ? 'selected' : ''}>Apenas Sugestões (Swatches)</option>
+                            <option value="both" ${colorMode === 'both' ? 'selected' : ''}>Seletor + Sugestões</option>
+                        </select>
+                    </div>
+                    <div class="drawer-config-section">
+                        <label>Sugestões de Cores (Hex separados por vírgula):</label>
+                        <input type="text" class="color-swatches-input" value="${swatches}" placeholder="#ffffff, #000000, #ff0000">
+                    </div>
                 </div>
             </div>
         `;

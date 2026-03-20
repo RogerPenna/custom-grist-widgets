@@ -19,6 +19,12 @@
     border-radius: 4px;
 }
 
+input.grf-form-input[type="color"] {
+    height: 38px;
+    padding: 4px;
+    cursor: pointer;
+}
+
 /* --- Estilos para Choice / ChoiceList --- */
 .grf-choice-pill {
     display: inline-block;
