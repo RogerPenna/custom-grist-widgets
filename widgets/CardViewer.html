@@ -30,10 +30,64 @@
         .theme-toggle-group { display: flex; gap: 5px; }
         .theme-toggle-group button { flex: 1; font-size: 10px; padding: 4px; background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; border-radius: 4px; cursor: pointer; }
         .theme-toggle-group button.active { background: #3b82f6; color: white; border-color: #3b82f6; }
+
+        /* Estilos do Botão de Adição Global (Círculo Discreto) */
+        .grf-global-add-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            margin: 10px auto;
+            background-color: #ffffff;
+            color: #3b82f6;
+            border: 1px solid #e2e8f0;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            font-size: 20px;
+            font-weight: 400;
+            line-height: 1;
+            padding: 0;
+        }
+        .grf-global-add-btn:hover {
+            background-color: #3b82f6;
+            color: #ffffff;
+            border-color: #3b82f6;
+            transform: scale(1.1);
+            box-shadow: 0 4px 10px rgba(59, 130, 246, 0.2);
+        }
+        .grf-global-add-btn svg {
+            width: 16px;
+            height: 16px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 3;
+        }
+        
+        .empty-state-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 200px;
+            color: #94a3b8;
+            font-family: 'Manrope', sans-serif;
+        }
+
+        .cards-wrapper {
+            flex: 1;
+        }
     </style>
 </head>
 <body>
-    <div id="app-container"><div class="status-placeholder">Aguardando inicialização do Grist...</div></div>
+    <div id="app-container">
+        <div id="filter-bar-container"></div>
+        <div id="cards-content-area">
+            <div class="status-placeholder">Aguardando inicialização do Grist...</div>
+        </div>
+    </div>
 
     <!-- CARREGA A LÓGICA PRINCIPAL DO WIDGET -->
     <script type="module" src="CardViewer.js"></script>

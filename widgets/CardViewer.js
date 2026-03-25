@@ -10,6 +10,7 @@ import { GristFilterBar } from '../libraries/grist-filter-bar/grist-filter-bar.j
 
 document.addEventListener('DOMContentLoaded', async () => {
     const appContainer = document.getElementById('app-container');
+    const cardsContentArea = document.getElementById('cards-content-area');
     const urlParams = new URLSearchParams(window.location.search);
     const urlConfigId = urlParams.get('configId');
     const urlDocId = urlParams.get('docId') || 'qiVPiRA3ULcU';
@@ -80,16 +81,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!urlConfigId) addSettingsGear();
 
         if (!currentConfigId) {
-            appContainer.innerHTML = '<div class="status-placeholder">Widget pronto. Use a engrenagem ⚙️ para vincular um ID de configuração.</div>';
+            cardsContentArea.innerHTML = '<div class="status-placeholder">Widget pronto. Use a engrenagem ⚙️ para vincular um ID de configuração.</div>';
             return;
         }
 
-        appContainer.innerHTML = '<div class="status-placeholder">Carregando dados...</div>';
+        cardsContentArea.innerHTML = '<div class="status-placeholder">Carregando dados...</div>';
 
         try {
             const configRecord = await tableLens.findRecord('Grf_config', { configId: currentConfigId });
             if (!configRecord) {
-                appContainer.innerHTML = `<div class="status-placeholder">Configuração "${currentConfigId}" não encontrada.</div>`;
+                cardsContentArea.innerHTML = `<div class="status-placeholder">Configuração "${currentConfigId}" não encontrada.</div>`;
                 return;
             }
 
@@ -108,13 +109,64 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             });
 
-            appContainer.innerHTML = '';
-            CardSystem.renderCards(appContainer, records, { ...currentConfig, tableLens }, cleanSchema); 
+            cardsContentArea.innerHTML = '';
+
+            // Lógica para Estado Vazio (Empty State)
+            if (records.length === 0) {
+                if (currentConfig.styling?.showAddButtonTop || currentConfig.styling?.showAddButtonBottom) {
+                    const empty = document.createElement('div');
+                    empty.className = 'empty-state-container';
+                    empty.innerHTML = `<p style="font-size:12px; font-weight:600; margin-bottom:10px;">Nenhum registro encontrado</p>`;
+                    empty.appendChild(createAddButton('empty'));
+                    cardsContentArea.appendChild(empty);
+                } else {
+                    cardsContentArea.innerHTML = '<div class="status-placeholder">Nenhum registro encontrado.</div>';
+                }
+                return;
+            }
+
+            // 1. Botão Topo (Discreto)
+            if (currentConfig.styling?.showAddButtonTop) {
+                cardsContentArea.appendChild(createAddButton('top'));
+            }
+
+            // 2. Cards
+            const cardsWrapper = document.createElement('div');
+            cardsWrapper.className = 'cards-wrapper';
+            CardSystem.renderCards(cardsWrapper, records, { ...currentConfig, tableLens }, cleanSchema); 
+            cardsContentArea.appendChild(cardsWrapper);
+
+            // 3. Botão Rodapé (Discreto)
+            if (currentConfig.styling?.showAddButtonBottom) {
+                cardsContentArea.appendChild(createAddButton('bottom'));
+            }
 
         } catch (e) {
             console.error(e);
-            appContainer.innerHTML = `<div class="status-placeholder" style="color:red">Erro: ${e.message}</div>`;
+            cardsContentArea.innerHTML = `<div class="status-placeholder" style="color:red">Erro: ${e.message}</div>`;
         }
+    }
+
+    function createAddButton(position) {
+        const btn = document.createElement('button');
+        btn.className = `grf-global-add-btn pos-${position}`;
+        btn.title = "Adicionar Novo Registro";
+        btn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M12 5V19M5 12H19" stroke="currentColor"/></svg>`;
+        btn.onclick = async (e) => {
+            e.stopPropagation();
+            let addConfig = currentConfig;
+            const specificConfigId = currentConfig.styling?.addRecordConfigId;
+            
+            if (specificConfigId) {
+                const rec = await tableLens.findRecord('Grf_config', { configId: specificConfigId });
+                if (rec) addConfig = JSON.parse(rec.configJson);
+            }
+
+            if (window.GristDrawer) {
+                window.GristDrawer.open(currentConfig.tableId, 'new', { ...addConfig, tableLens });
+            }
+        };
+        return btn;
     }
 
     // --- 5. UI DE CONFIGURAÇÃO ---
@@ -220,5 +272,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
             }
         } catch (e) { console.error("Erro ao abrir drawer:", e); }
+    });
+
+    // Reage a mudanças disparadas internamente (ex: salvar na gaveta)
+    subscribe('data-changed', async () => {
+        console.log("[CardViewer] Mudança de dados detectada via EventBus. Atualizando...");
+        await initializeAndUpdate();
+    });
+
+    // Reage a mudanças no banco de dados do Grist (nativo)
+    window.grist.onRecords(async () => {
+        if (isInitialized) {
+            console.log("[CardViewer] onRecords disparado. Atualizando interface...");
+            await initializeAndUpdate();
+        }
     });
 });

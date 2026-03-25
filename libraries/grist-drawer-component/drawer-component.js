@@ -16,6 +16,15 @@ let isOpen = false;
 // Motores de dados
 let tableLens, dataWriter;
 
+// --- SISTEMA DE DIAGNÓSTICO DE PERFORMANCE ---
+let perfStartTime = 0;
+function logPerf(stage) {
+    const elapsed = (performance.now() - perfStartTime).toFixed(0);
+    console.log(`[Drawer Perf] ${stage} em ${elapsed}ms`);
+    const statusEl = document.getElementById('grf-drawer-perf-status');
+    if (statusEl) statusEl.textContent = `Progresso: ${stage} (${elapsed}ms)`;
+}
+
 function _ensureTools(options = {}) {
     if (options.tableLens) {
         tableLens = options.tableLens;
@@ -53,14 +62,20 @@ function _updateButtonVisibility() {
     const saveBtn = drawerPanel.querySelector('#drawer-save-btn');
     const cancelBtn = drawerPanel.querySelector('#drawer-cancel-btn');
 
-    if (editBtn) editBtn.style.display = isEditing ? 'none' : 'inline-block';    
-    if (deleteBtn) deleteBtn.style.display = isEditing ? 'none' : 'inline-block';  
-    if (saveBtn) saveBtn.style.display = isEditing ? 'inline-block' : 'none';
-    if (cancelBtn) cancelBtn.style.display = isEditing ? 'inline-block' : 'none';  
+    if (currentRecordId === 'new') {
+        if (editBtn) editBtn.style.display = 'none';
+        if (deleteBtn) deleteBtn.style.display = 'none';
+        if (saveBtn) saveBtn.style.display = 'inline-block';
+        if (cancelBtn) cancelBtn.style.display = 'inline-block';
+    } else {
+        if (editBtn) editBtn.style.display = isEditing ? 'none' : 'inline-block';    
+        if (deleteBtn) deleteBtn.style.display = isEditing ? 'none' : 'inline-block';  
+        if (saveBtn) saveBtn.style.display = isEditing ? 'inline-block' : 'none';
+        if (cancelBtn) cancelBtn.style.display = isEditing ? 'inline-block' : 'none';  
+    }
 }
 
 async function _handleSave() {
-    console.log("[Drawer] Iniciando salvamento...");
     const changes = {};
     const formElements = drawerPanel.querySelectorAll('[data-col-id]');
     
@@ -93,21 +108,21 @@ async function _handleSave() {
         changes[colId] = value;
     });
 
-    if (Object.keys(changes).length > 0) {
-        try {
+    try {
+        if (currentRecordId === 'new') {
+            await dataWriter.addRecord(currentTableId, changes);
+            publish('data-changed', { tableId: currentTableId, action: 'add' });
+            closeDrawer();
+        } else if (Object.keys(changes).length > 0) {
             await dataWriter.updateRecord(currentTableId, currentRecordId, changes);
-            console.log("[Drawer] Sucesso ao salvar:", changes);
-        } catch (e) {
-            console.error("[Drawer] Erro ao salvar:", e);
-            alert("Erro ao salvar: " + e.message);
-            return;
+            publish('data-changed', { tableId: currentTableId, recordId: currentRecordId, action: 'update' });
+            isEditing = false;
+            await _renderDrawerContent();
+            _updateButtonVisibility();
         }
+    } catch (e) {
+        alert("Erro ao salvar: " + e.message);
     }
-    
-    publish('data-changed', { tableId: currentTableId, recordId: currentRecordId, action: 'update' });    
-    isEditing = false;
-    await _renderDrawerContent();
-    _updateButtonVisibility();
 }
 
 async function _renderDrawerContent() {
@@ -116,25 +131,28 @@ async function _renderDrawerContent() {
     const panelsContainer = drawerPanel.querySelector('.drawer-tab-panels');
     
     tabsContainer.innerHTML = ''; 
-    panelsContainer.innerHTML = '<div style="padding:20px; color:#666;">Carregando dados...</div>';
+    panelsContainer.innerHTML = '<div style="padding:20px; color:#666;">Carregando...</div>';
 
     const { tabs = null, styleOverrides = {}, widgetOverrides = {}, lockedFields = [] } = currentDrawerOptions;
 
     try {
-        const [cleanSchema, record] = await Promise.all([
-            tableLens.getTableSchema(currentTableId),
-            tableLens.fetchRecordById(currentTableId, currentRecordId)
-        ]);
-        
-        currentSchema = cleanSchema;
-        currentRecord = record;
+        logPerf("Iniciando Busca de Schema");
+        const schema = await tableLens.getTableSchema(currentTableId);
+        currentSchema = schema;
+        logPerf("Schema Recebido");
 
-        if (!record) throw new Error("Registro não encontrado.");
+        if (currentRecordId === 'new') {
+            currentRecord = {};
+        } else {
+            logPerf("Buscando Registro");
+            currentRecord = await tableLens.fetchRecordById(currentTableId, currentRecordId);
+            logPerf("Registro Recebido");
+        }
 
         panelsContainer.innerHTML = '';
         const finalTabs = (tabs && tabs.length > 0) ? tabs : [{ 
             title: "Principal", 
-            fields: Object.keys(cleanSchema).filter(id => !id.startsWith('gristHelper_')) 
+            fields: Object.keys(schema).filter(id => !id.startsWith('gristHelper_') && id !== 'id' && schema[id].type !== 'ManualSortPos') 
         }];
 
         finalTabs.forEach((tabConfig, index) => {
@@ -153,7 +171,7 @@ async function _renderDrawerContent() {
             if (index === 0) _switchToTab(tabEl, panelEl);
 
             tabConfig.fields.forEach(fieldId => {
-                const col = cleanSchema[fieldId];
+                const col = schema[fieldId];
                 if (!col) return;
 
                 const row = document.createElement('div');
@@ -176,7 +194,7 @@ async function _renderDrawerContent() {
                 renderField({
                     container: row.querySelector('.field-val'),
                     colSchema: col,
-                    record: record,
+                    record: currentRecord,
                     isEditing: isEditing,
                     isLocked: lockedFields.includes(fieldId),
                     tableLens: tableLens,
@@ -185,8 +203,21 @@ async function _renderDrawerContent() {
                 });
             });
         });
+        
+        logPerf("Renderização Finalizada");
+        
+        // Listener de interatividade
+        setTimeout(() => {
+            const inputs = drawerPanel.querySelectorAll('input, select, textarea');
+            inputs.forEach(input => {
+                input.addEventListener('focus', () => {
+                    logPerf("INTERAÇÃO DETECTADA (TTI)");
+                }, { once: true });
+            });
+        }, 100);
 
     } catch (e) {
+        logPerf(`ERRO: ${e.message}`);
         panelsContainer.innerHTML = `<div style="color:red; padding:20px; background:#fee2e2; border-radius:8px;">Erro: ${e.message}</div>`;
     }
 }
@@ -199,26 +230,19 @@ function _initializeDrawerDOM() {
 
     if (drawerPanel) return;
 
-    if (!document.getElementById('grf-font-manrope')) {
-        const font = document.createElement('link');
-        font.id = 'grf-font-manrope';
-        font.rel = 'stylesheet';
-        font.href = 'https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&display=swap';
-        document.head.appendChild(font);
-    }
-
     drawerOverlay = document.createElement('div');
     drawerOverlay.id = 'grist-drawer-overlay';
     drawerOverlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); z-index:2147483640; display:none; backdrop-filter:blur(2px);";
 
     drawerPanel = document.createElement('div');
     drawerPanel.id = 'grist-drawer-panel';
-    drawerPanel.style.cssText = "position:fixed; top:0; right:-650px; width:600px; height:100%; background:white; z-index:2147483641; transition:right 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow:-5px 0 25px rgba(0,0,0,0.15); display:flex; flex-direction:column; font-family:'Manrope', sans-serif;";
+    drawerPanel.style.cssText = "position:fixed; top:0; right:-650px; width:600px; height:100%; background:white; z-index:2147483641; transition:right 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow:-5px 0 25px rgba(0,0,0,0.15); display:flex; flex-direction:column; font-family:sans-serif;";
 
     drawerPanel.innerHTML = `
         <div class="drawer-header" style="padding:20px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
             <h2 id="drawer-title" style="margin:0; font-size:18px; font-weight:800; color:#1e293b;"></h2>
             <div class="drawer-header-actions" style="display:flex; gap:10px; align-items:center;">
+                <div id="grf-drawer-perf-status" style="font-size:10px; color:#999; margin-right:10px;"></div>
                 <div class="drawer-header-buttons" style="display:flex; gap:8px;">
                     <button id="drawer-delete-btn" title="Deletar" style="background:none; border:none; cursor:pointer;"><svg class="icon" style="width:20px; height:20px; stroke:#64748b; fill:none; stroke-width:2;"><use href="#icon-trashbin"></use></svg></button>
                     <button id="drawer-edit-btn" title="Editar" style="background:none; border:none; cursor:pointer;"><svg class="icon" style="width:20px; height:20px; stroke:#64748b; fill:none; stroke-width:2;"><use href="#icon-edit"></use></svg></button>
@@ -240,7 +264,10 @@ function _initializeDrawerDOM() {
     drawerOverlay.onclick = () => closeDrawer();
     
     drawerPanel.querySelector('#drawer-edit-btn').onclick = () => { isEditing = true; _renderDrawerContent(); _updateButtonVisibility(); };
-    drawerPanel.querySelector('#drawer-cancel-btn').onclick = () => { isEditing = false; _renderDrawerContent(); _updateButtonVisibility(); };
+    drawerPanel.querySelector('#drawer-cancel-btn').onclick = () => { 
+        if (currentRecordId === 'new') closeDrawer();
+        else { isEditing = false; _renderDrawerContent(); _updateButtonVisibility(); }
+    };
     drawerPanel.querySelector('#drawer-save-btn').onclick = () => _handleSave();
     drawerPanel.querySelector('#drawer-delete-btn').onclick = async () => {
         if (confirm("Deseja deletar este registro?")) {
@@ -254,13 +281,16 @@ function _initializeDrawerDOM() {
 }
 
 export async function openDrawer(tableId, recordId, options = {}) {
+    perfStartTime = performance.now();
+    logPerf("Chamada openDrawer");
+    
     _ensureTools(options);
     _initializeDrawerDOM();
     
     currentTableId = tableId;
     currentRecordId = recordId;
     currentDrawerOptions = options;
-    isEditing = options.mode === 'edit' || false;
+    isEditing = (recordId === 'new' || options.mode === 'edit');
 
     drawerOverlay.style.setProperty('display', 'block', 'important');
     
@@ -270,7 +300,9 @@ export async function openDrawer(tableId, recordId, options = {}) {
     }, 50);
 
     const titleEl = drawerPanel.querySelector('#drawer-title');
-    if (titleEl) titleEl.textContent = `Registro #${recordId}`;     
+    if (titleEl) {
+        titleEl.textContent = recordId === 'new' ? 'Novo Registro' : `Registro #${recordId}`;
+    }
     
     _updateButtonVisibility();
     await _renderDrawerContent();

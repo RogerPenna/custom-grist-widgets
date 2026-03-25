@@ -571,6 +571,14 @@ export const CardConfigEditor = (() => {
 
         s.showDebugInfo = tabEl.querySelector('#cs-st-show-debug').checked;
 
+        // Novos campos globais de Adição (vindos da aba Actions)
+        const actionsTab = _mainContainer.querySelector("[data-tab-section='actions']");
+        if (actionsTab) {
+            s.showAddButtonTop = actionsTab.querySelector("#cs-add-btn-top").checked;
+            s.showAddButtonBottom = actionsTab.querySelector("#cs-add-btn-bottom").checked;
+            s.addRecordConfigId = actionsTab.querySelector("#cs-add-btn-config").value || null;
+        }
+
         return s;
     }
     // *** CORREÇÃO APLICADA AQUI ***
@@ -1016,26 +1024,51 @@ export const CardConfigEditor = (() => {
 
         tabEl.innerHTML = `
             <h3>Card Actions & Navigation</h3>
-            <div class="form-group">
-                <label for="cs-icon-size">Global Icon Size:</label>
-                <select id="cs-icon-size" style="width: auto; display: inline-block;">
-                    <option value="0.8">80%</option>
-                    <option value="0.9">90%</option>
-                    <option value="1.0" selected>100% (Default)</option>
-                    <option value="1.1">110%</option>
-                    <option value="1.2">120%</option>
-                </select>
-                <span style="margin: 0 15px; color: #ccc;">|</span>
-                <label for="cs-sp-drawer-config">Details Drawer:</label>
-                <select id="cs-sp-drawer-config" style="width: auto; display: inline-block;">
-                    <option value="">-- None --</option>
-                </select>
-                <select id="cs-sp-size" style="width: auto; display: inline-block;">
-                    <option value="25%">25%</option>
-                    <option value="35%">35%</option>
-                    <option value="50%">50%</option>
-                    <option value="75%">75%</option>
-                </select>
+            <div class="form-group" style="background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div>
+                        <label style="display:block; font-size:11px; font-weight:800; color:#94a3b8; text-transform:uppercase; margin-bottom:10px;">General Card Interaction</label>
+                        <div style="display:flex; gap:10px; align-items:center;">
+                            <label for="cs-sp-drawer-config">Details Drawer:</label>
+                            <select id="cs-sp-drawer-config" style="flex:1;">
+                                <option value="">-- None --</option>
+                            </select>
+                        </div>
+                        <div style="display:flex; gap:10px; align-items:center; margin-top:10px;">
+                            <label for="cs-sp-size">Drawer Size:</label>
+                            <select id="cs-sp-size" style="flex:1;">
+                                <option value="25%">25%</option>
+                                <option value="35%">35%</option>
+                                <option value="50%">50%</option>
+                                <option value="75%">75%</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label style="display:block; font-size:11px; font-weight:800; color:#94a3b8; text-transform:uppercase; margin-bottom:10px;">Global "Add New" Buttons</label>
+                        <div style="display:flex; flex-direction:column; gap:8px;">
+                            <label><input type="checkbox" id="cs-add-btn-top"> Show "+" Button at Top</label>
+                            <label><input type="checkbox" id="cs-add-btn-bottom"> Show "+" Button at Bottom</label>
+                            <div style="display:flex; gap:10px; align-items:center; margin-top:5px;">
+                                <label style="white-space:nowrap;">Creation Config:</label>
+                                <select id="cs-add-btn-config" style="flex:1;">
+                                    <option value="">-- Use Default --</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <hr style="margin: 15px 0; border:none; border-top: 1px solid #ddd;">
+                <div style="display:flex; gap:20px; align-items:center;">
+                    <label for="cs-icon-size">Global Icon Size:</label>
+                    <select id="cs-icon-size" style="width: auto;">
+                        <option value="0.8">80%</option>
+                        <option value="0.9">90%</option>
+                        <option value="1.0" selected>100% (Default)</option>
+                        <option value="1.1">110%</option>
+                        <option value="1.2">120%</option>
+                    </select>
+                </div>
             </div>
             <div class="actions-layout" id="actions-master-detail">
                 <!-- Columns will be injected here -->
@@ -1045,17 +1078,31 @@ export const CardConfigEditor = (() => {
 
         // Populate global selects
         const drawerSelect = tabEl.querySelector("#cs-sp-drawer-config");
+        const addBtnConfigSelect = tabEl.querySelector("#cs-add-btn-config");
+        
         if (allConfigs && Array.isArray(allConfigs)) {
             allConfigs.filter(c => c.componentType === 'Drawer').forEach(c => {
                 const option = document.createElement('option');
                 option.value = c.configId;
                 option.textContent = c.configId;
                 drawerSelect.appendChild(option);
+                
+                const option2 = document.createElement('option');
+                option2.value = c.configId;
+                option2.textContent = c.configId;
+                addBtnConfigSelect.appendChild(option2);
             });
         }
         if (state.sidePanel && state.sidePanel.drawerConfigId) drawerSelect.value = state.sidePanel.drawerConfigId;
         if (state.sidePanel && state.sidePanel.size) tabEl.querySelector("#cs-sp-size").value = state.sidePanel.size;
         if (state.styling && state.styling.iconSize) tabEl.querySelector("#cs-icon-size").value = state.styling.iconSize;
+        
+        // Novos campos
+        if (state.styling) {
+            tabEl.querySelector("#cs-add-btn-top").checked = !!state.styling.showAddButtonTop;
+            tabEl.querySelector("#cs-add-btn-bottom").checked = !!state.styling.showAddButtonBottom;
+            if (state.styling.addRecordConfigId) addBtnConfigSelect.value = state.styling.addRecordConfigId;
+        }
 
         // Initialize UI
         renderActionsLayout(tabEl.querySelector('#actions-master-detail'));
