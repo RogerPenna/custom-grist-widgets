@@ -297,6 +297,62 @@ export const GristTableLens = function(gristInstance) {
         return { displayValue, referencedRecord };
     };
 
+    /**
+     * [NOVO] Processa um registro da tabela Grf_config, unificando os campos
+     * mappingJson, stylingJson e actionsJson em um único objeto de configuração.
+     * Mantém compatibilidade com o campo legado configJson.
+     */
+    this.parseConfigRecord = function(record) {
+        if (!record) return null;
+        
+        let mergedConfig = {};
+        
+        // 1. Carrega o legado se existir
+        if (record.configJson) {
+            try {
+                mergedConfig = JSON.parse(record.configJson);
+            } catch (e) {
+                console.error("GTL.parseConfigRecord: Erro ao processar configJson legado.", e);
+            }
+        }
+        
+        // 2. Sobrepõe com os novos campos (Tripartição)
+        // mappingJson -> Campos de mapeamento (tableId, layout, etc)
+        if (record.mappingJson) {
+            try {
+                const mapping = JSON.parse(record.mappingJson);
+                Object.assign(mergedConfig, mapping);
+            } catch (e) { console.error("GTL.parseConfigRecord: Erro mappingJson.", e); }
+        }
+        
+        // stylingJson -> Campos de estilo (styling)
+        if (record.stylingJson) {
+            try {
+                const styling = JSON.parse(record.stylingJson);
+                // Se o stylingJson for o objeto de estilo direto
+                if (styling && typeof styling === 'object') {
+                    if (styling.styling) {
+                        // Se for um objeto que CONTÉM a chave styling
+                        mergedConfig.styling = { ...(mergedConfig.styling || {}), ...styling.styling };
+                    } else {
+                        // Se for o objeto de estilo propriamente dito
+                        mergedConfig.styling = { ...(mergedConfig.styling || {}), ...styling };
+                    }
+                }
+            } catch (e) { console.error("GTL.parseConfigRecord: Erro stylingJson.", e); }
+        }
+        
+        // actionsJson -> Campos de ação (sidePanel, iconGroups, etc)
+        if (record.actionsJson) {
+            try {
+                const actions = JSON.parse(record.actionsJson);
+                Object.assign(mergedConfig, actions);
+            } catch (e) { console.error("GTL.parseConfigRecord: Erro actionsJson.", e); }
+        }
+        
+        return mergedConfig;
+    };
+
     this.fetchConfig = async function(configId) {
         if (!configId) {
             console.error("GTL.fetchConfig: configId não foi fornecido.");
@@ -313,18 +369,12 @@ export const GristTableLens = function(gristInstance) {
             if (!targetConfig) {
                 throw new Error(`Configuração com id "${configId}" não encontrada na tabela "${configTableName}".`);
             }
-            if (!targetConfig.configJson || typeof targetConfig.configJson !== 'string') {
-                throw new Error(`A coluna 'configJson' para o configId "${configId}" está vazia ou não é texto.`);
-            }
-            const parsedConfig = JSON.parse(targetConfig.configJson);
+            
+            const parsedConfig = this.parseConfigRecord(targetConfig);
             _metaState.configCache[configId] = parsedConfig;
             return parsedConfig;
         } catch (error) {
             console.error(`GTL.fetchConfig: Erro ao buscar ou processar a configuração "${configId}".`, error);
-            if (error instanceof SyntaxError) {
-                const configRecord = (await _colDataToRows(await _grist.docApi.fetchTable(configTableName))).find(c => c.configId === configId);
-                console.error("Conteúdo do JSON inválido:", configRecord?.configJson);
-            }
             throw error;
         }
     };

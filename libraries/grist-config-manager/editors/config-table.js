@@ -4,6 +4,31 @@ export const TableConfigEditor = (() => {
     let currentTableId = null;
     let _mainContainer = null;
 
+    function updateDebugJson() {
+        if (!_mainContainer) return;
+        const outputEl = _mainContainer.querySelector('#config-json-output');
+        if (!outputEl) return;
+        try {
+            const config = read(_mainContainer);
+            outputEl.innerHTML = `
+                <div class="debug-tri-section">
+                    <div class="debug-label mapping">mappingJson (O "Onde")</div>
+                    <pre><code>${JSON.stringify(config.mapping, null, 2)}</code></pre>
+                </div>
+                <div class="debug-tri-section">
+                    <div class="debug-label styling">stylingJson (O "Como")</div>
+                    <pre><code>${JSON.stringify(config.styling, null, 2)}</code></pre>
+                </div>
+                <div class="debug-tri-section">
+                    <div class="debug-label actions">actionsJson (O "O que faz")</div>
+                    <pre><code>${JSON.stringify(config.actions, null, 2)}</code></pre>
+                </div>
+            `;
+        } catch (e) {
+            outputEl.textContent = "Erro ao ler a configuração: " + e.message;
+        }
+    }
+
     async function render(container, configData, lens, tableId) {
         _mainContainer = container;
         currentTableId = tableId;
@@ -34,6 +59,13 @@ export const TableConfigEditor = (() => {
                 .tab-button.active { background: #fff; border-bottom: 1px solid #fff; }
                 .tab-panel { display: none; padding: 20px; border: 1px solid #ccc; border-top: none; }
                 .tab-panel.active { display: block; }
+                
+                .debug-tri-section { margin-bottom: 15px; border-left: 4px solid #ddd; padding-left: 10px; }
+                .debug-label { font-weight: bold; font-size: 11px; margin-bottom: 4px; text-transform: uppercase; }
+                .debug-label.mapping { color: #0d6efd; }
+                .debug-label.styling { color: #198754; }
+                .debug-label.actions { color: #fd7e14; }
+                .config-debugger pre { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 4px; max-height: 200px; overflow: auto; }
             </style>
             <div class="tab-container">
                 <button type="button" class="tab-button active" data-tab="general">Geral</button>
@@ -133,6 +165,10 @@ export const TableConfigEditor = (() => {
                 <div class="config-section-title" style="margin-top: 20px;">Colunas Disponíveis</div>
                 <ul id="available-column-list" class="field-order-list"></ul>
             </div>
+            <details class="config-debugger" style="margin-top: 20px;">
+                <summary>Ver Tripartição JSON (Debug)</summary>
+                <div id="config-json-output"></div>
+            </details>
         `;
 
         const tabButtons = container.querySelectorAll('.tab-button');
@@ -172,6 +208,7 @@ export const TableConfigEditor = (() => {
             allCards.forEach(card => {
                 columnListEl.appendChild(card);
                 card.querySelector('.is-visible-checkbox').checked = true;
+                updateDebugJson();
             });
         });
 
@@ -180,10 +217,16 @@ export const TableConfigEditor = (() => {
             allCards.forEach(card => {
                 availableColumnListEl.appendChild(card);
                 card.querySelector('.is-visible-checkbox').checked = false;
+                updateDebugJson();
             });
         });
 
         enableDragAndDrop([columnListEl, availableColumnListEl]);
+        
+        // Listeners for Debug
+        container.addEventListener('change', updateDebugJson);
+        container.addEventListener('input', updateDebugJson);
+        updateDebugJson();
     }
 
     function read(container) {
@@ -192,11 +235,11 @@ export const TableConfigEditor = (() => {
         const columnListEl = container.querySelector('#column-list');
         const visibleItems = Array.from(columnListEl.querySelectorAll('.field-card'));
 
-        const config = {
+        const fullConfig = {
             tableId: currentTableId,
             stripedTable: container.querySelector('#striped-table-checkbox').checked,
             enableColumnCalcs: container.querySelector('#enable-column-calcs-checkbox').checked,
-            editMode: container.querySelector('input[name="editMode"]:checked')?.value || 'excel', // Default to excel
+            editMode: container.querySelector('input[name="editMode"]:checked')?.value || 'excel',
             drawerId: container.querySelector('#drawer-id-select').value || null,
             enableAddNewBtn: container.querySelector('#enable-add-new-btn-checkbox').checked,
             layout: container.querySelector('#layout-mode-select').value,
@@ -241,8 +284,30 @@ export const TableConfigEditor = (() => {
             }),
         };
 
-        console.log("Table Editor - reading config:", config);
-        return config;
+        // --- TRIPARTIÇÃO ---
+        const mapping = {
+            tableId: fullConfig.tableId,
+            columns: fullConfig.columns
+        };
+
+        const styling = {
+            stripedTable: fullConfig.stripedTable,
+            layout: fullConfig.layout,
+            responsiveLayout: fullConfig.responsiveLayout,
+            resizableColumns: fullConfig.resizableColumns,
+            headerFilter: fullConfig.headerFilter,
+            pagination: fullConfig.pagination
+        };
+
+        const actions = {
+            enableColumnCalcs: fullConfig.enableColumnCalcs,
+            editMode: fullConfig.editMode,
+            drawerId: fullConfig.drawerId,
+            enableAddNewBtn: fullConfig.enableAddNewBtn
+        };
+
+        console.log("Table Editor - reading split config:", { mapping, styling, actions });
+        return { mapping, styling, actions };
     }
 
     function createColumnCard(col, colConfig) {

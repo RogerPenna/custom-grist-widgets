@@ -2,8 +2,35 @@
 
 export const BscConfigEditor = (() => {
     let state = {};
+    let _mainContainer = null;
+
+    function updateDebugJson() {
+        if (!_mainContainer) return;
+        const outputEl = _mainContainer.querySelector('#config-json-output');
+        if (!outputEl) return;
+        try {
+            const config = read(_mainContainer);
+            outputEl.innerHTML = `
+                <div class="debug-tri-section">
+                    <div class="debug-label mapping">mappingJson (O "Onde")</div>
+                    <pre><code>${JSON.stringify(config.mapping, null, 2)}</code></pre>
+                </div>
+                <div class="debug-tri-section">
+                    <div class="debug-label styling">stylingJson (O "Como")</div>
+                    <pre><code>${JSON.stringify(config.styling, null, 2)}</code></pre>
+                </div>
+                <div class="debug-tri-section">
+                    <div class="debug-label actions">actionsJson (O "O que faz")</div>
+                    <pre><code>${JSON.stringify(config.actions, null, 2)}</code></pre>
+                </div>
+            `;
+        } catch (e) {
+            outputEl.textContent = "Erro ao ler a configuração: " + e.message;
+        }
+    }
 
     function render(container, config, tableLens, tableId, receivedConfigs = []) {
+        _mainContainer = container;
         const options = config || {};
         state = {
             useColoris: options.useColoris || false,
@@ -14,7 +41,16 @@ export const BscConfigEditor = (() => {
             receivedConfigs: receivedConfigs
         };
 
-        container.innerHTML = "";
+        container.innerHTML = `
+            <style>
+                .debug-tri-section { margin-bottom: 15px; border-left: 4px solid #ddd; padding-left: 10px; }
+                .debug-label { font-weight: bold; font-size: 11px; margin-bottom: 4px; text-transform: uppercase; }
+                .debug-label.mapping { color: #0d6efd; }
+                .debug-label.styling { color: #198754; }
+                .debug-label.actions { color: #fd7e14; }
+                .config-debugger pre { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 4px; max-height: 200px; overflow: auto; }
+            </style>
+        `;
 
         // Create Tabs
         const tabsRow = document.createElement("div");
@@ -25,6 +61,14 @@ export const BscConfigEditor = (() => {
             createTabButton("Actions", "act", container)
         ].forEach(t => tabsRow.appendChild(t));
         container.appendChild(tabsRow);
+
+        const debugSection = document.createElement("div");
+        debugSection.innerHTML = `
+            <details class="config-debugger">
+                <summary>Ver Tripartição JSON (Debug)</summary>
+                <div id="config-json-output"></div>
+            </details>`;
+        container.appendChild(debugSection);
 
         // Content Area
         const contentArea = document.createElement("div");
@@ -39,20 +83,41 @@ export const BscConfigEditor = (() => {
 
         // Initialize
         switchTab("act", container); // Default to Actions as it's the main feature for now
+
+        container.addEventListener('change', updateDebugJson);
+        container.addEventListener('input', updateDebugJson);
+        updateDebugJson();
     }
 
     function read(container) {
         const genTab = container.querySelector("[data-tab-section='gen']");
-        const colsTab = container.querySelector("[data-tab-section='cols']"); // Changed from placeholder to use
+        const colsTab = container.querySelector("[data-tab-section='cols']");
         const actTab = container.querySelector("[data-tab-section='act']");
 
-        return {
+        const fullConfig = {
             useColoris: genTab ? genTab.querySelector('#bsc-cfg-use-coloris').checked : state.useColoris,
             drawerConfigId: actTab ? actTab.querySelector('#bsc-cfg-drawer-id').value : state.drawerConfigId,
             perspectivesConfigId: colsTab ? colsTab.querySelector('#bsc-cfg-persp-card-id').value : state.perspectivesConfigId,
             qualityConfigId: colsTab ? colsTab.querySelector('#bsc-cfg-quality-card-id').value : state.qualityConfigId,
             requirementsConfigId: colsTab ? colsTab.querySelector('#bsc-cfg-req-card-id').value : state.requirementsConfigId
         };
+
+        // --- TRIPARTIÇÃO ---
+        const mapping = {
+            perspectivesConfigId: fullConfig.perspectivesConfigId,
+            qualityConfigId: fullConfig.qualityConfigId,
+            requirementsConfigId: fullConfig.requirementsConfigId
+        };
+
+        const styling = {
+            useColoris: fullConfig.useColoris
+        };
+
+        const actions = {
+            drawerConfigId: fullConfig.drawerConfigId
+        };
+
+        return { mapping, styling, actions };
     }
 
     // --- Tab Helpers ---

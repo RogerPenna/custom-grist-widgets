@@ -8,14 +8,27 @@ export const DrawerConfigEditor = (() => {
 
     function updateDebugJson() {
         if (!_mainContainer) return;
-        const configJsonTextareaEl = _mainContainer.querySelector('#config-json-output');
-        if (!configJsonTextareaEl) return;
+        const outputEl = _mainContainer.querySelector('#config-json-output');
+        if (!outputEl) return;
 
         try {
-            const config = _readFromUI();
-            configJsonTextareaEl.textContent = JSON.stringify(config, null, 2);
+            const config = read(_mainContainer);
+            outputEl.innerHTML = `
+                <div class="debug-tri-section">
+                    <div class="debug-label mapping">mappingJson (O "Onde")</div>
+                    <pre><code>${JSON.stringify(config.mapping, null, 2)}</code></pre>
+                </div>
+                <div class="debug-tri-section">
+                    <div class="debug-label styling">stylingJson (O "Como")</div>
+                    <pre><code>${JSON.stringify(config.styling, null, 2)}</code></pre>
+                </div>
+                <div class="debug-tri-section">
+                    <div class="debug-label actions">actionsJson (O "O que faz")</div>
+                    <pre><code>${JSON.stringify(config.actions, null, 2)}</code></pre>
+                </div>
+            `;
         } catch (e) {
-            configJsonTextareaEl.textContent = 'Erro ao gerar JSON: ' + e.message;
+            outputEl.textContent = 'Erro ao gerar JSON: ' + e.message;
         }
     }
 
@@ -40,6 +53,14 @@ export const DrawerConfigEditor = (() => {
         currentEditingStage = '_global';
 
         container.innerHTML = `
+            <style>
+                .debug-tri-section { margin-bottom: 15px; border-left: 4px solid #ddd; padding-left: 10px; }
+                .debug-label { font-weight: bold; font-size: 11px; margin-bottom: 4px; text-transform: uppercase; }
+                .debug-label.mapping { color: #0d6efd; }
+                .debug-label.styling { color: #198754; }
+                .debug-label.actions { color: #fd7e14; }
+                .config-debugger pre { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 4px; max-height: 200px; overflow: auto; }
+            </style>
             <div class="drawer-config-section">
                 <label for="displayModeSelector">Modo:</label>
                 <select id="displayModeSelector"><option value="drawer" ${configData.displayMode === 'drawer' ? 'selected' : ''}>Drawer</option><option value="modal" ${configData.displayMode === 'modal' ? 'selected' : ''}>Modal</option></select>
@@ -62,8 +83,11 @@ export const DrawerConfigEditor = (() => {
                 <button type="button" id="addTabBtn" class="btn btn-primary add-tab-btn">📑 + Adicionar Aba</button>
                 <ul id="unifiedFieldList" class="field-order-list"></ul>
             </div>
-            <!-- SEÇÃO DE DEBUG ADICIONADA -->
-            <details class="config-debugger"><summary>Ver Configuração JSON (Debug)</summary><pre><code id="config-json-output">{}</code></pre></details>`;
+            <!-- SEÇÃO DE DEBUG ATUALIZADA -->
+            <details class="config-debugger">
+                <summary>Ver Tripartição JSON (Debug)</summary>
+                <div id="config-json-output"></div>
+            </details>`;
 
         _renderWorkflowUI(configData.workflow, currentSchema);
         const allCols = Object.values(currentSchema).filter(c => !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos');
@@ -95,7 +119,36 @@ export const DrawerConfigEditor = (() => {
 
     // FUNÇÃO READ CORRIGIDA
     function read(container) {
-        return _readFromUI();
+        const fullConfig = _readFromUI();
+        
+        // --- TRIPARTIÇÃO ---
+        
+        // 1. Mapping: Definição dos campos e estrutura
+        const mapping = {
+            tableId: fullConfig.tableId,
+            tabs: fullConfig.tabs,
+            hiddenFields: fullConfig.hiddenFields,
+            lockedFields: fullConfig.lockedFields,
+            requiredFields: fullConfig.requiredFields,
+            refListFieldConfig: fullConfig.refListFieldConfig,
+            styleOverrides: fullConfig.styleOverrides,
+            widgetOverrides: fullConfig.widgetOverrides,
+            fieldOptions: fullConfig.fieldOptions
+        };
+        
+        // 2. Styling: Aparência
+        const styling = {
+            displayMode: fullConfig.displayMode,
+            width: fullConfig.width,
+            showDebugInfo: fullConfig.showDebugInfo
+        };
+        
+        // 3. Actions: Lógica e Fluxo
+        const actions = {
+            workflow: fullConfig.workflow
+        };
+        
+        return { mapping, styling, actions };
     }
 
     // Renomeado para uso interno

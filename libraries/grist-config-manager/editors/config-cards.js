@@ -32,8 +32,21 @@ export const CardConfigEditor = (() => {
         const outputEl = _mainContainer.querySelector('#config-json-output');
         if (!outputEl) return;
         try {
-            const currentConfig = read(_mainContainer);
-            outputEl.textContent = JSON.stringify(currentConfig, null, 2);
+            const config = read(_mainContainer);
+            outputEl.innerHTML = `
+                <div class="debug-tri-section">
+                    <div class="debug-label mapping">mappingJson (O "Onde")</div>
+                    <pre><code>${JSON.stringify(config.mapping, null, 2)}</code></pre>
+                </div>
+                <div class="debug-tri-section">
+                    <div class="debug-label styling">stylingJson (O "Como")</div>
+                    <pre><code>${JSON.stringify(config.styling, null, 2)}</code></pre>
+                </div>
+                <div class="debug-tri-section">
+                    <div class="debug-label actions">actionsJson (O "O que faz")</div>
+                    <pre><code>${JSON.stringify(config.actions, null, 2)}</code></pre>
+                </div>
+            `;
         } catch (e) {
             outputEl.textContent = "Erro ao ler a configuração: " + e.message;
         }
@@ -41,7 +54,7 @@ export const CardConfigEditor = (() => {
 
     async function render(container, config, lens, tableId, receivedConfigs = []) {
         _mainContainer = container;
-        allConfigs = receivedConfigs; // Armazena a lista de configs recebida na variável do módulo
+        allConfigs = receivedConfigs;
         if (!tableId) { container.innerHTML = '<p class="editor-placeholder">Selecione uma Tabela de Dados no menu acima para começar a configurar.</p>'; return; }
         const schema = await lens.getTableSchema(tableId);
         if (!schema) { container.innerHTML = '<p class="editor-placeholder">Erro ao carregar o schema da tabela. Verifique o console.</p>'; return; }
@@ -59,26 +72,41 @@ export const CardConfigEditor = (() => {
         };
         state.layout.forEach(field => { if (!field.style) field.style = { ...DEFAULT_FIELD_STYLE }; });
 
-        // Clear any legacy actionButtons that might be in the config
-        if (state.styling.actionButtons) {
-            delete state.styling.actionButtons;
-        }
+        if (state.styling.actionButtons) delete state.styling.actionButtons;
 
-        container.innerHTML = "";
+        container.innerHTML = `
+            <style>
+                .debug-tri-section { margin-bottom: 15px; border-left: 4px solid #ddd; padding-left: 10px; }
+                .debug-label { font-weight: bold; font-size: 11px; margin-bottom: 4px; text-transform: uppercase; }
+                .debug-label.mapping { color: #0d6efd; }
+                .debug-label.styling { color: #198754; }
+                .debug-label.actions { color: #fd7e14; }
+                .config-debugger pre { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 4px; max-height: 200px; overflow: auto; }
+            </style>
+        `;
+
         const tabsRow = document.createElement("div");
         tabsRow.className = 'config-tabs';
         [createTabButton("Styling", "sty", container), createTabButton("Fields Layout", "fld", container), createTabButton("Actions & Nav", "actions", container)].forEach(t => tabsRow.appendChild(t));
         container.appendChild(tabsRow);
+
         const debugSection = document.createElement("div");
-        debugSection.innerHTML = `<details class="config-debugger"><summary>Ver Configuração JSON (Debug)</summary><pre><code id="config-json-output">{}</code></pre></details>`;
+        debugSection.innerHTML = `
+            <details class="config-debugger">
+                <summary>Ver Tripartição JSON (Debug)</summary>
+                <div id="config-json-output"></div>
+            </details>`;
         container.appendChild(debugSection);
+
         const contentArea = document.createElement("div");
         contentArea.className = 'config-content';
         contentArea.id = "card-config-contents";
         container.appendChild(contentArea);
+        
         buildStylingTab(contentArea);
-        buildFieldsLayoutTab(contentArea); // Não precisa mais passar `allConfigs`
+        buildFieldsLayoutTab(contentArea);
         buildActionsTab(contentArea);
+        
         updateDebugJson();
         switchTab("sty", container);
         container.addEventListener('change', updateDebugJson);
@@ -93,19 +121,46 @@ export const CardConfigEditor = (() => {
             }
         });
 
-        const newStyling = readStylingTab(container);
-        // Explicitly include iconGroups from state.styling as they are modified directly
-        newStyling.iconGroups = state.styling.iconGroups;
+        const fullStyling = readStylingTab(container);
         const layoutTab = container.querySelector("[data-tab-section='fld']");
         const viewMode = layoutTab.querySelector("#cs-vm-click").checked ? "click" : "burger";
         const numRows = parseInt(layoutTab.querySelector("#cs-num-rows").value, 10) || DEFAULT_NUM_ROWS;
         const sidePanelTab = container.querySelector("[data-tab-section='actions']");
-        const sidePanel = { size: sidePanelTab.querySelector("#cs-sp-size").value, drawerConfigId: sidePanelTab.querySelector("#cs-sp-drawer-config").value || null };
+        
+        // --- TRIPARTIÇÃO ---
+        
+        // 1. Mapping: Onde os dados estão e como se distribuem
+        const mapping = {
+            tableId: state.tableId,
+            layout: state.layout,
+            viewMode,
+            numRows
+        };
+        
+        // 2. Actions: O que o widget faz (Interações)
+        const actions = {
+            sidePanel: { 
+                size: sidePanelTab.querySelector("#cs-sp-size").value, 
+                drawerConfigId: sidePanelTab.querySelector("#cs-sp-drawer-config").value || null 
+            },
+            iconGroups: state.styling.iconGroups || [],
+            showAddButtonTop: sidePanelTab.querySelector("#cs-add-btn-top").checked,
+            showAddButtonBottom: sidePanelTab.querySelector("#cs-add-btn-bottom").checked,
+            addRecordConfigId: sidePanelTab.querySelector("#cs-add-btn-config").value || null
+        };
+        
+        // 3. Styling: Como o widget se parece (Identidade Visual)
+        // Removemos campos de ação que vazaram para o styling no passado
+        const styling = { ...fullStyling };
+        delete styling.iconGroups;
+        delete styling.showAddButtonTop;
+        delete styling.showAddButtonBottom;
+        delete styling.addRecordConfigId;
+        
+        // Adicionamos iconSize ao styling (é visual)
+        styling.iconSize = parseFloat(sidePanelTab.querySelector("#cs-icon-size").value) || 1.0;
 
-        // Read iconSize from actions tab and add it to styling
-        newStyling.iconSize = parseFloat(sidePanelTab.querySelector("#cs-icon-size").value) || 1.0;
-
-        return { tableId: state.tableId, styling: newStyling, sidePanel, layout: state.layout, viewMode, numRows };
+        return { mapping, styling, actions };
     }
 
     const DEFAULT_FIELD_STYLE = { useGristStyle: true, labelVisible: true, labelPosition: 'above', labelFont: 'inherit', labelFontSize: 'inherit', labelColor: 'inherit', labelOutline: false, labelOutlineColor: '#ffffff', dataJustify: 'left', heightLimited: false, maxHeightRows: 1, isTitleField: false };
@@ -1665,6 +1720,7 @@ export const CardConfigEditor = (() => {
                     <label>Widget Type:</label>
                     <select id="fs-widget-type">
                         <option value="">Default (Text/Number)</option>
+                        <option value="Toggle Switch">Toggle Switch</option>
                         <option value="Color Picker">Color Picker</option>
                         <option value="Progress Bar">Progress Bar</option>
                     </select>
@@ -1743,7 +1799,35 @@ export const CardConfigEditor = (() => {
             widgetOptionsContainer.innerHTML = '';
             widgetOptionsContainer.style.display = widgetType ? 'block' : 'none';
 
-            if (widgetType === 'Progress Bar') {
+            if (widgetType === 'Toggle Switch') {
+                const onColor = tempWidgetOptions.onColor || '#198754';
+                const offColor = tempWidgetOptions.offColor || '#ced4da';
+                const showLabels = tempWidgetOptions.showLabels !== false;
+
+                widgetOptionsContainer.innerHTML = `
+                    <div class="form-group">
+                        <label>On Color:</label>
+                        <input type="color" id="fs-toggle-on-color" value="${onColor}">
+                    </div>
+                    <div class="form-group">
+                        <label>Off Color:</label>
+                        <input type="color" id="fs-toggle-off-color" value="${offColor}">
+                    </div>
+                    <div class="form-group">
+                        <label><input type="checkbox" id="fs-toggle-labels" ${showLabels ? 'checked' : ''}> Show Yes/No Labels</label>
+                    </div>
+                `;
+
+                widgetOptionsContainer.querySelector('#fs-toggle-on-color').addEventListener('change', e => {
+                    tempWidgetOptions.onColor = e.target.value;
+                });
+                widgetOptionsContainer.querySelector('#fs-toggle-off-color').addEventListener('change', e => {
+                    tempWidgetOptions.offColor = e.target.value;
+                });
+                widgetOptionsContainer.querySelector('#fs-toggle-labels').addEventListener('change', e => {
+                    tempWidgetOptions.showLabels = e.target.checked;
+                });
+            } else if (widgetType === 'Color Picker') {
                 // Main Color Option
                 const mainColorDiv = document.createElement('div');
                 mainColorDiv.className = 'form-group';

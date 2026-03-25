@@ -9,8 +9,8 @@ export function renderBool(options) {
 
     // Se NÃO for editável (visualização, travado, ou FÓRMULA), renderiza e para.
     if (!isEditable) {
-        // Para consistência visual no modo de edição, mostramos o switch desabilitado.
-        if (isEditing && displayAs === 'switch') {
+        // Para consistência visual, mostramos o switch desabilitado se configurado como tal (seja no modo edição ou visualização).
+        if (displayAs === 'switch') {
              container.classList.add('grf-contains-switch');
              const label = document.createElement('label');
              label.className = 'grf-switch';

@@ -8,6 +8,7 @@ import { renderRefList } from './renderers/render-reflist.js';
 import { renderBool } from './renderers/render-bool.js';
 import { renderColorPicker } from './renderers/render-color-picker.js';
 import { renderProgressBar } from './renderers/render-progress-bar.js';
+import { renderToggle } from './renderers/render-toggle.js';
 
 (function () {
   if (document.getElementById('grf-styles')) return;
@@ -146,21 +147,23 @@ export async function renderField(options) {
     return;
   }
 
+  // 1. Configurações customizadas do nosso widget (Card/Drawer)
+  const customFieldStyle = options.fieldStyle || {};
+  const useGristStyle = customFieldStyle.useGristStyle !== false;
+
+  // 2. Metadados do Grist (Formatação Condicional, cores da coluna, etc)
   let tableSchema = null;
   if (tableLens && record && record.gristHelper_tableId) {
     tableSchema = await tableLens.getTableSchema(record.gristHelper_tableId);
   }
-
-  const fieldStyle = getFieldStyle(record, colSchema, tableSchema);
+  const gristMetadataStyle = getFieldStyle(record, colSchema, tableSchema);
 
   if (!colSchema) {
     container.textContent = String(record[options.colId] ?? '');
     return;
   }
 
-  // Default to using Grist style if the option is not provided.
-  const useGristStyle = fieldStyle?.useGristStyle ?? true;
-
+  // Se o usuário desabilitou explicitamente o estilo do Grist para este campo
   if (!useGristStyle) {
     renderSimpleText({ container, colSchema, record, styling });
     return;
@@ -173,40 +176,45 @@ export async function renderField(options) {
   const isDisabled = isEditing && colSchema.isFormula;
   container.classList.toggle('is-disabled', isDisabled);
 
-  if (labelElement) {
-    // We probably don't want to apply conditional styles to the label
-    // _applyStyles(labelElement, ...);
-  }
-
+  // 3. Aplicação de Estilos Visuais
   if (!isEditing) {
-    _applyStyles(container, fieldStyle);
+    // Primeiro aplicamos o estilo condicional do Grist
+    _applyStyles(container, gristMetadataStyle);
     
-    // --- NEW: Apply Card-Specific Data Styles overrides ---
-    if (styling && options.fieldStyle && options.fieldStyle.dataStyle) {
-        const ds = options.fieldStyle.dataStyle;
+    // Depois sobrepomos com os estilos fixos definidos no configurador (se existirem)
+    if (customFieldStyle.dataStyle) {
+        const ds = customFieldStyle.dataStyle;
         if (ds.font) container.style.fontFamily = ds.font;
         if (ds.size) container.style.fontSize = ds.size;
-        if (ds.color) container.style.color = ds.color; // Override conditional formatting text color if set
+        if (ds.color) container.style.color = ds.color; 
         if (ds.bold) container.style.fontWeight = 'bold';
         if (ds.italic) container.style.fontStyle = 'italic';
     }
   }
 
-  // Correctly pass refListConfig to the callOptions from the fieldStyle object
-  const callOptions = { ...options, container, cellValue, refListConfig: options.fieldStyle?.refListConfig };
-
+  // 4. Despacho de Renderização (Prioridade para Widgets Customizados)
+  const callOptions = { ...options, container, cellValue, fieldStyle: customFieldStyle };
   const type = colSchema.type || '';
-  const fieldOptions = options.fieldOptions || {};
+  const widgetType = customFieldStyle.widget;
 
-  if (fieldOptions.colorPicker) {
+  // WIDGETS ESPECIAIS (Prioridade Máxima)
+  const wtLower = (widgetType || '').toLowerCase();
+  if (wtLower === 'toggle switch' || wtLower === 'switch') {
+    renderToggle(callOptions);
+    return;
+  }
+  
+  if (customFieldStyle.widgetOptions?.colorPicker || widgetType === 'Color Picker') {
     renderColorPicker(callOptions);
     return;
   }
-  if (fieldOptions.progressBar && (type === 'Numeric' || type === 'Int')) {
+
+  if ((customFieldStyle.widgetOptions?.progressBar || widgetType === 'Progress Bar') && (type === 'Numeric' || type === 'Int')) {
     renderProgressBar(callOptions);
     return;
   }
 
+  // RENDERIZADORES POR TIPO DE DADO (Fallback)
   if (type.startsWith('RefList:')) {
     await renderRefList(callOptions);
   } else if (type.startsWith('Ref:')) {

@@ -103,14 +103,14 @@ export const CardSystem = (() => {
     container.innerHTML = "";
     if (!records || !records.length) {
       container.textContent = "No records found.";
+      // Mesmo sem registros, aplicamos o fundo ao body
+      _applyWidgetBackground(styling, currentOptions);
       return;
     }
 
-    if (styling.widgetBackgroundMode === 'transparent' || currentOptions.isRefList) {
-        container.style.background = 'transparent';
-    } else {
-        container.style.background = resolveStyle(null, null, styling.widgetBackgroundMode, styling.widgetBackgroundSolidColor, { type: styling.widgetBackgroundGradientType, c1: styling.widgetBackgroundGradientColor1, c2: styling.widgetBackgroundGradientColor2 }, styling.widgetBackgroundField);
-    }
+    // --- APLICAÇÃO DO FUNDO GLOBAL (BODY) ---
+    _applyWidgetBackground(styling, currentOptions);
+    
     container.style.padding = currentOptions.isRefList ? '0px' : styling.widgetPadding;
 
     // --- Grid Layout Logic (Final Fixed Version) ---
@@ -298,10 +298,21 @@ export const CardSystem = (() => {
             tContainer.appendChild(lblEl);
           }
           const dataEl = document.createElement("div");
-          dataEl.textContent = String(record[f.colId] ?? "");
+          // dataEl.textContent = String(record[f.colId] ?? ""); // LEGACY
           dataEl.style.fontFamily = styling.cardTitleTopBarDataFontStyle;
           dataEl.style.fontSize = styling.cardTitleTopBarDataFontSize;
           dataEl.style.color = styling.cardTitleTopBarDataFontColor;
+          
+          renderField({
+            container: dataEl,
+            colSchema: schema ? schema[f.colId] : null,
+            record: record,
+            isEditing: false,
+            tableLens: tableLens,
+            fieldStyle: fieldStyle,
+            styling: styling
+          });
+
           tContainer.appendChild(dataEl);
           topBarEl.appendChild(tContainer);
         });
@@ -623,14 +634,19 @@ export const CardSystem = (() => {
   }
 
   function handleCardClick(record, options) {
-    const drawerConfigId = options?.sidePanel?.drawerConfigId;
+    // Busca o ID do drawer no local legado ou no novo local tripartido
+    const drawerConfigId = options?.actions?.sidePanel?.drawerConfigId || options?.sidePanel?.drawerConfigId || null;
     const tableId = options?.tableId;
-    if (!drawerConfigId || !tableId) {
-      console.warn("Nenhuma a\u00e7\u00e3o de clique configurada. Verifique a aba 'Actions' na configura\u00e7\u00e3o do card.", { options });
+    
+    if (!tableId) {
+      console.warn("CardSystem: tableId não encontrado nas opções do card.");
       return;
     }
+
+    console.log("CardSystem: Disparando grf-card-clicked para record", record.id);
+    
     publish('grf-card-clicked', {
-      drawerConfigId: drawerConfigId,
+      drawerConfigId: drawerConfigId, // Pode ser null para gaveta padrão
       recordId: record.id,
       tableId: tableId
     });
@@ -674,6 +690,35 @@ export const CardSystem = (() => {
 
     const toHex = c => c.toString(16).padStart(2, '0');
     return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+  }
+
+  function _applyWidgetBackground(styling, options) {
+    const isTransparent = styling.widgetBackgroundMode === 'transparent' || options.isRefList;
+    const backgroundStyle = isTransparent 
+        ? 'transparent' 
+        : _resolveBackgroundValue(styling.widgetBackgroundMode, styling.widgetBackgroundSolidColor, { 
+            type: styling.widgetBackgroundGradientType, 
+            c1: styling.widgetBackgroundGradientColor1, 
+            c2: styling.widgetBackgroundGradientColor2 
+          });
+
+    document.body.style.background = backgroundStyle;
+    document.body.style.minHeight = "100vh"; // Garante cobertura total
+    
+    // Se não for transparente, garantimos que o container interno não tenha fundo duplicado
+    if (_container) {
+        _container.style.background = 'transparent';
+    }
+  }
+
+  // Helper local para resolver o valor do background sem depender do resolveStyle completo
+  function _resolveBackgroundValue(mode, solid, grad) {
+    if (mode === 'gradient' && grad) {
+      return (grad.type || "linear-gradient(to right, {c1}, {c2})")
+        .replace(/{c1}/g, grad.c1 || "#f9f9f9")
+        .replace(/{c2}/g, grad.c2 || "#e9e9e9");
+    }
+    return solid || "#f9f9f9";
   }
 
   return { renderCards, filterRecords };

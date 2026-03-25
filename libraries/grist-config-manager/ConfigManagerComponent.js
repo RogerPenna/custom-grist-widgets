@@ -43,7 +43,10 @@ function renderSetupInstructions(container) {
                     <tr><td>widgetTitle</td><td>Text</td></tr>
                     <tr><td>description</td><td>Text</td></tr>
                     <tr><td>componentType</td><td>Text</td></tr>
-                    <tr><td>configJson</td><td>Text</td></tr>
+                    <tr><td>mappingJson</td><td>Text (O "Onde")</td></tr>
+                    <tr><td>stylingJson</td><td>Text (O "Como")</td></tr>
+                    <tr><td>actionsJson</td><td>Text (O "O que faz")</td></tr>
+                    <tr><td>configJson</td><td>Text (Legado)</td></tr>
                     <tr><td>pageId</td><td>Numeric</td></tr>
                 </tbody>
             </table>
@@ -72,6 +75,17 @@ export async function renderMainUI(grist, container, initialConfigId, componentT
     try {
         const allTableIds = await activeGrist.docApi.listTables();
         if (!allTableIds.includes(CONFIG_TABLE)) {
+            renderSetupInstructions(container);
+            return;
+        }
+
+        // --- NOVA VERIFICAÇÃO DE COLUNAS (TRIPARTIÇÃO) ---
+        const tableSchema = await tableLens.getTableSchema(CONFIG_TABLE, { mode: 'raw' });
+        const requiredColumns = ['mappingJson', 'stylingJson', 'actionsJson'];
+        const missingColumns = requiredColumns.filter(col => !tableSchema[col]);
+
+        if (missingColumns.length > 0) {
+            console.warn("ConfigManager: Colunas de tripartição ausentes:", missingColumns);
             renderSetupInstructions(container);
             return;
         }
@@ -278,7 +292,10 @@ export async function renderMainUI(grist, container, initialConfigId, componentT
         newTypeSelectorEl.addEventListener('change', () => colorizeDropdown(newTypeSelectorEl));
 
         const displayConfig = async (config) => {
-            selectedConfig = config;
+            // Unifica a configuração (Tripartição) antes de passar para o editor
+            const unifiedConfig = tableLens.parseConfigRecord(config);
+            
+            selectedConfig = { ...config, ...unifiedConfig }; // Mantém IDs e campos extras
             formEl.querySelector('#cm-record-id').value = config.id || '';
             formEl.querySelector('#cm-widget-title').value = config.widgetTitle || '';
             formEl.querySelector('#cm-config-id').value = config.configId || '';
@@ -291,8 +308,7 @@ export async function renderMainUI(grist, container, initialConfigId, componentT
                 return;
             }
             const tables = await tableLens.listAllTables();
-            const configData = JSON.parse(config.configJson || '{}');
-            const targetTableId = configData.tableId || '';
+            const targetTableId = unifiedConfig.tableId || '';
             editorContentEl.innerHTML = `
                 <div class="form-group" id="cm-table-selector-container">
                     <label for="cm-table-selector">Tabela de Dados Alvo:</label>
@@ -302,7 +318,7 @@ export async function renderMainUI(grist, container, initialConfigId, componentT
             const tableSelector = editorContentEl.querySelector('#cm-table-selector');
             const specializedEditorContainer = editorContentEl.querySelector('#cm-specialized-editor');
             const renderSpecializedEditor = (tableId, configsToPass) => {
-                if (tableId) { currentEditorModule.render(specializedEditorContainer, configData, tableLens, tableId, configsToPass); }
+                if (tableId) { currentEditorModule.render(specializedEditorContainer, unifiedConfig, tableLens, tableId, configsToPass); }
                 else { specializedEditorContainer.innerHTML = ''; }
             };
             tableSelector.onchange = () => { renderSpecializedEditor(tableSelector.value, allConfigs); };
@@ -323,13 +339,36 @@ export async function renderMainUI(grist, container, initialConfigId, componentT
             if (!selectedConfig || !currentEditorModule) return;
             const specializedEditorContainer = editorContentEl.querySelector('#cm-specialized-editor');
             const newConfigData = currentEditorModule.read(specializedEditorContainer);
+            
+            // --- Lógica de Tripartição no Salvamento ---
+            let mappingJson = "";
+            let stylingJson = "";
+            let actionsJson = "";
+            let unifiedConfig = {};
+
+            if (newConfigData.mapping && newConfigData.styling && newConfigData.actions) {
+                // O editor já retornou tripartido
+                mappingJson = JSON.stringify(newConfigData.mapping);
+                stylingJson = JSON.stringify(newConfigData.styling);
+                actionsJson = JSON.stringify(newConfigData.actions);
+                unifiedConfig = { ...newConfigData.mapping, styling: newConfigData.styling, ...newConfigData.actions };
+            } else {
+                // Editor legado: salvamos tudo no mapping e mantemos configJson
+                mappingJson = JSON.stringify(newConfigData);
+                unifiedConfig = newConfigData;
+            }
+
             const recordData = {
                 widgetTitle: formEl.querySelector('#cm-widget-title').value.trim(),
                 configId: formEl.querySelector('#cm-config-id').value.trim(),
                 description: formEl.querySelector('#cm-description').value.trim(),
                 componentType: selectedConfig.componentType,
-                configJson: JSON.stringify(newConfigData)
+                mappingJson: mappingJson,
+                stylingJson: stylingJson,
+                actionsJson: actionsJson,
+                configJson: JSON.stringify(unifiedConfig) // Mantém legado para segurança
             };
+
             try {
                 if (selectedConfig.id) {
                     await dataWriter.updateRecord(CONFIG_TABLE, selectedConfig.id, recordData);

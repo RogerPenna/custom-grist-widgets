@@ -88,13 +88,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         cardsContentArea.innerHTML = '<div class="status-placeholder">Carregando dados...</div>';
 
         try {
-            const configRecord = await tableLens.findRecord('Grf_config', { configId: currentConfigId });
-            if (!configRecord) {
+            currentConfig = await tableLens.fetchConfig(currentConfigId);
+            if (!currentConfig) {
                 cardsContentArea.innerHTML = `<div class="status-placeholder">Configuração "${currentConfigId}" não encontrada.</div>`;
                 return;
             }
 
-            currentConfig = JSON.parse(configRecord.configJson);
             const tableId = currentConfig.tableId;
 
             const [records, cleanSchema, rawSchema] = await Promise.all([
@@ -113,7 +112,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Lógica para Estado Vazio (Empty State)
             if (records.length === 0) {
-                if (currentConfig.styling?.showAddButtonTop || currentConfig.styling?.showAddButtonBottom) {
+                const showAddTop = currentConfig.showAddButtonTop || currentConfig.actions?.showAddButtonTop;
+                const showAddBottom = currentConfig.showAddButtonBottom || currentConfig.actions?.showAddButtonBottom;
+
+                if (showAddTop || showAddBottom) {
                     const empty = document.createElement('div');
                     empty.className = 'empty-state-container';
                     empty.innerHTML = `<p style="font-size:12px; font-weight:600; margin-bottom:10px;">Nenhum registro encontrado</p>`;
@@ -126,7 +128,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             // 1. Botão Topo (Discreto)
-            if (currentConfig.styling?.showAddButtonTop) {
+            if (currentConfig.showAddButtonTop || currentConfig.actions?.showAddButtonTop) {
                 cardsContentArea.appendChild(createAddButton('top'));
             }
 
@@ -137,7 +139,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             cardsContentArea.appendChild(cardsWrapper);
 
             // 3. Botão Rodapé (Discreto)
-            if (currentConfig.styling?.showAddButtonBottom) {
+            if (currentConfig.showAddButtonBottom || currentConfig.actions?.showAddButtonBottom) {
                 cardsContentArea.appendChild(createAddButton('bottom'));
             }
 
@@ -155,11 +157,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         btn.onclick = async (e) => {
             e.stopPropagation();
             let addConfig = currentConfig;
-            const specificConfigId = currentConfig.styling?.addRecordConfigId;
+            // Busca nas duas localizações possíveis (legado e tripartição)
+            const specificConfigId = currentConfig.addRecordConfigId || currentConfig.actions?.addRecordConfigId;
             
             if (specificConfigId) {
                 const rec = await tableLens.findRecord('Grf_config', { configId: specificConfigId });
-                if (rec) addConfig = JSON.parse(rec.configJson);
+                if (rec) addConfig = tableLens.parseConfigRecord(rec);
             }
 
             if (window.GristDrawer) {
@@ -264,10 +267,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     subscribe('grf-card-clicked', async (data) => {
         try {
-            const rec = await tableLens.findRecord('Grf_config', { configId: data.drawerConfigId });
-            if (rec && window.GristDrawer) {
+            console.log("[CardViewer] Card clicado:", data);
+            let drawerConfig = {};
+            
+            if (data.drawerConfigId) {
+                // Se houver um ID específico, buscamos
+                drawerConfig = await tableLens.fetchConfig(data.drawerConfigId);
+            } else {
+                // Se não houver, usamos a config do widget atual como base (Default Drawer)
+                drawerConfig = currentConfig;
+            }
+
+            if (window.GristDrawer) {
                 await window.GristDrawer.open(data.tableId, data.recordId, { 
-                    ...JSON.parse(rec.configJson), 
+                    ...drawerConfig, 
                     tableLens: tableLens 
                 });
             }

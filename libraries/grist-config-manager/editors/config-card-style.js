@@ -22,7 +22,11 @@ export const CardStyleConfigEditor = (() => {
         const textarea = container.querySelector('#cs-style-json');
         try {
             const styling = JSON.parse(textarea.value);
-            return { styling: styling }; // Return an object with a 'styling' property
+            return {
+                mapping: {},
+                styling: styling,
+                actions: {}
+            };
         } catch (e) {
             alert('Invalid JSON in Card Style JSON field: ' + e.message);
             throw new Error('Invalid JSON');
