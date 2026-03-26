@@ -163,8 +163,8 @@ export const CardConfigEditor = (() => {
         return { mapping, styling, actions };
     }
 
-    const DEFAULT_FIELD_STYLE = { useGristStyle: true, labelVisible: true, labelPosition: 'above', labelFont: 'inherit', labelFontSize: 'inherit', labelColor: 'inherit', labelOutline: false, labelOutlineColor: '#ffffff', dataJustify: 'left', heightLimited: false, maxHeightRows: 1, isTitleField: false };
-    const DEFAULT_STYLING = { iconSize: 1.0, internalCardPadding: '10px', fieldBox: { borderEnabled: false, borderColor: '#cccccc', borderWidth: 1, borderRadius: 4, backgroundColor: '#ffffff', effect: 'none' }, labelStyle: { bold: false, color: '#333333', font: 'Calibri', size: '12px' }, simpleTextColor: '#000000', simpleTextFont: 'Calibri', simpleTextSize: '14px', fieldBackground: { enabled: false, lightenPercentage: 15 }, iconGroups: [], groupBoxes: [], widgetBackgroundMode: "solid", widgetBackgroundSolidColor: "#f9f9f9", widgetBackgroundGradientType: "linear-gradient(to right, {c1}, {c2})", widgetBackgroundGradientColor1: "#f9f9f9", widgetBackgroundGradientColor2: "#e9e9e9", cardsColorMode: "solid", cardsColorSolidColor: "#ffffff", cardsColorGradientType: "linear-gradient(to right, {c1}, {c2})", cardsColorGradientColor1: "#ffffff", cardsColorGradientColor2: "#f0f0f0", cardsColorApplyText: false, cardsColorTextField: null, cardsColorFontField: null, cardsColorOverlayEffect: 'darken', cardsColorOverlayOpacity: 10, cardBorderThickness: 0, cardBorderMode: "solid", cardBorderSolidColor: "#cccccc", cardTitleFontColor: "#000000", cardTitleFontStyle: "Calibri", cardTitleFontSize: "20px", cardTitleTopBarEnabled: false, cardTitleTopBarMode: "solid", cardTitleTopBarSolidColor: "#dddddd", cardTitleTopBarGradientType: "linear-gradient(to right, {c1}, {c2})", cardTitleTopBarGradientColor1: "#dddddd", cardTitleTopBarGradientColor2: "#cccccc", cardTitleTopBarLabelFontColor: "#000000", cardTitleTopBarLabelFontStyle: "Calibri", cardTitleTopBarLabelFontSize: "16px", cardTitleTopBarDataFontColor: "#333333", cardTitleTopBarDataFontStyle: "Calibri", cardTitleTopBarDataFontSize: "16px", handleAreaWidth: "8px", handleAreaMode: "solid", handleAreaSolidColor: "#40E0D0", widgetPadding: "10px", cardsSpacing: "15px", selectedCard: { enabled: false, scale: 1.05, colorEffect: "none" }, showDebugInfo: false, cardsColumnLimit: 1, cardsColumnMode: 'fixed' };
+    const DEFAULT_FIELD_STYLE = { useGristStyle: true, labelVisible: true, labelPosition: 'above', labelFont: 'inherit', labelFontSize: 'inherit', labelColor: 'inherit', labelAllCaps: false, labelOutline: false, labelOutlineColor: '#ffffff', dataJustify: 'left', dataAllCaps: false, heightLimited: false, maxHeightRows: 1, isTitleField: false };
+    const DEFAULT_STYLING = { iconSize: 1.0, internalCardPadding: '10px', fieldBox: { borderEnabled: false, borderColor: '#cccccc', borderWidth: 1, borderRadius: 4, backgroundColor: '#ffffff', effect: 'none' }, labelStyle: { bold: false, allCaps: false, color: '#333333', font: 'Calibri', size: '12px' }, simpleTextColor: '#000000', simpleTextFont: 'Calibri', simpleTextSize: '14px', fieldBackground: { enabled: false, lightenPercentage: 15 }, iconGroups: [], groupBoxes: [], widgetBackgroundMode: "solid", widgetBackgroundSolidColor: "#f9f9f9", widgetBackgroundGradientType: "linear-gradient(to right, {c1}, {c2})", widgetBackgroundGradientColor1: "#f9f9f9", widgetBackgroundGradientColor2: "#e9e9e9", cardsColorMode: "solid", cardsColorSolidColor: "#ffffff", cardsColorGradientType: "linear-gradient(to right, {c1}, {c2})", cardsColorGradientColor1: "#ffffff", cardsColorGradientColor2: "#f0f0f0", cardsColorApplyText: false, cardsColorTextField: null, cardsColorFontField: null, cardsColorOverlayEffect: 'darken', cardsColorOverlayOpacity: 10, cardBorderThickness: 0, cardBorderMode: "solid", cardBorderSolidColor: "#cccccc", cardTitleFontColor: "#000000", cardTitleFontStyle: "Calibri", cardTitleFontSize: "20px", cardTitleAllCaps: false, cardTitleTopBarEnabled: false, cardTitleTopBarMode: "solid", cardTitleTopBarSolidColor: "#dddddd", cardTitleTopBarGradientType: "linear-gradient(to right, {c1}, {c2})", cardTitleTopBarGradientColor1: "#dddddd", cardTitleTopBarGradientColor2: "#cccccc", cardTitleTopBarLabelFontColor: "#000000", cardTitleTopBarLabelFontStyle: "Calibri", cardTitleTopBarLabelFontSize: "16px", cardTitleTopBarLabelAllCaps: false, cardTitleTopBarDataFontColor: "#333333", cardTitleTopBarDataFontStyle: "Calibri", cardTitleTopBarDataFontSize: "16px", cardTitleTopBarDataAllCaps: false, handleAreaWidth: "8px", handleAreaMode: "solid", handleAreaSolidColor: "#40E0D0", widgetPadding: "10px", cardsSpacing: "15px", selectedCard: { enabled: false, scale: 1.05, colorEffect: "none" }, showDebugInfo: false, cardsColumnLimit: 1, cardsColumnMode: 'fixed' };
     const DEFAULT_NUM_ROWS = 1; const NUM_COLS = 10; const CONFIG_WIDTH = 700; const COL_WIDTH = CONFIG_WIDTH / NUM_COLS;
 
     function createTabButton(label, tabId, container) { const btn = document.createElement("button"); btn.type = "button"; btn.textContent = label; btn.className = 'config-tab-button'; btn.addEventListener("click", () => switchTab(tabId, container)); btn.dataset.tabId = tabId; return btn; }
@@ -231,7 +231,7 @@ export const CardConfigEditor = (() => {
                     </div>
                 </fieldset>
                 <fieldset><legend><b>Card Border</b></legend>Thickness (px): <input type="number" id="cs-st-border-thickness" min="0" style="width:60px"> <br><label><input type="radio" name="bordermode" value="solid"> Solid</label> <label><input type="radio" name="bordermode" value="conditional"> By Field</label><div class="style-control-group" data-mode="solid"><input type="color" id="cs-st-border-color"></div><div class="style-control-group" data-mode="conditional" style="display:none;"><select id="cs-st-border-field"><option value="">-- field --</option></select></div></fieldset>
-                <fieldset class="title-control-group" data-title-mode="no-bar"><legend><b>Card Title (when Top Bar is OFF)</b></legend>Color: <input type="color" id="cs-st-titlecolor"> Font: <select id="cs-st-titlefont"><option>Calibri</option><option>Arial</option><option>Times New Roman</option></select> Size: <input type="number" id="cs-st-titlesize" min="8" style="width:60px">px</fieldset>
+                <fieldset class="title-control-group" data-title-mode="no-bar"><legend><b>Card Title (when Top Bar is OFF)</b></legend>Color: <input type="color" id="cs-st-titlecolor"> Font: <select id="cs-st-titlefont"><option>Calibri</option><option>Arial</option><option>Inter</option><option>Roboto</option><option>Open Sans</option><option>Times New Roman</option></select> Size: <input type="number" id="cs-st-titlesize" min="8" style="width:60px">px <label><input type="checkbox" id="cs-st-title-allcaps"> All Caps</label></fieldset>
                 <fieldset><legend><b>Handle Area</b></legend>Width (px): <input type="number" id="cs-st-handle-width" min="0" style="width:60px"> <br><label><input type="radio" name="handlemode" value="solid"> Solid</label> <label><input type="radio" name="handlemode" value="conditional"> By Field</label><div class="style-control-group" data-mode="solid"><input type="color" id="cs-st-handle-color"></div><div class="style-control-group" data-mode="conditional" style="display:none;"><select id="cs-st-handle-field"><option value="">-- field --</option></select></div></fieldset>
                 <fieldset>
                     <legend><b>Grid Columns</b></legend>
@@ -288,14 +288,16 @@ export const CardConfigEditor = (() => {
         <div>
             <b>Label Style:</b> <br>
             Color: <input type="color" id="cs-st-topbar-lblcolor"> <br>
-            Font: <select id="cs-st-topbar-lblfont"><option>Calibri</option><option>Arial</option></select> <br>
-            Size: <input type="number" id="cs-st-topbar-lblsize" min="8" style="width:60px">px
+            Font: <select id="cs-st-topbar-lblfont"><option>Calibri</option><option>Arial</option><option>Inter</option><option>Roboto</option><option>Open Sans</option></select> <br>
+            Size: <input type="number" id="cs-st-topbar-lblsize" min="8" style="width:60px">px <br>
+            <label><input type="checkbox" id="cs-st-topbar-lbl-allcaps"> All Caps</label>
         </div>
         <div>
             <b>Data Style:</b> <br>
             Color: <input type="color" id="cs-st-topbar-datacolor"> <br>
-            Font: <select id="cs-st-topbar-datafont"><option>Calibri</option><option>Arial</option></select> <br>
-            Size: <input type="number" id="cs-st-topbar-datasize" min="8" style="width:60px">px
+            Font: <select id="cs-st-topbar-datafont"><option>Calibri</option><option>Arial</option><option>Inter</option><option>Roboto</option><option>Open Sans</option></select> <br>
+            Size: <input type="number" id="cs-st-topbar-datasize" min="8" style="width:60px">px <br>
+            <label><input type="checkbox" id="cs-st-topbar-data-allcaps"> All Caps</label>
         </div>
     </div>
 </fieldset>
@@ -328,13 +330,14 @@ export const CardConfigEditor = (() => {
                         <fieldset>
                             <legend>Label Style</legend>
                             <label><input type="checkbox" id="cs-st-label-bold"> Bold</label>
+                            <label style="margin-left: 10px;"><input type="checkbox" id="cs-st-label-allcaps"> All Caps</label> <br>
                             Color: <input type="color" id="cs-st-label-color">
-                            Font: <select id="cs-st-label-font"><option>Calibri</option><option>Arial</option><option>Times New Roman</option></select>
+                            Font: <select id="cs-st-label-font"><option>Calibri</option><option>Arial</option><option>Inter</option><option>Roboto</option><option>Open Sans</option><option>Times New Roman</option></select>
                             Size: <input type="number" id="cs-st-label-size" min="8" style="width:60px">px
                         </fieldset>
                     </div>
                 </fieldset>
-                <fieldset><legend><b>Simple Text Style</b></legend><p class="help-text">For fields where "Use Grist Field Style" is disabled.</p>Color: <input type="color" id="cs-st-simple-textcolor"> Font: <select id="cs-st-simple-textfont"><option>Calibri</option><option>Arial</option><option>Times New Roman</option></select> Size: <input type="number" id="cs-st-simple-textsize" min="8" style="width:60px">px</fieldset>
+                <fieldset><legend><b>Simple Text Style</b></legend><p class="help-text">For fields where "Use Grist Field Style" is disabled.</p>Color: <input type="color" id="cs-st-simple-textcolor"> Font: <select id="cs-st-simple-textfont"><option>Calibri</option><option>Arial</option><option>Inter</option><option>Roboto</option><option>Open Sans</option><option>Times New Roman</option></select> Size: <input type="number" id="cs-st-simple-textsize" min="8" style="width:60px">px</fieldset>
                 <fieldset>
                     <legend><b>Debug</b></legend>
                     <label><input type="checkbox" id="cs-st-show-debug"> Show Schema Debug Info (TableLens output)</label>
@@ -478,7 +481,8 @@ export const CardConfigEditor = (() => {
         tabEl.querySelector("#cs-st-card-overlay-effect").value = s.cardsColorOverlayEffect || 'darken';
         tabEl.querySelector("#cs-st-card-overlay-opacity").value = s.cardsColorOverlayOpacity || 10;
 
-        tabEl.querySelector("#cs-st-border-thickness").value = s.cardBorderThickness; tabEl.querySelector(`input[name='bordermode'][value='${s.cardBorderMode}']`).checked = true; tabEl.querySelector("#cs-st-border-color").value = s.cardBorderSolidColor; tabEl.querySelector("#cs-st-border-field").value = s.cardBorderField || ""; tabEl.querySelector("#cs-st-titlecolor").value = s.cardTitleFontColor; tabEl.querySelector("#cs-st-titlefont").value = s.cardTitleFontStyle; tabEl.querySelector("#cs-st-titlesize").value = parseInt(s.cardTitleFontSize, 10); tabEl.querySelector("#cs-st-topbar-enabled").checked = s.cardTitleTopBarEnabled; tabEl.querySelector(`input[name='topbarmode'][value='${s.cardTitleTopBarMode}']`).checked = true; tabEl.querySelector("#cs-st-topbar-color").value = s.cardTitleTopBarSolidColor; tabEl.querySelector("#cs-st-topbargradient-type").value = s.cardTitleTopBarGradientType || 'linear-gradient(to right, {c1}, {c2})'; tabEl.querySelector("#cs-st-topbargradient-c1").value = s.cardTitleTopBarGradientColor1 || '#dddddd'; tabEl.querySelector("#cs-st-topbargradient-c2").value = s.cardTitleTopBarGradientColor2 || '#cccccc'; tabEl.querySelector("#cs-st-topbar-field").value = s.cardTitleTopBarField || ""; tabEl.querySelector("#cs-st-topbar-apply-text").checked = s.cardTitleTopBarApplyText === true; tabEl.querySelector("#cs-st-topbar-lblcolor").value = s.cardTitleTopBarLabelFontColor; tabEl.querySelector("#cs-st-topbar-lblfont").value = s.cardTitleTopBarLabelFontStyle; tabEl.querySelector("#cs-st-topbar-lblsize").value = parseInt(s.cardTitleTopBarLabelFontSize, 10); tabEl.querySelector("#cs-st-topbar-datacolor").value = s.cardTitleTopBarDataFontColor; tabEl.querySelector("#cs-st-topbar-datafont").value = s.cardTitleTopBarDataFontStyle;         tabEl.querySelector("#cs-st-topbar-datasize").value = parseInt(s.cardTitleTopBarDataFontSize, 10); tabEl.querySelector("#cs-st-handle-width").value = parseInt(s.handleAreaWidth, 10); tabEl.querySelector(`input[name='handlemode'][value='${s.handleAreaMode}']`).checked = true; tabEl.querySelector("#cs-st-handle-color").value = s.handleAreaSolidColor; tabEl.querySelector("#cs-st-handle-field").value = s.handleAreaField || ""; tabEl.querySelector("#cs-st-padding").value = parseInt(s.widgetPadding, 10); tabEl.querySelector("#cs-st-spacing").value = parseInt(s.cardsSpacing, 10);
+        tabEl.querySelector("#cs-st-border-thickness").value = s.cardBorderThickness; tabEl.querySelector(`input[name='bordermode'][value='${s.cardBorderMode}']`).checked = true; tabEl.querySelector("#cs-st-border-color").value = s.cardBorderSolidColor; tabEl.querySelector("#cs-st-border-field").value = s.cardBorderField || ""; tabEl.querySelector("#cs-st-titlecolor").value = s.cardTitleFontColor; tabEl.querySelector("#cs-st-titlefont").value = s.cardTitleFontStyle; tabEl.querySelector("#cs-st-titlesize").value = parseInt(s.cardTitleFontSize, 10); tabEl.querySelector("#cs-st-title-allcaps").checked = s.cardTitleAllCaps === true; tabEl.querySelector("#cs-st-topbar-enabled").checked = s.cardTitleTopBarEnabled; tabEl.querySelector(`input[name='topbarmode'][value='${s.cardTitleTopBarMode}']`).checked = true; tabEl.querySelector("#cs-st-topbar-color").value = s.cardTitleTopBarSolidColor; tabEl.querySelector("#cs-st-topbargradient-type").value = s.cardTitleTopBarGradientType || 'linear-gradient(to right, {c1}, {c2})'; tabEl.querySelector("#cs-st-topbargradient-c1").value = s.cardTitleTopBarGradientColor1 || '#dddddd'; tabEl.querySelector("#cs-st-topbargradient-c2").value = s.cardTitleTopBarGradientColor2 || '#cccccc'; tabEl.querySelector("#cs-st-topbar-field").value = s.cardTitleTopBarField || ""; tabEl.querySelector("#cs-st-topbar-apply-text").checked = s.cardTitleTopBarApplyText === true; tabEl.querySelector("#cs-st-topbar-lblcolor").value = s.cardTitleTopBarLabelFontColor; tabEl.querySelector("#cs-st-topbar-lblfont").value = s.cardTitleTopBarLabelFontStyle; tabEl.querySelector("#cs-st-topbar-lblsize").value = parseInt(s.cardTitleTopBarLabelFontSize, 10); tabEl.querySelector("#cs-st-topbar-lbl-allcaps").checked = s.cardTitleTopBarLabelAllCaps === true; tabEl.querySelector("#cs-st-topbar-datacolor").value = s.cardTitleTopBarDataFontColor; tabEl.querySelector("#cs-st-topbar-datafont").value = s.cardTitleTopBarDataFontStyle;         tabEl.querySelector("#cs-st-topbar-datasize").value = parseInt(s.cardTitleTopBarDataFontSize, 10); tabEl.querySelector("#cs-st-topbar-data-allcaps").checked = s.cardTitleTopBarDataAllCaps === true; tabEl.querySelector("#cs-st-handle-width").value = parseInt(s.handleAreaWidth, 10); 
+ tabEl.querySelector(`input[name='handlemode'][value='${s.handleAreaMode}']`).checked = true; tabEl.querySelector("#cs-st-handle-color").value = s.handleAreaSolidColor; tabEl.querySelector("#cs-st-handle-field").value = s.handleAreaField || ""; tabEl.querySelector("#cs-st-padding").value = parseInt(s.widgetPadding, 10); tabEl.querySelector("#cs-st-spacing").value = parseInt(s.cardsSpacing, 10);
         
         tabEl.querySelector("#cs-st-col-limit").value = s.cardsColumnLimit || 1;
         const colMode = s.cardsColumnMode || 'fixed';
@@ -504,6 +508,7 @@ export const CardConfigEditor = (() => {
 
         const ls = s.labelStyle || {};
         tabEl.querySelector('#cs-st-label-bold').checked = ls.bold;
+        tabEl.querySelector('#cs-st-label-allcaps').checked = ls.allCaps === true;
         tabEl.querySelector('#cs-st-label-color').value = ls.color;
         tabEl.querySelector('#cs-st-label-font').value = ls.font;
         tabEl.querySelector('#cs-st-label-size').value = parseInt(ls.size, 10);
@@ -557,6 +562,7 @@ export const CardConfigEditor = (() => {
         s.cardTitleFontColor = tabEl.querySelector("#cs-st-titlecolor").value;
         s.cardTitleFontStyle = tabEl.querySelector("#cs-st-titlefont").value;
         s.cardTitleFontSize = `${parseInt(tabEl.querySelector("#cs-st-titlesize").value, 10) || 20}px`;
+        s.cardTitleAllCaps = tabEl.querySelector("#cs-st-title-allcaps").checked;
 
         s.cardTitleTopBarEnabled = tabEl.querySelector("#cs-st-topbar-enabled").checked;
         const topBarMode = getCheckedValue('topbarmode');
@@ -575,9 +581,11 @@ export const CardConfigEditor = (() => {
         s.cardTitleTopBarLabelFontColor = tabEl.querySelector("#cs-st-topbar-lblcolor").value;
         s.cardTitleTopBarLabelFontStyle = tabEl.querySelector("#cs-st-topbar-lblfont").value;
         s.cardTitleTopBarLabelFontSize = `${parseInt(tabEl.querySelector("#cs-st-topbar-lblsize").value, 10) || 16}px`;
+        s.cardTitleTopBarLabelAllCaps = tabEl.querySelector("#cs-st-topbar-lbl-allcaps").checked;
         s.cardTitleTopBarDataFontColor = tabEl.querySelector("#cs-st-topbar-datacolor").value;
         s.cardTitleTopBarDataFontStyle = tabEl.querySelector("#cs-st-topbar-datafont").value;
         s.cardTitleTopBarDataFontSize = `${parseInt(tabEl.querySelector("#cs-st-topbar-datasize").value, 10) || 16}px`;
+        s.cardTitleTopBarDataAllCaps = tabEl.querySelector("#cs-st-topbar-data-allcaps").checked;
 
         const handleMode = getCheckedValue('handlemode');
         s.handleAreaMode = handleMode;
@@ -619,6 +627,7 @@ export const CardConfigEditor = (() => {
 
         s.labelStyle = {
             bold: tabEl.querySelector('#cs-st-label-bold').checked,
+            allCaps: tabEl.querySelector('#cs-st-label-allcaps').checked,
             color: tabEl.querySelector('#cs-st-label-color').value,
             font: tabEl.querySelector('#cs-st-label-font').value,
             size: `${parseInt(tabEl.querySelector('#cs-st-label-size').value, 10)}px`
@@ -1699,6 +1708,24 @@ export const CardConfigEditor = (() => {
             `;
         }
 
+        // Generate widget options based on field type
+        const fieldType = fieldSchema ? fieldSchema.type : 'Text';
+        const isNumeric = ['Int', 'Float', 'Numeric'].includes(fieldType) || fieldType.startsWith('Numeric') || fieldType.startsWith('Int') || fieldType.startsWith('Float');
+        const isBoolean = fieldType === 'Bool';
+        const isChoice = fieldType === 'Choice' || fieldType === 'ChoiceList';
+        const isText = fieldType === 'Text' || isChoice;
+
+        let widgetOptionsHtml = '<option value="">Default (Text/Number)</option>';
+        if (isBoolean || isChoice) {
+            widgetOptionsHtml += '<option value="Toggle Switch">Toggle Switch</option>';
+        }
+        if (isNumeric) {
+            widgetOptionsHtml += '<option value="Progress Bar">Progress Bar</option>';
+        }
+        if (isText || isNumeric) {
+             widgetOptionsHtml += '<option value="Color Picker">Color Picker</option>';
+        }
+
         _fieldStylePopup.innerHTML = `
             <style>
                 .col-manager-card { display: flex; align-items: center; background: #f4f4f4; border: 1px solid #ddd; border-radius: 4px; padding: 5px; margin-bottom: 5px; cursor: grab; }
@@ -1719,10 +1746,7 @@ export const CardConfigEditor = (() => {
                 <div class="form-group">
                     <label>Widget Type:</label>
                     <select id="fs-widget-type">
-                        <option value="">Default (Text/Number)</option>
-                        <option value="Toggle Switch">Toggle Switch</option>
-                        <option value="Color Picker">Color Picker</option>
-                        <option value="Progress Bar">Progress Bar</option>
+                        ${widgetOptionsHtml}
                     </select>
                 </div>
                 <div id="fs-widget-options-container" style="display: none; border: 1px solid #eee; padding: 10px; border-radius: 4px; margin-bottom: 10px;">
@@ -1737,6 +1761,9 @@ export const CardConfigEditor = (() => {
                         <option value="">Inherit (Default)</option>
                         <option value="Arial">Arial</option>
                         <option value="Calibri">Calibri</option>
+                        <option value="Inter">Inter</option>
+                        <option value="Roboto">Roboto</option>
+                        <option value="Open Sans">Open Sans</option>
                         <option value="Times New Roman">Times New Roman</option>
                         <option value="Courier New">Courier New</option>
                     </select>
@@ -1753,11 +1780,15 @@ export const CardConfigEditor = (() => {
                 <div class="form-group">
                     <label><input type="checkbox" id="fs-data-bold"> Bold</label>
                     <label><input type="checkbox" id="fs-data-italic" style="margin-left: 15px;"> Italic</label>
+                    <label><input type="checkbox" id="fs-data-allcaps" style="margin-left: 15px;"> All Caps</label>
                 </div>
 
                 <hr>
                 <div><label>Card Rows: <input type="number" id="fs-card-rows" min="1" style="width:50px;"></label></div>
-                <div><label><input type="checkbox" id="fs-lv"> Show Label</label></div>
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <label><input type="checkbox" id="fs-lv"> Show Label</label>
+                    <label><input type="checkbox" id="fs-label-allcaps"> Label All Caps</label>
+                </div>
                 <div>Label Position: <label><input type="radio" name="fs-lp" value="above"> Above</label> <label><input type="radio" name="fs-lp" value="left"> Left</label> </div>
                 <div>Data Justification: <select id="fs-dj"><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select> </div>
                 <div><label><input type="checkbox" id="fs-hl"> Limit Height</label></div>
@@ -1827,7 +1858,7 @@ export const CardConfigEditor = (() => {
                 widgetOptionsContainer.querySelector('#fs-toggle-labels').addEventListener('change', e => {
                     tempWidgetOptions.showLabels = e.target.checked;
                 });
-            } else if (widgetType === 'Color Picker') {
+            } else if (widgetType === 'Progress Bar') {
                 // Main Color Option
                 const mainColorDiv = document.createElement('div');
                 mainColorDiv.className = 'form-group';
@@ -1925,6 +1956,7 @@ export const CardConfigEditor = (() => {
         _fieldStylePopup.querySelector('#fs-data-size').value = ds.size ? parseInt(ds.size, 10) : "";
         _fieldStylePopup.querySelector('#fs-data-bold').checked = ds.bold === true;
         _fieldStylePopup.querySelector('#fs-data-italic').checked = ds.italic === true;
+        _fieldStylePopup.querySelector('#fs-data-allcaps').checked = ds.allCaps === true;
         
         const colorInput = _fieldStylePopup.querySelector('#fs-data-color');
         const colorDefaultCheckbox = _fieldStylePopup.querySelector('#fs-data-color-default');
@@ -1944,6 +1976,7 @@ export const CardConfigEditor = (() => {
         });
 
         _fieldStylePopup.querySelector('#fs-lv').checked = s.labelVisible;
+        _fieldStylePopup.querySelector('#fs-label-allcaps').checked = s.labelAllCaps === true;
         _fieldStylePopup.querySelector(`input[name='fs-lp'][value='${s.labelPosition}']`).checked = true;
         _fieldStylePopup.querySelector('#fs-dj').value = s.dataJustify;
         _fieldStylePopup.querySelector('#fs-hl').checked = s.heightLimited;
@@ -1995,6 +2028,7 @@ export const CardConfigEditor = (() => {
             const newStyle = {
                 useGristStyle: _fieldStylePopup.querySelector('#fs-use-grist-style').checked,
                 labelVisible: _fieldStylePopup.querySelector('#fs-lv').checked,
+                labelAllCaps: _fieldStylePopup.querySelector('#fs-label-allcaps').checked,
                 labelPosition: _fieldStylePopup.querySelector('input[name="fs-lp"]:checked').value,
                 dataJustify: _fieldStylePopup.querySelector('#fs-dj').value,
                 heightLimited: _fieldStylePopup.querySelector('#fs-hl').checked,
@@ -2007,7 +2041,8 @@ export const CardConfigEditor = (() => {
                     size: _fieldStylePopup.querySelector('#fs-data-size').value ? `${_fieldStylePopup.querySelector('#fs-data-size').value}px` : null,
                     color: _fieldStylePopup.querySelector('#fs-data-color-default').checked ? null : _fieldStylePopup.querySelector('#fs-data-color').value,
                     bold: _fieldStylePopup.querySelector('#fs-data-bold').checked,
-                    italic: _fieldStylePopup.querySelector('#fs-data-italic').checked
+                    italic: _fieldStylePopup.querySelector('#fs-data-italic').checked,
+                    allCaps: _fieldStylePopup.querySelector('#fs-data-allcaps').checked
                 }
             };
             fieldDef.style = { ...DEFAULT_FIELD_STYLE, ...newStyle };

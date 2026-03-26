@@ -20,7 +20,7 @@ export const CardSystem = (() => {
   let _originalRecords = [];  // Store the original, unfiltered records
 
   const DEFAULT_FIELD_STYLE = {
-    labelVisible: true, labelPosition: 'above', labelFont: 'inherit', labelFontSize: 'inherit', labelColor: 'inherit', labelOutline: false, labelOutlineColor: '#ffffff', dataJustify: 'left', heightLimited: false, maxHeightRows: 1, isTitleField: false
+    labelVisible: true, labelPosition: 'above', labelFont: 'inherit', labelFontSize: 'inherit', labelColor: 'inherit', labelAllCaps: false, labelOutline: false, labelOutlineColor: '#ffffff', dataJustify: 'left', dataAllCaps: false, heightLimited: false, maxHeightRows: 1, isTitleField: false
   };
 
   const DEFAULT_STYLING = {
@@ -28,13 +28,13 @@ export const CardSystem = (() => {
     iconSize: 1.0,
     internalCardPadding: '10px',
     fieldBox: { borderEnabled: false, borderColor: '#cccccc', borderWidth: 1, borderRadius: 4, backgroundColor: '#ffffff', effect: 'none' },
-    labelStyle: { bold: false, color: '#333333', font: 'Calibri', size: '12px' },
+    labelStyle: { bold: false, allCaps: false, color: '#333333', font: 'Calibri', size: '12px' },
     widgetBackgroundMode: "solid", widgetBackgroundSolidColor: "#f9f9f9", widgetBackgroundGradientType: "linear-gradient(to right, {c1}, {c2})", widgetBackgroundGradientColor1: "#f9f9f9", widgetBackgroundGradientColor2: "#e9e9e9",
     cardsColorMode: "solid", cardsColorSolidColor: "#ffffff", cardsColorGradientType: "linear-gradient(to right, {c1}, {c2})", cardsColorGradientColor1: "#ffffff", cardsColorGradientColor2: "#f0f0f0",
-    cardsColorApplyText: false, cardsColorTextField: null, cardsColorFontField: null, cardsColorOverlayEffect: 'darken', cardsColorOverlayOpacity: 10, // <-- NOVA PROPRIEDADE
+    cardsColorApplyText: false, cardsColorTextField: null, cardsColorFontField: null, cardsColorOverlayEffect: 'darken', cardsColorOverlayOpacity: 10,
     cardBorderThickness: 0, cardBorderMode: "solid", cardBorderSolidColor: "#cccccc",
-    cardTitleFontColor: "#000000", cardTitleFontStyle: "Calibri", cardTitleFontSize: "20px",
-    cardTitleTopBarEnabled: false, cardTitleTopBarMode: "solid", cardTitleTopBarSolidColor: "#dddddd", cardTitleTopBarGradientType: "linear-gradient(to right, {c1}, {c2})", cardTitleTopBarGradientColor1: "#dddddd", cardTitleTopBarGradientColor2: "#cccccc", cardTitleTopBarLabelFontColor: "#000000", cardTitleTopBarLabelFontStyle: "Calibri", cardTitleTopBarLabelFontSize: "16px", cardTitleTopBarDataFontColor: "#333333", cardTitleTopBarDataFontStyle: "Calibri", cardTitleTopBarDataFontSize: "16px",
+    cardTitleFontColor: "#000000", cardTitleFontStyle: "Calibri", cardTitleFontSize: "20px", cardTitleAllCaps: false,
+    cardTitleTopBarEnabled: false, cardTitleTopBarMode: "solid", cardTitleTopBarSolidColor: "#dddddd", cardTitleTopBarGradientType: "linear-gradient(to right, {c1}, {c2})", cardTitleTopBarGradientColor1: "#dddddd", cardTitleTopBarGradientColor2: "#cccccc", cardTitleTopBarLabelFontColor: "#000000", cardTitleTopBarLabelFontStyle: "Calibri", cardTitleTopBarLabelFontSize: "16px", cardTitleTopBarLabelAllCaps: false, cardTitleTopBarDataFontColor: "#333333", cardTitleTopBarDataFontStyle: "Calibri", cardTitleTopBarDataFontSize: "16px", cardTitleTopBarDataAllCaps: false,
     handleAreaWidth: "8px", handleAreaMode: "solid", handleAreaSolidColor: "#40E0D0",
     widgetPadding: "10px", cardsSpacing: "15px",
     cardTitleTopBarApplyText: false,
@@ -295,6 +295,7 @@ export const CardSystem = (() => {
             lblEl.style.fontFamily = styling.cardTitleTopBarLabelFontStyle;
             lblEl.style.fontSize = styling.cardTitleTopBarLabelFontSize;
             lblEl.style.color = styling.cardTitleTopBarLabelFontColor;
+            if (styling.cardTitleTopBarLabelAllCaps) lblEl.style.textTransform = "uppercase";
             tContainer.appendChild(lblEl);
           }
           const dataEl = document.createElement("div");
@@ -302,6 +303,7 @@ export const CardSystem = (() => {
           dataEl.style.fontFamily = styling.cardTitleTopBarDataFontStyle;
           dataEl.style.fontSize = styling.cardTitleTopBarDataFontSize;
           dataEl.style.color = styling.cardTitleTopBarDataFontColor;
+          if (styling.cardTitleTopBarDataAllCaps) dataEl.style.textTransform = "uppercase";
           
           renderField({
             container: dataEl,
@@ -518,6 +520,9 @@ export const CardSystem = (() => {
             labelEl.style.color = ls.color;
             labelEl.style.fontFamily = ls.font;
             labelEl.style.fontSize = ls.size;
+            if (ls.allCaps || fieldStyle.labelAllCaps) {
+              labelEl.style.textTransform = 'uppercase';
+            }
 
             if (fieldStyle.isTitleField && !styling.cardTitleTopBarEnabled) {
               // Override with title styles if it's a title field
@@ -525,6 +530,9 @@ export const CardSystem = (() => {
               labelEl.style.color = styling.cardTitleFontColor;
               labelEl.style.fontSize = styling.cardTitleFontSize;
               labelEl.style.fontFamily = styling.cardTitleFontStyle;
+              if (styling.cardTitleAllCaps) {
+                labelEl.style.textTransform = 'uppercase';
+              }
             }
             fieldBox.appendChild(labelEl);
           }
@@ -566,6 +574,26 @@ export const CardSystem = (() => {
           } else if (fieldStyle.widget === 'Progress Bar' || fieldStyle.widget === 'progress') {
             fieldOptions.progressBar = true;
             fieldOptions.widgetOptions = fieldStyle.widgetOptions;
+          }
+
+          // Apply All Caps for Data
+          if (fieldStyle.dataStyle?.allCaps || fieldStyle.dataAllCaps) {
+            containerForField.style.textTransform = 'uppercase';
+          }
+
+          // Apply Limit Height (Line Clamp) and Tooltip
+          if (fieldStyle.heightLimited && fieldStyle.maxHeightRows > 0) {
+            containerForField.style.display = "-webkit-box";
+            containerForField.style.webkitLineClamp = fieldStyle.maxHeightRows;
+            containerForField.style.webkitBoxOrient = "vertical";
+            containerForField.style.overflow = "hidden";
+            containerForField.style.wordBreak = "break-word";
+            
+            // Set title for tooltip if value is present
+            const rawValue = record[f.colId];
+            if (rawValue !== null && rawValue !== undefined) {
+              containerForField.title = String(rawValue);
+            }
           }
 
           renderField({
