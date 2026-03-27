@@ -24,6 +24,9 @@ html, body {
     display: flex;
     background-color: #343a40;
     padding: 0 10px;
+    position: sticky;
+    top: 0;
+    z-index: 30001; /* Higher than controls-container and arrows */
 }
 
 .tab-btn {
@@ -49,13 +52,21 @@ html, body {
 
 .tab-content {
     display: none;
-    flex-grow: 1;
-    overflow: auto;
-    padding: 10px;
+    flex-direction: column;
+    height: 100%;
+    padding: 0;
+    overflow: hidden;
 }
 
 .tab-content.active {
-    display: block;
+    display: flex;
+}
+
+#main-container {
+    position: relative;
+    flex-grow: 1;
+    overflow: auto;
+    padding: 10px;
 }
 
 /* Generic Icon Style to prevent huge icons */
@@ -67,13 +78,40 @@ html, body {
 }
 
 #controls-container {
-    padding: 0.5em 1em; /* Reduced padding */
-    background-color: #e9ecef;
+    position: sticky; /* Garantir que o z-index funcione e ele fique no topo */
+    top: 0;
+    padding: 8px 15px;
+    background-color: #ffffff;
     border-bottom: 1px solid #dee2e6;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    min-height: 40px;
+    min-height: 46px;
+    flex-shrink: 0;
+    z-index: 30000; /* Acima de TUDO */
+}
+
+/* FORCE LeaderLine to be on top of everything (it's back in the body now) */
+.leader-line {
+    z-index: 20000 !important;
+}
+
+#main-container {
+    position: relative;
+    flex-grow: 1;
+    overflow: auto;
+    padding: 10px;
+    /* Remover z-index daqui para não criar novo contexto de empilhamento que esconda as setas */
+}
+
+.perspective-block, .bsc-perspectives-grid {
+    overflow: visible !important; /* GARANTIR que as setas não sejam cortadas */
+    position: relative;
+}
+
+.cs-card {
+    /* Garantir que os cards não criem contextos que escondam as setas */
+    z-index: 1;
 }
 
 #model-selector-container {
@@ -202,11 +240,6 @@ html, body {
     text-align: center;
 }
 
-/* Leader-line specific styles */
-.leader-line {
-    z-index: -1;
-}
-
 /* Hide the ref_model field in the drawer to preserve it on save */
 .drawer-field-row[data-col-id="ref_model"] {
     display: none;
@@ -332,4 +365,85 @@ html, body {
     background-color: #fffbe6;
     border: 1px solid #ffe58f;
     color: #9f6000;
+}
+
+/* --- Global Add Button (from CardViewer) --- */
+.grf-global-add-btn {
+    position: sticky;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px; /* Increased size for better visibility */
+    height: 40px;
+    background: #3b82f6;
+    color: white;
+    border: 2px solid white;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999; /* Super high to be above everything including arrows */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    margin: 10px auto; /* Center in flow */
+    flex-shrink: 0;
+}
+
+.grf-global-add-btn:hover {
+    background: #2563eb;
+    transform: translateX(-50%) scale(1.1);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+.grf-global-add-btn svg {
+    width: 24px;
+    height: 24px;
+    stroke-width: 3;
+}
+
+/* Specific position for inline add button */
+.grf-global-add-btn.pos-inline {
+    position: static;
+    transform: none;
+    margin: 0;
+    width: 28px;
+    height: 28px;
+    box-shadow: none;
+    background: #64748b;
+    z-index: 10;
+}
+
+.grf-global-add-btn.pos-inline:hover {
+    background: #475569;
+    transform: scale(1.1);
+}
+
+.grf-global-add-btn.pos-inline svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* Ensure the main container can show the sticky button correctly */
+#main-container {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Perspectives container should be below arrows and buttons */
+.bsc-perspectives-grid, .bsc-perspectives-container {
+    z-index: 1;
+    position: relative;
+}
+
+/* FORCE LeaderLine to be on top of everything */
+.leader-line {
+    z-index: 20000 !important;
+}
+
+/* Hide linking fields in the drawer for this widget */
+.drawer-field-row[data-col-id="ref_model"],
+.drawer-field-row[data-col-id="ref_persp"] {
+    display: none !important;
 }

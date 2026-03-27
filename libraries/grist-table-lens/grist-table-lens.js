@@ -379,6 +379,40 @@ export const GristTableLens = function(gristInstance) {
         }
     };
     
+    /**
+     * [NOVO] Descobre qual campo na tabela de destino (targetTableId) aponta para a tabela de origem (sourceTableId).
+     * Útil para preenchimento automático de vínculos (vínculo de contexto).
+     * @param {string} targetTableId - Tabela onde queremos criar o registro (ex: "Perspectivas").
+     * @param {string} sourceTableId - Tabela que é o contexto atual (ex: "Modelos").
+     * @returns {string|null} O colId do campo de referência encontrado ou null.
+     */
+    this.findRelationField = async function(targetTableId, sourceTableId) {
+        if (!targetTableId || !sourceTableId) return null;
+        try {
+            const schema = await this.getTableSchema(targetTableId);
+            const refPrefix = `Ref:${sourceTableId}`;
+            
+            const matchingFields = Object.values(schema).filter(col => 
+                col.type && (col.type === refPrefix || col.type.startsWith(`${refPrefix}:`))
+            );
+
+            if (matchingFields.length === 0) return null;
+            if (matchingFields.length === 1) return matchingFields[0].colId;
+
+            // Se houver mais de um, tenta encontrar um que pareça ser o "pai" ou principal
+            const priorityField = matchingFields.find(f => 
+                f.colId.toLowerCase().includes('ref_') || 
+                f.colId.toLowerCase().includes('parent') ||
+                f.colId.toLowerCase().includes(sourceTableId.toLowerCase())
+            );
+
+            return priorityField ? priorityField.colId : matchingFields[0].colId;
+        } catch (e) {
+            console.error(`GTL.findRelationField: Erro ao buscar relação entre ${targetTableId} e ${sourceTableId}`, e);
+            return null;
+        }
+    };
+
     this.clearConfigCache = function(configId) {
         if (configId) {
             if (_metaState.configCache[configId]) {

@@ -3,6 +3,7 @@
 export const BscConfigEditor = (() => {
     let state = {};
     let _mainContainer = null;
+    let _targetTableId = null;
 
     function updateDebugJson() {
         if (!_mainContainer) return;
@@ -31,13 +32,22 @@ export const BscConfigEditor = (() => {
 
     function render(container, config, tableLens, tableId, receivedConfigs = []) {
         _mainContainer = container;
+        _targetTableId = tableId;
         const options = config || {};
+        
+        // Se vier de um widget unificado (GTL.fetchConfig), as ações estarão na raiz ou dentro de .actions
+        const actions = options.actions || options;
+
         state = {
-            useColoris: options.useColoris || false,
-            drawerConfigId: options.drawerConfigId || null,
-            perspectivesConfigId: options.perspectivesConfigId || null, // Default / Mapa Estratégico
-            qualityConfigId: options.qualityConfigId || null, // New: Objetivos Qualidade
-            requirementsConfigId: options.requirementsConfigId || null, // New: Requisitos Partes Interessadas
+            useColoris: options.useColoris || (options.styling?.useColoris) || false,
+            drawerConfigId: actions.drawerConfigId || null,
+            showAddPerspective: actions.showAddPerspective || false,
+            addPerspectiveConfigId: actions.addPerspectiveConfigId || null,
+            showAddObjective: actions.showAddObjective || false,
+            addObjectiveConfigId: actions.addObjectiveConfigId || null,
+            perspectivesConfigId: options.perspectivesConfigId || options.mapping?.perspectivesConfigId || null,
+            qualityConfigId: options.qualityConfigId || options.mapping?.qualityConfigId || null,
+            requirementsConfigId: options.requirementsConfigId || options.mapping?.requirementsConfigId || null,
             receivedConfigs: receivedConfigs
         };
 
@@ -97,6 +107,10 @@ export const BscConfigEditor = (() => {
         const fullConfig = {
             useColoris: genTab ? genTab.querySelector('#bsc-cfg-use-coloris').checked : state.useColoris,
             drawerConfigId: actTab ? actTab.querySelector('#bsc-cfg-drawer-id').value : state.drawerConfigId,
+            showAddPerspective: actTab ? actTab.querySelector('#bsc-cfg-show-add-persp').checked : state.showAddPerspective,
+            addPerspectiveConfigId: actTab ? actTab.querySelector('#bsc-cfg-add-persp-id').value : state.addPerspectiveConfigId,
+            showAddObjective: actTab ? actTab.querySelector('#bsc-cfg-show-add-obj').checked : state.showAddObjective,
+            addObjectiveConfigId: actTab ? actTab.querySelector('#bsc-cfg-add-obj-id').value : state.addObjectiveConfigId,
             perspectivesConfigId: colsTab ? colsTab.querySelector('#bsc-cfg-persp-card-id').value : state.perspectivesConfigId,
             qualityConfigId: colsTab ? colsTab.querySelector('#bsc-cfg-quality-card-id').value : state.qualityConfigId,
             requirementsConfigId: colsTab ? colsTab.querySelector('#bsc-cfg-req-card-id').value : state.requirementsConfigId
@@ -104,6 +118,7 @@ export const BscConfigEditor = (() => {
 
         // --- TRIPARTIÇÃO ---
         const mapping = {
+            tableId: _targetTableId,
             perspectivesConfigId: fullConfig.perspectivesConfigId,
             qualityConfigId: fullConfig.qualityConfigId,
             requirementsConfigId: fullConfig.requirementsConfigId
@@ -114,7 +129,11 @@ export const BscConfigEditor = (() => {
         };
 
         const actions = {
-            drawerConfigId: fullConfig.drawerConfigId
+            drawerConfigId: fullConfig.drawerConfigId,
+            showAddPerspective: fullConfig.showAddPerspective,
+            addPerspectiveConfigId: fullConfig.addPerspectiveConfigId,
+            showAddObjective: fullConfig.showAddObjective,
+            addObjectiveConfigId: fullConfig.addObjectiveConfigId
         };
 
         return { mapping, styling, actions };
@@ -227,8 +246,8 @@ export const BscConfigEditor = (() => {
 
         // Filter for Drawer configs
         const drawerConfigs = state.receivedConfigs.filter(c => c.componentType === 'Drawer');
-        const optionsHtml = drawerConfigs.map(c =>
-            `<option value="${c.configId}" ${c.configId === state.drawerConfigId ? 'selected' : ''}>
+        const createDrawerOptions = (selectedId) => drawerConfigs.map(c =>
+            `<option value="${c.configId}" ${c.configId === selectedId ? 'selected' : ''}>
                 ${c.widgetTitle} (${c.configId})
             </option>`
         ).join('');
@@ -241,12 +260,42 @@ export const BscConfigEditor = (() => {
                     <label for="bsc-cfg-drawer-id">Open Drawer Configuration:</label>
                     <select id="bsc-cfg-drawer-id" class="form-control">
                         <option value="">-- Default / None --</option>
-                        ${optionsHtml}
+                        ${createDrawerOptions(state.drawerConfigId)}
                     </select>
                     <p class="help-text">
                         Select a Drawer Configuration to open when a card is clicked. 
-                        If none is selected, the default perspective editor will be used.
                     </p>
+                </div>
+            </fieldset>
+
+            <fieldset>
+                <legend><b>Global "Add New" Buttons</b></legend>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="bsc-cfg-show-add-persp" ${state.showAddPerspective ? 'checked' : ''}>
+                        Habilitar Botão "Adicionar Perspectiva"
+                    </label>
+                    <div style="margin-top:5px; margin-left:20px;">
+                        <label for="bsc-cfg-add-persp-id" style="font-size:11px;">Configuração da Gaveta:</label>
+                        <select id="bsc-cfg-add-persp-id" class="form-control">
+                            <option value="">-- Default --</option>
+                            ${createDrawerOptions(state.addPerspectiveConfigId)}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-top:15px;">
+                    <label>
+                        <input type="checkbox" id="bsc-cfg-show-add-obj" ${state.showAddObjective ? 'checked' : ''}>
+                        Habilitar Botão "Adicionar Objetivo"
+                    </label>
+                    <div style="margin-top:5px; margin-left:20px;">
+                        <label for="bsc-cfg-add-obj-id" style="font-size:11px;">Configuração da Gaveta:</label>
+                        <select id="bsc-cfg-add-obj-id" class="form-control">
+                            <option value="">-- Default --</option>
+                            ${createDrawerOptions(state.addObjectiveConfigId)}
+                        </select>
+                    </div>
                 </div>
             </fieldset>
         `;

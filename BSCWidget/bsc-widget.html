@@ -53,14 +53,15 @@
         <div id="tab-content-bsc" class="tab-content active">
             <div id="controls-container">
                 <div id="model-selector-container">
-                    <label for="model-selector">Modelo:</label>
+                    <label for="model-selector">Modelo BSC:</label>
                     <select id="model-selector">
-                        <option value="">Selecione um modelo...</option>
+                        <option value="" disabled selected>Carregando modelos...</option>
                     </select>
+                    <button id="toggle-arrows-btn" style="margin-left: 10px; border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; font-size: 12px; height: 30px; color: #333; background: #f8f9fa; cursor: pointer;">
+                        Ocultar Relacionamentos
+                    </button>
                 </div>
-                <div id="status-container">
-                    <!-- Status messages will appear here -->
-                </div>
+                <div id="status-container"></div>
             </div>
             <div id="main-container">
                 <!-- BSC Content will be rendered here -->

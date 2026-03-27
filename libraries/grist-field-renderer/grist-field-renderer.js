@@ -148,7 +148,7 @@ export async function renderField(options) {
   }
 
   // 1. Configurações customizadas do nosso widget (Card/Drawer)
-  const customFieldStyle = options.fieldStyle || {};
+  const customFieldStyle = options.fieldStyle || options.styleOverride || {};
   const useGristStyle = customFieldStyle.useGristStyle !== false;
 
   // 2. Metadados do Grist (Formatação Condicional, cores da coluna, etc)
@@ -193,7 +193,14 @@ export async function renderField(options) {
   }
 
   // 4. Despacho de Renderização (Prioridade para Widgets Customizados)
-  const callOptions = { ...options, container, cellValue, fieldStyle: customFieldStyle };
+  const callOptions = { 
+    ...options, 
+    container, 
+    cellValue, 
+    fieldStyle: customFieldStyle,
+    refListConfig: customFieldStyle.refListConfig,
+    fieldConfig: customFieldStyle
+  };
   const type = colSchema.type || '';
   const widgetType = customFieldStyle.widget;
 

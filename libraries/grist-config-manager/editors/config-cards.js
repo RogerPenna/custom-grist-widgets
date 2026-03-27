@@ -60,15 +60,22 @@ export const CardConfigEditor = (() => {
         if (!schema) { container.innerHTML = '<p class="editor-placeholder">Erro ao carregar o schema da tabela. Verifique o console.</p>'; return; }
 
         const options = config || {};
+        const actions = options.actions || options;
+        const mapping = options.mapping || options;
+        const styling = options.styling || options;
+
         state = {
-            layout: JSON.parse(JSON.stringify(options.layout || [])),
-            styling: { ...DEFAULT_STYLING, ...(options.styling || {}), selectedCard: { ...DEFAULT_STYLING.selectedCard, ...(options.styling?.selectedCard || {}) } },
-            sidePanel: { size: "25%", ...(options.sidePanel || {}) },
-            viewMode: options.viewMode || "click",
-            numRows: options.numRows || DEFAULT_NUM_ROWS,
+            layout: JSON.parse(JSON.stringify(mapping.layout || options.layout || [])),
+            styling: { ...DEFAULT_STYLING, ...styling, selectedCard: { ...DEFAULT_STYLING.selectedCard, ...(styling.selectedCard || {}) } },
+            sidePanel: { size: "25%", ...(actions.sidePanel || options.sidePanel || {}) },
+            viewMode: mapping.viewMode || options.viewMode || "click",
+            numRows: mapping.numRows || options.numRows || DEFAULT_NUM_ROWS,
             fields: Object.values(schema).filter(c => !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos'),
             lens: lens,
-            tableId: tableId
+            tableId: tableId,
+            showAddButtonTop: actions.showAddButtonTop || false,
+            showAddButtonBottom: actions.showAddButtonBottom || false,
+            addRecordConfigId: actions.addRecordConfigId || null
         };
         state.layout.forEach(field => { if (!field.style) field.style = { ...DEFAULT_FIELD_STYLE }; });
 
@@ -1162,11 +1169,9 @@ export const CardConfigEditor = (() => {
         if (state.styling && state.styling.iconSize) tabEl.querySelector("#cs-icon-size").value = state.styling.iconSize;
         
         // Novos campos
-        if (state.styling) {
-            tabEl.querySelector("#cs-add-btn-top").checked = !!state.styling.showAddButtonTop;
-            tabEl.querySelector("#cs-add-btn-bottom").checked = !!state.styling.showAddButtonBottom;
-            if (state.styling.addRecordConfigId) addBtnConfigSelect.value = state.styling.addRecordConfigId;
-        }
+        tabEl.querySelector("#cs-add-btn-top").checked = !!state.showAddButtonTop;
+        tabEl.querySelector("#cs-add-btn-bottom").checked = !!state.showAddButtonBottom;
+        if (state.addRecordConfigId) addBtnConfigSelect.value = state.addRecordConfigId;
 
         // Initialize UI
         renderActionsLayout(tabEl.querySelector('#actions-master-detail'));

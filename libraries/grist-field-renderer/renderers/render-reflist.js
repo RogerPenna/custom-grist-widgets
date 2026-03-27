@@ -63,8 +63,13 @@ async function handleDelete(tableId, recordId, onUpdate, dataWriter) { if (confi
 export async function renderRefList(options) {
     console.log('renderRefList options:', options);
     let currentPage = 1;
-    const { container, record, colSchema, tableLens, isLocked, fieldConfig, ruleIdToColIdMap, refListConfig } = options;
-    let isCollapsed = container.dataset.collapsed === 'true' || (container.dataset.collapsed === undefined && options.refListConfig?.collapsible);
+    const { container, record, colSchema, tableLens, isLocked, ruleIdToColIdMap } = options;
+    
+    // Support both direct and nested config (from grist-field-renderer)
+    const fieldConfig = options.fieldConfig || options.fieldStyle || {};
+    const refListConfig = options.refListConfig || fieldConfig.refListConfig;
+
+    let isCollapsed = container.dataset.collapsed === 'true' || (container.dataset.collapsed === undefined && refListConfig?.collapsible);
     container.dataset.collapsed = isCollapsed;
     
     // CORREÇÃO: Usa o adaptador do tableLens se disponível para o DataWriter

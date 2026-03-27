@@ -142,7 +142,7 @@ async function _renderDrawerContent() {
         logPerf("Schema Recebido");
 
         if (currentRecordId === 'new') {
-            currentRecord = {};
+            currentRecord = currentRecord || {};
         } else {
             logPerf("Buscando Registro");
             currentRecord = await tableLens.fetchRecordById(currentTableId, currentRecordId);
@@ -175,6 +175,8 @@ async function _renderDrawerContent() {
                 if (!col) return;
 
                 const row = document.createElement('div');
+                row.className = 'drawer-field-row';
+                row.dataset.colId = fieldId;
                 row.style.marginBottom = '20px';
                 row.innerHTML = `
                     <label style="display:block; font-weight:800; font-size:11px; color:#94a3b8; text-transform:uppercase; margin-bottom:6px; letter-spacing:0.025em;">
@@ -291,6 +293,10 @@ export async function openDrawer(tableId, recordId, options = {}) {
     currentRecordId = recordId;
     currentDrawerOptions = options;
     isEditing = (recordId === 'new' || options.mode === 'edit');
+
+    if (recordId === 'new') {
+        currentRecord = options.initialData || {};
+    }
 
     drawerOverlay.style.setProperty('display', 'block', 'important');
     

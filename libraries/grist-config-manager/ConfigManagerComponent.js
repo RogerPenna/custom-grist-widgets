@@ -351,7 +351,13 @@ export async function renderMainUI(grist, container, initialConfigId, componentT
                 mappingJson = JSON.stringify(newConfigData.mapping);
                 stylingJson = JSON.stringify(newConfigData.styling);
                 actionsJson = JSON.stringify(newConfigData.actions);
-                unifiedConfig = { ...newConfigData.mapping, styling: newConfigData.styling, ...newConfigData.actions };
+                // Unifica para o configJson (legado e fallback)
+                // IMPORTANTE: O styling deve ser uma propriedade 'styling' dentro do objeto raiz
+                unifiedConfig = { 
+                    ...newConfigData.mapping, 
+                    ...newConfigData.actions,
+                    styling: newConfigData.styling 
+                };
             } else {
                 // Editor legado: salvamos tudo no mapping e mantemos configJson
                 mappingJson = JSON.stringify(newConfigData);
