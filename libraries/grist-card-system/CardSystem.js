@@ -603,6 +603,7 @@ export const CardSystem = (() => {
             isEditing: false,
             tableLens: tableLens,
             fieldStyle: fieldStyle,
+            fieldConfig: currentOptions.fieldConfig?.[f.colId] || fieldStyle, // Pass specific field overrides
             styling: styling,
             fieldOptions: fieldOptions
           });

@@ -224,14 +224,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const modelType = bscData.TipoModelo; 
             console.log(`BSC Widget: Rendering for Model Type: '${modelType}'`);
 
-            // --- BOTÃO ADICIONAR PERSPECTIVA (Global) ---
+            // --- Configurações de Ações ---
             const actions = widgetConfig.actions || {};
-            const showAddPersp = (actions.showAddPerspective !== undefined) ? actions.showAddPerspective : widgetConfig.showAddPerspective;
-            
-            if (showAddPersp) {
-                const addBtn = createAddButton('top', 'Perspectivas', { tableId: 'Modelos', recordId: bscData.id }, actions.addPerspectiveConfigId || widgetConfig.addPerspectiveConfigId);
-                mainContainer.appendChild(addBtn);
-            }
 
             let targetConfigId = widgetConfig.perspectivesConfigId; // Default / Mapa Estratégico
 
@@ -249,13 +243,21 @@ document.addEventListener('DOMContentLoaded', async () => {
                         let cardConfig = JSON.parse(cardConfigRecord.configJson);
                         cardConfig.tableLens = tableLens; // Inject tableLens
                         
-                        // Herda flags de ADICIONAR do Card Config se não estiverem definidas no BSC
-                        const actions = widgetConfig.actions || {};
-                        const showAddPersp = (actions.showAddPerspective !== undefined) ? actions.showAddPerspective : (cardConfig.showAddButtonTop || cardConfig.actions?.showAddButtonTop);
+                        // Determina se deve mostrar botões de Adicionar Perspectiva
+                        const showAddPersp = (actions.showAddPerspective !== undefined) ? actions.showAddPerspective : (cardConfig.showAddButtonTop || cardConfig.actions?.showAddButtonTop || widgetConfig.showAddPerspective);
                         
-                        if (showAddPersp && !mainContainer.querySelector('.grf-add-Perspectivas')) {
-                            const addBtn = createAddButton('top', 'Perspectivas', { tableId: 'Modelos', recordId: bscData.id }, actions.addPerspectiveConfigId || cardConfig.addRecordConfigId);
-                            mainContainer.prepend(addBtn);
+                        if (showAddPersp) {
+                            const addBtnTop = createAddButton('static-top', 'Perspectivas', { tableId: 'Modelos', recordId: bscData.id }, actions.addPerspectiveConfigId || cardConfig.addRecordConfigId || widgetConfig.addPerspectiveConfigId);
+                            mainContainer.appendChild(addBtnTop);
+                        }
+
+                        // Pass BSC actions as fieldConfig overrides for nested RefLists (Objectives)
+                        const fieldConfigOverrides = {};
+                        if (actions.showAddObjective !== undefined) {
+                            fieldConfigOverrides['Objetivos'] = {
+                                showAddButton: actions.showAddObjective,
+                                addRecordConfigId: actions.addObjectiveConfigId
+                            };
                         }
 
                         // Fetch schema for Perspectives table (where bscData.perspectives comes from)
@@ -268,30 +270,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                         const cardsContainer = document.createElement('div');
                         cardsContainer.className = 'bsc-perspectives-grid';
 
-                        await CardSystem.renderCards(cardsContainer, bscData.perspectives, cardConfig, perspectiveSchema);
+                        await CardSystem.renderCards(cardsContainer, bscData.perspectives, { 
+                            ...cardConfig, 
+                            fieldConfig: { ...(cardConfig.fieldConfig || {}), ...fieldConfigOverrides }
+                        }, perspectiveSchema);
                         mainContainer.appendChild(cardsContainer);
-                        
-                        // --- INJETAR BOTÕES "+" NOS HEADERS DOS CARDS DE PERSPECTIVA ---
-                        const showAddObj = (actions.showAddObjective !== undefined) ? actions.showAddObjective : (cardConfig.showAddButtonBottom || cardConfig.actions?.showAddButtonBottom);
-                        if (showAddObj) {
-                            const perspectiveCards = cardsContainer.querySelectorAll('.cs-card');
-                            perspectiveCards.forEach((cardEl, idx) => {
-                                const pData = bscData.perspectives[idx];
-                                if (!pData) return;
-                                
-                                const addObjBtn = createAddButton('inline', 'Objetivos', { tableId: 'Perspectivas', recordId: pData.id }, actions.addObjectiveConfigId);
-                                addObjBtn.style.position = 'absolute';
-                                addObjBtn.style.top = '10px';
-                                addObjBtn.style.right = '10px';
-                                addObjBtn.style.width = '24px';
-                                addObjBtn.style.height = '24px';
-                                addObjBtn.style.zIndex = '10';
-                                
-                                cardEl.style.position = 'relative'; 
-                                cardEl.appendChild(addObjBtn);
-                            });
-                        }
 
+                        if (showAddPersp) {
+                            const addBtnBottom = createAddButton('static-bottom', 'Perspectivas', { tableId: 'Modelos', recordId: bscData.id }, actions.addPerspectiveConfigId || cardConfig.addRecordConfigId || widgetConfig.addPerspectiveConfigId);
+                            mainContainer.appendChild(addBtnBottom);
+                        }
+                        
                         if (showRelationships) {
                             RelationshipLines.drawFromBscData(bscData);
                         }
@@ -305,6 +294,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             // Fallback: Legacy Hardcoded Rendering (if no config selected)
+            const showAddPerspLegacy = (actions.showAddPerspective !== undefined) ? actions.showAddPerspective : widgetConfig.showAddPerspective;
+            if (showAddPerspLegacy) {
+                const addBtnTop = createAddButton('static-top', 'Perspectivas', { tableId: 'Modelos', recordId: bscData.id }, actions.addPerspectiveConfigId || widgetConfig.addPerspectiveConfigId);
+                mainContainer.appendChild(addBtnTop);
+            }
+
             const perspectivesContainer = document.createElement('div');
             perspectivesContainer.className = 'bsc-perspectives-container';
             perspectivesContainer.style.display = 'flex';
@@ -412,6 +407,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             mainContainer.appendChild(perspectivesContainer);
+
+            if (showAddPerspLegacy) {
+                const addBtnBottom = createAddButton('static-bottom', 'Perspectivas', { tableId: 'Modelos', recordId: bscData.id }, actions.addPerspectiveConfigId || widgetConfig.addPerspectiveConfigId);
+                mainContainer.appendChild(addBtnBottom);
+            }
+
             if (showRelationships) {
                 RelationshipLines.drawFromBscData(bscData);
             }
