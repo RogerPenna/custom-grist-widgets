@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         let currentConfigId = null;
         let isInitialized = false;
         let currentModelId = null;
-        let showRelationships = true;
+        let showRelationships = false; // FIXED: Set to OFF by default
         let lastBscData = null;
 
         const toggleArrowsBtn = document.getElementById('toggle-arrows-btn');
@@ -37,6 +37,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Listener para o botão de Toggle de Relacionamentos
         if (toggleArrowsBtn) {
+            // Initial text based on default state
+            toggleArrowsBtn.textContent = showRelationships ? 'Ocultar Relacionamentos' : 'Mostrar Relacionamentos';
+            
             toggleArrowsBtn.onclick = (e) => {
                 e.stopPropagation();
                 showRelationships = !showRelationships;
@@ -282,7 +285,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         }
                         
                         if (showRelationships) {
-                            RelationshipLines.drawFromBscData(bscData);
+                            await RelationshipLines.drawFromBscData(bscData);
                         }
                         return;
                     }

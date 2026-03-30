@@ -338,22 +338,22 @@ export const RelationshipLines = (() => {
   }
 
   async function drawFromBscData(bscData, options = {}) {
-    const thisDrawId = ++_drawId;
+    _drawId++;
     clear();
     _lastBscData  = bscData;
     _lastOptions  = options;
     if (!bscData || !bscData.perspectives) return;
 
+    // Use requestAnimationFrame to ensure DOM is ready for measurement
     return new Promise(resolve => {
-      setTimeout(() => {
-        if (thisDrawId !== _drawId) return resolve();
+      requestAnimationFrame(() => {
         _redraw(bscData, options);
-      }, 150);
-      setTimeout(() => {
-        if (thisDrawId !== _drawId) return resolve();
-        _redraw(bscData, options);
-        resolve();
-      }, 800);
+        // Second pass after a short delay to account for potential nested card rendering
+        setTimeout(() => {
+          _redraw(bscData, options);
+          resolve();
+        }, 150);
+      });
     });
   }
 
