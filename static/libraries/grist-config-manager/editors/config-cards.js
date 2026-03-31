@@ -73,6 +73,8 @@ export const CardConfigEditor = (() => {
             fields: Object.values(schema).filter(c => !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos'),
             lens: lens,
             tableId: tableId,
+            enableOrder: mapping.enableOrder || false,
+            orderColumn: mapping.orderColumn || null,
             showAddButtonTop: actions.showAddButtonTop || false,
             showAddButtonBottom: actions.showAddButtonBottom || false,
             addRecordConfigId: actions.addRecordConfigId || null,
@@ -142,7 +144,9 @@ export const CardConfigEditor = (() => {
             tableId: state.tableId,
             layout: state.layout,
             viewMode,
-            numRows
+            numRows,
+            enableOrder: layoutTab.querySelector("#cs-enable-order").checked,
+            orderColumn: layoutTab.querySelector("#cs-order-column").value || null
         };
         
         // 2. Actions: O que o widget faz (Interações)
@@ -661,13 +665,27 @@ export const CardConfigEditor = (() => {
         tabEl.style.display = "none";
         tabEl.innerHTML = `
             <h3>Fields & Layout</h3>
-            <div class="layout-controls">
-                <label>View Mode:</label>
-                <label><input type="radio" name="cs-viewmode" id="cs-vm-click" value="click" /> Click Card</label>
-                <label><input type="radio" name="cs-viewmode" id="cs-vm-burger" value="burger" /> Burger Icon</label>
-                <span class="spacer"></span>
-                <label>Number of Rows:</label>
-                <input type="number" id="cs-num-rows" value="${state.numRows}" min="1" max="20" />
+            <div class="layout-controls" style="display: flex; flex-direction: column; gap: 10px; background: #f8f9fa; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px;">
+                <div style="display: flex; align-items: center; gap: 20px;">
+                    <div>
+                        <label>View Mode:</label>
+                        <label><input type="radio" name="cs-viewmode" id="cs-vm-click" value="click" /> Click Card</label>
+                        <label><input type="radio" name="cs-viewmode" id="cs-vm-burger" value="burger" /> Burger Icon</label>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 5px;">
+                        <label>Number of Rows:</label>
+                        <input type="number" id="cs-num-rows" value="${state.numRows}" min="1" max="20" style="width: 50px;" />
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 20px; border-top: 1px solid #ddd; padding-top: 10px;">
+                    <label><input type="checkbox" id="cs-enable-order" ${state.enableOrder ? 'checked' : ''}> Enable Card Order (Drag & Drop)</label>
+                    <div id="cs-order-column-container" style="display: ${state.enableOrder ? 'flex' : 'none'}; align-items: center; gap: 10px;">
+                        <label for="cs-order-column">Order Column:</label>
+                        <select id="cs-order-column">
+                            <option value="">-- Select Numeric Column --</option>
+                        </select>
+                    </div>
+                </div>
             </div>
             <p class="help-text">Drag fields onto the grid below. Resize by dragging the right edge.</p>
             <div style="position: relative;">
@@ -698,6 +716,24 @@ export const CardConfigEditor = (() => {
             state.numRows = parseInt(rowInput.value, 10) || 1;
             buildGridUI(tabEl.querySelector("#cs-layout-grid"), tabEl);
         });
+
+        // --- Card Order Logic ---
+        const enableOrderCheckbox = tabEl.querySelector("#cs-enable-order");
+        const orderColumnContainer = tabEl.querySelector("#cs-order-column-container");
+        const orderColumnSelect = tabEl.querySelector("#cs-order-column");
+
+        // Populate dropdown with numeric columns
+        const numericFields = state.fields
+            .filter(f => ['Int', 'Float', 'Numeric'].some(type => f.type.startsWith(type)))
+            .map(f => f.colId);
+        
+        populateFieldSelect(orderColumnSelect, numericFields);
+        orderColumnSelect.value = state.orderColumn || "";
+
+        enableOrderCheckbox.addEventListener("change", () => {
+            orderColumnContainer.style.display = enableOrderCheckbox.checked ? 'flex' : 'none';
+        });
+
         buildGridUI(tabEl.querySelector("#cs-layout-grid"), tabEl);
         buildAvailableFieldsList(tabEl.querySelector("#cs-layout-fields"));
 
