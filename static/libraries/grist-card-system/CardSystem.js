@@ -87,12 +87,25 @@ export const CardSystem = (() => {
     const tableLens = currentOptions.tableLens; // Extract tableLens
     const styling = { ...DEFAULT_STYLING, ...currentOptions.styling, selectedCard: { ...DEFAULT_STYLING.selectedCard, ...(currentOptions.styling?.selectedCard || {}) } };
     const layout = currentOptions.layout || [];
-    console.log("DEBUG: CardSystem received layout:", JSON.stringify(layout, null, 2));
+    
     const viewMode = currentOptions.viewMode || 'click';
     const numRows = currentOptions.numRows || DEFAULT_NUM_ROWS;
 
+    // --- ORDENAÇÃO ---
+    const orderColumn = currentOptions.orderColumn || currentOptions.mapping?.orderColumn;
+    const enableOrder = currentOptions.enableOrder || currentOptions.mapping?.enableOrder;
+    
+    let processedRecords = [...records];
+    if (enableOrder && orderColumn) {
+        processedRecords.sort((a, b) => {
+            const valA = a[orderColumn] ?? 0;
+            const valB = b[orderColumn] ?? 0;
+            return valA - valB;
+        });
+    }
+
     // Store records for filtering and display
-    _displayedRecords = records;
+    _displayedRecords = processedRecords;
     if (_originalRecords.length === 0) { // Only set original records on initial load
       _originalRecords = records;
     }
@@ -101,7 +114,7 @@ export const CardSystem = (() => {
     _container = container;
 
     container.innerHTML = "";
-    if (!records || !records.length) {
+    if (!processedRecords || !processedRecords.length) {
       container.textContent = "No records found.";
       // Mesmo sem registros, aplicamos o fundo ao body
       _applyWidgetBackground(styling, currentOptions);
@@ -119,7 +132,7 @@ export const CardSystem = (() => {
     let numCols = colLimit;
 
     if (colMode === 'responsive') {
-        const totalRecords = records.length;
+        const totalRecords = processedRecords.length;
         numCols = Math.min(totalRecords, colLimit);
         if (numCols < 1) numCols = 1;
     }
@@ -130,7 +143,7 @@ export const CardSystem = (() => {
     container.style.gap = styling.cardsSpacing;
     // ---------------------------------------------------
 
-    records.forEach((record) => {
+    processedRecords.forEach((record) => {
       const cardEl = document.createElement("div");
       cardEl.className = "cs-card";
       cardEl.id = `record-${record.id}`; // ID for linking
@@ -640,6 +653,11 @@ export const CardSystem = (() => {
       container.appendChild(cardEl);
     });
 
+    // --- DRAG & DROP ---
+    if (enableOrder && orderColumn) {
+        _handleDragAndDrop(container, orderColumn, currentOptions);
+    }
+
     // --- DEBUG INFO RENDER ---
     if (styling.showDebugInfo) {
         const debugDiv = document.createElement('div');
@@ -745,6 +763,51 @@ export const CardSystem = (() => {
 
     const toHex = c => c.toString(16).padStart(2, '0');
     return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+  }
+
+  function _handleDragAndDrop(container, orderColumn, options) {
+    // Check if Sortable is available (it should be loaded in the index.html via CDN)
+    if (typeof Sortable !== 'undefined') {
+        new Sortable(container, {
+            animation: 150,
+            handle: ".cs-card", // O card todo ou um handle específico
+            draggable: ".cs-card",
+            onEnd: function (evt) {
+                const itemEl = evt.item;
+                const recordId = itemEl.dataset.recordId;
+                
+                // Encontrar o novo "vizinho" para calcular a nova posição
+                const prevEl = itemEl.previousElementSibling;
+                const nextEl = itemEl.nextElementSibling;
+
+                const prevRecord = prevEl ? _displayedRecords.find(r => r.id == prevEl.dataset.recordId) : null;
+                const nextRecord = nextEl ? _displayedRecords.find(r => r.id == nextEl.dataset.recordId) : null;
+
+                let newPos;
+                const posPrev = prevRecord ? (prevRecord[orderColumn] ?? 0) : null;
+                const posNext = nextRecord ? (nextRecord[orderColumn] ?? 0) : null;
+
+                if (posPrev !== null && posNext !== null) {
+                    newPos = (posPrev + posNext) / 2;
+                } else if (posPrev !== null) {
+                    newPos = posPrev + 10;
+                } else if (posNext !== null) {
+                    newPos = posNext - 10;
+                } else {
+                    newPos = 10;
+                }
+
+                // Disparar atualização para o Grist
+                publish('grf-update-record', {
+                    tableId: options.tableId,
+                    recordId: recordId,
+                    data: { [orderColumn]: newPos }
+                });
+            }
+        });
+    } else {
+        console.warn("CardSystem: SortableJS not found. Drag and Drop disabled.");
+    }
   }
 
   function _applyWidgetBackground(styling, options) {
