@@ -1269,19 +1269,16 @@ export const CardConfigEditor = (() => {
             const el = document.createElement('div');
             el.className = `list-item ${idx === activeButtonIndex ? 'active' : ''}`;
             
-            // Preview logic
+            // Preview logic - FORCED CONTRAST FOR MENU
             let previewHtml = '';
-            let bgStyle = '#f0f0f0';
-            if (group.bgMode === 'transparent') bgStyle = 'transparent';
-            else if (group.bgMode === 'solid') bgStyle = group.backgroundColor || '#f0f0f0';
-            else if (group.bgMode === 'overlay') bgStyle = group.overlayEffect === 'lighten' ? '#ffffff' : '#000000'; // Approx for preview
-
-            const style = `background-color: ${bgStyle}; color: ${group.iconColor || '#000'}; border: 1px solid ${group.borderColor || '#ccc'};`;
+            // Forçamos cores que garantam visibilidade no menu (fundo cinza claro do configurador)
+            const menuPreviewStyle = `background-color: #fff; color: #333; border: 1px solid #ccc;`;
             const shapeClass = group.shape === 'circle' ? 'circle' : '';
+            
             if (btn.buttonStyle === 'text') {
-                previewHtml = `<div class="btn-icon-preview ${shapeClass}" style="${style}">${(btn.text || 'Tx').substring(0,2)}</div>`;
+                previewHtml = `<div class="btn-icon-preview ${shapeClass}" style="${menuPreviewStyle}">${(btn.text || 'Tx').substring(0,2)}</div>`;
             } else {
-                previewHtml = `<div class="btn-icon-preview ${shapeClass}" style="${style}"><svg class="icon"><use href="#${btn.icon || 'icon-star'}"></use></svg></div>`;
+                previewHtml = `<div class="btn-icon-preview ${shapeClass}" style="${menuPreviewStyle}"><svg class="icon" style="fill:currentColor; stroke:currentColor; stroke-width:0.5px;"><use href="#${btn.icon || 'icon-star'}"></use></svg></div>`;
             }
 
             el.innerHTML = `
@@ -1343,8 +1340,9 @@ export const CardConfigEditor = (() => {
             <div id="btn-content-icon" style="display: ${btn.buttonStyle !== 'text' ? 'block' : 'none'}">
                 <div class="form-group">
                     <label>Select Icon:</label>
-                    <div class="icon-picker-display" style="cursor:pointer; padding: 5px; border: 1px solid #ccc; display: inline-block; border-radius: 4px;">
-                        <span class="current-icon"><svg class="icon"><use href="#${btn.icon || 'icon-star'}"></use></svg></span> Change
+                    <div class="icon-picker-display" style="cursor:pointer; padding: 5px; border: 1px solid #ccc; display: inline-flex; align-items:center; gap: 8px; border-radius: 4px; background: #fff;">
+                        <span class="current-icon" style="display:flex; color: #333;"><svg class="icon" style="width:20px; height:20px; fill:currentColor; stroke:currentColor; stroke-width:0.5px;"><use href="#${btn.icon || 'icon-star'}"></use></svg></span> 
+                        <span style="font-weight:bold; color: #555;">Change</span>
                     </div>
                 </div>
             </div>

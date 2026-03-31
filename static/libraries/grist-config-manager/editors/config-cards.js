@@ -1269,19 +1269,16 @@ export const CardConfigEditor = (() => {
             const el = document.createElement('div');
             el.className = `list-item ${idx === activeButtonIndex ? 'active' : ''}`;
             
-            // Preview logic
+            // Preview logic - FORCED CONTRAST FOR MENU
             let previewHtml = '';
-            let bgStyle = '#f0f0f0';
-            if (group.bgMode === 'transparent') bgStyle = 'transparent';
-            else if (group.bgMode === 'solid') bgStyle = group.backgroundColor || '#f0f0f0';
-            else if (group.bgMode === 'overlay') bgStyle = group.overlayEffect === 'lighten' ? '#ffffff' : '#000000'; // Approx for preview
-
-            const style = `background-color: ${bgStyle}; color: ${group.iconColor || '#000'}; border: 1px solid ${group.borderColor || '#ccc'};`;
+            // Forçamos cores que garantam visibilidade no menu (fundo cinza claro do configurador)
+            const menuPreviewStyle = `background-color: #fff; color: #333; border: 1px solid #ccc;`;
             const shapeClass = group.shape === 'circle' ? 'circle' : '';
+            
             if (btn.buttonStyle === 'text') {
-                previewHtml = `<div class="btn-icon-preview ${shapeClass}" style="${style}">${(btn.text || 'Tx').substring(0,2)}</div>`;
+                previewHtml = `<div class="btn-icon-preview ${shapeClass}" style="${menuPreviewStyle}">${(btn.text || 'Tx').substring(0,2)}</div>`;
             } else {
-                previewHtml = `<div class="btn-icon-preview ${shapeClass}" style="${style}"><svg class="icon"><use href="#${btn.icon || 'icon-star'}"></use></svg></div>`;
+                previewHtml = `<div class="btn-icon-preview ${shapeClass}" style="${menuPreviewStyle}"><svg class="icon" style="fill:currentColor; stroke:currentColor; stroke-width:0.5px;"><use href="#${btn.icon || 'icon-star'}"></use></svg></div>`;
             }
 
             el.innerHTML = `
@@ -1343,8 +1340,9 @@ export const CardConfigEditor = (() => {
             <div id="btn-content-icon" style="display: ${btn.buttonStyle !== 'text' ? 'block' : 'none'}">
                 <div class="form-group">
                     <label>Select Icon:</label>
-                    <div class="icon-picker-display" style="cursor:pointer; padding: 5px; border: 1px solid #ccc; display: inline-block; border-radius: 4px;">
-                        <span class="current-icon"><svg class="icon"><use href="#${btn.icon || 'icon-star'}"></use></svg></span> Change
+                    <div class="icon-picker-display" style="cursor:pointer; padding: 5px; border: 1px solid #ccc; display: inline-flex; align-items:center; gap: 8px; border-radius: 4px; background: #fff;">
+                        <span class="current-icon" style="display:flex; color: #333;"><svg class="icon" style="width:20px; height:20px; fill:currentColor; stroke:currentColor; stroke-width:0.5px;"><use href="#${btn.icon || 'icon-star'}"></use></svg></span> 
+                        <span style="font-weight:bold; color: #555;">Change</span>
                     </div>
                 </div>
             </div>
@@ -1561,21 +1559,28 @@ export const CardConfigEditor = (() => {
             <style>
                 .icon-grid { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
                 .icon-option { 
-                    width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; 
+                    width: 80px; height: 80px; display: flex; flex-direction: column; align-items: center; justify-content: center; 
                     border: 1px solid #eee; border-radius: 4px; cursor: pointer; transition: all 0.2s;
-                    color: #333; /* Força cor escura para visibilidade */
+                    color: #000; padding: 5px; overflow: hidden;
                 }
-                .icon-option:hover { background: #e6f7ff; border-color: #1890ff; transform: scale(1.1); }
+                .icon-option:hover { background: #e6f7ff; border-color: #1890ff; transform: scale(1.05); }
                 .icon-option svg { 
-                    width: 32px; height: 32px; 
-                    fill: currentColor; /* Força preenchimento */
-                    stroke: currentColor; /* Força contorno */
-                    stroke-width: 0.5px; /* Adiciona um contorno leve para ícones finos */
+                    width: 32px; height: 32px; flex-shrink: 0;
+                    fill: currentColor; 
+                }
+                .icon-id-label { 
+                    font-size: 9px; margin-top: 5px; text-align: center; word-break: break-all; 
+                    color: #666; max-height: 24px; overflow: hidden;
                 }
             </style>
             <h4 style="margin-top: 0;">Select an Icon</h4>
             <div class="icon-grid">
-                ${iconsHtml}
+                ${AVAILABLE_ICONS.map(id => `
+                    <div class="icon-option" data-id="${id}" title="${id}">
+                        <svg><use href="#${id}"></use></svg>
+                        <div class="icon-id-label">${id.replace('icon-', '')}</div>
+                    </div>
+                `).join('')}
             </div>
             <div style="text-align: right; margin-top: 15px;">
                 <button id="icon-picker-cancel" type="button" class="btn btn-secondary">Cancel</button>
