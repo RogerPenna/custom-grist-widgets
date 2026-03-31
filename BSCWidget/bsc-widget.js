@@ -355,7 +355,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     try {
                         const cardConfigRecord = await tableLens.findRecord('Grf_config', { configId: widgetConfig.objectivesConfigId });
                         if (cardConfigRecord) {
-                            cardOptions = JSON.parse(cardConfigRecord.configJson);
+                            cardOptions = tableLens.parseConfigRecord(cardConfigRecord);
                             cardOptions.tableLens = tableLens; 
                             objSchemaToUse = await tableLens.getTableSchema('Objetivos');
                         }
@@ -496,7 +496,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                     return;
                 }
 
-                widgetConfig = await tableLens.fetchConfig(currentConfigId);
+                const configRecord = await tableLens.findRecord('Grf_config', { configId: currentConfigId });
+                if (configRecord) {
+                    widgetConfig = tableLens.parseConfigRecord(configRecord);
+                } else {
+                    widgetConfig = await tableLens.fetchConfig(currentConfigId);
+                }
                 console.log("Loaded widget config (unified):", widgetConfig);
 
                 await createModelDropdown();

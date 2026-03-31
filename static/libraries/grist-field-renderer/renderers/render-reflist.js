@@ -63,8 +63,13 @@ async function handleDelete(tableId, recordId, onUpdate, dataWriter) { if (confi
 export async function renderRefList(options) {
     console.log('renderRefList options:', options);
     let currentPage = 1;
-    const { container, record, colSchema, tableLens, isLocked, fieldConfig, ruleIdToColIdMap, refListConfig } = options;
-    let isCollapsed = container.dataset.collapsed === 'true' || (container.dataset.collapsed === undefined && options.refListConfig?.collapsible);
+    const { container, record, colSchema, tableLens, isLocked, ruleIdToColIdMap } = options;
+    
+    // Support both direct and nested config (from grist-field-renderer)
+    const fieldConfig = options.fieldConfig || options.fieldStyle || {};
+    const refListConfig = options.refListConfig || fieldConfig.refListConfig;
+
+    let isCollapsed = container.dataset.collapsed === 'true' || (container.dataset.collapsed === undefined && refListConfig?.collapsible);
     container.dataset.collapsed = isCollapsed;
     
     // CORREÇÃO: Usa o adaptador do tableLens se disponível para o DataWriter
@@ -193,7 +198,7 @@ export async function renderRefList(options) {
             };
         }
 
-        if (options.isEditing) {
+        if (options.isEditing && refListConfig?.displayAs !== 'cards') {
             const addButton = document.createElement('button');
             addButton.className = 'add-btn';
             addButton.style.marginBottom = '5px';
@@ -224,6 +229,55 @@ export async function renderRefList(options) {
             if (!cardConfig) {
                 container.innerHTML = `<p>Error: Card Config with ID '${cardConfigId}' not found.</p>`;
                 return;
+            }
+
+            // --- BOTÃO ADICIONAR (Estilo Card) ---
+            const showAddTop = (fieldConfig?.showAddButton !== undefined) ? fieldConfig.showAddButton : (cardConfig.showAddButtonTop || cardConfig.actions?.showAddButtonTop);
+            
+            if (showAddTop || options.isEditing) {
+                const addBtn = document.createElement('button');
+                addBtn.className = 'grf-global-add-btn pos-inline';
+                addBtn.title = "Adicionar Novo Registro";
+                addBtn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M12 5V19M5 12H19" stroke="currentColor"/></svg>`;
+                
+                addBtn.onclick = async (e) => {
+                    e.stopPropagation();
+                    const primaryTableId = record.gristHelper_tableId;
+                    const backReferenceColumn = Object.values(relatedSchema).find(col => col?.type === `Ref:${primaryTableId}`);
+                    const backReferenceColId = backReferenceColumn ? backReferenceColumn.colId : null;
+
+                    if (window.GristDrawer) {
+                        let addConfig = cardConfig;
+                        const specificConfigId = fieldConfig?.addRecordConfigId || cardConfig.addRecordConfigId || cardConfig.actions?.addRecordConfigId;
+                        if (specificConfigId) {
+                            const rec = await tableLens.findRecord('Grf_config', { configId: specificConfigId });
+                            if (rec) addConfig = JSON.parse(rec.configJson);
+                        }
+
+                        const initialData = {};
+                        if (backReferenceColId) initialData[backReferenceColId] = record.id;
+                        
+                        window.GristDrawer.open(referencedTableId, 'new', { 
+                            ...addConfig, 
+                            tableLens: tableLens,
+                            initialData: initialData 
+                        });
+                    } else {
+                        handleAdd({ 
+                            tableId: referencedTableId, 
+                            onUpdate: renderContent, 
+                            dataWriter, 
+                            tableLens, 
+                            backRefCol: backReferenceColId, 
+                            parentRecId: record.id, 
+                            parentTableId: primaryTableId, 
+                            parentRefListColId: colSchema.colId, 
+                            parentRecord: record, 
+                            fieldConfig 
+                        });
+                    }
+                };
+                container.appendChild(addBtn);
             }
 
             const cardsContainer = document.createElement('div');

@@ -32,8 +32,21 @@ export const CardConfigEditor = (() => {
         const outputEl = _mainContainer.querySelector('#config-json-output');
         if (!outputEl) return;
         try {
-            const currentConfig = read(_mainContainer);
-            outputEl.textContent = JSON.stringify(currentConfig, null, 2);
+            const config = read(_mainContainer);
+            outputEl.innerHTML = `
+                <div class="debug-tri-section">
+                    <div class="debug-label mapping">mappingJson (O "Onde")</div>
+                    <pre><code>${JSON.stringify(config.mapping, null, 2)}</code></pre>
+                </div>
+                <div class="debug-tri-section">
+                    <div class="debug-label styling">stylingJson (O "Como")</div>
+                    <pre><code>${JSON.stringify(config.styling, null, 2)}</code></pre>
+                </div>
+                <div class="debug-tri-section">
+                    <div class="debug-label actions">actionsJson (O "O que faz")</div>
+                    <pre><code>${JSON.stringify(config.actions, null, 2)}</code></pre>
+                </div>
+            `;
         } catch (e) {
             outputEl.textContent = "Erro ao ler a configuração: " + e.message;
         }
@@ -41,44 +54,67 @@ export const CardConfigEditor = (() => {
 
     async function render(container, config, lens, tableId, receivedConfigs = []) {
         _mainContainer = container;
-        allConfigs = receivedConfigs; // Armazena a lista de configs recebida na variável do módulo
+        allConfigs = receivedConfigs;
         if (!tableId) { container.innerHTML = '<p class="editor-placeholder">Selecione uma Tabela de Dados no menu acima para começar a configurar.</p>'; return; }
         const schema = await lens.getTableSchema(tableId);
         if (!schema) { container.innerHTML = '<p class="editor-placeholder">Erro ao carregar o schema da tabela. Verifique o console.</p>'; return; }
 
         const options = config || {};
+        const actions = options.actions || options;
+        const mapping = options.mapping || options;
+        const styling = options.styling || options;
+
         state = {
-            layout: JSON.parse(JSON.stringify(options.layout || [])),
-            styling: { ...DEFAULT_STYLING, ...(options.styling || {}), selectedCard: { ...DEFAULT_STYLING.selectedCard, ...(options.styling?.selectedCard || {}) } },
-            sidePanel: { size: "25%", ...(options.sidePanel || {}) },
-            viewMode: options.viewMode || "click",
-            numRows: options.numRows || DEFAULT_NUM_ROWS,
+            layout: JSON.parse(JSON.stringify(mapping.layout || options.layout || [])),
+            styling: { ...DEFAULT_STYLING, ...styling, selectedCard: { ...DEFAULT_STYLING.selectedCard, ...(styling.selectedCard || {}) } },
+            sidePanel: { size: "25%", ...(actions.sidePanel || options.sidePanel || {}) },
+            viewMode: mapping.viewMode || options.viewMode || "click",
+            numRows: mapping.numRows || options.numRows || DEFAULT_NUM_ROWS,
             fields: Object.values(schema).filter(c => !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos'),
             lens: lens,
-            tableId: tableId
+            tableId: tableId,
+            showAddButtonTop: actions.showAddButtonTop || false,
+            showAddButtonBottom: actions.showAddButtonBottom || false,
+            addRecordConfigId: actions.addRecordConfigId || null,
+            iconGroups: actions.iconGroups || options.iconGroups || []
         };
         state.layout.forEach(field => { if (!field.style) field.style = { ...DEFAULT_FIELD_STYLE }; });
 
-        // Clear any legacy actionButtons that might be in the config
-        if (state.styling.actionButtons) {
-            delete state.styling.actionButtons;
-        }
+        if (state.styling.actionButtons) delete state.styling.actionButtons;
 
-        container.innerHTML = "";
+        container.innerHTML = `
+            <style>
+                .debug-tri-section { margin-bottom: 15px; border-left: 4px solid #ddd; padding-left: 10px; }
+                .debug-label { font-weight: bold; font-size: 11px; margin-bottom: 4px; text-transform: uppercase; }
+                .debug-label.mapping { color: #0d6efd; }
+                .debug-label.styling { color: #198754; }
+                .debug-label.actions { color: #fd7e14; }
+                .config-debugger pre { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 4px; max-height: 200px; overflow: auto; }
+            </style>
+        `;
+
         const tabsRow = document.createElement("div");
         tabsRow.className = 'config-tabs';
         [createTabButton("Styling", "sty", container), createTabButton("Fields Layout", "fld", container), createTabButton("Actions & Nav", "actions", container)].forEach(t => tabsRow.appendChild(t));
         container.appendChild(tabsRow);
+
         const debugSection = document.createElement("div");
-        debugSection.innerHTML = `<details class="config-debugger"><summary>Ver Configuração JSON (Debug)</summary><pre><code id="config-json-output">{}</code></pre></details>`;
+        debugSection.innerHTML = `
+            <details class="config-debugger">
+                <summary>Ver Tripartição JSON (Debug)</summary>
+                <div id="config-json-output"></div>
+            </details>`;
         container.appendChild(debugSection);
+
         const contentArea = document.createElement("div");
         contentArea.className = 'config-content';
         contentArea.id = "card-config-contents";
         container.appendChild(contentArea);
+        
         buildStylingTab(contentArea);
-        buildFieldsLayoutTab(contentArea); // Não precisa mais passar `allConfigs`
+        buildFieldsLayoutTab(contentArea);
         buildActionsTab(contentArea);
+        
         updateDebugJson();
         switchTab("sty", container);
         container.addEventListener('change', updateDebugJson);
@@ -93,23 +129,50 @@ export const CardConfigEditor = (() => {
             }
         });
 
-        const newStyling = readStylingTab(container);
-        // Explicitly include iconGroups from state.styling as they are modified directly
-        newStyling.iconGroups = state.styling.iconGroups;
+        const fullStyling = readStylingTab(container);
         const layoutTab = container.querySelector("[data-tab-section='fld']");
         const viewMode = layoutTab.querySelector("#cs-vm-click").checked ? "click" : "burger";
         const numRows = parseInt(layoutTab.querySelector("#cs-num-rows").value, 10) || DEFAULT_NUM_ROWS;
         const sidePanelTab = container.querySelector("[data-tab-section='actions']");
-        const sidePanel = { size: sidePanelTab.querySelector("#cs-sp-size").value, drawerConfigId: sidePanelTab.querySelector("#cs-sp-drawer-config").value || null };
+        
+        // --- TRIPARTIÇÃO ---
+        
+        // 1. Mapping: Onde os dados estão e como se distribuem
+        const mapping = {
+            tableId: state.tableId,
+            layout: state.layout,
+            viewMode,
+            numRows
+        };
+        
+        // 2. Actions: O que o widget faz (Interações)
+        const actions = {
+            sidePanel: { 
+                size: sidePanelTab.querySelector("#cs-sp-size").value, 
+                drawerConfigId: sidePanelTab.querySelector("#cs-sp-drawer-config").value || null 
+            },
+            iconGroups: state.iconGroups || [],
+            showAddButtonTop: sidePanelTab.querySelector("#cs-add-btn-top").checked,
+            showAddButtonBottom: sidePanelTab.querySelector("#cs-add-btn-bottom").checked,
+            addRecordConfigId: sidePanelTab.querySelector("#cs-add-btn-config").value || null
+        };
+        
+        // 3. Styling: Como o widget se parece (Identidade Visual)
+        // Removemos campos de ação que vazaram para o styling no passado
+        const styling = { ...fullStyling };
+        delete styling.iconGroups;
+        delete styling.showAddButtonTop;
+        delete styling.showAddButtonBottom;
+        delete styling.addRecordConfigId;
+        
+        // Adicionamos iconSize ao styling (é visual)
+        styling.iconSize = parseFloat(sidePanelTab.querySelector("#cs-icon-size").value) || 1.0;
 
-        // Read iconSize from actions tab and add it to styling
-        newStyling.iconSize = parseFloat(sidePanelTab.querySelector("#cs-icon-size").value) || 1.0;
-
-        return { tableId: state.tableId, styling: newStyling, sidePanel, layout: state.layout, viewMode, numRows };
+        return { mapping, styling, actions };
     }
 
-    const DEFAULT_FIELD_STYLE = { useGristStyle: true, labelVisible: true, labelPosition: 'above', labelFont: 'inherit', labelFontSize: 'inherit', labelColor: 'inherit', labelOutline: false, labelOutlineColor: '#ffffff', dataJustify: 'left', heightLimited: false, maxHeightRows: 1, isTitleField: false };
-    const DEFAULT_STYLING = { iconSize: 1.0, internalCardPadding: '10px', fieldBox: { borderEnabled: false, borderColor: '#cccccc', borderWidth: 1, borderRadius: 4, backgroundColor: '#ffffff', effect: 'none' }, labelStyle: { bold: false, color: '#333333', font: 'Calibri', size: '12px' }, simpleTextColor: '#000000', simpleTextFont: 'Calibri', simpleTextSize: '14px', fieldBackground: { enabled: false, lightenPercentage: 15 }, iconGroups: [], groupBoxes: [], widgetBackgroundMode: "solid", widgetBackgroundSolidColor: "#f9f9f9", widgetBackgroundGradientType: "linear-gradient(to right, {c1}, {c2})", widgetBackgroundGradientColor1: "#f9f9f9", widgetBackgroundGradientColor2: "#e9e9e9", cardsColorMode: "solid", cardsColorSolidColor: "#ffffff", cardsColorGradientType: "linear-gradient(to right, {c1}, {c2})", cardsColorGradientColor1: "#ffffff", cardsColorGradientColor2: "#f0f0f0", cardsColorApplyText: false, cardsColorTextField: null, cardsColorFontField: null, cardsColorOverlayEffect: 'darken', cardsColorOverlayOpacity: 10, cardBorderThickness: 0, cardBorderMode: "solid", cardBorderSolidColor: "#cccccc", cardTitleFontColor: "#000000", cardTitleFontStyle: "Calibri", cardTitleFontSize: "20px", cardTitleTopBarEnabled: false, cardTitleTopBarMode: "solid", cardTitleTopBarSolidColor: "#dddddd", cardTitleTopBarGradientType: "linear-gradient(to right, {c1}, {c2})", cardTitleTopBarGradientColor1: "#dddddd", cardTitleTopBarGradientColor2: "#cccccc", cardTitleTopBarLabelFontColor: "#000000", cardTitleTopBarLabelFontStyle: "Calibri", cardTitleTopBarLabelFontSize: "16px", cardTitleTopBarDataFontColor: "#333333", cardTitleTopBarDataFontStyle: "Calibri", cardTitleTopBarDataFontSize: "16px", handleAreaWidth: "8px", handleAreaMode: "solid", handleAreaSolidColor: "#40E0D0", widgetPadding: "10px", cardsSpacing: "15px", selectedCard: { enabled: false, scale: 1.05, colorEffect: "none" }, showDebugInfo: false, cardsColumnLimit: 1, cardsColumnMode: 'fixed' };
+    const DEFAULT_FIELD_STYLE = { useGristStyle: true, labelVisible: true, labelPosition: 'above', labelFont: 'inherit', labelFontSize: 'inherit', labelColor: 'inherit', labelAllCaps: false, labelOutline: false, labelOutlineColor: '#ffffff', dataJustify: 'left', dataAllCaps: false, heightLimited: false, maxHeightRows: 1, isTitleField: false };
+    const DEFAULT_STYLING = { iconSize: 1.0, internalCardPadding: '10px', fieldBox: { borderEnabled: false, borderColor: '#cccccc', borderWidth: 1, borderRadius: 4, backgroundColor: '#ffffff', effect: 'none' }, labelStyle: { bold: false, allCaps: false, color: '#333333', font: 'Calibri', size: '12px' }, simpleTextColor: '#000000', simpleTextFont: 'Calibri', simpleTextSize: '14px', fieldBackground: { enabled: false, lightenPercentage: 15 }, iconGroups: [], groupBoxes: [], widgetBackgroundMode: "solid", widgetBackgroundSolidColor: "#f9f9f9", widgetBackgroundGradientType: "linear-gradient(to right, {c1}, {c2})", widgetBackgroundGradientColor1: "#f9f9f9", widgetBackgroundGradientColor2: "#e9e9e9", cardsColorMode: "solid", cardsColorSolidColor: "#ffffff", cardsColorGradientType: "linear-gradient(to right, {c1}, {c2})", cardsColorGradientColor1: "#ffffff", cardsColorGradientColor2: "#f0f0f0", cardsColorApplyText: false, cardsColorTextField: null, cardsColorFontField: null, cardsColorOverlayEffect: 'darken', cardsColorOverlayOpacity: 10, cardBorderThickness: 0, cardBorderMode: "solid", cardBorderSolidColor: "#cccccc", cardTitleFontColor: "#000000", cardTitleFontStyle: "Calibri", cardTitleFontSize: "20px", cardTitleAllCaps: false, cardTitleTopBarEnabled: false, cardTitleTopBarMode: "solid", cardTitleTopBarSolidColor: "#dddddd", cardTitleTopBarGradientType: "linear-gradient(to right, {c1}, {c2})", cardTitleTopBarGradientColor1: "#dddddd", cardTitleTopBarGradientColor2: "#cccccc", cardTitleTopBarLabelFontColor: "#000000", cardTitleTopBarLabelFontStyle: "Calibri", cardTitleTopBarLabelFontSize: "16px", cardTitleTopBarLabelAllCaps: false, cardTitleTopBarDataFontColor: "#333333", cardTitleTopBarDataFontStyle: "Calibri", cardTitleTopBarDataFontSize: "16px", cardTitleTopBarDataAllCaps: false, handleAreaWidth: "8px", handleAreaMode: "solid", handleAreaSolidColor: "#40E0D0", widgetPadding: "10px", cardsSpacing: "15px", selectedCard: { enabled: false, scale: 1.05, colorEffect: "none" }, showDebugInfo: false, cardsColumnLimit: 1, cardsColumnMode: 'fixed' };
     const DEFAULT_NUM_ROWS = 1; const NUM_COLS = 10; const CONFIG_WIDTH = 700; const COL_WIDTH = CONFIG_WIDTH / NUM_COLS;
 
     function createTabButton(label, tabId, container) { const btn = document.createElement("button"); btn.type = "button"; btn.textContent = label; btn.className = 'config-tab-button'; btn.addEventListener("click", () => switchTab(tabId, container)); btn.dataset.tabId = tabId; return btn; }
@@ -176,7 +239,7 @@ export const CardConfigEditor = (() => {
                     </div>
                 </fieldset>
                 <fieldset><legend><b>Card Border</b></legend>Thickness (px): <input type="number" id="cs-st-border-thickness" min="0" style="width:60px"> <br><label><input type="radio" name="bordermode" value="solid"> Solid</label> <label><input type="radio" name="bordermode" value="conditional"> By Field</label><div class="style-control-group" data-mode="solid"><input type="color" id="cs-st-border-color"></div><div class="style-control-group" data-mode="conditional" style="display:none;"><select id="cs-st-border-field"><option value="">-- field --</option></select></div></fieldset>
-                <fieldset class="title-control-group" data-title-mode="no-bar"><legend><b>Card Title (when Top Bar is OFF)</b></legend>Color: <input type="color" id="cs-st-titlecolor"> Font: <select id="cs-st-titlefont"><option>Calibri</option><option>Arial</option><option>Times New Roman</option></select> Size: <input type="number" id="cs-st-titlesize" min="8" style="width:60px">px</fieldset>
+                <fieldset class="title-control-group" data-title-mode="no-bar"><legend><b>Card Title (when Top Bar is OFF)</b></legend>Color: <input type="color" id="cs-st-titlecolor"> Font: <select id="cs-st-titlefont"><option>Calibri</option><option>Arial</option><option>Inter</option><option>Roboto</option><option>Open Sans</option><option>Times New Roman</option></select> Size: <input type="number" id="cs-st-titlesize" min="8" style="width:60px">px <label><input type="checkbox" id="cs-st-title-allcaps"> All Caps</label></fieldset>
                 <fieldset><legend><b>Handle Area</b></legend>Width (px): <input type="number" id="cs-st-handle-width" min="0" style="width:60px"> <br><label><input type="radio" name="handlemode" value="solid"> Solid</label> <label><input type="radio" name="handlemode" value="conditional"> By Field</label><div class="style-control-group" data-mode="solid"><input type="color" id="cs-st-handle-color"></div><div class="style-control-group" data-mode="conditional" style="display:none;"><select id="cs-st-handle-field"><option value="">-- field --</option></select></div></fieldset>
                 <fieldset>
                     <legend><b>Grid Columns</b></legend>
@@ -233,14 +296,16 @@ export const CardConfigEditor = (() => {
         <div>
             <b>Label Style:</b> <br>
             Color: <input type="color" id="cs-st-topbar-lblcolor"> <br>
-            Font: <select id="cs-st-topbar-lblfont"><option>Calibri</option><option>Arial</option></select> <br>
-            Size: <input type="number" id="cs-st-topbar-lblsize" min="8" style="width:60px">px
+            Font: <select id="cs-st-topbar-lblfont"><option>Calibri</option><option>Arial</option><option>Inter</option><option>Roboto</option><option>Open Sans</option></select> <br>
+            Size: <input type="number" id="cs-st-topbar-lblsize" min="8" style="width:60px">px <br>
+            <label><input type="checkbox" id="cs-st-topbar-lbl-allcaps"> All Caps</label>
         </div>
         <div>
             <b>Data Style:</b> <br>
             Color: <input type="color" id="cs-st-topbar-datacolor"> <br>
-            Font: <select id="cs-st-topbar-datafont"><option>Calibri</option><option>Arial</option></select> <br>
-            Size: <input type="number" id="cs-st-topbar-datasize" min="8" style="width:60px">px
+            Font: <select id="cs-st-topbar-datafont"><option>Calibri</option><option>Arial</option><option>Inter</option><option>Roboto</option><option>Open Sans</option></select> <br>
+            Size: <input type="number" id="cs-st-topbar-datasize" min="8" style="width:60px">px <br>
+            <label><input type="checkbox" id="cs-st-topbar-data-allcaps"> All Caps</label>
         </div>
     </div>
 </fieldset>
@@ -273,13 +338,14 @@ export const CardConfigEditor = (() => {
                         <fieldset>
                             <legend>Label Style</legend>
                             <label><input type="checkbox" id="cs-st-label-bold"> Bold</label>
+                            <label style="margin-left: 10px;"><input type="checkbox" id="cs-st-label-allcaps"> All Caps</label> <br>
                             Color: <input type="color" id="cs-st-label-color">
-                            Font: <select id="cs-st-label-font"><option>Calibri</option><option>Arial</option><option>Times New Roman</option></select>
+                            Font: <select id="cs-st-label-font"><option>Calibri</option><option>Arial</option><option>Inter</option><option>Roboto</option><option>Open Sans</option><option>Times New Roman</option></select>
                             Size: <input type="number" id="cs-st-label-size" min="8" style="width:60px">px
                         </fieldset>
                     </div>
                 </fieldset>
-                <fieldset><legend><b>Simple Text Style</b></legend><p class="help-text">For fields where "Use Grist Field Style" is disabled.</p>Color: <input type="color" id="cs-st-simple-textcolor"> Font: <select id="cs-st-simple-textfont"><option>Calibri</option><option>Arial</option><option>Times New Roman</option></select> Size: <input type="number" id="cs-st-simple-textsize" min="8" style="width:60px">px</fieldset>
+                <fieldset><legend><b>Simple Text Style</b></legend><p class="help-text">For fields where "Use Grist Field Style" is disabled.</p>Color: <input type="color" id="cs-st-simple-textcolor"> Font: <select id="cs-st-simple-textfont"><option>Calibri</option><option>Arial</option><option>Inter</option><option>Roboto</option><option>Open Sans</option><option>Times New Roman</option></select> Size: <input type="number" id="cs-st-simple-textsize" min="8" style="width:60px">px</fieldset>
                 <fieldset>
                     <legend><b>Debug</b></legend>
                     <label><input type="checkbox" id="cs-st-show-debug"> Show Schema Debug Info (TableLens output)</label>
@@ -423,7 +489,8 @@ export const CardConfigEditor = (() => {
         tabEl.querySelector("#cs-st-card-overlay-effect").value = s.cardsColorOverlayEffect || 'darken';
         tabEl.querySelector("#cs-st-card-overlay-opacity").value = s.cardsColorOverlayOpacity || 10;
 
-        tabEl.querySelector("#cs-st-border-thickness").value = s.cardBorderThickness; tabEl.querySelector(`input[name='bordermode'][value='${s.cardBorderMode}']`).checked = true; tabEl.querySelector("#cs-st-border-color").value = s.cardBorderSolidColor; tabEl.querySelector("#cs-st-border-field").value = s.cardBorderField || ""; tabEl.querySelector("#cs-st-titlecolor").value = s.cardTitleFontColor; tabEl.querySelector("#cs-st-titlefont").value = s.cardTitleFontStyle; tabEl.querySelector("#cs-st-titlesize").value = parseInt(s.cardTitleFontSize, 10); tabEl.querySelector("#cs-st-topbar-enabled").checked = s.cardTitleTopBarEnabled; tabEl.querySelector(`input[name='topbarmode'][value='${s.cardTitleTopBarMode}']`).checked = true; tabEl.querySelector("#cs-st-topbar-color").value = s.cardTitleTopBarSolidColor; tabEl.querySelector("#cs-st-topbargradient-type").value = s.cardTitleTopBarGradientType || 'linear-gradient(to right, {c1}, {c2})'; tabEl.querySelector("#cs-st-topbargradient-c1").value = s.cardTitleTopBarGradientColor1 || '#dddddd'; tabEl.querySelector("#cs-st-topbargradient-c2").value = s.cardTitleTopBarGradientColor2 || '#cccccc'; tabEl.querySelector("#cs-st-topbar-field").value = s.cardTitleTopBarField || ""; tabEl.querySelector("#cs-st-topbar-apply-text").checked = s.cardTitleTopBarApplyText === true; tabEl.querySelector("#cs-st-topbar-lblcolor").value = s.cardTitleTopBarLabelFontColor; tabEl.querySelector("#cs-st-topbar-lblfont").value = s.cardTitleTopBarLabelFontStyle; tabEl.querySelector("#cs-st-topbar-lblsize").value = parseInt(s.cardTitleTopBarLabelFontSize, 10); tabEl.querySelector("#cs-st-topbar-datacolor").value = s.cardTitleTopBarDataFontColor; tabEl.querySelector("#cs-st-topbar-datafont").value = s.cardTitleTopBarDataFontStyle;         tabEl.querySelector("#cs-st-topbar-datasize").value = parseInt(s.cardTitleTopBarDataFontSize, 10); tabEl.querySelector("#cs-st-handle-width").value = parseInt(s.handleAreaWidth, 10); tabEl.querySelector(`input[name='handlemode'][value='${s.handleAreaMode}']`).checked = true; tabEl.querySelector("#cs-st-handle-color").value = s.handleAreaSolidColor; tabEl.querySelector("#cs-st-handle-field").value = s.handleAreaField || ""; tabEl.querySelector("#cs-st-padding").value = parseInt(s.widgetPadding, 10); tabEl.querySelector("#cs-st-spacing").value = parseInt(s.cardsSpacing, 10);
+        tabEl.querySelector("#cs-st-border-thickness").value = s.cardBorderThickness; tabEl.querySelector(`input[name='bordermode'][value='${s.cardBorderMode}']`).checked = true; tabEl.querySelector("#cs-st-border-color").value = s.cardBorderSolidColor; tabEl.querySelector("#cs-st-border-field").value = s.cardBorderField || ""; tabEl.querySelector("#cs-st-titlecolor").value = s.cardTitleFontColor; tabEl.querySelector("#cs-st-titlefont").value = s.cardTitleFontStyle; tabEl.querySelector("#cs-st-titlesize").value = parseInt(s.cardTitleFontSize, 10); tabEl.querySelector("#cs-st-title-allcaps").checked = s.cardTitleAllCaps === true; tabEl.querySelector("#cs-st-topbar-enabled").checked = s.cardTitleTopBarEnabled; tabEl.querySelector(`input[name='topbarmode'][value='${s.cardTitleTopBarMode}']`).checked = true; tabEl.querySelector("#cs-st-topbar-color").value = s.cardTitleTopBarSolidColor; tabEl.querySelector("#cs-st-topbargradient-type").value = s.cardTitleTopBarGradientType || 'linear-gradient(to right, {c1}, {c2})'; tabEl.querySelector("#cs-st-topbargradient-c1").value = s.cardTitleTopBarGradientColor1 || '#dddddd'; tabEl.querySelector("#cs-st-topbargradient-c2").value = s.cardTitleTopBarGradientColor2 || '#cccccc'; tabEl.querySelector("#cs-st-topbar-field").value = s.cardTitleTopBarField || ""; tabEl.querySelector("#cs-st-topbar-apply-text").checked = s.cardTitleTopBarApplyText === true; tabEl.querySelector("#cs-st-topbar-lblcolor").value = s.cardTitleTopBarLabelFontColor; tabEl.querySelector("#cs-st-topbar-lblfont").value = s.cardTitleTopBarLabelFontStyle; tabEl.querySelector("#cs-st-topbar-lblsize").value = parseInt(s.cardTitleTopBarLabelFontSize, 10); tabEl.querySelector("#cs-st-topbar-lbl-allcaps").checked = s.cardTitleTopBarLabelAllCaps === true; tabEl.querySelector("#cs-st-topbar-datacolor").value = s.cardTitleTopBarDataFontColor; tabEl.querySelector("#cs-st-topbar-datafont").value = s.cardTitleTopBarDataFontStyle;         tabEl.querySelector("#cs-st-topbar-datasize").value = parseInt(s.cardTitleTopBarDataFontSize, 10); tabEl.querySelector("#cs-st-topbar-data-allcaps").checked = s.cardTitleTopBarDataAllCaps === true; tabEl.querySelector("#cs-st-handle-width").value = parseInt(s.handleAreaWidth, 10); 
+ tabEl.querySelector(`input[name='handlemode'][value='${s.handleAreaMode}']`).checked = true; tabEl.querySelector("#cs-st-handle-color").value = s.handleAreaSolidColor; tabEl.querySelector("#cs-st-handle-field").value = s.handleAreaField || ""; tabEl.querySelector("#cs-st-padding").value = parseInt(s.widgetPadding, 10); tabEl.querySelector("#cs-st-spacing").value = parseInt(s.cardsSpacing, 10);
         
         tabEl.querySelector("#cs-st-col-limit").value = s.cardsColumnLimit || 1;
         const colMode = s.cardsColumnMode || 'fixed';
@@ -449,6 +516,7 @@ export const CardConfigEditor = (() => {
 
         const ls = s.labelStyle || {};
         tabEl.querySelector('#cs-st-label-bold').checked = ls.bold;
+        tabEl.querySelector('#cs-st-label-allcaps').checked = ls.allCaps === true;
         tabEl.querySelector('#cs-st-label-color').value = ls.color;
         tabEl.querySelector('#cs-st-label-font').value = ls.font;
         tabEl.querySelector('#cs-st-label-size').value = parseInt(ls.size, 10);
@@ -502,6 +570,7 @@ export const CardConfigEditor = (() => {
         s.cardTitleFontColor = tabEl.querySelector("#cs-st-titlecolor").value;
         s.cardTitleFontStyle = tabEl.querySelector("#cs-st-titlefont").value;
         s.cardTitleFontSize = `${parseInt(tabEl.querySelector("#cs-st-titlesize").value, 10) || 20}px`;
+        s.cardTitleAllCaps = tabEl.querySelector("#cs-st-title-allcaps").checked;
 
         s.cardTitleTopBarEnabled = tabEl.querySelector("#cs-st-topbar-enabled").checked;
         const topBarMode = getCheckedValue('topbarmode');
@@ -520,9 +589,11 @@ export const CardConfigEditor = (() => {
         s.cardTitleTopBarLabelFontColor = tabEl.querySelector("#cs-st-topbar-lblcolor").value;
         s.cardTitleTopBarLabelFontStyle = tabEl.querySelector("#cs-st-topbar-lblfont").value;
         s.cardTitleTopBarLabelFontSize = `${parseInt(tabEl.querySelector("#cs-st-topbar-lblsize").value, 10) || 16}px`;
+        s.cardTitleTopBarLabelAllCaps = tabEl.querySelector("#cs-st-topbar-lbl-allcaps").checked;
         s.cardTitleTopBarDataFontColor = tabEl.querySelector("#cs-st-topbar-datacolor").value;
         s.cardTitleTopBarDataFontStyle = tabEl.querySelector("#cs-st-topbar-datafont").value;
         s.cardTitleTopBarDataFontSize = `${parseInt(tabEl.querySelector("#cs-st-topbar-datasize").value, 10) || 16}px`;
+        s.cardTitleTopBarDataAllCaps = tabEl.querySelector("#cs-st-topbar-data-allcaps").checked;
 
         const handleMode = getCheckedValue('handlemode');
         s.handleAreaMode = handleMode;
@@ -564,12 +635,21 @@ export const CardConfigEditor = (() => {
 
         s.labelStyle = {
             bold: tabEl.querySelector('#cs-st-label-bold').checked,
+            allCaps: tabEl.querySelector('#cs-st-label-allcaps').checked,
             color: tabEl.querySelector('#cs-st-label-color').value,
             font: tabEl.querySelector('#cs-st-label-font').value,
             size: `${parseInt(tabEl.querySelector('#cs-st-label-size').value, 10)}px`
         };
 
         s.showDebugInfo = tabEl.querySelector('#cs-st-show-debug').checked;
+
+        // Novos campos globais de Adição (vindos da aba Actions)
+        const actionsTab = _mainContainer.querySelector("[data-tab-section='actions']");
+        if (actionsTab) {
+            s.showAddButtonTop = actionsTab.querySelector("#cs-add-btn-top").checked;
+            s.showAddButtonBottom = actionsTab.querySelector("#cs-add-btn-bottom").checked;
+            s.addRecordConfigId = actionsTab.querySelector("#cs-add-btn-config").value || null;
+        }
 
         return s;
     }
@@ -652,7 +732,7 @@ export const CardConfigEditor = (() => {
         const availableCols = state.fields.filter(f => !usedColIds.includes(f.colId));
 
         // Also include Icon Groups that are not in the layout
-        const iconGroups = state.styling.iconGroups || [];
+        const iconGroups = state.iconGroups || [];
         const availableIconGroups = iconGroups.filter(g => !usedColIds.includes(g.id));
 
         if (availableCols.length === 0 && availableIconGroups.length === 0) {
@@ -905,7 +985,7 @@ export const CardConfigEditor = (() => {
         let fieldSchema;
 
         if (fieldDef.isIconGroup) {
-            const group = (state.styling.iconGroups || []).find(g => g.id === fieldDef.colId);
+            const group = (state.iconGroups || []).find(g => g.id === fieldDef.colId);
             fieldLabel = `[Group] ${group ? group.name : fieldDef.colId}`;
         } else {
             fieldSchema = state.fields.find(field => field.colId === fieldDef.colId);
@@ -1016,26 +1096,51 @@ export const CardConfigEditor = (() => {
 
         tabEl.innerHTML = `
             <h3>Card Actions & Navigation</h3>
-            <div class="form-group">
-                <label for="cs-icon-size">Global Icon Size:</label>
-                <select id="cs-icon-size" style="width: auto; display: inline-block;">
-                    <option value="0.8">80%</option>
-                    <option value="0.9">90%</option>
-                    <option value="1.0" selected>100% (Default)</option>
-                    <option value="1.1">110%</option>
-                    <option value="1.2">120%</option>
-                </select>
-                <span style="margin: 0 15px; color: #ccc;">|</span>
-                <label for="cs-sp-drawer-config">Details Drawer:</label>
-                <select id="cs-sp-drawer-config" style="width: auto; display: inline-block;">
-                    <option value="">-- None --</option>
-                </select>
-                <select id="cs-sp-size" style="width: auto; display: inline-block;">
-                    <option value="25%">25%</option>
-                    <option value="35%">35%</option>
-                    <option value="50%">50%</option>
-                    <option value="75%">75%</option>
-                </select>
+            <div class="form-group" style="background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div>
+                        <label style="display:block; font-size:11px; font-weight:800; color:#94a3b8; text-transform:uppercase; margin-bottom:10px;">General Card Interaction</label>
+                        <div style="display:flex; gap:10px; align-items:center;">
+                            <label for="cs-sp-drawer-config">Details Drawer:</label>
+                            <select id="cs-sp-drawer-config" style="flex:1;">
+                                <option value="">-- None --</option>
+                            </select>
+                        </div>
+                        <div style="display:flex; gap:10px; align-items:center; margin-top:10px;">
+                            <label for="cs-sp-size">Drawer Size:</label>
+                            <select id="cs-sp-size" style="flex:1;">
+                                <option value="25%">25%</option>
+                                <option value="35%">35%</option>
+                                <option value="50%">50%</option>
+                                <option value="75%">75%</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label style="display:block; font-size:11px; font-weight:800; color:#94a3b8; text-transform:uppercase; margin-bottom:10px;">Global "Add New" Buttons</label>
+                        <div style="display:flex; flex-direction:column; gap:8px;">
+                            <label><input type="checkbox" id="cs-add-btn-top"> Show "+" Button at Top</label>
+                            <label><input type="checkbox" id="cs-add-btn-bottom"> Show "+" Button at Bottom</label>
+                            <div style="display:flex; gap:10px; align-items:center; margin-top:5px;">
+                                <label style="white-space:nowrap;">Creation Config:</label>
+                                <select id="cs-add-btn-config" style="flex:1;">
+                                    <option value="">-- Use Default --</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <hr style="margin: 15px 0; border:none; border-top: 1px solid #ddd;">
+                <div style="display:flex; gap:20px; align-items:center;">
+                    <label for="cs-icon-size">Global Icon Size:</label>
+                    <select id="cs-icon-size" style="width: auto;">
+                        <option value="0.8">80%</option>
+                        <option value="0.9">90%</option>
+                        <option value="1.0" selected>100% (Default)</option>
+                        <option value="1.1">110%</option>
+                        <option value="1.2">120%</option>
+                    </select>
+                </div>
             </div>
             <div class="actions-layout" id="actions-master-detail">
                 <!-- Columns will be injected here -->
@@ -1045,17 +1150,29 @@ export const CardConfigEditor = (() => {
 
         // Populate global selects
         const drawerSelect = tabEl.querySelector("#cs-sp-drawer-config");
+        const addBtnConfigSelect = tabEl.querySelector("#cs-add-btn-config");
+        
         if (allConfigs && Array.isArray(allConfigs)) {
             allConfigs.filter(c => c.componentType === 'Drawer').forEach(c => {
                 const option = document.createElement('option');
                 option.value = c.configId;
                 option.textContent = c.configId;
                 drawerSelect.appendChild(option);
+                
+                const option2 = document.createElement('option');
+                option2.value = c.configId;
+                option2.textContent = c.configId;
+                addBtnConfigSelect.appendChild(option2);
             });
         }
         if (state.sidePanel && state.sidePanel.drawerConfigId) drawerSelect.value = state.sidePanel.drawerConfigId;
         if (state.sidePanel && state.sidePanel.size) tabEl.querySelector("#cs-sp-size").value = state.sidePanel.size;
         if (state.styling && state.styling.iconSize) tabEl.querySelector("#cs-icon-size").value = state.styling.iconSize;
+        
+        // Novos campos
+        tabEl.querySelector("#cs-add-btn-top").checked = !!state.showAddButtonTop;
+        tabEl.querySelector("#cs-add-btn-bottom").checked = !!state.showAddButtonBottom;
+        if (state.addRecordConfigId) addBtnConfigSelect.value = state.addRecordConfigId;
 
         // Initialize UI
         renderActionsLayout(tabEl.querySelector('#actions-master-detail'));
@@ -1070,9 +1187,9 @@ export const CardConfigEditor = (() => {
         colGroups.innerHTML = '<div class="list-header">Icon Groups</div><div class="groups-list-content" style="flex-grow:1; overflow-y:auto;"></div><div class="add-btn-row"><button class="add-btn-icon" title="Add Icon Group">+</button></div>';
         renderGroupsList(colGroups.querySelector('.groups-list-content'));
         colGroups.querySelector('.add-btn-icon').onclick = () => {
-            state.styling.iconGroups = state.styling.iconGroups || [];
-            const newGroup = { id: `icon-group-${Date.now()}`, name: `Group ${state.styling.iconGroups.length + 1}`, alignment: 'center', buttons: [] };
-            state.styling.iconGroups.push(newGroup);
+            state.iconGroups = state.iconGroups || [];
+            const newGroup = { id: `icon-group-${Date.now()}`, name: `Group ${state.iconGroups.length + 1}`, alignment: 'center', buttons: [] };
+            state.iconGroups.push(newGroup);
             activeGroupId = newGroup.id;
             activeButtonIndex = -1;
             renderActionsLayout(container); // Re-render all
@@ -1086,7 +1203,7 @@ export const CardConfigEditor = (() => {
         colButtons.className = 'col-buttons';
         colButtons.innerHTML = '<div class="list-header">Buttons</div><div class="buttons-list-content" style="flex-grow:1; overflow-y:auto;"></div><div class="add-btn-row"><button class="add-btn-icon" title="Add Action Button">+</button></div>';
         
-        const activeGroup = (state.styling.iconGroups || []).find(g => g.id === activeGroupId);
+        const activeGroup = (state.iconGroups || []).find(g => g.id === activeGroupId);
         
         if (activeGroup) {
             renderButtonsList(colButtons.querySelector('.buttons-list-content'), activeGroup);
@@ -1117,7 +1234,7 @@ export const CardConfigEditor = (() => {
     }
 
     function renderGroupsList(container) {
-        (state.styling.iconGroups || []).forEach(group => {
+        (state.iconGroups || []).forEach(group => {
             const el = document.createElement('div');
             el.className = `list-item ${group.id === activeGroupId ? 'active' : ''}`;
             el.innerHTML = `
@@ -1136,7 +1253,7 @@ export const CardConfigEditor = (() => {
             el.querySelector('.rm').onclick = (e) => {
                 e.stopPropagation();
                 if(confirm('Delete this group?')) {
-                    state.styling.iconGroups = state.styling.iconGroups.filter(g => g.id !== group.id);
+                    state.iconGroups = state.iconGroups.filter(g => g.id !== group.id);
                     if(activeGroupId === group.id) activeGroupId = null;
                     renderActionsLayout(_mainContainer.querySelector('#actions-master-detail'));
                     buildAvailableFieldsList(_mainContainer.querySelector("#cs-layout-fields"));
@@ -1169,11 +1286,39 @@ export const CardConfigEditor = (() => {
 
             el.innerHTML = `
                 <div class="button-preview-item">${previewHtml} <span style="font-size: 11px;">#${idx + 1}</span></div>
-                <div class="group-actions"><button type="button" class="group-action-btn rm">✕</button></div>
+                <div class="group-actions" style="display: flex; gap: 4px;">
+                    <button type="button" class="group-action-btn move-up" title="Move Up" ${idx === 0 ? 'disabled style="opacity:0.3"' : ''}>↑</button>
+                    <button type="button" class="group-action-btn move-down" title="Move Down" ${idx === group.buttons.length - 1 ? 'disabled style="opacity:0.3"' : ''}>↓</button>
+                    <button type="button" class="group-action-btn rm" title="Delete Icon">✕</button>
+                </div>
             `;
             el.onclick = () => {
                 activeButtonIndex = idx;
                 renderActionsLayout(_mainContainer.querySelector('#actions-master-detail'));
+            };
+            el.querySelector('.move-up').onclick = (e) => {
+                e.stopPropagation();
+                if (idx > 0) {
+                    const temp = group.buttons[idx];
+                    group.buttons[idx] = group.buttons[idx - 1];
+                    group.buttons[idx - 1] = temp;
+                    if (activeButtonIndex === idx) activeButtonIndex = idx - 1;
+                    else if (activeButtonIndex === idx - 1) activeButtonIndex = idx;
+                    renderActionsLayout(_mainContainer.querySelector('#actions-master-detail'));
+                    updateDebugJson();
+                }
+            };
+            el.querySelector('.move-down').onclick = (e) => {
+                e.stopPropagation();
+                if (idx < group.buttons.length - 1) {
+                    const temp = group.buttons[idx];
+                    group.buttons[idx] = group.buttons[idx + 1];
+                    group.buttons[idx + 1] = temp;
+                    if (activeButtonIndex === idx) activeButtonIndex = idx + 1;
+                    else if (activeButtonIndex === idx + 1) activeButtonIndex = idx;
+                    renderActionsLayout(_mainContainer.querySelector('#actions-master-detail'));
+                    updateDebugJson();
+                }
             };
             el.querySelector('.rm').onclick = (e) => {
                 e.stopPropagation();
@@ -1223,6 +1368,10 @@ export const CardConfigEditor = (() => {
                     <option value="openUrlFromColumn" ${btn.actionType === 'openUrlFromColumn' ? 'selected' : ''}>Open URL</option>
                     <option value="updateRecord" ${btn.actionType === 'updateRecord' ? 'selected' : ''}>Update Record</option>
                     <option value="triggerWidget" ${btn.actionType === 'triggerWidget' ? 'selected' : ''}>Trigger Widget</option>
+                    <option value="editRecord" ${btn.actionType === 'editRecord' ? 'selected' : ''}>Edit Card</option>
+                    <option value="deleteRecord" ${btn.actionType === 'deleteRecord' ? 'selected' : ''}>Delete Record</option>
+                    <option value="addSubRecord" ${btn.actionType === 'addSubRecord' ? 'selected' : ''}>Add Sub-record</option>
+                    <option value="showTooltipField" ${btn.actionType === 'showTooltipField' ? 'selected' : ''}>Display Field as Tooltip</option>
                 </select>
             </div>
             <div id="btn-action-specific"></div>
@@ -1300,6 +1449,14 @@ export const CardConfigEditor = (() => {
             <div class="form-group"><label>Vertical Offset (px):</label>
             <input type="number" id="popup-g-v-offset" value="${group.verticalOffset || 0}" style="width: 60px;"></div>
 
+            <div class="form-group">
+                <label>Visibility:</label>
+                <select id="popup-g-visibility">
+                    <option value="always" ${group.visibilityMode!=='hover'?'selected':''}>Always Visible</option>
+                    <option value="hover" ${group.visibilityMode==='hover'?'selected':''}>Show on Hover</option>
+                </select>
+            </div>
+
             <hr>
             <h4>Default Button Style</h4>
             <div class="form-group"><label>Shape:</label><select id="popup-g-shape">
@@ -1370,6 +1527,7 @@ export const CardConfigEditor = (() => {
             group.borderColor = _fieldStylePopup.querySelector('#popup-g-border').value;
             group.borderWidth = parseInt(_fieldStylePopup.querySelector('#popup-g-border-width').value, 10) || 0;
             group.verticalOffset = parseInt(_fieldStylePopup.querySelector('#popup-g-v-offset').value, 10) || 0;
+            group.visibilityMode = _fieldStylePopup.querySelector('#popup-g-visibility').value;
 
             // Clean up legacy prop
             delete group.transparentBackground;
@@ -1400,8 +1558,23 @@ export const CardConfigEditor = (() => {
         `).join('');
 
         _iconPickerPopup.innerHTML = `
+            <style>
+                .icon-grid { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+                .icon-option { 
+                    width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; 
+                    border: 1px solid #eee; border-radius: 4px; cursor: pointer; transition: all 0.2s;
+                    color: #333; /* Força cor escura para visibilidade */
+                }
+                .icon-option:hover { background: #e6f7ff; border-color: #1890ff; transform: scale(1.1); }
+                .icon-option svg { 
+                    width: 32px; height: 32px; 
+                    fill: currentColor; /* Força preenchimento */
+                    stroke: currentColor; /* Força contorno */
+                    stroke-width: 0.5px; /* Adiciona um contorno leve para ícones finos */
+                }
+            </style>
             <h4 style="margin-top: 0;">Select an Icon</h4>
-            <div class="icon-grid" style="display: flex; flex-wrap: wrap; gap: 10px;">
+            <div class="icon-grid">
                 ${iconsHtml}
             </div>
             <div style="text-align: right; margin-top: 15px;">
@@ -1520,6 +1693,41 @@ export const CardConfigEditor = (() => {
                     </select>
                 </div>
             `;
+        } else if (buttonConfig.actionType === 'deleteRecord') {
+            container.innerHTML = `
+                <div class="form-group">
+                    <label>Confirmation Message:</label>
+                    <input type="text" class="action-confirm-msg" data-prop="confirmationMessage" value="${buttonConfig.confirmationMessage || 'Are you sure you want to delete this record?'}" placeholder="Enter message">
+                </div>
+            `;
+        } else if (buttonConfig.actionType === 'addSubRecord') {
+            container.innerHTML = `
+                <div class="form-group">
+                    <label>Reference Field (Link to Parent):</label>
+                    <select class="action-sub-ref-field" data-prop="subRecordRefField">
+                        <option value="">-- Select Field --</option>
+                        ${allGristColumns.map(col => `<option value="${col}" ${buttonConfig.subRecordRefField === col ? 'selected' : ''}>${col}</option>`).join('')}
+                    </select>
+                    <p class="help-text">Choose the Ref or RefList column in the SUB-TABLE that points back to this card.</p>
+                </div>
+                <div class="form-group">
+                    <label>Sub-Table Configuration:</label>
+                    <select class="action-sub-config-id" data-prop="subRecordConfigId">
+                        <option value="">-- Use Default --</option>
+                        ${allConfigs.map(c => `<option value="${c.configId}" ${buttonConfig.subRecordConfigId === c.configId ? 'selected' : ''}>${c.configId} (${c.componentType})</option>`).join('')}
+                    </select>
+                </div>
+            `;
+        } else if (buttonConfig.actionType === 'showTooltipField') {
+            container.innerHTML = `
+                <div class="form-group">
+                    <label>Field to Display:</label>
+                    <select class="action-tooltip-field" data-prop="tooltipField">
+                        <option value="">-- Select Field --</option>
+                        ${allGristColumns.map(col => `<option value="${col}" ${buttonConfig.tooltipField === col ? 'selected' : ''}>${col}</option>`).join('')}
+                    </select>
+                </div>
+            `;
         }
     }
 
@@ -1597,6 +1805,24 @@ export const CardConfigEditor = (() => {
             `;
         }
 
+        // Generate widget options based on field type
+        const fieldType = fieldSchema ? fieldSchema.type : 'Text';
+        const isNumeric = ['Int', 'Float', 'Numeric'].includes(fieldType) || fieldType.startsWith('Numeric') || fieldType.startsWith('Int') || fieldType.startsWith('Float');
+        const isBoolean = fieldType === 'Bool';
+        const isChoice = fieldType === 'Choice' || fieldType === 'ChoiceList';
+        const isText = fieldType === 'Text' || isChoice;
+
+        let widgetOptionsHtml = '<option value="">Default (Text/Number)</option>';
+        if (isBoolean || isChoice) {
+            widgetOptionsHtml += '<option value="Toggle Switch">Toggle Switch</option>';
+        }
+        if (isNumeric) {
+            widgetOptionsHtml += '<option value="Progress Bar">Progress Bar</option>';
+        }
+        if (isText || isNumeric) {
+             widgetOptionsHtml += '<option value="Color Picker">Color Picker</option>';
+        }
+
         _fieldStylePopup.innerHTML = `
             <style>
                 .col-manager-card { display: flex; align-items: center; background: #f4f4f4; border: 1px solid #ddd; border-radius: 4px; padding: 5px; margin-bottom: 5px; cursor: grab; }
@@ -1617,9 +1843,7 @@ export const CardConfigEditor = (() => {
                 <div class="form-group">
                     <label>Widget Type:</label>
                     <select id="fs-widget-type">
-                        <option value="">Default (Text/Number)</option>
-                        <option value="Color Picker">Color Picker</option>
-                        <option value="Progress Bar">Progress Bar</option>
+                        ${widgetOptionsHtml}
                     </select>
                 </div>
                 <div id="fs-widget-options-container" style="display: none; border: 1px solid #eee; padding: 10px; border-radius: 4px; margin-bottom: 10px;">
@@ -1634,6 +1858,9 @@ export const CardConfigEditor = (() => {
                         <option value="">Inherit (Default)</option>
                         <option value="Arial">Arial</option>
                         <option value="Calibri">Calibri</option>
+                        <option value="Inter">Inter</option>
+                        <option value="Roboto">Roboto</option>
+                        <option value="Open Sans">Open Sans</option>
                         <option value="Times New Roman">Times New Roman</option>
                         <option value="Courier New">Courier New</option>
                     </select>
@@ -1650,11 +1877,15 @@ export const CardConfigEditor = (() => {
                 <div class="form-group">
                     <label><input type="checkbox" id="fs-data-bold"> Bold</label>
                     <label><input type="checkbox" id="fs-data-italic" style="margin-left: 15px;"> Italic</label>
+                    <label><input type="checkbox" id="fs-data-allcaps" style="margin-left: 15px;"> All Caps</label>
                 </div>
 
                 <hr>
                 <div><label>Card Rows: <input type="number" id="fs-card-rows" min="1" style="width:50px;"></label></div>
-                <div><label><input type="checkbox" id="fs-lv"> Show Label</label></div>
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <label><input type="checkbox" id="fs-lv"> Show Label</label>
+                    <label><input type="checkbox" id="fs-label-allcaps"> Label All Caps</label>
+                </div>
                 <div>Label Position: <label><input type="radio" name="fs-lp" value="above"> Above</label> <label><input type="radio" name="fs-lp" value="left"> Left</label> </div>
                 <div>Data Justification: <select id="fs-dj"><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select> </div>
                 <div><label><input type="checkbox" id="fs-hl"> Limit Height</label></div>
@@ -1696,7 +1927,35 @@ export const CardConfigEditor = (() => {
             widgetOptionsContainer.innerHTML = '';
             widgetOptionsContainer.style.display = widgetType ? 'block' : 'none';
 
-            if (widgetType === 'Progress Bar') {
+            if (widgetType === 'Toggle Switch') {
+                const onColor = tempWidgetOptions.onColor || '#198754';
+                const offColor = tempWidgetOptions.offColor || '#ced4da';
+                const showLabels = tempWidgetOptions.showLabels !== false;
+
+                widgetOptionsContainer.innerHTML = `
+                    <div class="form-group">
+                        <label>On Color:</label>
+                        <input type="color" id="fs-toggle-on-color" value="${onColor}">
+                    </div>
+                    <div class="form-group">
+                        <label>Off Color:</label>
+                        <input type="color" id="fs-toggle-off-color" value="${offColor}">
+                    </div>
+                    <div class="form-group">
+                        <label><input type="checkbox" id="fs-toggle-labels" ${showLabels ? 'checked' : ''}> Show Yes/No Labels</label>
+                    </div>
+                `;
+
+                widgetOptionsContainer.querySelector('#fs-toggle-on-color').addEventListener('change', e => {
+                    tempWidgetOptions.onColor = e.target.value;
+                });
+                widgetOptionsContainer.querySelector('#fs-toggle-off-color').addEventListener('change', e => {
+                    tempWidgetOptions.offColor = e.target.value;
+                });
+                widgetOptionsContainer.querySelector('#fs-toggle-labels').addEventListener('change', e => {
+                    tempWidgetOptions.showLabels = e.target.checked;
+                });
+            } else if (widgetType === 'Progress Bar') {
                 // Main Color Option
                 const mainColorDiv = document.createElement('div');
                 mainColorDiv.className = 'form-group';
@@ -1794,6 +2053,7 @@ export const CardConfigEditor = (() => {
         _fieldStylePopup.querySelector('#fs-data-size').value = ds.size ? parseInt(ds.size, 10) : "";
         _fieldStylePopup.querySelector('#fs-data-bold').checked = ds.bold === true;
         _fieldStylePopup.querySelector('#fs-data-italic').checked = ds.italic === true;
+        _fieldStylePopup.querySelector('#fs-data-allcaps').checked = ds.allCaps === true;
         
         const colorInput = _fieldStylePopup.querySelector('#fs-data-color');
         const colorDefaultCheckbox = _fieldStylePopup.querySelector('#fs-data-color-default');
@@ -1813,6 +2073,7 @@ export const CardConfigEditor = (() => {
         });
 
         _fieldStylePopup.querySelector('#fs-lv').checked = s.labelVisible;
+        _fieldStylePopup.querySelector('#fs-label-allcaps').checked = s.labelAllCaps === true;
         _fieldStylePopup.querySelector(`input[name='fs-lp'][value='${s.labelPosition}']`).checked = true;
         _fieldStylePopup.querySelector('#fs-dj').value = s.dataJustify;
         _fieldStylePopup.querySelector('#fs-hl').checked = s.heightLimited;
@@ -1864,6 +2125,7 @@ export const CardConfigEditor = (() => {
             const newStyle = {
                 useGristStyle: _fieldStylePopup.querySelector('#fs-use-grist-style').checked,
                 labelVisible: _fieldStylePopup.querySelector('#fs-lv').checked,
+                labelAllCaps: _fieldStylePopup.querySelector('#fs-label-allcaps').checked,
                 labelPosition: _fieldStylePopup.querySelector('input[name="fs-lp"]:checked').value,
                 dataJustify: _fieldStylePopup.querySelector('#fs-dj').value,
                 heightLimited: _fieldStylePopup.querySelector('#fs-hl').checked,
@@ -1876,7 +2138,8 @@ export const CardConfigEditor = (() => {
                     size: _fieldStylePopup.querySelector('#fs-data-size').value ? `${_fieldStylePopup.querySelector('#fs-data-size').value}px` : null,
                     color: _fieldStylePopup.querySelector('#fs-data-color-default').checked ? null : _fieldStylePopup.querySelector('#fs-data-color').value,
                     bold: _fieldStylePopup.querySelector('#fs-data-bold').checked,
-                    italic: _fieldStylePopup.querySelector('#fs-data-italic').checked
+                    italic: _fieldStylePopup.querySelector('#fs-data-italic').checked,
+                    allCaps: _fieldStylePopup.querySelector('#fs-data-allcaps').checked
                 }
             };
             fieldDef.style = { ...DEFAULT_FIELD_STYLE, ...newStyle };

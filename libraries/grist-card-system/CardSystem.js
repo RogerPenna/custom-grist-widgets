@@ -324,7 +324,8 @@ export const CardSystem = (() => {
 
       layout.forEach(f => {
         if (f.isIconGroup) {
-          const groupConfig = (styling.iconGroups || []).find(g => g.id === f.colId);
+          const actions = currentOptions.actions || {};
+          const groupConfig = (currentOptions.iconGroups || actions.iconGroups || styling.iconGroups || []).find(g => g.id === f.colId);
           if (!groupConfig || !groupConfig.buttons || groupConfig.buttons.length === 0) return;
 
           const groupContainer = document.createElement("div");
@@ -341,6 +342,22 @@ export const CardSystem = (() => {
               // Ensure it can overlap if needed, though grid cells might clip. 
               // z-index might be needed if it goes outside.
               groupContainer.style.zIndex = "10"; 
+          }
+
+          // Visibility Logic
+          const isHoverOnly = groupConfig.visibilityMode === 'hover';
+          if (isHoverOnly) {
+              groupContainer.style.opacity = "0";
+              groupContainer.style.transition = "opacity 0.2s ease-in-out";
+              groupContainer.style.pointerEvents = "none";
+              cardEl.addEventListener('mouseenter', () => {
+                  groupContainer.style.opacity = "1";
+                  groupContainer.style.pointerEvents = "auto";
+              });
+              cardEl.addEventListener('mouseleave', () => {
+                  groupContainer.style.opacity = "0";
+                  groupContainer.style.pointerEvents = "none";
+              });
           }
 
           let justifyContent = "center";
@@ -383,12 +400,21 @@ export const CardSystem = (() => {
                 actionButton.textContent = (buttonConfig.text || 'Tx').substring(0, 3); // Limit length
                 actionButton.style.fontFamily = 'sans-serif';
                 actionButton.style.fontWeight = 'bold';
-                actionButton.style.fontSize = '22px'; // Increased from 20px
+                actionButton.style.fontSize = '20px';
             } else {
                 actionButton.innerHTML = getIcon(buttonConfig.icon || 'icon-link');
             }
 
-            actionButton.title = buttonConfig.tooltip || '';
+            // Tooltip Action Special Handling
+            if (buttonConfig.actionType === 'showTooltipField' && buttonConfig.tooltipField) {
+                const val = record[buttonConfig.tooltipField];
+                if (val !== undefined && val !== null) {
+                    actionButton.title = `${buttonConfig.tooltip || ''}\n\n${String(val)}`;
+                }
+            } else {
+                actionButton.title = buttonConfig.tooltip || '';
+            }
+
             const iconSize = styling.iconSize || 1.0;
             actionButton.style.width = `${32 * iconSize}px`;
             actionButton.style.height = `${32 * iconSize}px`;
@@ -752,3 +778,4 @@ export const CardSystem = (() => {
 
   return { renderCards, filterRecords };
 })();
+

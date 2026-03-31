@@ -265,6 +265,43 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
+    // Lógica para ações de navegação (botões de ação secundária)
+    subscribe('grf-navigation-action-triggered', async (eventData) => {
+        console.log("[CardViewer] Ação de navegação disparada:", eventData);
+        await handleNavigationAction(eventData.config, eventData.sourceRecord, eventData.tableId);
+    });
+
+    // Lógica para disparar widgets (drill-down ou atualização de outros componentes)
+    subscribe('grf-trigger-widget', async (data) => {
+        console.log("[CardViewer] Trigger Widget disparado:", data);
+        try {
+            // Se for um drill-down para CardSystem, abrimos na gaveta com a config específica
+            if (data.componentType === 'CardSystem' || data.componentType === 'Card System' || !data.componentType) {
+                if (window.GristDrawer) {
+                    const drawerConfig = await tableLens.fetchConfig(data.configId);
+                    if (!drawerConfig) {
+                        console.error(`Configuração ${data.configId} não encontrada.`);
+                        return;
+                    }
+
+                    // Preparamos as opções para a gaveta
+                    const drawerOptions = {
+                        ...drawerConfig,
+                        tableLens: tableLens,
+                        // Passamos o filtro para que o CardSystem interno saiba o que mostrar
+                        filterValue: data.filterValue,
+                        filterTargetColumn: data.filterTargetColumn,
+                        isRefList: true // Geralmente triggerWidget é usado para listas relacionadas
+                    };
+
+                    await window.GristDrawer.open(data.sourceRecord.gristHelper_tableId || currentConfig.tableId, data.sourceRecord.id, drawerOptions);
+                }
+            }
+        } catch (e) {
+            console.error("Erro ao processar triggerWidget:", e);
+        }
+    });
+
     subscribe('grf-card-clicked', async (data) => {
         try {
             console.log("[CardViewer] Card clicado:", data);
@@ -300,4 +337,78 @@ document.addEventListener('DOMContentLoaded', async () => {
             await initializeAndUpdate();
         }
     });
+
+    /**
+     * Executa ações de navegação ou atualização de dados.
+     */
+    async function handleNavigationAction(config, record, tableId) {
+        try {
+            if (config.actionType === 'navigateToGristPage') {
+                const rowId = record[config.sourceValueColumn] || record.id;
+                console.log(`[CardViewer] Navegando para página ${config.targetPageId}, rowId: ${rowId}`);
+                await window.grist.setCursor({ tableId: config.targetPageId, rowId: rowId });
+            } 
+            else if (config.actionType === 'openUrlFromColumn') {
+                const url = record[config.urlColumn];
+                if (url) {
+                    console.log(`[CardViewer] Abrindo URL: ${url}`);
+                    window.open(url, '_blank');
+                } else {
+                    console.warn(`[CardViewer] Coluna de URL '${config.urlColumn}' está vazia.`);
+                }
+            } 
+            else if (config.actionType === 'updateRecord') {
+                const data = { [config.updateField]: config.updateValue };
+                console.log(`[CardViewer] Atualizando record ${record.id} na tabela ${tableId}:`, data);
+                await window.grist.docApi.applyUserActions([
+                    ['UpdateRecord', tableId, record.id, data]
+                ]);
+            }
+            else if (config.actionType === 'deleteRecord') {
+                const msg = config.confirmationMessage || 'Are you sure you want to delete this record?';
+                if (confirm(msg)) {
+                    console.log(`[CardViewer] Deletando record ${record.id} na tabela ${tableId}`);
+                    await window.grist.docApi.applyUserActions([
+                        ['RemoveRecord', tableId, record.id]
+                    ]);
+                }
+            }
+            else if (config.actionType === 'editRecord') {
+                if (window.GristDrawer) {
+                    console.log(`[CardViewer] Abrindo Gaveta para editar record ${record.id}`);
+                    window.GristDrawer.open(tableId, record.id, { 
+                        tableLens: tableLens,
+                        ...currentConfig // Pass existing config for the fields
+                    });
+                }
+            }
+            else if (config.actionType === 'addSubRecord') {
+                if (window.GristDrawer && config.subRecordRefField) {
+                    console.log(`[CardViewer] Adicionando sub-registro para record ${record.id}`);
+                    
+                    // We need to find the table ID of the sub-record. 
+                    // This is usually stored in the column schema of the subRecordRefField.
+                    const subTableId = await tableLens.getReferencedTableId(config.subRecordRefField);
+                    if (!subTableId) {
+                        console.error(`Não foi possível determinar a tabela para o campo ${config.subRecordRefField}`);
+                        return;
+                    }
+
+                    let addConfig = {};
+                    if (config.subRecordConfigId) {
+                        addConfig = await tableLens.fetchConfig(config.subRecordConfigId);
+                    }
+
+                    const initialData = { [config.subRecordRefField]: record.id };
+                    window.GristDrawer.open(subTableId, 'new', { 
+                        ...addConfig,
+                        tableLens: tableLens,
+                        initialData: initialData
+                    });
+                }
+            }
+        } catch (e) {
+            console.error("[CardViewer] Erro ao executar handleNavigationAction:", e);
+        }
+    }
 });

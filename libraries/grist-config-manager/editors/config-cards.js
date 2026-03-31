@@ -75,7 +75,8 @@ export const CardConfigEditor = (() => {
             tableId: tableId,
             showAddButtonTop: actions.showAddButtonTop || false,
             showAddButtonBottom: actions.showAddButtonBottom || false,
-            addRecordConfigId: actions.addRecordConfigId || null
+            addRecordConfigId: actions.addRecordConfigId || null,
+            iconGroups: actions.iconGroups || options.iconGroups || []
         };
         state.layout.forEach(field => { if (!field.style) field.style = { ...DEFAULT_FIELD_STYLE }; });
 
@@ -150,7 +151,7 @@ export const CardConfigEditor = (() => {
                 size: sidePanelTab.querySelector("#cs-sp-size").value, 
                 drawerConfigId: sidePanelTab.querySelector("#cs-sp-drawer-config").value || null 
             },
-            iconGroups: state.styling.iconGroups || [],
+            iconGroups: state.iconGroups || [],
             showAddButtonTop: sidePanelTab.querySelector("#cs-add-btn-top").checked,
             showAddButtonBottom: sidePanelTab.querySelector("#cs-add-btn-bottom").checked,
             addRecordConfigId: sidePanelTab.querySelector("#cs-add-btn-config").value || null
@@ -731,7 +732,7 @@ export const CardConfigEditor = (() => {
         const availableCols = state.fields.filter(f => !usedColIds.includes(f.colId));
 
         // Also include Icon Groups that are not in the layout
-        const iconGroups = state.styling.iconGroups || [];
+        const iconGroups = state.iconGroups || [];
         const availableIconGroups = iconGroups.filter(g => !usedColIds.includes(g.id));
 
         if (availableCols.length === 0 && availableIconGroups.length === 0) {
@@ -984,7 +985,7 @@ export const CardConfigEditor = (() => {
         let fieldSchema;
 
         if (fieldDef.isIconGroup) {
-            const group = (state.styling.iconGroups || []).find(g => g.id === fieldDef.colId);
+            const group = (state.iconGroups || []).find(g => g.id === fieldDef.colId);
             fieldLabel = `[Group] ${group ? group.name : fieldDef.colId}`;
         } else {
             fieldSchema = state.fields.find(field => field.colId === fieldDef.colId);
@@ -1186,9 +1187,9 @@ export const CardConfigEditor = (() => {
         colGroups.innerHTML = '<div class="list-header">Icon Groups</div><div class="groups-list-content" style="flex-grow:1; overflow-y:auto;"></div><div class="add-btn-row"><button class="add-btn-icon" title="Add Icon Group">+</button></div>';
         renderGroupsList(colGroups.querySelector('.groups-list-content'));
         colGroups.querySelector('.add-btn-icon').onclick = () => {
-            state.styling.iconGroups = state.styling.iconGroups || [];
-            const newGroup = { id: `icon-group-${Date.now()}`, name: `Group ${state.styling.iconGroups.length + 1}`, alignment: 'center', buttons: [] };
-            state.styling.iconGroups.push(newGroup);
+            state.iconGroups = state.iconGroups || [];
+            const newGroup = { id: `icon-group-${Date.now()}`, name: `Group ${state.iconGroups.length + 1}`, alignment: 'center', buttons: [] };
+            state.iconGroups.push(newGroup);
             activeGroupId = newGroup.id;
             activeButtonIndex = -1;
             renderActionsLayout(container); // Re-render all
@@ -1202,7 +1203,7 @@ export const CardConfigEditor = (() => {
         colButtons.className = 'col-buttons';
         colButtons.innerHTML = '<div class="list-header">Buttons</div><div class="buttons-list-content" style="flex-grow:1; overflow-y:auto;"></div><div class="add-btn-row"><button class="add-btn-icon" title="Add Action Button">+</button></div>';
         
-        const activeGroup = (state.styling.iconGroups || []).find(g => g.id === activeGroupId);
+        const activeGroup = (state.iconGroups || []).find(g => g.id === activeGroupId);
         
         if (activeGroup) {
             renderButtonsList(colButtons.querySelector('.buttons-list-content'), activeGroup);
@@ -1233,7 +1234,7 @@ export const CardConfigEditor = (() => {
     }
 
     function renderGroupsList(container) {
-        (state.styling.iconGroups || []).forEach(group => {
+        (state.iconGroups || []).forEach(group => {
             const el = document.createElement('div');
             el.className = `list-item ${group.id === activeGroupId ? 'active' : ''}`;
             el.innerHTML = `
@@ -1252,7 +1253,7 @@ export const CardConfigEditor = (() => {
             el.querySelector('.rm').onclick = (e) => {
                 e.stopPropagation();
                 if(confirm('Delete this group?')) {
-                    state.styling.iconGroups = state.styling.iconGroups.filter(g => g.id !== group.id);
+                    state.iconGroups = state.iconGroups.filter(g => g.id !== group.id);
                     if(activeGroupId === group.id) activeGroupId = null;
                     renderActionsLayout(_mainContainer.querySelector('#actions-master-detail'));
                     buildAvailableFieldsList(_mainContainer.querySelector("#cs-layout-fields"));
@@ -1285,11 +1286,39 @@ export const CardConfigEditor = (() => {
 
             el.innerHTML = `
                 <div class="button-preview-item">${previewHtml} <span style="font-size: 11px;">#${idx + 1}</span></div>
-                <div class="group-actions"><button type="button" class="group-action-btn rm">✕</button></div>
+                <div class="group-actions" style="display: flex; gap: 4px;">
+                    <button type="button" class="group-action-btn move-up" title="Move Up" ${idx === 0 ? 'disabled style="opacity:0.3"' : ''}>↑</button>
+                    <button type="button" class="group-action-btn move-down" title="Move Down" ${idx === group.buttons.length - 1 ? 'disabled style="opacity:0.3"' : ''}>↓</button>
+                    <button type="button" class="group-action-btn rm" title="Delete Icon">✕</button>
+                </div>
             `;
             el.onclick = () => {
                 activeButtonIndex = idx;
                 renderActionsLayout(_mainContainer.querySelector('#actions-master-detail'));
+            };
+            el.querySelector('.move-up').onclick = (e) => {
+                e.stopPropagation();
+                if (idx > 0) {
+                    const temp = group.buttons[idx];
+                    group.buttons[idx] = group.buttons[idx - 1];
+                    group.buttons[idx - 1] = temp;
+                    if (activeButtonIndex === idx) activeButtonIndex = idx - 1;
+                    else if (activeButtonIndex === idx - 1) activeButtonIndex = idx;
+                    renderActionsLayout(_mainContainer.querySelector('#actions-master-detail'));
+                    updateDebugJson();
+                }
+            };
+            el.querySelector('.move-down').onclick = (e) => {
+                e.stopPropagation();
+                if (idx < group.buttons.length - 1) {
+                    const temp = group.buttons[idx];
+                    group.buttons[idx] = group.buttons[idx + 1];
+                    group.buttons[idx + 1] = temp;
+                    if (activeButtonIndex === idx) activeButtonIndex = idx + 1;
+                    else if (activeButtonIndex === idx + 1) activeButtonIndex = idx;
+                    renderActionsLayout(_mainContainer.querySelector('#actions-master-detail'));
+                    updateDebugJson();
+                }
             };
             el.querySelector('.rm').onclick = (e) => {
                 e.stopPropagation();
@@ -1339,6 +1368,10 @@ export const CardConfigEditor = (() => {
                     <option value="openUrlFromColumn" ${btn.actionType === 'openUrlFromColumn' ? 'selected' : ''}>Open URL</option>
                     <option value="updateRecord" ${btn.actionType === 'updateRecord' ? 'selected' : ''}>Update Record</option>
                     <option value="triggerWidget" ${btn.actionType === 'triggerWidget' ? 'selected' : ''}>Trigger Widget</option>
+                    <option value="editRecord" ${btn.actionType === 'editRecord' ? 'selected' : ''}>Edit Card</option>
+                    <option value="deleteRecord" ${btn.actionType === 'deleteRecord' ? 'selected' : ''}>Delete Record</option>
+                    <option value="addSubRecord" ${btn.actionType === 'addSubRecord' ? 'selected' : ''}>Add Sub-record</option>
+                    <option value="showTooltipField" ${btn.actionType === 'showTooltipField' ? 'selected' : ''}>Display Field as Tooltip</option>
                 </select>
             </div>
             <div id="btn-action-specific"></div>
@@ -1416,6 +1449,14 @@ export const CardConfigEditor = (() => {
             <div class="form-group"><label>Vertical Offset (px):</label>
             <input type="number" id="popup-g-v-offset" value="${group.verticalOffset || 0}" style="width: 60px;"></div>
 
+            <div class="form-group">
+                <label>Visibility:</label>
+                <select id="popup-g-visibility">
+                    <option value="always" ${group.visibilityMode!=='hover'?'selected':''}>Always Visible</option>
+                    <option value="hover" ${group.visibilityMode==='hover'?'selected':''}>Show on Hover</option>
+                </select>
+            </div>
+
             <hr>
             <h4>Default Button Style</h4>
             <div class="form-group"><label>Shape:</label><select id="popup-g-shape">
@@ -1486,6 +1527,7 @@ export const CardConfigEditor = (() => {
             group.borderColor = _fieldStylePopup.querySelector('#popup-g-border').value;
             group.borderWidth = parseInt(_fieldStylePopup.querySelector('#popup-g-border-width').value, 10) || 0;
             group.verticalOffset = parseInt(_fieldStylePopup.querySelector('#popup-g-v-offset').value, 10) || 0;
+            group.visibilityMode = _fieldStylePopup.querySelector('#popup-g-visibility').value;
 
             // Clean up legacy prop
             delete group.transparentBackground;
@@ -1516,9 +1558,31 @@ export const CardConfigEditor = (() => {
         `).join('');
 
         _iconPickerPopup.innerHTML = `
+            <style>
+                .icon-grid { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+                .icon-option { 
+                    width: 80px; height: 80px; display: flex; flex-direction: column; align-items: center; justify-content: center; 
+                    border: 1px solid #eee; border-radius: 4px; cursor: pointer; transition: all 0.2s;
+                    color: #000; padding: 5px; overflow: hidden;
+                }
+                .icon-option:hover { background: #e6f7ff; border-color: #1890ff; transform: scale(1.05); }
+                .icon-option svg { 
+                    width: 32px; height: 32px; flex-shrink: 0;
+                    fill: currentColor; 
+                }
+                .icon-id-label { 
+                    font-size: 9px; margin-top: 5px; text-align: center; word-break: break-all; 
+                    color: #666; max-height: 24px; overflow: hidden;
+                }
+            </style>
             <h4 style="margin-top: 0;">Select an Icon</h4>
-            <div class="icon-grid" style="display: flex; flex-wrap: wrap; gap: 10px;">
-                ${iconsHtml}
+            <div class="icon-grid">
+                ${AVAILABLE_ICONS.map(id => `
+                    <div class="icon-option" data-id="${id}" title="${id}">
+                        <svg><use href="#${id}"></use></svg>
+                        <div class="icon-id-label">${id.replace('icon-', '')}</div>
+                    </div>
+                `).join('')}
             </div>
             <div style="text-align: right; margin-top: 15px;">
                 <button id="icon-picker-cancel" type="button" class="btn btn-secondary">Cancel</button>
@@ -1633,6 +1697,41 @@ export const CardConfigEditor = (() => {
                     <select class="action-source-reflist-column" data-prop="sourceRefListColumn">
                         <option value="">-- Select a RefList Column --</option>
                         ${(state.fields || []).filter(f => f.type.startsWith('RefList:')).map(col => `<option value="${col.colId}" ${buttonConfig.sourceRefListColumn === col.colId ? 'selected' : ''}>${col.colId}</option>`).join('')}
+                    </select>
+                </div>
+            `;
+        } else if (buttonConfig.actionType === 'deleteRecord') {
+            container.innerHTML = `
+                <div class="form-group">
+                    <label>Confirmation Message:</label>
+                    <input type="text" class="action-confirm-msg" data-prop="confirmationMessage" value="${buttonConfig.confirmationMessage || 'Are you sure you want to delete this record?'}" placeholder="Enter message">
+                </div>
+            `;
+        } else if (buttonConfig.actionType === 'addSubRecord') {
+            container.innerHTML = `
+                <div class="form-group">
+                    <label>Reference Field (Link to Parent):</label>
+                    <select class="action-sub-ref-field" data-prop="subRecordRefField">
+                        <option value="">-- Select Field --</option>
+                        ${allGristColumns.map(col => `<option value="${col}" ${buttonConfig.subRecordRefField === col ? 'selected' : ''}>${col}</option>`).join('')}
+                    </select>
+                    <p class="help-text">Choose the Ref or RefList column in the SUB-TABLE that points back to this card.</p>
+                </div>
+                <div class="form-group">
+                    <label>Sub-Table Configuration:</label>
+                    <select class="action-sub-config-id" data-prop="subRecordConfigId">
+                        <option value="">-- Use Default --</option>
+                        ${allConfigs.map(c => `<option value="${c.configId}" ${buttonConfig.subRecordConfigId === c.configId ? 'selected' : ''}>${c.configId} (${c.componentType})</option>`).join('')}
+                    </select>
+                </div>
+            `;
+        } else if (buttonConfig.actionType === 'showTooltipField') {
+            container.innerHTML = `
+                <div class="form-group">
+                    <label>Field to Display:</label>
+                    <select class="action-tooltip-field" data-prop="tooltipField">
+                        <option value="">-- Select Field --</option>
+                        ${allGristColumns.map(col => `<option value="${col}" ${buttonConfig.tooltipField === col ? 'selected' : ''}>${col}</option>`).join('')}
                     </select>
                 </div>
             `;
