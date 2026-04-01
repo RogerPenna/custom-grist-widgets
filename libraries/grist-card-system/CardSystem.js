@@ -749,7 +749,8 @@ export const CardSystem = (() => {
     publish('grf-card-clicked', {
       drawerConfigId: drawerConfigId, // Pode ser null para gaveta padrão
       recordId: record.id,
-      tableId: tableId
+      tableId: tableId,
+      cardConfig: options // Passamos a config do card que disparou o clique
     });
   }
 
