@@ -133,7 +133,26 @@ async function _renderDrawerContent() {
     tabsContainer.innerHTML = ''; 
     panelsContainer.innerHTML = '<div style="padding:20px; color:#666;">Carregando...</div>';
 
-    const { tabs = null, styleOverrides = {}, widgetOverrides = {}, lockedFields = [] } = currentDrawerOptions;
+    // O objeto 'currentDrawerOptions' agora vem do GristTableLens.parseConfigRecord, 
+    // que já mesclou mapping, styling e actions.
+    const config = currentDrawerOptions || {};
+    console.log("[Drawer] Configuração recebida:", config);
+    
+    // Suporte para tripartição: mapping contém tabs e definições de campos
+    const tabs = config.tabs || config.mapping?.tabs || null;
+    const styleOverrides = config.styleOverrides || config.mapping?.styleOverrides || {};
+    const widgetOverrides = config.widgetOverrides || config.mapping?.widgetOverrides || {};
+    const fieldOptions = config.fieldOptions || config.mapping?.fieldOptions || {};
+    const hiddenFields = config.hiddenFields || config.mapping?.hiddenFields || [];
+    const lockedFields = config.lockedFields || config.mapping?.lockedFields || [];
+
+    console.log("[Drawer] Diagnóstico de Mapeamento:", { 
+        hasTabs: !!tabs, 
+        numTabs: tabs?.length || 0,
+        hiddenFieldsCount: hiddenFields.length,
+        hiddenFields: hiddenFields,
+        hasWidgetOverrides: Object.keys(widgetOverrides).length > 0
+    });
 
     try {
         logPerf("Iniciando Busca de Schema");
@@ -150,9 +169,15 @@ async function _renderDrawerContent() {
         }
 
         panelsContainer.innerHTML = '';
+        
+        // Se não houver abas configuradas, mostramos todos os campos não técnicos e NÃO OCULTOS
         const finalTabs = (tabs && tabs.length > 0) ? tabs : [{ 
             title: "Principal", 
-            fields: Object.keys(schema).filter(id => !id.startsWith('gristHelper_') && id !== 'id' && schema[id].type !== 'ManualSortPos') 
+            fields: Object.keys(schema).filter(id => {
+                const isTechnical = id.startsWith('gristHelper_') || id === 'id' || schema[id].type === 'ManualSortPos';
+                const isHidden = hiddenFields.includes(id);
+                return !isTechnical && !isHidden;
+            })
         }];
 
         finalTabs.forEach((tabConfig, index) => {
@@ -173,6 +198,9 @@ async function _renderDrawerContent() {
             tabConfig.fields.forEach(fieldId => {
                 const col = schema[fieldId];
                 if (!col) return;
+                
+                // Pular se o campo estiver na lista de ocultos (Workflow ou Config)
+                if (hiddenFields.includes(fieldId)) return;
 
                 const row = document.createElement('div');
                 row.className = 'drawer-field-row';
@@ -186,11 +214,15 @@ async function _renderDrawerContent() {
                 `;
                 panelEl.appendChild(row);
 
-                const widgetCfg = widgetOverrides[fieldId];
-                const fieldOptions = {
-                    colorPicker: widgetCfg === 'ColorPicker' || widgetCfg?.widget === 'ColorPicker',
-                    colorPickerOptions: widgetCfg?.options || {},
-                    progressBar: widgetCfg === 'ProgressBar' || widgetCfg?.widget === 'ProgressBar'
+                // Normalização de opções para o renderer
+                const widgetCfg = widgetOverrides[fieldId] || {};
+                const fOpts = fieldOptions[fieldId] || {};
+                
+                // Mapeamos para o formato que o grist-field-renderer espera
+                const mergedFieldConfig = {
+                    widget: widgetCfg.widget || (fOpts.colorPicker ? 'Color Picker' : (fOpts.progressBar ? 'Progress Bar' : null)),
+                    widgetOptions: widgetCfg.options || fOpts,
+                    styleOverride: styleOverrides[fieldId] || {}
                 };
 
                 renderField({
@@ -200,8 +232,7 @@ async function _renderDrawerContent() {
                     isEditing: isEditing,
                     isLocked: lockedFields.includes(fieldId),
                     tableLens: tableLens,
-                    styleOverride: styleOverrides[fieldId],
-                    fieldOptions: fieldOptions
+                    fieldStyle: mergedFieldConfig // Passamos como fieldStyle (novo padrão)
                 });
             });
         });

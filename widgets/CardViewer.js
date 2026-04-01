@@ -368,11 +368,21 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             else if (config.actionType === 'editRecord') {
                 if (window.GristDrawer) {
-                    console.log(`[CardViewer] Abrindo Gaveta para editar record ${record.id}`);
-                    window.GristDrawer.open(tableId, record.id, { 
-                        tableLens: tableLens,
-                        ...currentConfig
-                    });
+                    console.log(`[CardViewer] Edit Record (Drawer) acionado para record ${record.id}`);
+                    
+                    // Prioridade: Configuração específica do drawer definida no widget
+                    const drawerConfigId = currentConfig?.actions?.sidePanel?.drawerConfigId || currentConfig?.sidePanel?.drawerConfigId;
+                    
+                    (async () => {
+                        let drawerOptions = { ...currentConfig, tableLens: tableLens };
+                        if (drawerConfigId) {
+                            console.log(`[CardViewer] Buscando configuração específica do drawer: ${drawerConfigId}`);
+                            const fetched = await tableLens.fetchConfig(drawerConfigId);
+                            if (fetched) drawerOptions = { ...fetched, tableLens: tableLens };
+                        }
+                        
+                        window.GristDrawer.open(tableId, record.id, drawerOptions);
+                    })();
                 } else {
                     console.error("[CardViewer] window.GristDrawer não encontrado para editRecord");
                 }

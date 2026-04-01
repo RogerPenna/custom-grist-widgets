@@ -76,18 +76,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Listen for card clicks from CardSystem
         subscribe('grf-card-clicked', async (data) => {
             console.log("BSC Widget: Card clicked event received.", data);
-            if (data && data.drawerConfigId) {
+            if (data) {
                 try {
-                    // Fetch the Drawer Configuration first
-                    const drawerConfigRecord = await tableLens.findRecord('Grf_config', { configId: data.drawerConfigId });
-                    if (!drawerConfigRecord) {
-                        console.error(`BSC Widget: Drawer config '${data.drawerConfigId}' not found.`);
-                        return;
-                    }
-                    const drawerConfig = JSON.parse(drawerConfigRecord.configJson);
+                    // Se o evento trouxe um drawerConfigId específico, usamos. 
+                    // Se não, tentamos o padrão do widget.
+                    const drawerConfigId = data.drawerConfigId || widgetConfig?.actions?.sidePanel?.drawerConfigId || widgetConfig?.sidePanel?.drawerConfigId;
                     
-                    // Call openDrawer with correct signature: (tableId, recordId, options)
-                    openDrawer(data.tableId, data.recordId, drawerConfig);
+                    let drawerOptions = { ...widgetConfig, tableLens: tableLens };
+                    if (drawerConfigId) {
+                        console.log(`BSC Widget: Fetching specialized drawer config: ${drawerConfigId}`);
+                        const specializedConfig = await tableLens.fetchConfig(drawerConfigId);
+                        if (specializedConfig) {
+                            drawerOptions = { ...specializedConfig, tableLens: tableLens };
+                        }
+                    }
+                    
+                    window.GristDrawer.open(data.tableId, data.recordId, drawerOptions);
                 } catch (e) {
                     console.error("BSC Widget: Error opening drawer:", e);
                 }

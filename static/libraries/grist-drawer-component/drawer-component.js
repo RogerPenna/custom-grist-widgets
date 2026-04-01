@@ -5,518 +5,361 @@ import { openModal } from '../grist-modal-component/modal-component.js';
 import { renderField } from '../grist-field-renderer/grist-field-renderer.js';
 import { publish } from '../grist-event-bus/grist-event-bus.js';
 
-const tableLens = new GristTableLens(grist);
-const dataWriter = new GristDataWriter(grist);
-
-let drawerPanel, drawerOverlay, drawerHeader, drawerTitle;
+let drawerPanel, drawerOverlay;
 let currentTableId, currentRecordId;
 let currentSchema = {};
 let currentDrawerOptions = {};
 let isEditing = false;
 let currentRecord = null;
+let isOpen = false;
 
-// =================================================================================
-// --- INÍCIO DA SEÇÃO DE FUNÇÕES AUXILIARES (DEFINIDAS NO TOPO) ---
-// =================================================================================
+// Motores de dados
+let tableLens, dataWriter;
+
+// --- SISTEMA DE DIAGNÓSTICO DE PERFORMANCE ---
+let perfStartTime = 0;
+function logPerf(stage) {
+    const elapsed = (performance.now() - perfStartTime).toFixed(0);
+    console.log(`[Drawer Perf] ${stage} em ${elapsed}ms`);
+    const statusEl = document.getElementById('grf-drawer-perf-status');
+    if (statusEl) statusEl.textContent = `Progresso: ${stage} (${elapsed}ms)`;
+}
+
+function _ensureTools(options = {}) {
+    if (options.tableLens) {
+        tableLens = options.tableLens;
+    } else if (!tableLens) {
+        try { tableLens = new GristTableLens(window.grist); } catch (e) { console.warn("[Drawer] Falha ao criar TableLens", e); }
+    }
+    if (options.dataWriter) {
+        dataWriter = options.dataWriter;
+    } else if (!dataWriter) {
+        try { dataWriter = new GristDataWriter(window.grist); } catch (e) { console.warn("[Drawer] Falha ao criar DataWriter", e); }
+    }
+}
+
+// --- INTERFACE ---
+
 function _switchToTab(tabElement, panelElement) {
-    drawerPanel.querySelectorAll('.drawer-tab.is-active').forEach(t => t.classList.remove('is-active'));
-    drawerPanel.querySelectorAll('.drawer-tab-content.is-active').forEach(p => p.classList.remove('is-active'));
+    if (!drawerPanel) return;
+    drawerPanel.querySelectorAll('.drawer-tab').forEach(t => {
+        t.classList.remove('is-active');
+        t.style.color = '#64748b';
+        t.style.borderBottomColor = 'transparent';
+    });
+    drawerPanel.querySelectorAll('.drawer-tab-content').forEach(p => p.style.display = 'none');
+    
     tabElement.classList.add('is-active');
-    panelElement.classList.add('is-active');
+    tabElement.style.color = '#3b82f6';
+    tabElement.style.borderBottomColor = '#3b82f6';
+    panelElement.style.display = 'block';
 }
 
 function _updateButtonVisibility() {
-    drawerPanel.querySelector('#drawer-edit-btn').style.display = isEditing ? 'none' : 'inline-block';
-    drawerPanel.querySelector('#drawer-delete-btn').style.display = isEditing ? 'none' : 'inline-block';
+    if (!drawerPanel) return;
+    const editBtn = drawerPanel.querySelector('#drawer-edit-btn');
+    const deleteBtn = drawerPanel.querySelector('#drawer-delete-btn');
     const saveBtn = drawerPanel.querySelector('#drawer-save-btn');
-    saveBtn.style.display = isEditing ? 'inline-block' : 'none';
-    if (!isEditing) saveBtn.disabled = false;
-    drawerPanel.querySelector('#drawer-cancel-btn').style.display = isEditing ? 'inline-block' : 'none';
-}
+    const cancelBtn = drawerPanel.querySelector('#drawer-cancel-btn');
 
-function _handleEdit() {
-    isEditing = true;
-    _renderDrawerContent();
-    _updateButtonVisibility();
-}
-
-function _handleCancel() {
-    isEditing = false;
-    _renderDrawerContent();
-    _updateButtonVisibility();
-}
-
-async function _handleAdd() {
-    const schema = await tableLens.getTableSchema(currentTableId, { mode: 'clean' });
-    openModal({
-        title: `Adicionar em ${currentTableId}`,
-        tableId: currentTableId,
-        record: {},
-        schema,
-        onSave: async (newRecord) => {
-            await dataWriter.addRecord(currentTableId, newRecord);
-            publish('data-changed', { tableId: currentTableId, action: 'add' });
-        },
-    });
-}
-
-async function _handleDelete() {
-    if (confirm(`Tem certeza que deseja deletar o registro ${currentRecordId}?`)) {
-        await dataWriter.deleteRecords(currentTableId, [currentRecordId]);
-        publish('data-changed', { tableId: currentTableId, recordId: currentRecordId, action: 'delete' });
-        closeDrawer();
+    if (currentRecordId === 'new') {
+        if (editBtn) editBtn.style.display = 'none';
+        if (deleteBtn) deleteBtn.style.display = 'none';
+        if (saveBtn) saveBtn.style.display = 'inline-block';
+        if (cancelBtn) cancelBtn.style.display = 'inline-block';
+    } else {
+        if (editBtn) editBtn.style.display = isEditing ? 'none' : 'inline-block';    
+        if (deleteBtn) deleteBtn.style.display = isEditing ? 'none' : 'inline-block';  
+        if (saveBtn) saveBtn.style.display = isEditing ? 'inline-block' : 'none';
+        if (cancelBtn) cancelBtn.style.display = isEditing ? 'inline-block' : 'none';  
     }
 }
 
 async function _handleSave() {
     const changes = {};
-    // Use more specific selector to only target inputs inside the value container
-    const formElements = drawerPanel.querySelectorAll('.drawer-field-value [data-col-id]');
-    const formColIds = new Set(Array.from(formElements).map(el => el.dataset.colId));
-
-    console.log('[Drawer Debug] _handleSave called. Found formElements:', formElements.length);
-    console.log('[Drawer Debug] Form Column IDs:', Array.from(formColIds));
-
-    // First, process the values from the form
+    const formElements = drawerPanel.querySelectorAll('[data-col-id]');
+    
     formElements.forEach(el => {
         const colId = el.dataset.colId;
         const colSchema = currentSchema[colId];
-        
-        console.log(`[Drawer Debug] Processing element for ${colId}. Tag: ${el.tagName}, Type: ${el.type}, Value: '${el.value}'`);
-
-        if (!colSchema) {
-            console.warn(`[Drawer Debug] Schema NOT FOUND for ${colId}. Skipping.`);
-            return;
-        }
-
-        if (colSchema.isFormula) {
-             console.log(`[Drawer Debug] Field ${colId} is a FORMULA. Skipping save.`);
-             return; 
-        }
+        if (!colSchema || colSchema.isFormula) return;
 
         let value;
-        if (colSchema.type === 'Bool' && el.tagName === 'SELECT') {
-            if (el.value === 'true') value = true; else if (el.value === 'false') value = false; else value = null;
-        } else if (colSchema.type === 'ChoiceList' && el.tagName === 'SELECT' && el.multiple) {
+        if (el.type === 'checkbox') {
+            value = el.checked;
+        } else if (el.tagName === 'SELECT' && el.multiple) {
             const selectedOptions = Array.from(el.selectedOptions).map(opt => opt.value);
             value = selectedOptions.length > 0 ? ['L', ...selectedOptions] : null;
-        } else if (el.type === 'checkbox') {
-            value = el.checked;
-        } else if (el.type === 'color') {
-                value = el.value;
         } else if (colSchema.type.startsWith('Date')) {
-            value = el.value;
-            if (!value) { value = null; } else if (colSchema.type === 'Date') {
-                const parts = value.split('-');
-                value = Date.UTC(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10)) / 1000;
-            } else { value = new Date(value).getTime() / 1000; }
+            if (!el.value) value = null;
+            else if (colSchema.type === 'Date') {
+                const parts = el.value.split('-');
+                value = Date.UTC(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2])) / 1000;
+            } else {
+                value = new Date(el.value).getTime() / 1000;
+            }
         } else if (colSchema.type.startsWith('Ref')) {
-            // Ensure reference values are numbers
             value = el.value ? Number(el.value) : 0;
+        } else if (colSchema.type === 'Numeric' || colSchema.type === 'Int') {
+            value = el.value !== '' ? Number(el.value) : null;
+        } else {
+            value = el.value;
         }
-        else { value = el.value; }
-        
-        console.log(`[Drawer Debug] Value resolved for ${colId}:`, value);
         changes[colId] = value;
     });
 
-    // Now, ensure fields not in the form are preserved, IGNORING formula columns
-    for (const colId in currentSchema) {
-        const colSchema = currentSchema[colId];
-        if (!formColIds.has(colId) && !colSchema.isFormula && currentRecord.hasOwnProperty(colId)) {
-            changes[colId] = currentRecord[colId];
+    try {
+        if (currentRecordId === 'new') {
+            await dataWriter.addRecord(currentTableId, changes);
+            publish('data-changed', { tableId: currentTableId, action: 'add' });
+            closeDrawer();
+        } else if (Object.keys(changes).length > 0) {
+            await dataWriter.updateRecord(currentTableId, currentRecordId, changes);
+            publish('data-changed', { tableId: currentTableId, recordId: currentRecordId, action: 'update' });
+            isEditing = false;
+            await _renderDrawerContent();
+            _updateButtonVisibility();
         }
+    } catch (e) {
+        alert("Erro ao salvar: " + e.message);
     }
-
-    console.log('[Drawer Debug] Final changes object:', changes);
-
-    if (Object.keys(changes).length > 0) {
-        await dataWriter.updateRecord(currentTableId, currentRecordId, changes);
-    } else {
-        console.warn('[Drawer Debug] No changes detected to save.');
-    }
-    publish('data-changed', { tableId: currentTableId, recordId: currentRecordId, action: 'update' });
-    isEditing = false;
-    await _renderDrawerContent();
-    _updateButtonVisibility();
-}
-
-function _getCombinedRules(record) {
-    const { hiddenFields = [], lockedFields = [], requiredFields = [], workflow = {} } = currentDrawerOptions;
-    let finalHidden = hiddenFields;
-    let finalLocked = lockedFields;
-    let finalRequired = requiredFields;
-    if (workflow.enabled && workflow.stageField && record) {
-        const stageValue = record[workflow.stageField];
-        if (stageValue && workflow.stages && workflow.stages[stageValue]) {
-            const stageRules = workflow.stages[stageValue];
-            if (stageRules.hasOwnProperty('hiddenFields')) finalHidden = stageRules.hiddenFields;
-            if (stageRules.hasOwnProperty('lockedFields')) finalLocked = stageRules.lockedFields;
-            if (stageRules.hasOwnProperty('requiredFields')) finalRequired = stageRules.requiredFields;
-        }
-    }
-    return { hidden: [...new Set(finalHidden)], locked: [...new Set(finalLocked)], required: [...new Set(finalRequired)] };
-}
-
-function _handleStageChange(event) {
-    const stageFieldId = currentDrawerOptions.workflow.stageField;
-    currentRecord[stageFieldId] = event.target.value;
-    const newRules = _getCombinedRules(currentRecord);
-    drawerPanel.querySelectorAll('.drawer-field-row').forEach(row => {
-        const colId = row.dataset.colId;
-        if (!colId || colId === stageFieldId) return;
-        const shouldBeHidden = newRules.hidden.includes(colId);
-        row.style.display = shouldBeHidden ? 'none' : '';
-        const input = row.querySelector(`[data-col-id="${colId}"]`);
-        if (input) {
-            const shouldBeLocked = newRules.locked.includes(colId);
-            input.disabled = shouldBeLocked;
-            input.closest('.drawer-field-value').classList.toggle('is-locked-style', shouldBeLocked);
-        }
-        const label = row.querySelector('.drawer-field-label');
-        if (label) {
-            let indicator = label.querySelector('.required-indicator');
-            const shouldBeRequired = newRules.required.includes(colId);
-            if (shouldBeRequired && !indicator) {
-                indicator = document.createElement('span'); indicator.className = 'required-indicator'; indicator.textContent = '*'; label.appendChild(indicator);
-            } else if (!shouldBeRequired && indicator) {
-                indicator.remove();
-            }
-        }
-    });
-    _validateForm();
-}
-
-function _isFieldEmpty(element, colSchema) {
-    if (!element) return true;
-    const type = colSchema.type || 'Any';
-    let value;
-    if (element.type === 'checkbox') { value = element.checked; }
-    else if (element.tagName === 'SELECT' && element.multiple) { value = Array.from(element.selectedOptions).map(opt => opt.value); }
-    else { value = element.value; }
-    if (type === 'Bool') return value !== true;
-    if (type === 'ChoiceList' || type.startsWith('RefList')) return !value || value.length === 0;
-    return !value || String(value).trim() === '';
-}
-
-function _validateForm() {
-    if (!isEditing) return;
-    const rules = _getCombinedRules(currentRecord);
-    const saveButton = drawerPanel.querySelector('#drawer-save-btn');
-    let isFormValid = true;
-    for (const colId of rules.required) {
-        if (rules.hidden.includes(colId)) continue;
-        const fieldElement = drawerPanel.querySelector(`[data-col-id="${colId}"]`);
-        const colSchema = currentSchema[colId];
-        if (colSchema && _isFieldEmpty(fieldElement, colSchema)) {
-            isFormValid = false;
-            break;
-        }
-    }
-    saveButton.disabled = !isFormValid;
-    saveButton.title = isFormValid ? 'Salvar alterações' : 'Preencha todos os campos obrigatórios (*) para salvar.';
-}
-
-function _addFormListeners() {
-    const formElements = drawerPanel.querySelectorAll('.drawer-field-value [data-col-id]');
-    formElements.forEach(el => {
-        el.addEventListener('change', _validateForm);
-        el.addEventListener('keyup', _validateForm);
-        el.addEventListener('input', _validateForm);
-    });
-    const { workflow = {} } = currentDrawerOptions;
-    if (isEditing && workflow.enabled && workflow.stageField) {
-        const stageFieldElement = drawerPanel.querySelector(`[data-col-id="${workflow.stageField}"]`);
-        if (stageFieldElement) {
-            stageFieldElement.addEventListener('change', _handleStageChange);
-        }
-    }
-}
-
-// =================================================================================
-// --- FIM DA SEÇÃO DE FUNÇÕES AUXILIARES ---
-// =================================================================================
-
-function _initializeDrawerDOM() {
-    if (document.getElementById('grist-drawer-panel')) return;
-
-    // A função de carregamento de ícones está correta e pode permanecer.
-    async function ensureIconsLoaded() {
-        if (document.getElementById('grf-icon-symbols')) return;
-        try {
-            const response = await fetch('/libraries/icons/icons.svg');
-            if (!response.ok) return;
-            const svgText = await response.text();
-            const div = document.createElement('div');
-            div.id = 'grf-icon-symbols';
-            div.style.display = 'none';
-            div.innerHTML = svgText;
-            document.body.insertBefore(div, document.body.firstChild);
-        } catch (error) {
-            console.error('DrawerComponent: Falha ao carregar ícones:', error);
-        }
-    }
-    ensureIconsLoaded();
-
-    const link = document.createElement('link'); link.rel = 'stylesheet'; link.href = '../libraries/grist-drawer-component/drawer-style.css'; document.head.appendChild(link);
-    const style = document.createElement('style');
-
-    // CSS DE PRODUÇÃO FINAL
-    style.textContent = `
-        .drawer-header-buttons .icon, .drawer-close-btn .icon {
-            color: #424242; /* Cor de ícone padrão (cinza escuro) */
-            transition: color 0.2s;
-        }
-        .drawer-header-buttons button:hover .icon, .drawer-close-btn:hover .icon {
-            color: #000000;
-        }
-        .drawer-header-buttons .icon { width: 20px; height: 20px; } 
-        .drawer-close-btn .icon { width: 24px; height: 24px; } 
-        .required-indicator { color: #dc3545; font-weight: bold; margin-left: 4px; } 
-        .grf-tooltip-trigger { position: relative; display: inline-block; margin-left: 8px; width: 16px; height: 16px; border-radius: 50%; background-color: #adb5bd; color: white; font-size: 11px; font-weight: bold; text-align: center; line-height: 16px; cursor: help; } 
-        .grf-tooltip-trigger:before, .grf-tooltip-trigger:after { position: absolute; left: 50%; transform: translateX(-50%); opacity: 0; visibility: hidden; transition: opacity 0.2s ease, visibility 0.2s ease; z-index: 10; } 
-        .grf-tooltip-trigger:after { content: attr(data-tooltip); bottom: 150%; background-color: rgba(0, 0, 0, 0.8); color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; font-weight: normal; line-height: 1.4; white-space: pre-wrap; width: 250px; } 
-        .grf-tooltip-trigger:before { content: ''; bottom: 150%; margin-bottom: -5px; border-style: solid; border-width: 5px 5px 0 5px; border-color: rgba(0, 0, 0, 0.8) transparent transparent transparent; } 
-        .grf-tooltip-trigger:hover:before, .grf-tooltip-trigger:hover:after { opacity: 1; visibility: visible; }
-    `;
-    document.head.appendChild(style);
-
-    drawerOverlay = document.createElement('div');
-    drawerOverlay.id = 'grist-drawer-overlay';
-
-    drawerPanel = document.createElement('div');
-    drawerPanel.id = 'grist-drawer-panel';
-
-    // --- HTML CORRIGIDO COM OS IDs DE ÍCONE CORRETOS DO SEU ARQUIVO ---
-    drawerPanel.innerHTML = `
-        <div class="drawer-header"><h2 id="drawer-title"></h2>
-            <div class="drawer-header-actions">
-                <div class="drawer-header-buttons">
-                    <button id="drawer-add-btn" title="Adicionar Novo"><svg class="icon"><use href="#icon-plus-circle-alt"></use></svg></button>
-                    <button id="drawer-delete-btn" title="Deletar"><svg class="icon"><use href="#icon-trashbin"></use></svg></button>
-                    <button id="drawer-edit-btn" title="Editar"><svg class="icon"><use href="#icon-edit"></use></svg></button>
-                    <button id="drawer-save-btn" title="Salvar" style="display:none;"><svg class="icon"><use href="#icon-save"></use></svg></button>
-                    <button id="drawer-cancel-btn" title="Cancelar" style="display:none;"><svg class="icon"><use href="#icon-close-circle"></use></svg></button>
-                </div>
-                <button class="drawer-close-btn" title="Fechar"><svg class="icon"><use href="#icon-close-circle"></use></svg></button>
-            </div>
-        </div>
-        <div class="drawer-body"><div class="drawer-tabs"></div><div class="drawer-tab-panels"></div></div>`;
-
-    document.body.appendChild(drawerOverlay); document.body.appendChild(drawerPanel);
-    drawerHeader = drawerPanel.querySelector('.drawer-header');
-    drawerTitle = drawerPanel.querySelector('#drawer-title');
-
-    drawerPanel.querySelector('.drawer-close-btn').addEventListener('click', closeDrawer);
-    drawerPanel.querySelector('#drawer-edit-btn').addEventListener('click', _handleEdit);
-    drawerPanel.querySelector('#drawer-save-btn').addEventListener('click', _handleSave);
-    drawerPanel.querySelector('#drawer-cancel-btn').addEventListener('click', _handleCancel);
-    drawerPanel.querySelector('#drawer-add-btn').addEventListener('click', _handleAdd);
-    drawerPanel.querySelector('#drawer-delete-btn').addEventListener('click', _handleDelete);
-    drawerOverlay.addEventListener('click', closeDrawer);
 }
 
 async function _renderDrawerContent() {
+    if (!drawerPanel) return;
     const tabsContainer = drawerPanel.querySelector('.drawer-tabs');
     const panelsContainer = drawerPanel.querySelector('.drawer-tab-panels');
-    tabsContainer.innerHTML = ''; panelsContainer.innerHTML = '';
+    
+    tabsContainer.innerHTML = ''; 
+    panelsContainer.innerHTML = '<div style="padding:20px; color:#666;">Carregando...</div>';
 
-    // MUDANÇA AQUI: Lê a nova configuração styleOverrides
-    const { tabs = null, refListFieldConfig = {}, styleOverrides = {} } = currentDrawerOptions;
+    // O objeto 'currentDrawerOptions' agora vem do GristTableLens.parseConfigRecord, 
+    // que já mesclou mapping, styling e actions.
+    const config = currentDrawerOptions || {};
+    console.log("[Drawer] Configuração recebida:", config);
+    
+    // Suporte para tripartição: mapping contém tabs e definições de campos
+    const tabs = config.tabs || config.mapping?.tabs || null;
+    const styleOverrides = config.styleOverrides || config.mapping?.styleOverrides || {};
+    const widgetOverrides = config.widgetOverrides || config.mapping?.widgetOverrides || {};
+    const fieldOptions = config.fieldOptions || config.mapping?.fieldOptions || {};
+    const hiddenFields = config.hiddenFields || config.mapping?.hiddenFields || [];
+    const lockedFields = config.lockedFields || config.mapping?.lockedFields || [];
 
-    const [cleanSchema, rawSchema] = await Promise.all([tableLens.getTableSchema(currentTableId), tableLens.getTableSchema(currentTableId, { mode: 'raw' })]);
-    Object.keys(cleanSchema).forEach(colId => { if (rawSchema[colId] && rawSchema[colId].description) cleanSchema[colId].description = rawSchema[colId].description; });
-    currentSchema = cleanSchema;
-
-    if (currentRecordId === 'new') {
-        currentRecord = {};
-    } else {
-        currentRecord = await tableLens.fetchRecordById(currentTableId, currentRecordId);
-    }
-
-    if (!currentRecord) {
-        console.error("Drawer Error: Record not found and it is not a new record.");
-        closeDrawer();
-        return;
-    }
-
-    const rules = _getCombinedRules(currentRecord);
-    const ruleIdToColIdMap = new Map();
-    Object.values(currentSchema).forEach(col => { if (col?.colId?.startsWith('gristHelper_')) ruleIdToColIdMap.set(col.id, col.id); });
-
-    if (tabs && Array.isArray(tabs) && tabs.length > 0) {
-        // Passa styleOverrides para a função de renderização
-        renderConfiguredTabs(tabs, rules.hidden, rules.locked, rules.required, currentRecord, ruleIdToColIdMap, refListFieldConfig, styleOverrides);
-    } else {
-        renderDefaultTabs(rules.hidden, rules.locked, rules.required, currentRecord, ruleIdToColIdMap, refListFieldConfig, styleOverrides);
-    }
-
-    if (isEditing) {
-        _addFormListeners();
-        _validateForm();
-    }
-
-    // Publish an event to notify that the drawer has finished rendering.
-    publish('drawer-rendered', { tableId: currentTableId, recordId: currentRecordId, isEditing: isEditing });
-
-    // --- DEBUG INFO RENDER ---
-    if (currentDrawerOptions.showDebugInfo) {
-        const debugDiv = document.createElement('div');
-        debugDiv.style.padding = '10px';
-        debugDiv.style.borderTop = '2px solid red';
-        debugDiv.style.backgroundColor = '#fff0f0';
-        debugDiv.innerHTML = `<h3>Schema Debug Info (TableLens)</h3>
-        <textarea rows="10" style="width: 100%; font-family: monospace;">${JSON.stringify(currentSchema, null, 2)}</textarea>`;
-        drawerPanel.querySelector('.drawer-body').appendChild(debugDiv);
-    }
-}
-
-
-function renderConfiguredTabs(configuredTabs, hiddenFields, lockedFields, requiredFields, record, ruleIdToColIdMap, refListFieldConfig, styleOverrides) {
-    const tabsContainer = drawerPanel.querySelector('.drawer-tabs');
-    const panelsContainer = drawerPanel.querySelector('.drawer-tab-panels');
-    tabsContainer.innerHTML = ''; panelsContainer.innerHTML = '';
-    configuredTabs.forEach((tabConfig, index) => {
-        const tabEl = document.createElement('div'); tabEl.className = 'drawer-tab'; tabEl.textContent = tabConfig.title; tabsContainer.appendChild(tabEl);
-        const panelEl = document.createElement('div'); panelEl.className = 'drawer-tab-content'; panelsContainer.appendChild(panelEl);
-        tabEl.addEventListener('click', () => _switchToTab(tabEl, panelEl));
-        if (index === 0) _switchToTab(tabEl, panelEl);
-        tabConfig.fields.forEach(fieldId => {
-            const colSchema = currentSchema[fieldId];
-            if (colSchema && !hiddenFields.includes(colSchema.colId)) {
-                renderSingleField(panelEl, colSchema, record, lockedFields, requiredFields, ruleIdToColIdMap, refListFieldConfig, styleOverrides);
-            }
-        });
+    console.log("[Drawer] Diagnóstico de Mapeamento:", { 
+        hasTabs: !!tabs, 
+        numTabs: tabs?.length || 0,
+        hiddenFieldsCount: hiddenFields.length,
+        hiddenFields: hiddenFields,
+        hasWidgetOverrides: Object.keys(widgetOverrides).length > 0
     });
-}
 
-function renderDefaultTabs(hiddenFields, lockedFields, requiredFields, record, ruleIdToColIdMap, refListFieldConfig, styleOverrides) {
-    const tabsContainer = drawerPanel.querySelector('.drawer-tabs');
-    const panelsContainer = drawerPanel.querySelector('.drawer-tab-panels');
-    const allCols = Object.values(currentSchema);
-    let mainCols = allCols.filter(c => c && !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos' && !hiddenFields.includes(c.colId));
-    const helperCols = allCols.filter(c => c && (c.colId.startsWith('gristHelper_') || c.type === 'ManualSortPos') && !hiddenFields.includes(c.colId));
-    const fieldOrder = currentDrawerOptions.fieldOrder || [];
-    if (fieldOrder.length > 0) {
-        const orderMap = new Map(fieldOrder.map((id, index) => [id, index]));
-        mainCols.sort((a, b) => { const indexA = orderMap.get(a.colId); const indexB = orderMap.get(b.colId); if (indexA !== undefined && indexB !== undefined) return indexA - indexB; if (indexA !== undefined) return -1; if (indexB !== undefined) return 1; return (a.parentPos || 0) - (b.parentPos || 0); });
-    } else { mainCols.sort((a, b) => (a.parentPos || 0) - (b.parentPos || 0)); }
-    const tabs = { "Principal": mainCols };
-    if (helperCols.length > 0) { tabs["Dados do Sistema"] = helperCols; }
-    Object.entries(tabs).forEach(([tabName, cols], index) => {
-        const tabEl = document.createElement('div'); tabEl.className = 'drawer-tab'; tabEl.textContent = tabName; tabsContainer.appendChild(tabEl);
-        const panelEl = document.createElement('div'); panelEl.className = 'drawer-tab-content'; panelsContainer.appendChild(panelEl);
-        tabEl.addEventListener('click', () => _switchToTab(tabEl, panelEl));
-        if (index === 0) _switchToTab(tabEl, panelEl);
-        cols.forEach(colSchema => {
-            renderSingleField(panelEl, colSchema, record, lockedFields, requiredFields, ruleIdToColIdMap, refListFieldConfig, styleOverrides);
+    try {
+        logPerf("Iniciando Busca de Schema");
+        const schema = await tableLens.getTableSchema(currentTableId);
+        currentSchema = schema;
+        logPerf("Schema Recebido");
+
+        if (currentRecordId === 'new') {
+            currentRecord = currentRecord || {};
+        } else {
+            logPerf("Buscando Registro");
+            currentRecord = await tableLens.fetchRecordById(currentTableId, currentRecordId);
+            logPerf("Registro Recebido");
+        }
+
+        panelsContainer.innerHTML = '';
+        
+        // Se não houver abas configuradas, mostramos todos os campos não técnicos e NÃO OCULTOS
+        const finalTabs = (tabs && tabs.length > 0) ? tabs : [{ 
+            title: "Principal", 
+            fields: Object.keys(schema).filter(id => {
+                const isTechnical = id.startsWith('gristHelper_') || id === 'id' || schema[id].type === 'ManualSortPos';
+                const isHidden = hiddenFields.includes(id);
+                return !isTechnical && !isHidden;
+            })
+        }];
+
+        finalTabs.forEach((tabConfig, index) => {
+            const tabEl = document.createElement('div');
+            tabEl.className = 'drawer-tab';
+            tabEl.style.cssText = "cursor:pointer; font-weight:700; font-size:13px; color:#64748b; padding-bottom:8px; border-bottom:2px solid transparent; transition:all 0.2s; white-space:nowrap;";
+            tabEl.textContent = tabConfig.title;
+            tabsContainer.appendChild(tabEl);
+
+            const panelEl = document.createElement('div');
+            panelEl.className = 'drawer-tab-content';
+            panelEl.style.display = 'none';
+            panelsContainer.appendChild(panelEl);
+
+            tabEl.onclick = () => _switchToTab(tabEl, panelEl);
+            if (index === 0) _switchToTab(tabEl, panelEl);
+
+            tabConfig.fields.forEach(fieldId => {
+                const col = schema[fieldId];
+                if (!col) return;
+                
+                // Pular se o campo estiver na lista de ocultos (Workflow ou Config)
+                if (hiddenFields.includes(fieldId)) return;
+
+                const row = document.createElement('div');
+                row.className = 'drawer-field-row';
+                row.dataset.colId = fieldId;
+                row.style.marginBottom = '20px';
+                row.innerHTML = `
+                    <label style="display:block; font-weight:800; font-size:11px; color:#94a3b8; text-transform:uppercase; margin-bottom:6px; letter-spacing:0.025em;">
+                        ${col.label || col.colId}
+                    </label>
+                    <div class="field-val" style="min-height:24px; font-size:14px; color:#1e293b;"></div>
+                `;
+                panelEl.appendChild(row);
+
+                // Normalização de opções para o renderer
+                const widgetCfg = widgetOverrides[fieldId] || {};
+                const fOpts = fieldOptions[fieldId] || {};
+                
+                // Mapeamos para o formato que o grist-field-renderer espera
+                const mergedFieldConfig = {
+                    widget: widgetCfg.widget || (fOpts.colorPicker ? 'Color Picker' : (fOpts.progressBar ? 'Progress Bar' : null)),
+                    widgetOptions: widgetCfg.options || fOpts,
+                    styleOverride: styleOverrides[fieldId] || {}
+                };
+
+                renderField({
+                    container: row.querySelector('.field-val'),
+                    colSchema: col,
+                    record: currentRecord,
+                    isEditing: isEditing,
+                    isLocked: lockedFields.includes(fieldId),
+                    tableLens: tableLens,
+                    fieldStyle: mergedFieldConfig // Passamos como fieldStyle (novo padrão)
+                });
+            });
         });
-    });
+        
+        logPerf("Renderização Finalizada");
+        
+        // Listener de interatividade
+        setTimeout(() => {
+            const inputs = drawerPanel.querySelectorAll('input, select, textarea');
+            inputs.forEach(input => {
+                input.addEventListener('focus', () => {
+                    logPerf("INTERAÇÃO DETECTADA (TTI)");
+                }, { once: true });
+            });
+        }, 100);
+
+    } catch (e) {
+        logPerf(`ERRO: ${e.message}`);
+        panelsContainer.innerHTML = `<div style="color:red; padding:20px; background:#fee2e2; border-radius:8px;">Erro: ${e.message}</div>`;
+    }
 }
 
-function renderSingleField(panelEl, colSchema, record, lockedFields, requiredFields, ruleIdToColIdMap, refListFieldConfig = {}, styleOverrides = {}) {
+// --- INICIALIZAÇÃO ---
 
-    const row = document.createElement('div');
-    row.className = 'drawer-field-row';
-    row.dataset.colId = colSchema.colId;
+function _initializeDrawerDOM() {
+    drawerPanel = document.getElementById('grist-drawer-panel');
+    drawerOverlay = document.getElementById('grist-drawer-overlay');
 
-    const label = document.createElement('label');
-    label.className = 'drawer-field-label';
-    const labelText = colSchema.label || colSchema.colId;
-    const isFieldRequired = requiredFields.includes(colSchema.colId);
+    if (drawerPanel) return;
 
-    let labelHtml = labelText;
-    if (isFieldRequired) {
-        labelHtml += ` <span class="required-indicator">*</span>`;
-    }
+    drawerOverlay = document.createElement('div');
+    drawerOverlay.id = 'grist-drawer-overlay';
+    drawerOverlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); z-index:2147483640; display:none; backdrop-filter:blur(2px);";
 
-    if (colSchema.description && colSchema.description.trim() !== '') {
-        const sanitizedDescription = colSchema.description.replace(/"/g, '&quot;');
-        labelHtml += ` <span class="grf-tooltip-trigger" data-tooltip="${sanitizedDescription}">?</span>`;
-    }
+    drawerPanel = document.createElement('div');
+    drawerPanel.id = 'grist-drawer-panel';
+    drawerPanel.style.cssText = "position:fixed; top:0; right:-650px; width:600px; height:100%; background:white; z-index:2147483641; transition:right 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow:-5px 0 25px rgba(0,0,0,0.15); display:flex; flex-direction:column; font-family:sans-serif;";
 
-    label.innerHTML = labelHtml;
+    drawerPanel.innerHTML = `
+        <div class="drawer-header" style="padding:20px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
+            <h2 id="drawer-title" style="margin:0; font-size:18px; font-weight:800; color:#1e293b;"></h2>
+            <div class="drawer-header-actions" style="display:flex; gap:10px; align-items:center;">
+                <div id="grf-drawer-perf-status" style="font-size:10px; color:#999; margin-right:10px;"></div>
+                <div class="drawer-header-buttons" style="display:flex; gap:8px;">
+                    <button id="drawer-delete-btn" title="Deletar" style="background:none; border:none; cursor:pointer;"><svg class="icon" style="width:20px; height:20px; stroke:#64748b; fill:none; stroke-width:2;"><use href="#icon-trashbin"></use></svg></button>
+                    <button id="drawer-edit-btn" title="Editar" style="background:none; border:none; cursor:pointer;"><svg class="icon" style="width:20px; height:20px; stroke:#64748b; fill:none; stroke-width:2;"><use href="#icon-edit"></use></svg></button>
+                    <button id="drawer-save-btn" title="Salvar" style="display:none; background:none; border:none; cursor:pointer;"><svg class="icon" style="width:20px; height:20px; stroke:#3b82f6; fill:none; stroke-width:2;"><use href="#icon-save"></use></svg></button>
+                    <button id="drawer-cancel-btn" title="Cancelar" style="display:none; background:none; border:none; cursor:pointer;"><svg class="icon" style="width:20px; height:20px; stroke:#ef4444; fill:none; stroke-width:2;"><use href="#icon-close-circle"></use></svg></button>
+                </div>
+                <button class="drawer-close-btn" style="background:none; border:none; font-size:24px; cursor:pointer; color:#999;">&times;</button>
+            </div>
+        </div>
+        <div class="drawer-body" style="flex:1; overflow-y:auto; padding:20px;">
+            <div class="drawer-tabs" style="display:flex; gap:15px; margin-bottom:20px; border-bottom:1px solid #eee; padding-bottom:10px;"></div>
+            <div class="drawer-tab-panels"></div>
+        </div>`;
 
-    const valueContainer = document.createElement('div');
-    valueContainer.className = 'drawer-field-value';
+    document.body.appendChild(drawerOverlay);
+    document.body.appendChild(drawerPanel);
 
-    row.appendChild(label);
-    row.appendChild(valueContainer);
-    panelEl.appendChild(row);
-
-    // Treat formula columns as locked to prevent editing in UI, matching save logic
-    const isLocked = lockedFields.includes(colSchema.colId); // Reverted: Do not auto-lock formulas.
-
-    const renderOptions = {
-        container: valueContainer,
-        colSchema: colSchema,
-        record: record,
-        isEditing: isEditing,
-        isLocked: isLocked, // Pass explicit locked state (includes formulas)
-        labelElement: label,
-        styleOverride: styleOverrides[colSchema.colId],
-        tableLens: tableLens,
-        fieldOptions: {}
+    drawerPanel.querySelector('.drawer-close-btn').onclick = () => closeDrawer();
+    drawerOverlay.onclick = () => closeDrawer();
+    
+    drawerPanel.querySelector('#drawer-edit-btn').onclick = () => { isEditing = true; _renderDrawerContent(); _updateButtonVisibility(); };
+    drawerPanel.querySelector('#drawer-cancel-btn').onclick = () => { 
+        if (currentRecordId === 'new') closeDrawer();
+        else { isEditing = false; _renderDrawerContent(); _updateButtonVisibility(); }
     };
-
-    const widgetOverride = currentDrawerOptions.widgetOverrides?.[colSchema.colId];
-    let widgetType = null;
-    let widgetOptions = {};
-
-    if (typeof widgetOverride === 'string') {
-        widgetType = widgetOverride;
-    } else if (typeof widgetOverride === 'object' && widgetOverride !== null) {
-        widgetType = widgetOverride.widget;
-        widgetOptions = widgetOverride.options || {};
-    }
-
-    if (widgetType === 'ColorPicker') {
-        renderOptions.fieldOptions.colorPicker = true;
-    } else if (widgetType === 'ProgressBar') {
-        renderOptions.fieldOptions.progressBar = true;
-        renderOptions.fieldOptions.widgetOptions = widgetOptions;
-    }
-
-    if (colSchema.type.startsWith('RefList:') && refListFieldConfig[colSchema.colId]) {
-        renderOptions.fieldConfig = refListFieldConfig[colSchema.colId];
-    }
-
-    renderField(renderOptions);
+    drawerPanel.querySelector('#drawer-save-btn').onclick = () => _handleSave();
+    drawerPanel.querySelector('#drawer-delete-btn').onclick = async () => {
+        if (confirm("Deseja deletar este registro?")) {
+            await dataWriter.deleteRecords(currentTableId, [currentRecordId]);
+            publish('data-changed', { tableId: currentTableId, recordId: currentRecordId, action: 'delete' });
+            closeDrawer();
+        }
+    };
+    
+    drawerPanel.onclick = (e) => e.stopPropagation();
 }
 
 export async function openDrawer(tableId, recordId, options = {}) {
+    perfStartTime = performance.now();
+    logPerf("Chamada openDrawer");
+    
+    _ensureTools(options);
     _initializeDrawerDOM();
+    
     currentTableId = tableId;
     currentRecordId = recordId;
-    // For new records, automatically enter edit mode.
-    isEditing = recordId === 'new' || options.mode === 'edit' || false;
     currentDrawerOptions = options;
-    if (drawerPanel) { drawerPanel.classList.remove('is-modal'); }
-    if (drawerOverlay) { drawerOverlay.classList.remove('is-modal-overlay'); }
-    if (options.displayMode === 'modal') {
-        drawerPanel.classList.add('is-modal');
-        drawerOverlay.classList.add('is-modal-overlay');
+    isEditing = (recordId === 'new' || options.mode === 'edit');
+
+    if (recordId === 'new') {
+        currentRecord = options.initialData || {};
     }
-    if (options.width && drawerPanel) { drawerPanel.style.width = options.width || ''; }
-    document.body.classList.add('grist-drawer-is-open');
-    drawerPanel.classList.add('is-open');
-    drawerOverlay.classList.add('is-open');
-    drawerTitle.textContent = recordId === 'new' ? `New Record` : `Detalhes do Registro ${recordId}`;
+
+    drawerOverlay.style.setProperty('display', 'block', 'important');
+    
+    setTimeout(() => {
+        if (drawerPanel) drawerPanel.style.setProperty('right', '0px', 'important');
+        isOpen = true;
+    }, 50);
+
+    const titleEl = drawerPanel.querySelector('#drawer-title');
+    if (titleEl) {
+        titleEl.textContent = recordId === 'new' ? 'Novo Registro' : `Registro #${recordId}`;
+    }
+    
     _updateButtonVisibility();
-    try {
-        await _renderDrawerContent();
-    } catch (error) {
-        console.error("Error opening drawer:", error);
-        drawerPanel.querySelector('.drawer-tab-panels').innerHTML = `<p style="color: red;">${error.message}</p>`;
-    }
+    await _renderDrawerContent();
 }
 
 export function closeDrawer() {
+    if (!drawerPanel) {
+        drawerPanel = document.getElementById('grist-drawer-panel');
+        drawerOverlay = document.getElementById('grist-drawer-overlay');
+    }
     if (!drawerPanel) return;
-    document.body.classList.remove('grist-drawer-is-open');
-    drawerPanel.classList.remove('is-open');
-    drawerOverlay.classList.remove('is-open');
-    drawerPanel.style.width = '';
-    drawerPanel.classList.remove('is-modal');
-    drawerOverlay.classList.remove('is-modal-overlay');
+
+    drawerPanel.style.setProperty('right', '-650px', 'important');
+    setTimeout(() => {
+        if (drawerOverlay) drawerOverlay.style.setProperty('display', 'none', 'important');
+        isOpen = false;
+    }, 300);
 }
+
+window.GristDrawer = {
+    open: openDrawer,
+    close: closeDrawer
+};
