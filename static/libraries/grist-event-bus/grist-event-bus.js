@@ -6,57 +6,55 @@
  * guaranteeing that all modules share the same event bus instance.
  */
 
-// Use a symbol to create a unique, non-colliding key on the window object.
 const BUS_KEY = Symbol.for("GRF_EVENT_BUS");
+const scriptUrl = import.meta.url;
 
-// Initialize the bus on the window object if it doesn't already exist.
 if (!window[BUS_KEY]) {
     window[BUS_KEY] = {
-        listeners: {}
+        listeners: {},
+        version: "1.1.2",
+        createdAt: new Date().toISOString(),
+        loadedBy: [scriptUrl]
     };
-    console.log("GRF Event Bus initialized.");
+    console.log(`[EventBus] Global instance created. Version: 1.1.2, URL: ${scriptUrl}, CreatedAt: ${window[BUS_KEY].createdAt}`);
+} else {
+    window[BUS_KEY].loadedBy.push(scriptUrl);
+    console.log(`[EventBus] Using existing global instance. Version: ${window[BUS_KEY].version}, URL: ${scriptUrl}, LoadedBy count: ${window[BUS_KEY].loadedBy.length}`);
 }
 
 const eventBus = window[BUS_KEY];
 
-/**
- * Subscribes a callback function to a specific event.
- * @param {string} eventName The name of the event to subscribe to.
- * @param {function} callback The function to call when the event is published.
- * @returns {function} An unsubscribe function.
- */
 export function subscribe(eventName, callback) {
     if (!eventBus.listeners[eventName]) {
         eventBus.listeners[eventName] = [];
     }
     eventBus.listeners[eventName].push(callback);
+    console.log(`[EventBus] [v${eventBus.version}] Subscribed to '${eventName}'. Total listeners for this event: ${eventBus.listeners[eventName].length}. URL: ${scriptUrl}`);
 
-    // Return an unsubscribe function for cleanup
     return () => {
         eventBus.listeners[eventName] = eventBus.listeners[eventName].filter(
             listener => listener !== callback
         );
+        console.log(`[EventBus] Unsubscribed from '${eventName}'. URL: ${scriptUrl}`);
     };
 }
 
-/**
- * Publishes an event, calling all subscribed callbacks with the provided data.
- * @param {string} eventName The name of the event to publish.
- * @param {*} [data] The data to pass to the subscribers.
- */
 export function publish(eventName, data) {
-    if (eventBus.listeners[eventName]) {
-        console.log(`[EventBus] Publishing event '${eventName}' with data:`, data);
-        eventBus.listeners[eventName].forEach(callback => {
+    const listeners = eventBus.listeners[eventName];
+    if (listeners && listeners.length > 0) {
+        console.log(`[EventBus] [v${eventBus.version}] Publishing '${eventName}' to ${listeners.length} listeners. URL: ${scriptUrl}`, data);
+        listeners.forEach((callback, index) => {
             try {
                 callback(data);
             } catch (error) {
-                console.error(`[EventBus] Error in subscriber for event '${eventName}':`, error);
+                console.error(`[EventBus] Error in listener ${index} for event '${eventName}':`, error);
             }
         });
     } else {
-        console.warn(`[EventBus] No listeners for event '${eventName}'.`);
+        console.warn(`[EventBus] [v${eventBus.version}] No listeners for event '${eventName}'. URL: ${scriptUrl}`);
+        // Debug: list all available events
+        const available = Object.keys(eventBus.listeners).filter(k => eventBus.listeners[k] && eventBus.listeners[k].length > 0);
+        console.log(`[EventBus] All registered events:`, available);
+        console.log(`[EventBus] Full listeners object:`, eventBus.listeners);
     }
 }
-
-// --- END OF CORRECTED grist-event-bus.js ---

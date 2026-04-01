@@ -461,10 +461,38 @@ export const CardSystem = (() => {
 
             actionButton.addEventListener('mouseenter', () => actionButton.style.opacity = '0.8');
             actionButton.addEventListener('mouseleave', () => actionButton.style.opacity = '1');
-            // -------------------------
+            
+            // --- Logic for special action types ---
+            if (buttonConfig.actionType === 'moveRecord') {
+                actionButton.classList.add('cs-move-handle');
+                actionButton.style.cursor = 'grab';
+                // Force move icon if missing and not text style
+                if (!isText && (!buttonConfig.icon || buttonConfig.icon === 'icon-link')) {
+                    buttonConfig.icon = 'icon-arrow-move';
+                    actionButton.innerHTML = getIcon(buttonConfig.icon);
+                    const svg = actionButton.querySelector('svg');
+                    if (svg) {
+                        svg.style.color = fgColor;
+                        svg.setAttribute('fill', 'currentColor');
+                        svg.setAttribute('stroke', 'currentColor');
+                        svg.style.width = '85%';
+                        svg.style.height = '85%';
+                    }
+                }
+            }
+
+            if (buttonConfig.actionType === 'editRecord') {
+                actionButton.classList.add('cs-edit-handle');
+            }
 
             actionButton.addEventListener("click", (e) => {
+              console.log(`[CardSystem] Action Button Clicked: ${buttonConfig.actionType}`, { recordId: record.id });
               e.stopPropagation();
+
+              if (buttonConfig.actionType === 'moveRecord') {
+                console.log("[CardSystem] Move handle clicked - ignoring click (use for drag)");
+                return;
+              }
 
               if (buttonConfig.actionType === 'triggerWidget') {
                 const configIdToPublish = buttonConfig.targetConfigId || currentOptions.configId;
@@ -766,11 +794,31 @@ export const CardSystem = (() => {
   }
 
   function _handleDragAndDrop(container, orderColumn, options) {
+    const mapping = options.mapping || options;
+    const behavior = mapping.orderBehavior || 'free';
+    
+    let handle = ".cs-card";
+    // Filter out action buttons from starting a drag so they remain clickable.
+    let filter = ".cs-action-button:not(.cs-move-handle)";
+
+    if (behavior === 'strict') {
+      handle = ".cs-move-handle";
+      filter = ".cs-action-button:not(.cs-move-handle)"; 
+    } else {
+      // For 'free' and 'hybrid', the card is the handle.
+      handle = ".cs-card";
+      filter = ".cs-action-button:not(.cs-move-handle)";
+    }
+
+    console.log(`[CardSystem] Initializing SortableJS with behavior: ${behavior}`, { handle, filter });
+
     // Check if Sortable is available (it should be loaded in the index.html via CDN)
     if (typeof Sortable !== 'undefined') {
         new Sortable(container, {
             animation: 150,
-            handle: ".cs-card", // O card todo ou um handle específico
+            handle: handle,
+            filter: filter,
+            preventOnFilter: false, // CRITICAL: Allow clicks on filtered elements
             draggable: ".cs-card",
             onEnd: function (evt) {
                 const itemEl = evt.item;

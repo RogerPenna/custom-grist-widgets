@@ -75,6 +75,7 @@ export const CardConfigEditor = (() => {
             tableId: tableId,
             enableOrder: mapping.enableOrder || false,
             orderColumn: mapping.orderColumn || null,
+            orderBehavior: mapping.orderBehavior || 'free',
             showAddButtonTop: actions.showAddButtonTop || false,
             showAddButtonBottom: actions.showAddButtonBottom || false,
             addRecordConfigId: actions.addRecordConfigId || null,
@@ -146,7 +147,8 @@ export const CardConfigEditor = (() => {
             viewMode,
             numRows,
             enableOrder: layoutTab.querySelector("#cs-enable-order").checked,
-            orderColumn: layoutTab.querySelector("#cs-order-column").value || null
+            orderColumn: layoutTab.querySelector("#cs-order-column").value || null,
+            orderBehavior: layoutTab.querySelector("#cs-order-behavior").value || 'free'
         };
         
         // 2. Actions: O que o widget faz (Interações)
@@ -677,13 +679,23 @@ export const CardConfigEditor = (() => {
                         <input type="number" id="cs-num-rows" value="${state.numRows}" min="1" max="20" style="width: 50px;" />
                     </div>
                 </div>
-                <div style="display: flex; align-items: center; gap: 20px; border-top: 1px solid #ddd; padding-top: 10px;">
-                    <label><input type="checkbox" id="cs-enable-order" ${state.enableOrder ? 'checked' : ''}> Enable Card Order (Drag & Drop)</label>
-                    <div id="cs-order-column-container" style="display: ${state.enableOrder ? 'flex' : 'none'}; align-items: center; gap: 10px;">
-                        <label for="cs-order-column">Order Column:</label>
-                        <select id="cs-order-column">
-                            <option value="">-- Select Numeric Column --</option>
-                        </select>
+                <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 20px; border-top: 1px solid #ddd; padding-top: 10px;">
+                    <label style="white-space: nowrap; font-weight: bold;"><input type="checkbox" id="cs-enable-order" ${state.enableOrder ? 'checked' : ''}> Enable Card Order</label>
+                    <div id="cs-order-column-container" style="display: ${state.enableOrder ? 'flex' : 'none'}; flex-wrap: wrap; align-items: center; gap: 15px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <label for="cs-order-column" style="white-space: nowrap; font-size: 0.9em;">Column:</label>
+                            <select id="cs-order-column" style="width: auto; min-width: 100px;">
+                                <option value="">-- Select --</option>
+                            </select>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <label for="cs-order-behavior" style="white-space: nowrap; font-size: 0.9em;">Handle:</label>
+                            <select id="cs-order-behavior" style="width: auto;">
+                                <option value="free" ${state.orderBehavior === 'free' ? 'selected' : ''}>Entire Card</option>
+                                <option value="hybrid" ${state.orderBehavior === 'hybrid' ? 'selected' : ''}>Hybrid</option>
+                                <option value="strict" ${state.orderBehavior === 'strict' ? 'selected' : ''}>Strict (Handle Only)</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -730,8 +742,15 @@ export const CardConfigEditor = (() => {
         populateFieldSelect(orderColumnSelect, numericFields);
         orderColumnSelect.value = state.orderColumn || "";
 
+        const orderBehaviorSelect = tabEl.querySelector("#cs-order-behavior");
+
         enableOrderCheckbox.addEventListener("change", () => {
             orderColumnContainer.style.display = enableOrderCheckbox.checked ? 'flex' : 'none';
+        });
+
+        orderBehaviorSelect.addEventListener("change", () => {
+            state.orderBehavior = orderBehaviorSelect.value;
+            updateDebugJson();
         });
 
         buildGridUI(tabEl.querySelector("#cs-layout-grid"), tabEl);
@@ -1397,7 +1416,7 @@ export const CardConfigEditor = (() => {
             </div>
             <div class="form-group">
                 <label>Action Type:</label>
-                <select id="btn-action-type" class="form-control">
+                <select id="btn-actionType" class="form-control">
                     <option value="navigateToGristPage" ${btn.actionType === 'navigateToGristPage' ? 'selected' : ''}>Navigate to Page</option>
                     <option value="openUrlFromColumn" ${btn.actionType === 'openUrlFromColumn' ? 'selected' : ''}>Open URL</option>
                     <option value="updateRecord" ${btn.actionType === 'updateRecord' ? 'selected' : ''}>Update Record</option>
@@ -1406,7 +1425,9 @@ export const CardConfigEditor = (() => {
                     <option value="deleteRecord" ${btn.actionType === 'deleteRecord' ? 'selected' : ''}>Delete Record</option>
                     <option value="addSubRecord" ${btn.actionType === 'addSubRecord' ? 'selected' : ''}>Add Sub-record</option>
                     <option value="showTooltipField" ${btn.actionType === 'showTooltipField' ? 'selected' : ''}>Display Field as Tooltip</option>
+                    <option value="moveRecord" ${btn.actionType === 'moveRecord' ? 'selected' : ''}>Move Card (Grab Handle)</option>
                 </select>
+                <div id="btn-action-help-container">${renderActionHelp(btn.actionType)}</div>
             </div>
             <div id="btn-action-specific"></div>
         `;
@@ -1432,13 +1453,15 @@ export const CardConfigEditor = (() => {
         container.querySelector('#btn-text-val').addEventListener('input', (e) => { btn.text = e.target.value; update(); });
         container.querySelector('#btn-tooltip').addEventListener('input', (e) => { btn.tooltip = e.target.value; });
         
-        const actionTypeSelect = container.querySelector('#btn-action-type');
+        const actionTypeSelect = container.querySelector('#btn-actionType');
         const actionSpecContainer = container.querySelector('#btn-action-specific');
+        const actionHelpContainer = container.querySelector('#btn-action-help-container');
         
         renderActionSpecificConfig(actionSpecContainer, btn, 0); // Reuse existing helper
 
         actionTypeSelect.addEventListener('change', (e) => {
             btn.actionType = e.target.value;
+            actionHelpContainer.innerHTML = renderActionHelp(btn.actionType);
             renderActionSpecificConfig(actionSpecContainer, btn, 0);
             update();
         });
@@ -1651,6 +1674,22 @@ export const CardConfigEditor = (() => {
         });
     }
 
+    function renderActionHelp(actionType) {
+        const helpMap = {
+            'navigateToGristPage': 'Navega para outra página/seção do Grist, filtrando os dados se necessário.',
+            'openUrlFromColumn': 'Abre um link (URL) contido em uma coluna específica do registro.',
+            'updateRecord': 'Atualiza um campo do registro atual com um valor pré-definido.',
+            'triggerWidget': 'Dispara a atualização ou abertura de outro widget (ex: Drill-down para outra lista).',
+            'editRecord': 'Abre a gaveta lateral (Drawer) para edição dos dados do card atual.',
+            'deleteRecord': 'Exclui permanentemente o registro após confirmação do usuário.',
+            'addSubRecord': 'Abre a gaveta em modo de criação para um novo registro vinculado a este card.',
+            'showTooltipField': 'Exibe o conteúdo de um campo em um balão de ajuda (tooltip) ao passar o mouse.',
+            'moveRecord': 'Transforma o botão em uma alça de arraste para reordenar os cards manualmente.'
+        };
+        const text = helpMap[actionType] || '';
+        return text ? `<p class="help-text" style="margin-top: 5px; color: #64748b; font-size: 0.85em;">${text}</p>` : '';
+    }
+
     async function renderActionSpecificConfig(container, buttonConfig, index) {
         container.innerHTML = ''; // Clear previous content
         const allGristPages = await state.lens.listAllTables(); // Assuming state.lens is available
@@ -1664,10 +1703,12 @@ export const CardConfigEditor = (() => {
                         <option value="">-- Select a Page --</option>
                         ${allGristPages.map(p => `<option value="${p.id}" ${buttonConfig.targetPageId === p.id ? 'selected' : ''}>${p.name}</option>`).join('')}
                     </select>
+                    <p class="help-text">Selecione para qual tela o usuário será levado.</p>
                 </div>
                 <div class="form-group">
                     <label>Filter Column in Target Page:</label>
                     <input type="text" class="action-target-filter-column" data-prop="targetFilterColumn" value="${buttonConfig.targetFilterColumn || ''}" placeholder="e.g., id_risk">
+                    <p class="help-text">O ID da coluna na página de destino que deve ser filtrada (ex: id_projeto).</p>
                 </div>
                 <div class="form-group">
                     <label>Filter Value (from this Card):</label>
@@ -1675,6 +1716,7 @@ export const CardConfigEditor = (() => {
                         <option value="">-- Select a Column --</option>
                         ${allGristColumns.map(col => `<option value="${col}" ${buttonConfig.sourceValueColumn === col ? 'selected' : ''}>${col}</option>`).join('')}
                     </select>
+                    <p class="help-text">Qual valor deste card deve ser usado como filtro (ex: o campo "id").</p>
                 </div>
             `;
         } else if (buttonConfig.actionType === 'openUrlFromColumn') {
@@ -1685,6 +1727,7 @@ export const CardConfigEditor = (() => {
                         <option value="">-- Select a Column --</option>
                         ${allGristColumns.map(col => `<option value="${col}" ${buttonConfig.urlColumn === col ? 'selected' : ''}>${col}</option>`).join('')}
                     </select>
+                    <p class="help-text">Selecione o campo que contém o endereço web (Link).</p>
                 </div>
             `;
         } else if (buttonConfig.actionType === 'updateRecord') {
@@ -1695,10 +1738,12 @@ export const CardConfigEditor = (() => {
                         <option value="">-- Select a Field --</option>
                         ${allGristColumns.map(col => `<option value="${col}" ${buttonConfig.updateField === col ? 'selected' : ''}>${col}</option>`).join('')}
                     </select>
+                    <p class="help-text">O campo que será modificado ao clicar no botão.</p>
                 </div>
                 <div class="form-group">
                     <label>New Value:</label>
                     <input type="text" class="action-update-value" data-prop="updateValue" value="${buttonConfig.updateValue || ''}" placeholder="e.g., Complete">
+                    <p class="help-text">O novo valor a ser gravado (ex: "Aprovado" ou "1").</p>
                 </div>
             `;
         } else if (buttonConfig.actionType === 'triggerWidget') {
@@ -1710,6 +1755,7 @@ export const CardConfigEditor = (() => {
                         <option value="">-- Select a Configuration --</option>
                         ${allConfigs.map(c => `<option value="${c.configId}" ${buttonConfig.targetConfigId === c.configId ? 'selected' : ''}>${c.configId} (${c.componentType})</option>`).join('')}
                     </select>
+                    <p class="help-text">Selecione qual ID de configuração do framework será ativado.</p>
                 </div>
                 <div class="form-group">
                     <label>Target Component Type (Optional):</label>
@@ -1717,6 +1763,7 @@ export const CardConfigEditor = (() => {
                         <option value="">-- Auto-detect --</option>
                         ${allComponentTypes.map(type => `<option value="${type}" ${buttonConfig.targetComponentType === type ? 'selected' : ''}>${type}</option>`).join('')}
                     </select>
+                    <p class="help-text">Opcional: força o tipo de componente (Card, Drawer, etc).</p>
                 </div>
                 <div class="form-group">
                     <label>Filter Target Column (in Target Widget):</label>
@@ -1725,6 +1772,7 @@ export const CardConfigEditor = (() => {
                         <option value="id" ${buttonConfig.filterTargetColumn === 'id' ? 'selected' : ''}>id (Record ID)</option>
                         ${allGristColumns.map(col => `<option value="${col}" ${buttonConfig.filterTargetColumn === col ? 'selected' : ''}>${col}</option>`).join('')}
                     </select>
+                    <p class="help-text">Qual campo do widget de destino será filtrado.</p>
                 </div>
                 <div class="form-group">
                     <label>Source RefList Column (in this Card):</label>
@@ -1732,6 +1780,7 @@ export const CardConfigEditor = (() => {
                         <option value="">-- Select a RefList Column --</option>
                         ${(state.fields || []).filter(f => f.type.startsWith('RefList:')).map(col => `<option value="${col.colId}" ${buttonConfig.sourceRefListColumn === col.colId ? 'selected' : ''}>${col.colId}</option>`).join('')}
                     </select>
+                    <p class="help-text">Caso queira enviar uma lista de registros relacionados para o destino.</p>
                 </div>
             `;
         } else if (buttonConfig.actionType === 'deleteRecord') {
@@ -1739,6 +1788,7 @@ export const CardConfigEditor = (() => {
                 <div class="form-group">
                     <label>Confirmation Message:</label>
                     <input type="text" class="action-confirm-msg" data-prop="confirmationMessage" value="${buttonConfig.confirmationMessage || 'Are you sure you want to delete this record?'}" placeholder="Enter message">
+                    <p class="help-text">Texto que aparecerá para o usuário confirmar a exclusão.</p>
                 </div>
             `;
         } else if (buttonConfig.actionType === 'addSubRecord') {
@@ -1749,7 +1799,7 @@ export const CardConfigEditor = (() => {
                         <option value="">-- Select Field --</option>
                         ${allGristColumns.map(col => `<option value="${col}" ${buttonConfig.subRecordRefField === col ? 'selected' : ''}>${col}</option>`).join('')}
                     </select>
-                    <p class="help-text">Choose the Ref or RefList column in the SUB-TABLE that points back to this card.</p>
+                    <p class="help-text">O campo na SUB-TABELA que aponta para este card (ex: "id_projeto").</p>
                 </div>
                 <div class="form-group">
                     <label>Sub-Table Configuration:</label>
@@ -1757,6 +1807,7 @@ export const CardConfigEditor = (() => {
                         <option value="">-- Use Default --</option>
                         ${allConfigs.map(c => `<option value="${c.configId}" ${buttonConfig.subRecordConfigId === c.configId ? 'selected' : ''}>${c.configId} (${c.componentType})</option>`).join('')}
                     </select>
+                    <p class="help-text">Qual configuração de Drawer usar para o novo registro.</p>
                 </div>
             `;
         } else if (buttonConfig.actionType === 'showTooltipField') {
@@ -1767,6 +1818,7 @@ export const CardConfigEditor = (() => {
                         <option value="">-- Select Field --</option>
                         ${allGristColumns.map(col => `<option value="${col}" ${buttonConfig.tooltipField === col ? 'selected' : ''}>${col}</option>`).join('')}
                     </select>
+                    <p class="help-text">Escolha o campo cujo conteúdo aparecerá no balão flutuante.</p>
                 </div>
             `;
         }
