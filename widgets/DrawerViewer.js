@@ -118,7 +118,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     grist.ready({ requiredAccess: 'full' });
     console.log("[DrawerViewer] Grist is ready.");
 
-subscribe('grf-card-clicked', (eventData) => {
+    subscribe('grf-navigation-action-triggered', async (eventData) => {
+        console.log("[DrawerViewer] Navigation action triggered.", eventData);
+        await handleNavigationAction(eventData.config, eventData.sourceRecord, eventData.tableId);
+    });
+
+    subscribe('grf-card-clicked', (eventData) => {
     console.log(`[DrawerViewer] Evento 'grf-card-clicked' detectado!`, {
         eventoRecebido: eventData,
         meuConfigId: state.configId
@@ -151,6 +156,81 @@ subscribe('grf-card-clicked', (eventData) => {
         }
         renderAdminView();
     });
+
+    /**
+     * Executa ações de navegação ou atualização de dados.
+     */
+    async function handleNavigationAction(config, record, tableId) {
+        console.log("[DrawerViewer] handleNavigationAction disparado:", { actionType: config.actionType, recordId: record.id, tableId });
+        try {
+            if (config.actionType === 'navigateToGristPage') {
+                const rowId = record[config.sourceValueColumn] || record.id;
+                console.log(`[DrawerViewer] Navegando para página ${config.targetPageId}, rowId: ${rowId}`);
+                await window.grist.setCursorPos({ sectionId: parseInt(config.targetPageId), rowId: rowId });
+            } 
+            else if (config.actionType === 'openUrlFromColumn') {
+                const url = record[config.urlColumn];
+                if (url) {
+                    console.log(`[DrawerViewer] Abrindo URL: ${url}`);
+                    window.open(url, '_blank');
+                } else {
+                    console.warn(`[DrawerViewer] Coluna de URL '${config.urlColumn}' está vazia.`);
+                }
+            } 
+            else if (config.actionType === 'updateRecord') {
+                const data = { [config.updateField]: config.updateValue };
+                console.log(`[DrawerViewer] Atualizando record ${record.id} na tabela ${tableId}:`, data);
+                await window.grist.docApi.applyUserActions([
+                    ['UpdateRecord', tableId, record.id, data]
+                ]);
+            }
+            else if (config.actionType === 'deleteRecord') {
+                const msg = config.confirmationMessage || 'Are you sure you want to delete this record?';
+                if (confirm(msg)) {
+                    console.log(`[DrawerViewer] Deletando record ${record.id} na tabela ${tableId}`);
+                    await window.grist.docApi.applyUserActions([
+                        ['RemoveRecord', tableId, record.id]
+                    ]);
+                }
+            }
+            else if (config.actionType === 'editRecord') {
+                if (window.GristDrawer) {
+                    console.log(`[DrawerViewer] Abrindo Gaveta para editar record ${record.id}`);
+                    window.GristDrawer.open(tableId, record.id, { 
+                        tableLens: tableLens,
+                        ...state.configData
+                    });
+                } else {
+                    console.error("[DrawerViewer] window.GristDrawer não encontrado para editRecord");
+                }
+            }
+            else if (config.actionType === 'addSubRecord') {
+                if (window.GristDrawer && config.subRecordRefField) {
+                    console.log(`[DrawerViewer] Adicionando sub-registro vinculado ao record ${record.id}`);
+                    const subTableId = await tableLens.getReferencedTableId(config.subRecordRefField);
+                    if (!subTableId) {
+                        console.error(`[DrawerViewer] Não foi possível determinar a tabela vinculada ao campo ${config.subRecordRefField}`);
+                        alert("Erro de configuração: Tabela do sub-registro não encontrada.");
+                        return;
+                    }
+                    let addConfig = {};
+                    if (config.subRecordConfigId) {
+                        addConfig = await tableLens.fetchConfig(config.subRecordConfigId);
+                    }
+                    const initialData = { [config.subRecordRefField]: record.id };
+                    window.GristDrawer.open(subTableId, 'new', { 
+                        ...(addConfig || {}),
+                        tableLens: tableLens,
+                        initialData: initialData
+                    });
+                } else {
+                    console.error("[DrawerViewer] GristDrawer ou subRecordRefField ausente para addSubRecord", config);
+                }
+            }
+        } catch (e) {
+            console.error("[DrawerViewer] Erro ao executar handleNavigationAction:", e);
+        }
+    }
 });
 
 // --- END OF 100% COMPLETE DrawerViewer.js WITH DEBUG LOGS ---

@@ -58,6 +58,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Silent listener to prevent "No listeners" warning from the drawer component.
         subscribe('drawer-rendered', () => { });
 
+        // Navigation Action Handler
+        subscribe('grf-navigation-action-triggered', async (eventData) => {
+            console.log("BSC Widget: Navigation action triggered.", eventData);
+            await handleNavigationAction(eventData.config, eventData.sourceRecord, eventData.tableId);
+        });
+
         // Refresh UI when data is changed in the drawer
         subscribe('data-changed', async (info) => {
             console.log("BSC Widget: Data changed event received.", info);
@@ -579,6 +585,81 @@ document.addEventListener('DOMContentLoaded', async () => {
                 renderBsc(fullStructure);
             }
         });
+
+        /**
+         * Executa ações de navegação ou atualização de dados.
+         */
+        async function handleNavigationAction(config, record, tableId) {
+            console.log("[BSC Widget] handleNavigationAction disparado:", { actionType: config.actionType, recordId: record.id, tableId });
+            try {
+                if (config.actionType === 'navigateToGristPage') {
+                    const rowId = record[config.sourceValueColumn] || record.id;
+                    console.log(`[BSC Widget] Navegando para página ${config.targetPageId}, rowId: ${rowId}`);
+                    await window.grist.setCursorPos({ sectionId: parseInt(config.targetPageId), rowId: rowId });
+                } 
+                else if (config.actionType === 'openUrlFromColumn') {
+                    const url = record[config.urlColumn];
+                    if (url) {
+                        console.log(`[BSC Widget] Abrindo URL: ${url}`);
+                        window.open(url, '_blank');
+                    } else {
+                        console.warn(`[BSC Widget] Coluna de URL '${config.urlColumn}' está vazia.`);
+                    }
+                } 
+                else if (config.actionType === 'updateRecord') {
+                    const data = { [config.updateField]: config.updateValue };
+                    console.log(`[BSC Widget] Atualizando record ${record.id} na tabela ${tableId}:`, data);
+                    await window.grist.docApi.applyUserActions([
+                        ['UpdateRecord', tableId, record.id, data]
+                    ]);
+                }
+                else if (config.actionType === 'deleteRecord') {
+                    const msg = config.confirmationMessage || 'Are you sure you want to delete this record?';
+                    if (confirm(msg)) {
+                        console.log(`[BSC Widget] Deletando record ${record.id} na tabela ${tableId}`);
+                        await window.grist.docApi.applyUserActions([
+                            ['RemoveRecord', tableId, record.id]
+                        ]);
+                    }
+                }
+                else if (config.actionType === 'editRecord') {
+                    if (window.GristDrawer) {
+                        console.log(`[BSC Widget] Abrindo Gaveta para editar record ${record.id}`);
+                        window.GristDrawer.open(tableId, record.id, { 
+                            tableLens: tableLens,
+                            ...widgetConfig
+                        });
+                    } else {
+                        console.error("[BSC Widget] window.GristDrawer não encontrado para editRecord");
+                    }
+                }
+                else if (config.actionType === 'addSubRecord') {
+                    if (window.GristDrawer && config.subRecordRefField) {
+                        console.log(`[BSC Widget] Adicionando sub-registro vinculado ao record ${record.id}`);
+                        const subTableId = await tableLens.getReferencedTableId(config.subRecordRefField);
+                        if (!subTableId) {
+                            console.error(`[BSC Widget] Não foi possível determinar a tabela vinculada ao campo ${config.subRecordRefField}`);
+                            alert("Erro de configuração: Tabela do sub-registro não encontrada.");
+                            return;
+                        }
+                        let addConfig = {};
+                        if (config.subRecordConfigId) {
+                            addConfig = await tableLens.fetchConfig(config.subRecordConfigId);
+                        }
+                        const initialData = { [config.subRecordRefField]: record.id };
+                        window.GristDrawer.open(subTableId, 'new', { 
+                            ...(addConfig || {}),
+                            tableLens: tableLens,
+                            initialData: initialData
+                        });
+                    } else {
+                        console.error("[BSC Widget] GristDrawer ou subRecordRefField ausente para addSubRecord", config);
+                    }
+                }
+            } catch (e) {
+                console.error("[BSC Widget] Erro ao executar handleNavigationAction:", e);
+            }
+        }
 
         await initializeAndUpdate();
 
