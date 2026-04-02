@@ -136,22 +136,23 @@ async function _renderDrawerContent() {
     // O objeto 'currentDrawerOptions' agora vem do GristTableLens.parseConfigRecord, 
     // que já mesclou mapping, styling e actions.
     const config = currentDrawerOptions || {};
-    console.log("[Drawer] Configuração recebida:", config);
     
-    // Suporte para tripartição: mapping contém tabs e definições de campos
+    // Suporte robusto para tripartição: mapping contém tabs e definições de campos
+    // Alguns configuradores salvam na raiz, outros dentro de 'mapping'
     const tabs = config.tabs || config.mapping?.tabs || null;
     const styleOverrides = config.styleOverrides || config.mapping?.styleOverrides || {};
     const widgetOverrides = config.widgetOverrides || config.mapping?.widgetOverrides || {};
     const fieldOptions = config.fieldOptions || config.mapping?.fieldOptions || {};
     const hiddenFields = config.hiddenFields || config.mapping?.hiddenFields || [];
     const lockedFields = config.lockedFields || config.mapping?.lockedFields || [];
+    const styling = config.styling || config.styling?.styling || {};
 
-    console.log("[Drawer] Diagnóstico de Mapeamento:", { 
+    console.log("[Drawer] Diagnóstico de Configuração:", { 
+        configKeys: Object.keys(config),
         hasTabs: !!tabs, 
-        numTabs: tabs?.length || 0,
-        hiddenFieldsCount: hiddenFields.length,
-        hiddenFields: hiddenFields,
-        hasWidgetOverrides: Object.keys(widgetOverrides).length > 0
+        hasWidgetOverrides: Object.keys(widgetOverrides).length > 0,
+        hasFieldOptions: Object.keys(fieldOptions).length > 0,
+        widgetOverrides
     });
 
     try {

@@ -1792,17 +1792,26 @@ export const CardConfigEditor = (() => {
                 </div>
             `;
         } else if (buttonConfig.actionType === 'addSubRecord') {
+            const allTables = await state.lens.listAllTables();
             container.innerHTML = `
+                <div class="form-group">
+                    <label>Target Table (Sub-Table):</label>
+                    <select class="action-sub-table-id" data-prop="subRecordTableId">
+                        <option value="">-- Select Table --</option>
+                        ${allTables.map(t => `<option value="${t.id}" ${buttonConfig.subRecordTableId === t.id ? 'selected' : ''}>${t.id}</option>`).join('')}
+                    </select>
+                    <p class="help-text">A tabela onde o novo registro será criado (ex: "Objetivos").</p>
+                </div>
                 <div class="form-group">
                     <label>Reference Field (Link to Parent):</label>
                     <select class="action-sub-ref-field" data-prop="subRecordRefField">
                         <option value="">-- Select Field --</option>
-                        ${allGristColumns.map(col => `<option value="${col}" ${buttonConfig.subRecordRefField === col ? 'selected' : ''}>${col}</option>`).join('')}
+                        <!-- Dynamic fields will be loaded here -->
                     </select>
-                    <p class="help-text">O campo na SUB-TABELA que aponta para este card (ex: "id_projeto").</p>
+                    <p class="help-text">O campo na SUB-TABELA que aponta para este card (ex: "ref_persp").</p>
                 </div>
                 <div class="form-group">
-                    <label>Sub-Table Configuration:</label>
+                    <label>Sub-Table Configuration (Drawer):</label>
                     <select class="action-sub-config-id" data-prop="subRecordConfigId">
                         <option value="">-- Use Default --</option>
                         ${allConfigs.map(c => `<option value="${c.configId}" ${buttonConfig.subRecordConfigId === c.configId ? 'selected' : ''}>${c.configId} (${c.componentType})</option>`).join('')}
@@ -1810,7 +1819,44 @@ export const CardConfigEditor = (() => {
                     <p class="help-text">Qual configuração de Drawer usar para o novo registro.</p>
                 </div>
             `;
-        } else if (buttonConfig.actionType === 'showTooltipField') {
+
+            const tableSelect = container.querySelector('.action-sub-table-id');
+            const refSelect = container.querySelector('.action-sub-ref-field');
+
+            const loadRefFields = async (tableId) => {
+                if (!tableId) {
+                    refSelect.innerHTML = '<option value="">-- Select Table First --</option>';
+                    return;
+                }
+                try {
+                    const targetSchema = await state.lens.getTableSchema(tableId);
+                    const fields = Object.values(targetSchema).filter(c => !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos');
+                    refSelect.innerHTML = `
+                        <option value="">-- Select Field --</option>
+                        ${fields.map(f => `<option value="${f.colId}" ${buttonConfig.subRecordRefField === f.colId ? 'selected' : ''}>${f.label} (${f.colId})</option>`).join('')}
+                    `;
+                } catch (e) {
+                    console.error("Failed to load target table schema:", e);
+                }
+            };
+
+            tableSelect.onchange = (e) => {
+                buttonConfig.subRecordTableId = e.target.value;
+                loadRefFields(e.target.value);
+                updateDebugJson();
+            };
+
+            refSelect.onchange = (e) => {
+                buttonConfig.subRecordRefField = e.target.value;
+                updateDebugJson();
+            };
+
+            // Initial load
+            if (buttonConfig.subRecordTableId) {
+                loadRefFields(buttonConfig.subRecordTableId);
+            }
+        }
+ else if (buttonConfig.actionType === 'showTooltipField') {
             container.innerHTML = `
                 <div class="form-group">
                     <label>Field to Display:</label>

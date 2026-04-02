@@ -671,26 +671,36 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                 }
                 else if (config.actionType === 'addSubRecord') {
-                    if (window.GristDrawer && config.subRecordRefField) {
-                        console.log(`[BSC Widget] Adicionando sub-registro vinculado ao record ${record.id}`);
-                        const subTableId = await tableLens.getReferencedTableId(config.subRecordRefField);
-                        if (!subTableId) {
-                            console.error(`[BSC Widget] Não foi possível determinar a tabela vinculada ao campo ${config.subRecordRefField}`);
-                            alert("Erro de configuração: Tabela do sub-registro não encontrada.");
-                            return;
-                        }
+                    const subTableId = config.subRecordTableId;
+                    const refFieldId = config.subRecordRefField;
+
+                    if (window.GristDrawer && subTableId && refFieldId) {
+                        console.log(`[BSC Widget] Adicionando sub-registro na tabela ${subTableId}, vinculado via ${refFieldId} ao pai ${record.id}`);
+                        
                         let addConfig = {};
                         if (config.subRecordConfigId) {
-                            addConfig = await tableLens.fetchConfig(config.subRecordConfigId);
+                            try {
+                                addConfig = await tableLens.fetchConfig(config.subRecordConfigId);
+                            } catch (e) {
+                                console.warn(`[BSC Widget] Falha ao carregar config ${config.subRecordConfigId}, usando padrão.`, e);
+                            }
                         }
-                        const initialData = { [config.subRecordRefField]: record.id };
+                        
+                        // Dados iniciais para vincular ao pai
+                        const initialData = { [refFieldId]: record.id };
+                        
                         window.GristDrawer.open(subTableId, 'new', { 
-                            ...(addConfig || {}),
+                            ...addConfig,
                             tableLens: tableLens,
                             initialData: initialData
                         });
                     } else {
-                        console.error("[BSC Widget] GristDrawer ou subRecordRefField ausente para addSubRecord", config);
+                        console.error("[BSC Widget] Configuração incompleta para addSubRecord", { 
+                            hasDrawer: !!window.GristDrawer, 
+                            subTableId, 
+                            refFieldId 
+                        });
+                        alert("Erro: Ação 'Add Sub-Record' não está configurada corretamente (Tabela ou Campo de Vínculo ausentes).");
                     }
                 }
             } catch (e) {

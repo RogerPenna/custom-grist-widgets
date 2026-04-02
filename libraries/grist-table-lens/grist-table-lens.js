@@ -380,6 +380,34 @@ export const GristTableLens = function(gristInstance) {
     };
     
     /**
+     * Retorna o ID da tabela referenciada por um campo Ref ou RefList.
+     * @param {string} colId ID da coluna na tabela atual.
+     * @returns {string|null} ID da tabela destino ou null.
+     */
+    this.getReferencedTableId = async function(colId, tableId = null) {
+        const schema = await this.getTableSchema(tableId || _metaState.activeTableId);
+        if (!schema || !schema[colId]) {
+            // Se não encontrou no cache ou na tabela ativa, tenta buscar no schema da tabela fornecida explicitamente
+            if (tableId) {
+                const explicitSchema = await this.getTableSchema(tableId);
+                if (explicitSchema && explicitSchema[colId]) {
+                    const type = explicitSchema[colId].type;
+                    if (type.startsWith('Ref:') || type.startsWith('RefList:')) {
+                        return type.split(':')[1];
+                    }
+                }
+            }
+            return null;
+        }
+        
+        const type = schema[colId].type;
+        if (type.startsWith('Ref:') || type.startsWith('RefList:')) {
+            return type.split(':')[1];
+        }
+        return null;
+    };
+
+    /**
      * [NOVO] Descobre qual campo na tabela de destino (targetTableId) aponta para a tabela de origem (sourceTableId).
      * Útil para preenchimento automático de vínculos (vínculo de contexto).
      * @param {string} targetTableId - Tabela onde queremos criar o registro (ex: "Perspectivas").
@@ -389,11 +417,12 @@ export const GristTableLens = function(gristInstance) {
     this.findRelationField = async function(targetTableId, sourceTableId) {
         if (!targetTableId || !sourceTableId) return null;
         try {
+            console.log(`GTL: Buscando relação entre ${targetTableId} (alvo) e ${sourceTableId} (origem)`);
             const schema = await this.getTableSchema(targetTableId);
-            const refPrefix = `Ref:${sourceTableId}`;
             
+            // Procura por Ref:SourceTableId ou RefList:SourceTableId
             const matchingFields = Object.values(schema).filter(col => 
-                col.type && (col.type === refPrefix || col.type.startsWith(`${refPrefix}:`))
+                col.type && (col.type === `Ref:${sourceTableId}` || col.type === `RefList:${sourceTableId}` || col.type.startsWith(`Ref:${sourceTableId}:`) || col.type.startsWith(`RefList:${sourceTableId}:`))
             );
 
             if (matchingFields.length === 0) return null;

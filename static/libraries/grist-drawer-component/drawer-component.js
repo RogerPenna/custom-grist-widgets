@@ -136,22 +136,23 @@ async function _renderDrawerContent() {
     // O objeto 'currentDrawerOptions' agora vem do GristTableLens.parseConfigRecord, 
     // que já mesclou mapping, styling e actions.
     const config = currentDrawerOptions || {};
-    console.log("[Drawer] Configuração recebida:", config);
     
-    // Suporte para tripartição: mapping contém tabs e definições de campos
+    // Suporte robusto para tripartição: mapping contém tabs e definições de campos
+    // Alguns configuradores salvam na raiz, outros dentro de 'mapping'
     const tabs = config.tabs || config.mapping?.tabs || null;
     const styleOverrides = config.styleOverrides || config.mapping?.styleOverrides || {};
     const widgetOverrides = config.widgetOverrides || config.mapping?.widgetOverrides || {};
     const fieldOptions = config.fieldOptions || config.mapping?.fieldOptions || {};
     const hiddenFields = config.hiddenFields || config.mapping?.hiddenFields || [];
     const lockedFields = config.lockedFields || config.mapping?.lockedFields || [];
+    const styling = config.styling || config.styling?.styling || {};
 
-    console.log("[Drawer] Diagnóstico de Mapeamento:", { 
+    console.log("[Drawer] Diagnóstico de Configuração:", { 
+        configKeys: Object.keys(config),
         hasTabs: !!tabs, 
-        numTabs: tabs?.length || 0,
-        hiddenFieldsCount: hiddenFields.length,
-        hiddenFields: hiddenFields,
-        hasWidgetOverrides: Object.keys(widgetOverrides).length > 0
+        hasWidgetOverrides: Object.keys(widgetOverrides).length > 0,
+        hasFieldOptions: Object.keys(fieldOptions).length > 0,
+        widgetOverrides
     });
 
     try {
@@ -217,12 +218,21 @@ async function _renderDrawerContent() {
                 // Normalização de opções para o renderer
                 const widgetCfg = widgetOverrides[fieldId] || {};
                 const fOpts = fieldOptions[fieldId] || {};
+                const sOverride = styleOverrides[fieldId] || {};
                 
                 // Mapeamos para o formato que o grist-field-renderer espera
+                // Prioridade 1: Widget explicitamente definido no mapping.widgetOverrides
+                // Prioridade 2: Flag 'colorPicker' ou 'progressBar' no mapping.fieldOptions (legado/configurator)
+                let widgetType = widgetCfg.widget;
+                if (!widgetType) {
+                    if (fOpts.colorPicker) widgetType = 'Color Picker';
+                    else if (fOpts.progressBar) widgetType = 'Progress Bar';
+                }
+
                 const mergedFieldConfig = {
-                    widget: widgetCfg.widget || (fOpts.colorPicker ? 'Color Picker' : (fOpts.progressBar ? 'Progress Bar' : null)),
+                    widget: widgetType,
                     widgetOptions: widgetCfg.options || fOpts,
-                    styleOverride: styleOverrides[fieldId] || {}
+                    dataStyle: sOverride // O renderer espera 'dataStyle' para cores/fontes fixas
                 };
 
                 renderField({
@@ -232,7 +242,8 @@ async function _renderDrawerContent() {
                     isEditing: isEditing,
                     isLocked: lockedFields.includes(fieldId),
                     tableLens: tableLens,
-                    fieldStyle: mergedFieldConfig // Passamos como fieldStyle (novo padrão)
+                    fieldStyle: mergedFieldConfig,
+                    styling: config.styling
                 });
             });
         });
