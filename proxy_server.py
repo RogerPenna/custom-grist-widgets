@@ -19,6 +19,7 @@ PORT = 3000
 GRIST_SERVER = os.getenv("GRIST_SERVER", "").rstrip("/")
 GRIST_API_KEY = os.getenv("GRIST_API_KEY", "")
 LOG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "proxy_debug.txt")
+print(f"Log file path: {LOG_FILE}")
 
 class GristProxyHandler(http.server.SimpleHTTPRequestHandler):
     def log_message(self, format, *args):

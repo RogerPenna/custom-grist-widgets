@@ -217,12 +217,21 @@ async function _renderDrawerContent() {
                 // Normalização de opções para o renderer
                 const widgetCfg = widgetOverrides[fieldId] || {};
                 const fOpts = fieldOptions[fieldId] || {};
+                const sOverride = styleOverrides[fieldId] || {};
                 
                 // Mapeamos para o formato que o grist-field-renderer espera
+                // Prioridade 1: Widget explicitamente definido no mapping.widgetOverrides
+                // Prioridade 2: Flag 'colorPicker' ou 'progressBar' no mapping.fieldOptions (legado/configurator)
+                let widgetType = widgetCfg.widget;
+                if (!widgetType) {
+                    if (fOpts.colorPicker) widgetType = 'Color Picker';
+                    else if (fOpts.progressBar) widgetType = 'Progress Bar';
+                }
+
                 const mergedFieldConfig = {
-                    widget: widgetCfg.widget || (fOpts.colorPicker ? 'Color Picker' : (fOpts.progressBar ? 'Progress Bar' : null)),
+                    widget: widgetType,
                     widgetOptions: widgetCfg.options || fOpts,
-                    styleOverride: styleOverrides[fieldId] || {}
+                    dataStyle: sOverride // O renderer espera 'dataStyle' para cores/fontes fixas
                 };
 
                 renderField({
@@ -232,7 +241,8 @@ async function _renderDrawerContent() {
                     isEditing: isEditing,
                     isLocked: lockedFields.includes(fieldId),
                     tableLens: tableLens,
-                    fieldStyle: mergedFieldConfig // Passamos como fieldStyle (novo padrão)
+                    fieldStyle: mergedFieldConfig,
+                    styling: config.styling
                 });
             });
         });

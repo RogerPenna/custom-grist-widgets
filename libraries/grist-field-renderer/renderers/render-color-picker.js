@@ -1,8 +1,12 @@
 // libraries/grist-field-renderer/renderers/render-color-picker.js
 export function renderColorPicker(options) {
     const { container, cellValue, isEditing, isLocked, fieldOptions } = options;
-    const colorMode = fieldOptions?.colorPickerOptions?.mode || 'picker';
-    const swatchesRaw = fieldOptions?.colorPickerOptions?.swatches || '';
+    
+    // Suporte para ambos os formatos de configuração (Legado e Configurator Novo)
+    const colorMode = fieldOptions?.mode || fieldOptions?.colorPickerOptions?.mode || 'picker';
+    const swatchesRaw = fieldOptions?.swatches || fieldOptions?.colorPickerOptions?.swatches || '';
+    
+    console.log(`[renderColorPicker] mode: ${colorMode}, swatches: ${swatchesRaw}`);
     
     // Converte a string de swatches em array, limpando espaços e garantindo o #
     const swatchList = swatchesRaw.split(',')
@@ -75,6 +79,10 @@ export function renderColorPicker(options) {
         container.appendChild(wrapper);
     } else {
         // MODO VISUALIZAÇÃO: Quadrinho + Texto Hex
+        container.style.display = 'flex';
+        container.style.alignItems = 'center';
+        container.style.gap = '8px';
+
         const colorBox = document.createElement('div');
         colorBox.className = 'grf-color-box';
         colorBox.style.backgroundColor = String(cellValue ?? '#FFFFFF');

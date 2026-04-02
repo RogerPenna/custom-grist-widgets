@@ -73,27 +73,59 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
 
+        // Helper to resolve drawer options for a specific table
+        async function resolveDrawerOptions(tableId, providedOptions = {}, drawerConfigId = null) {
+            console.log(`[BSC Widget] Resolving drawer options for table: ${tableId}, drawerConfigId: ${drawerConfigId}`);
+            
+            // 1. If we have an explicit drawerConfigId, fetch it
+            if (drawerConfigId) {
+                try {
+                    const specializedConfig = await tableLens.fetchConfig(drawerConfigId);
+                    if (specializedConfig) {
+                        return { ...specializedConfig, tableLens: tableLens };
+                    }
+                } catch (e) {
+                    console.warn(`[BSC Widget] Failed to fetch specialized drawer config ${drawerConfigId}:`, e);
+                }
+            }
+
+            // 2. Fallback: Determine which of our main configs applies to this table
+            let fallbackConfigId = null;
+            if (tableId === 'Perspectivas') {
+                fallbackConfigId = widgetConfig.perspectivesConfigId;
+            } else if (tableId === 'Objetivos') {
+                fallbackConfigId = widgetConfig.objectivesConfigId;
+            }
+
+            if (fallbackConfigId) {
+                try {
+                    const fallbackConfig = await tableLens.fetchConfig(fallbackConfigId);
+                    if (fallbackConfig) {
+                        return { ...fallbackConfig, tableLens: tableLens };
+                    }
+                } catch (e) {
+                    console.warn(`[BSC Widget] Failed to fetch fallback config ${fallbackConfigId}:`, e);
+                }
+            }
+
+            // 3. Last resort: Use provided options (from CardSystem) or global widgetConfig (if they match the table)
+            // We check if the tableId matches to avoid passing BSC config to an Objective drawer
+            if (providedOptions.tableId === tableId) {
+                return { ...providedOptions, tableLens: tableLens };
+            }
+            
+            return { tableLens: tableLens }; // Default (auto-render)
+        }
+
         // Listen for card clicks from CardSystem
         subscribe('grf-card-clicked', async (data) => {
             console.log("BSC Widget: Card clicked event received.", data);
             if (data) {
                 try {
                     // RESOLUÇÃO DE CONFIGURAÇÃO DO DRAWER:
-                    // 1. drawerConfigId vindo do evento (configurado na ação do Card)
-                    // 2. sidePanel.drawerConfigId definido no BSC
                     const drawerConfigId = data.drawerConfigId || widgetConfig?.actions?.sidePanel?.drawerConfigId || widgetConfig?.sidePanel?.drawerConfigId;
                     
-                    // Se não houver drawer específico, usamos a própria config do card que disparou o evento
-                    // (Isso garante que campos ocultos no Card continuem ocultos na Drawer se não houver Drawer customizada)
-                    let drawerOptions = { ...(data.cardConfig || widgetConfig), tableLens: tableLens };
-                    
-                    if (drawerConfigId) {
-                        console.log(`BSC Widget: Fetching specialized drawer config: ${drawerConfigId}`);
-                        const specializedConfig = await tableLens.fetchConfig(drawerConfigId);
-                        if (specializedConfig) {
-                            drawerOptions = { ...specializedConfig, tableLens: tableLens };
-                        }
-                    }
+                    const drawerOptions = await resolveDrawerOptions(data.tableId, data.cardConfig, drawerConfigId);
                     
                     window.GristDrawer.open(data.tableId, data.recordId, drawerOptions);
                 } catch (e) {
@@ -631,11 +663,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
                 else if (config.actionType === 'editRecord') {
                     if (window.GristDrawer) {
-                        console.log(`[BSC Widget] Abrindo Gaveta para editar record ${record.id}`);
-                        window.GristDrawer.open(tableId, record.id, { 
-                            tableLens: tableLens,
-                            ...widgetConfig
-                        });
+                        console.log(`[BSC Widget] Abrindo Gaveta para editar record ${record.id} na tabela ${tableId}`);
+                        const drawerOptions = await resolveDrawerOptions(tableId, {}, config.drawerConfigId);
+                        window.GristDrawer.open(tableId, record.id, drawerOptions);
                     } else {
                         console.error("[BSC Widget] window.GristDrawer não encontrado para editRecord");
                     }
