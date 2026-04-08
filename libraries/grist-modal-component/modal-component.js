@@ -18,7 +18,7 @@ function _initializeModalDOM() {
     
     modalOverlay = document.createElement('div');
     modalOverlay.id = 'grist-modal-overlay';
-    modalOverlay.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:10001;display:none;align-items:center;justify-content:center;font-family:'Manrope',sans-serif;";
+    modalOverlay.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:2147483647;display:none;align-items:center;justify-content:center;font-family:'Manrope',sans-serif;";
     
     modalOverlay.innerHTML = `
         <div id="grist-modal-content" style="background:white;width:500px;max-height:90vh;border-radius:8px;display:flex;flex-direction:column;box-shadow:0 10px 30px rgba(0,0,0,0.3);">

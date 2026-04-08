@@ -216,7 +216,16 @@ export const DrawerConfigEditor = (() => {
                 // Read RefList config
                 const refListConfigPanel = item.querySelector('.reflist-config-panel');
                 if (refListConfigPanel) {
-                    const refConfig = {};
+                    const refConfig = {
+                        _refListConfig: {
+                            displayAs: refListConfigPanel.querySelector('.reflist-display-as').value,
+                            collapsible: refListConfigPanel.querySelector('.reflist-collapsible-checkbox').checked,
+                            cardConfigId: refListConfigPanel.querySelector('.reflist-card-config-id').value.trim(),
+                            showAddButton: refListConfigPanel.querySelector('.reflist-show-add-checkbox').checked,
+                            addRecordConfigId: refListConfigPanel.querySelector('.reflist-add-config-id').value.trim()
+                        }
+                    };
+                    
                     refListConfigPanel.querySelectorAll('tbody tr').forEach(row => {
                         const refColId = row.dataset.refColId;
                         refConfig[refColId] = {
@@ -226,6 +235,7 @@ export const DrawerConfigEditor = (() => {
                             requireInModal: row.querySelector('[data-config-key="requireInModal"]').checked
                         };
                     });
+                    
                     refConfig._options = {
                         zebra: item.querySelector('.reflist-zebra-checkbox')?.checked || false
                     };
@@ -369,7 +379,54 @@ export const DrawerConfigEditor = (() => {
         `;
         }
 
-        let refListConfigHtml = ''; if (col.type.startsWith('RefList:')) { const fieldConfig = configData.refListFieldConfig?.[col.colId] || {}; const isZebra = fieldConfig?._options?.zebra === true; refListConfigHtml = ` <div class="field-card-extra-actions"> <label class="reflist-option-label"><input type="checkbox" class="reflist-zebra-checkbox" ${isZebra ? 'checked' : ''}> Tabela Zebrada</label> <button type="button" class="btn btn-secondary btn-sm toggle-reflist-config">Configurar Colunas</button> </div> <div class="reflist-config-panel" style="display: none;"><p>Carregando...</p></div>`; } card.innerHTML = ` <div class="field-card-main"> <div class="field-card-left"> <span class="field-card-label">${col.label} <span class="field-card-type">(${col.type})</span></span> </div> <div class="field-card-right"> <div class="field-card-controls"> <label><input type="checkbox" class="is-hidden-checkbox"> Oculto</label> <label><input type="checkbox" class="is-locked-checkbox"> Travado</label> <label><input type="checkbox" class="is-required-checkbox"> Obrigatório</label> </div> </div> </div> ${styleConfigHtml} ${widgetConfigHtml} ${refListConfigHtml} `; const toggleStyleBtn = card.querySelector('.toggle-style-config'); if (toggleStyleBtn) { toggleStyleBtn.addEventListener('click', (event) => { event.preventDefault(); const panel = card.querySelector('.style-config-panel'); panel.style.display = panel.style.display === 'none' ? 'block' : 'none'; }); }
+        let refListConfigHtml = '';
+        if (col.type.startsWith('RefList:')) {
+            const fieldConfig = configData.refListFieldConfig?.[col.colId] || {};
+            const refListConfig = fieldConfig._refListConfig || {}; // Usamos _refListConfig para evitar colisão com o mapping de colunas
+            const isZebra = fieldConfig?._options?.zebra === true;
+            const displayAs = refListConfig.displayAs || 'table';
+
+            refListConfigHtml = `
+            <div class="field-card-extra-actions">
+                <button type="button" class="btn btn-secondary btn-sm toggle-reflist-config">Configurar Sub-Tabela</button>
+            </div>
+            <div class="reflist-config-panel" style="display: none; padding: 10px; background: #f8f9fa; border-radius: 4px; margin-top: 5px; border: 1px solid #dee2e6;">
+                <h5>Opções de Sub-Tabela (RefList)</h5>
+
+                <div class="drawer-config-section">
+                    <label>Exibir como:</label>
+                    <select class="reflist-display-as">
+                        <option value="table" ${displayAs === 'table' ? 'selected' : ''}>Tabela Simples</option>
+                        <option value="cards" ${displayAs === 'cards' ? 'selected' : ''}>Cards (Lista)</option>
+                        <option value="tabulator" ${displayAs === 'tabulator' ? 'selected' : ''}>Tabela Tabulator</option>
+                    </select>
+                </div>
+
+                <div class="drawer-config-section">
+                    <label><input type="checkbox" class="reflist-zebra-checkbox" ${isZebra ? 'checked' : ''}> Tabela Zebrada</label>
+                    <label style="margin-left: 15px;"><input type="checkbox" class="reflist-collapsible-checkbox" ${refListConfig.collapsible ? 'checked' : ''}> Retrátil (Collapsible)</label>
+                </div>
+
+                <div class="reflist-card-options" style="display: ${displayAs === 'cards' ? 'block' : 'none'}; border-top: 1px solid #eee; padding-top: 10px; margin-top: 10px;">
+                    <label>ID da Configuração de Card:</label>
+                    <input type="text" class="reflist-card-config-id" value="${refListConfig.cardConfigId || ''}" placeholder="Ex: card-objetivos-v1">
+                </div>
+
+                <div class="reflist-add-options" style="border-top: 1px solid #eee; padding-top: 10px; margin-top: 10px;">
+                    <label><input type="checkbox" class="reflist-show-add-checkbox" ${refListConfig.showAddButton !== false ? 'checked' : ''}> Mostrar Botão "Adicionar"</label>
+                    <div style="margin-top: 5px;">
+                        <label style="font-size: 11px;">Config de Adição (Drawer ID):</label>
+                        <input type="text" class="reflist-add-config-id" value="${refListConfig.addRecordConfigId || ''}" placeholder="Default" style="font-size: 11px; width: 100%;">
+                    </div>
+                </div>
+
+                <div class="reflist-column-config" style="margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px;">
+                    <label>Colunas da Sub-Tabela:</label>
+                    <div class="reflist-columns-container"><p>Carregando colunas...</p></div>
+                </div>
+            </div>`;
+        }
+ card.innerHTML = ` <div class="field-card-main"> <div class="field-card-left"> <span class="field-card-label">${col.label} <span class="field-card-type">(${col.type})</span></span> </div> <div class="field-card-right"> <div class="field-card-controls"> <label><input type="checkbox" class="is-hidden-checkbox"> Oculto</label> <label><input type="checkbox" class="is-locked-checkbox"> Travado</label> <label><input type="checkbox" class="is-required-checkbox"> Obrigatório</label> </div> </div> </div> ${styleConfigHtml} ${widgetConfigHtml} ${refListConfigHtml} `; const toggleStyleBtn = card.querySelector('.toggle-style-config'); if (toggleStyleBtn) { toggleStyleBtn.addEventListener('click', (event) => { event.preventDefault(); const panel = card.querySelector('.style-config-panel'); panel.style.display = panel.style.display === 'none' ? 'block' : 'none'; }); }
 
         const toggleWidgetBtn = card.querySelector('.toggle-widget-config');
         if (toggleWidgetBtn) {
@@ -415,7 +472,62 @@ export const DrawerConfigEditor = (() => {
             btn.addEventListener('click', (e) => e.target.closest('.color-rule-row').remove());
         });
 
-        const toggleRefListBtn = card.querySelector('.toggle-reflist-config'); if (toggleRefListBtn) { toggleRefListBtn.addEventListener('click', async (event) => { event.preventDefault(); const panel = card.querySelector('.reflist-config-panel'); if (panel.style.display === 'none') { const referencedTableId = col.type.split(':')[1]; const referencedSchema = await lens.getTableSchema(referencedTableId); const fieldConfig = configData.refListFieldConfig?.[col.colId] || {}; let tableRowsHtml = `<tr><td colspan="5">Schema não encontrado.</td></tr>`; if (referencedSchema) { tableRowsHtml = Object.values(referencedSchema).filter(c => !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos').map(refCol => { const colConfig = fieldConfig[refCol.colId] || { showInTable: true }; return `<tr data-ref-col-id="${refCol.colId}"><td>${refCol.label}</td><td><input type="checkbox" data-config-key="showInTable" ${colConfig.showInTable ? 'checked' : ''}></td><td><input type="checkbox" data-config-key="hideInModal" ${colConfig.hideInModal ? 'checked' : ''}></td><td><input type="checkbox" data-config-key="lockInModal" ${colConfig.lockInModal ? 'checked' : ''}></td><td><input type="checkbox" data-config-key="requireInModal" ${colConfig.requireInModal ? 'checked' : ''}></td></tr>`; }).join(''); } panel.innerHTML = `<table class="reflist-config-table"><thead><tr><th>Campo</th><th>Exibir</th><th>Oculto</th><th>Travado</th><th>Obrig.</th></tr></thead><tbody>${tableRowsHtml}</tbody></table>`; panel.style.display = 'block'; } else { panel.style.display = 'none'; } }); } return card;
+        const toggleRefListBtn = card.querySelector('.toggle-reflist-config');
+        if (toggleRefListBtn) {
+            toggleRefListBtn.addEventListener('click', async (event) => {
+                event.preventDefault();
+                const panel = card.querySelector('.reflist-config-panel');
+                if (panel.style.display === 'none') {
+                    const referencedTableId = col.type.split(':')[1];
+                    const referencedSchema = await lens.getTableSchema(referencedTableId);
+
+                    const fieldConfig = configData.refListFieldConfig?.[col.colId] || {};
+                    const refListConfig = fieldConfig._refListConfig || {};
+
+                    const columnsContainer = panel.querySelector('.reflist-columns-container');
+                    let tableRowsHtml = `<tr><td colspan="5">Schema não encontrado.</td></tr>`;
+
+                    if (referencedSchema) {
+                        tableRowsHtml = Object.values(referencedSchema)
+                            .filter(c => !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos')
+                            .map(refCol => {
+                                const colConfig = fieldConfig[refCol.colId] || { showInTable: true };
+                                return `
+                                    <tr data-ref-col-id="${refCol.colId}">
+                                        <td>${refCol.label}</td>
+                                        <td><input type="checkbox" data-config-key="showInTable" ${colConfig.showInTable ? 'checked' : ''}></td>
+                                        <td><input type="checkbox" data-config-key="hideInModal" ${colConfig.hideInModal ? 'checked' : ''}></td>
+                                        <td><input type="checkbox" data-config-key="lockInModal" ${colConfig.lockInModal ? 'checked' : ''}></td>
+                                        <td><input type="checkbox" data-config-key="requireInModal" ${colConfig.requireInModal ? 'checked' : ''}></td>
+                                    </tr>`;
+                            }).join('');
+                    }
+
+                    columnsContainer.innerHTML = `
+                        <table class="reflist-config-table">
+                            <thead>
+                                <tr><th>Campo</th><th>Exibir</th><th>Oculto</th><th>Travado</th><th>Obrig.</th></tr>
+                            </thead>
+                            <tbody>${tableRowsHtml}</tbody>
+                        </table>
+                    `;
+
+                    // Listeners para opções do widget
+                    const displayAsSelect = panel.querySelector('.reflist-display-as');
+                    const cardOptions = panel.querySelector('.reflist-card-options');
+
+                    displayAsSelect.onchange = (e) => {
+                        cardOptions.style.display = e.target.value === 'cards' ? 'block' : 'none';
+                        updateDebugJson();
+                    };
+
+                    panel.style.display = 'block';
+                } else {
+                    panel.style.display = 'none';
+                }
+            });
+        }
+ return card;
     }
 
     return { render, read };

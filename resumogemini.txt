@@ -1,24 +1,29 @@
-# Resumo da Sessão PAVICON PQC - 09/Mar/2026
+# Resumo da Sessão PAVICON PQC - 02/Abr/2026 (Hoje)
 
 ## Status Atual:
-- **Dashboard Admin (Command Center):** Funcionando na porta 8503. Modularizado em `portal_admin.py`, `app_data.py` e `app_styles.py`.
-- **Motor de Dados (Proxy):** `proxy_server.py` ativo na porta 3000. Essencial para o modo Headless (Dashboard). Configurado para NÃO fazer cache de JS e gerar log em `proxy_debug.txt`.
-- **Widget de Cards:** `CardViewer.html` agora é universal. Funciona no Grist e no Dashboard.
-- **Drawer (Detalhes):** `drawer-component.js` convertido para Script Clássico para evitar erros de módulo/cache no Windows. Funcionando no Dashboard com injeção de motor Headless.
+- **Central de Comandos:** Opção 4 (Proxy Server) corrigida e funcional.
+- **Color Picker no Drawer:** Funcionando 100% com suporte a "Swatches" (apenas sugestões).
+- **Ação "Add Sub-Record":** Implementada e configurada corretamente no configurador de cards.
+- **Sincronização:** Todas as bibliotecas em `libraries/` e `static/libraries/` estão sincronizadas.
 
 ## O que foi resolvido hoje:
-1.  **Visual:** Ajustado paddings do Streamlit para o iframe ocupar 100% da largura.
-2.  **Arquitetura:** Separação do `portal_admin.py` em arquivos menores para evitar erros de sintaxe.
-3.  **Universalidade:** Widget de cards agora carrega no Grist E no Dashboard simultaneamente.
-4.  **Drawer:** Corrigido o erro que abria a Drawer vazia no Dashboard através da injeção do `tableLens`.
-5.  **RefList:** Patch aplicado no `render-reflist.js` para evitar erro de `columns undefined` ao ordenar registros filhos.
+1.  **Proxy Server (Opção 4):** Corrigido o `ModuleNotFoundError: certifi` no venv. Adicionado suporte a `.env` e logs de depuração. Agora o servidor inicia sem erros na porta 3000.
+2.  **Color Picker (Gaveta/Drawer):** 
+    - Corrigido o mapeamento de propriedades (`dataStyle` vs `styleOverride`).
+    - Implementada detecção robusta de widget (case-insensitive) no `grist-field-renderer.js`.
+    - Corrigida a detecção do modo "Swatches" no `render-color-picker.js` para suportar o novo formato de JSON tripartite.
+3.  **Ação "Add Sub-Record" (Adicionar Filho):**
+    - Resolvido o erro `tableLens.getReferencedTableId is not a function` adicionando os métodos necessários à biblioteca `GristTableLens`.
+    - **Configurador:** Atualizado o `config-cards.js` para permitir selecionar a Tabela Destino e o Campo de Vínculo (Back-reference) dinamicamente.
+    - **Vínculo Automático:** Agora, ao clicar em "Adicionar Objetivo" de uma Perspectiva, a gaveta já abre com o campo `ref_persp` preenchido com o ID correto.
+4.  **Sincronização de Ambiente:** Identificada a duplicidade de arquivos entre a raiz e a pasta `static/`. Todos os fixes foram espelhados para a pasta `static/` para garantir que o navegador carregue sempre a versão mais recente.
 
-## Próximos Passos (Amanhã):
-1.  **Refinar o CSS da Drawer:** O modal de edição de registros filhos ainda precisa de ajustes visuais finos (z-index parece resolvido, mas o layout interno pode ser melhorado).
-2.  **Testar Salvamento na Drawer:** Verificar se as alterações feitas na Drawer via Dashboard estão persistindo corretamente no Grist via Proxy.
-3.  **Tabela Headless:** Implementar a abertura da Drawer a partir de widgets de tabela tradicionais (usando o novo padrão `window.GristDrawer.open`).
+## Próximos Passos:
+1.  **Reordenar Cards:** Iniciar a pesquisa para tratar itens de fotos como 'CARDS' com drag-and-drop para reordenação manual (conforme memória salva).
+2.  **Refinar Ações:** Verificar se outras ações de navegação (como `updateRecord`) também precisam da mesma robustez aplicada ao `addSubRecord`.
+3.  **Testes de Estresse:** Validar o salvamento de múltiplos registros filhos em sequência através da gaveta.
 
 ## Como Iniciar amanhã:
 1.  Rodar `c:\customwidgets\CENTRAL_DE_COMANDOS.bat`.
-2.  Opção [A] para iniciar tudo de uma vez.
-3.  Acessar `http://localhost:8503`.
+2.  Testar a Opção 4 para garantir que o Proxy subiu.
+3.  Abrir o Grist e testar o botão de "Adicionar Objetivo" em um card de Perspectiva.

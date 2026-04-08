@@ -219,6 +219,11 @@ export const GristTableLens = function(gristInstance) {
             const foundRecord = records.find(record => {
                 return filterKeys.every(key => record[key] == filterObject[key]);
             });
+            
+            if (foundRecord) {
+                foundRecord.gristHelper_tableId = tableId;
+            }
+            
             return foundRecord || null;
         } catch (error) {
             console.error(`GTL.findRecord: Erro ao tentar encontrar registro em '${tableId}' com filtro:`, filterObject, error);

@@ -143,6 +143,7 @@ async function _renderDrawerContent() {
     const styleOverrides = config.styleOverrides || config.mapping?.styleOverrides || {};
     const widgetOverrides = config.widgetOverrides || config.mapping?.widgetOverrides || {};
     const fieldOptions = config.fieldOptions || config.mapping?.fieldOptions || {};
+    const refListFieldConfig = config.refListFieldConfig || config.mapping?.refListFieldConfig || {};
     const hiddenFields = config.hiddenFields || config.mapping?.hiddenFields || [];
     const lockedFields = config.lockedFields || config.mapping?.lockedFields || [];
     const styling = config.styling || config.styling?.styling || {};
@@ -232,7 +233,8 @@ async function _renderDrawerContent() {
                 const mergedFieldConfig = {
                     widget: widgetType,
                     widgetOptions: widgetCfg.options || fOpts,
-                    dataStyle: sOverride // O renderer espera 'dataStyle' para cores/fontes fixas
+                    dataStyle: sOverride, // O renderer espera 'dataStyle' para cores/fontes fixas
+                    refListConfig: refListFieldConfig[fieldId] // Passa as configurações específicas de RefList
                 };
 
                 renderField({
