@@ -351,8 +351,9 @@ document.addEventListener('DOMContentLoaded', async function () {
                 return;
             }
 
-            currentConfig = JSON.parse(configRecord.configJson);
-            console.log('currentConfig (parsed from configJson):', currentConfig);
+            // Use the new robust parsing method
+            currentConfig = tableLens.parseConfigRecord(configRecord);
+            console.log('currentConfig (unified from record):', currentConfig);
 
             const tableId = currentConfig.tableId;
             console.log('tableId from currentConfig:', tableId);
@@ -444,7 +445,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                 tooltips: true,
                 history: true,
                 addRowPos: "top",
-                pagination: currentConfig.pagination?.enabled || false,
+                pagination: (currentConfig.pagination?.enabled && currentConfig.pagination.enabled !== 'false') ? currentConfig.pagination.enabled : false,
                 paginationSize: currentConfig.pagination?.pageSize || 10,
                 paginationSizeSelector: currentConfig.pagination?.enabled ? [5, 10, 20, 50, 100] : false,
                 movableColumns: true, //allow column order to be changed
@@ -453,14 +454,15 @@ document.addEventListener('DOMContentLoaded', async function () {
                 // initialFilter: currentConfig.initialFilter || [], // Not implemented in editor yet
             });
 
-            // Apply styling classes
-            if (currentConfig.stripedTable) {
+            // Apply styling classes to the container AFTER initialization
+            const stripedEnabled = currentConfig.stripedTable || (currentConfig.styling && currentConfig.styling.stripedTable);
+            if (stripedEnabled) {
+                console.log('DEBUG: Enabling Zebra Stripes');
                 tableContainer.classList.add('custom-striped-enabled');
             } else {
+                console.log('DEBUG: Disabling Zebra Stripes');
                 tableContainer.classList.remove('custom-striped-enabled');
             }
-            // Tabulator handles fixed header with height:"100%" and layout:"fitColumns" generally
-            // No specific class needed for fixedHeader unless custom CSS is applied.
             console.log('Tabulator initialized.');
 
             // Manual event delegation for row clicks as a workaround

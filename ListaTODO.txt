@@ -290,12 +290,15 @@
   - It now uses the latest classification record based on `Data_Classificacao`, falling back to the highest `Ano`.
   - An orange icon is now displayed if the latest classification is more than 12 months old.
 
+### Correções Recentes (Table Widget)
+
+- [DONE] **Tabela Zebrada Lógica Invertida:** Corrigido o problema onde a opção de "Zebra" funcionava ao contrário.
+- [DONE] **Formatação de Células Grist na Tabela:** A tabela agora reflete as cores das colunas do tipo "Choice" (pílulas coloridas) vindas do Grist.
+
 ### Bugs Atuais / Funcionalidades Pendentes (Table Widget)
 
-- [BUG] **Tabela Zebrada Lógica Invertida:** Ativar "Tabela Zebrada" desativa as listras; desativá-la as ativa. (Re-reportado pelo usuário).
-- [BUG] **"Modo de Edição" Falta "Estilo Excel":** O botão de rádio para "Estilo Excel" está faltando na interface do usuário.
-- [PENDING] **"ID do Drawer" como Dropdown:** Usuário solicitou que este seja um menu suspenso das configurações de Drawer disponíveis.
-- [HIGH PRIORITY] **Formatação de Células Grist na Tabela:** A tabela *não* está mostrando a formatação de célula específica do Grist (por exemplo, cápsulas coloridas para campos Choice).
+- [BUG] **"Modo de Edição" Falta "Estilo Excel":** O botão de rádio para ativar o "Excel Style" (edição inline) sumiu da interface de configuração.
+- [PENDING] **"ID do Drawer" como Dropdown:** Atualmente é necessário digitar o ID manualmente; a ideia é transformar em um dropdown com as opções disponíveis.
 
 ### Funcionalidades Ainda Não Implementadas (da "Instructions for TABULATOR options.txt")
 
