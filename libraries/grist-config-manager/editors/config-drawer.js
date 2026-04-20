@@ -1,10 +1,26 @@
 
 export const DrawerConfigEditor = (() => {
     let currentSchema = null;
-    let currentTableId = null; // Variável para armazenar o tableId
+    let currentTableId = null;
     let stageConfigs = {};
     let currentEditingStage = '_global';
-    let _mainContainer = null; // Para o debug
+    let _mainContainer = null;
+
+    const DEFAULT_STYLING = {
+        displayMode: 'drawer',
+        width: '400px',
+        showDebugInfo: false,
+        titleField: null,
+        headerBackgroundMode: 'solid',
+        headerBackgroundSolidColor: '#f8fafc',
+        headerBackgroundGradientType: 'linear-gradient(to right, {c1}, {c2})',
+        headerBackgroundGradientColor1: '#f8fafc',
+        headerBackgroundGradientColor2: '#f1f5f9',
+        headerBackgroundField: null,
+        headerTextMode: 'solid',
+        headerTextSolidColor: '#1e293b',
+        headerTextField: null
+    };
 
     function updateDebugJson() {
         if (!_mainContainer) return;
@@ -32,10 +48,9 @@ export const DrawerConfigEditor = (() => {
         }
     }
 
-    // ASSINATURA CORRIGIDA para aceitar o 5º argumento
     async function render(container, configData, lens, tableId, allConfigs) {
-        _mainContainer = container; // Salva a referência
-        currentTableId = tableId; // Armazena o tableId
+        _mainContainer = container; 
+        currentTableId = tableId; 
         if (!tableId) {
             container.innerHTML = '<p class="editor-placeholder">Selecione uma Tabela de Dados no menu acima para começar a configurar.</p>';
             return;
@@ -45,6 +60,8 @@ export const DrawerConfigEditor = (() => {
             container.innerHTML = '<p class="editor-placeholder">Erro ao carregar o schema da tabela. Verifique o console.</p>';
             return;
         }
+
+        const styling = configData.styling || configData;
 
         stageConfigs = {
             _global: { hiddenFields: configData.hiddenFields || [], lockedFields: configData.lockedFields || [], requiredFields: configData.requiredFields || [] },
@@ -60,34 +77,123 @@ export const DrawerConfigEditor = (() => {
                 .debug-label.styling { color: #198754; }
                 .debug-label.actions { color: #fd7e14; }
                 .config-debugger pre { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 4px; max-height: 200px; overflow: auto; }
+                .drawer-tab-btn { padding: 8px 16px; cursor: pointer; border: 1px solid #ddd; border-bottom: none; background: #f1f5f9; border-radius: 4px 4px 0 0; }
+                .drawer-tab-btn.active { background: #fff; font-weight: bold; border-top: 2px solid #0d6efd; }
+                .drawer-tab-content { border: 1px solid #ddd; padding: 15px; background: #fff; border-radius: 0 4px 4px 4px; }
+                .styling-grid { display: grid; grid-template-columns: 1fr; gap: 15px; }
+                @media (min-width: 600px) { .styling-grid { grid-template-columns: 1fr 1fr; } }
             </style>
-            <div class="drawer-config-section">
-                <label for="displayModeSelector">Modo:</label>
-                <select id="displayModeSelector"><option value="drawer" ${configData.displayMode === 'drawer' ? 'selected' : ''}>Drawer</option><option value="modal" ${configData.displayMode === 'modal' ? 'selected' : ''}>Modal</option></select>
+            
+            <div class="drawer-tabs-nav" style="display: flex; gap: 5px; margin-bottom: -1px; position: relative; z-index: 2;">
+                <button type="button" class="drawer-tab-btn active" data-tab="fields">Campos e Abas</button>
+                <button type="button" class="drawer-tab-btn" data-tab="styles">Estilos</button>
+                <button type="button" class="drawer-tab-btn" data-tab="workflow">Workflow</button>
             </div>
-            <div class="drawer-config-section">
-                <label for="drawerWidthSelector">Largura:</label>
-                <select id="drawerWidthSelector">${['25%', '40%', '50%', '60%', '75%'].map(w => `<option value="${w}" ${configData.width === w ? 'selected' : ''}>${w}</option>`).join('')}</select>
+
+            <div id="tab-fields" class="drawer-tab-content">
+                <div class="drawer-config-section">
+                    <label for="displayModeSelector">Modo:</label>
+                    <select id="displayModeSelector"><option value="drawer" ${styling.displayMode === 'drawer' ? 'selected' : ''}>Drawer</option><option value="modal" ${styling.displayMode === 'modal' ? 'selected' : ''}>Modal</option></select>
+                </div>
+                <div class="drawer-config-section">
+                    <label for="drawerWidthSelector">Largura:</label>
+                    <select id="drawerWidthSelector">
+                        ${['25%', '35%', '40%', '50%', '60%', '75%'].map(w => `<option value="${w}" ${styling.width === w ? 'selected' : ''}>${w}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="drawer-config-section">
+                     <label><input type="checkbox" id="showDebugInfoCheckbox" ${styling.showDebugInfo ? 'checked' : ''}> Show Schema Debug Info (in Drawer)</label>
+                </div>
+                <div class="config-section-title">Layout e Regras de Campos</div>
+                <div class="drawer-config-section">
+                    <button type="button" id="addTabBtn" class="btn btn-primary add-tab-btn">📑 + Adicionar Aba</button>
+                    <ul id="unifiedFieldList" class="field-order-list"></ul>
+                </div>
             </div>
-            <div class="drawer-config-section">
-                 <label><input type="checkbox" id="showDebugInfoCheckbox" ${configData.showDebugInfo ? 'checked' : ''}> Show Schema Debug Info (in Drawer)</label>
+
+            <div id="tab-styles" class="drawer-tab-content" style="display: none;">
+                <h3>Estilos do Cabeçalho</h3>
+                <div class="styling-grid">
+                    <fieldset>
+                        <legend><b>Título</b></legend>
+                        <label for="drawerTitleFieldSelector">Campo do Título:</label>
+                        <select id="drawerTitleFieldSelector">
+                            <option value="">-- Automático (ID) --</option>
+                        </select>
+                    </fieldset>
+
+                    <fieldset>
+                        <legend><b>Cor de Fundo (Cabeçalho)</b></legend>
+                        <label><input type="radio" name="headBgMode" value="solid"> Sólido</label>
+                        <label><input type="radio" name="headBgMode" value="gradient"> Gradiente</label>
+                        <label><input type="radio" name="headBgMode" value="conditional"> Por Opção de Choice</label>
+                        <label><input type="radio" name="headBgMode" value="text-value"> Valor do Campo (Hex)</label>
+                        
+                        <div class="style-control-group" data-mode="solid">
+                            <input type="color" id="drawer-head-bgcolor">
+                        </div>
+                        <div class="style-control-group" data-mode="gradient" style="display:none;">
+                            <select id="drawer-head-bggradient-type">
+                                <option value="linear-gradient(to right, {c1}, {c2})">Linear H</option>
+                                <option value="linear-gradient(to bottom, {c1}, {c2})">Linear V</option>
+                                <option value="radial-gradient(circle, {c1}, {c2})">Radial</option>
+                            </select>
+                            <input type="color" id="drawer-head-bggradient-c1">
+                            <input type="color" id="drawer-head-bggradient-c2">
+                        </div>
+                        <div class="style-control-group" data-mode="conditional" style="display:none;">
+                            <select id="drawer-head-bgfield"><option value="">-- selecionar campo --</option></select>
+                        </div>
+                        <div class="style-control-group" data-mode="text-value" style="display:none;">
+                            <select id="drawer-head-bgfield-raw"><option value="">-- selecionar campo hex --</option></select>
+                        </div>
+                    </fieldset>
+
+                    <fieldset>
+                        <legend><b>Cor do Texto e Ícones</b></legend>
+                        <label><input type="radio" name="headTextMode" value="solid"> Sólido</label>
+                        <label><input type="radio" name="headTextMode" value="conditional"> Por Opção de Choice</label>
+                        <label><input type="radio" name="headTextMode" value="text-value"> Valor do Campo (Hex)</label>
+                        
+                        <div class="style-control-group" data-mode="solid">
+                            <input type="color" id="drawer-head-textcolor">
+                        </div>
+                        <div class="style-control-group" data-mode="conditional" style="display:none;">
+                            <select id="drawer-head-textfield"><option value="">-- selecionar campo --</option></select>
+                        </div>
+                        <div class="style-control-group" data-mode="text-value" style="display:none;">
+                            <select id="drawer-head-textfield-raw"><option value="">-- selecionar campo hex --</option></select>
+                        </div>
+                    </fieldset>
+                </div>
             </div>
-            <div id="workflowConfigContainer"></div>
-            <div class="config-section-title">Layout e Regras de Campos</div>
-            <div id="stageSelectorContainer" class="drawer-config-section" style="display: none;">
-                <label for="stageSelector">Editando Regras Para:</label>
-                <select id="stageSelector"></select>
-                <button id="copyStageConfigBtn" class="btn btn-secondary btn-sm">Copiar Regras...</button>
+
+            <div id="tab-workflow" class="drawer-tab-content" style="display: none;">
+                <div id="workflowConfigContainer"></div>
+                <div id="stageSelectorContainer" class="drawer-config-section" style="display: none;">
+                    <label for="stageSelector">Editando Regras Para:</label>
+                    <select id="stageSelector"></select>
+                    <button id="copyStageConfigBtn" class="btn btn-secondary btn-sm">Copiar Regras...</button>
+                </div>
+                <p class="help-text">Configure regras de visibilidade e edição baseadas no status do registro.</p>
             </div>
-            <div class="drawer-config-section">
-                <button type="button" id="addTabBtn" class="btn btn-primary add-tab-btn">📑 + Adicionar Aba</button>
-                <ul id="unifiedFieldList" class="field-order-list"></ul>
-            </div>
-            <!-- SEÇÃO DE DEBUG ATUALIZADA -->
-            <details class="config-debugger">
+
+            <details class="config-debugger" style="margin-top: 20px;">
                 <summary>Ver Tripartição JSON (Debug)</summary>
                 <div id="config-json-output"></div>
             </details>`;
+
+        // Tab Switcher Logic
+        const tabBtns = container.querySelectorAll('.drawer-tab-btn');
+        const tabContents = container.querySelectorAll('.drawer-tab-content');
+        tabBtns.forEach(btn => {
+            btn.onclick = () => {
+                tabBtns.forEach(b => b.classList.remove('active'));
+                tabContents.forEach(c => c.style.display = 'none');
+                btn.classList.add('active');
+                container.querySelector(`#tab-${btn.dataset.tab}`).style.display = 'block';
+            };
+        });
 
         _renderWorkflowUI(configData.workflow, currentSchema);
         const allCols = Object.values(currentSchema).filter(c => !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos');
@@ -111,19 +217,75 @@ export const DrawerConfigEditor = (() => {
             }
         }
 
+        // Populate Styling Selects
+        const allFieldIds = allCols.map(c => c.colId);
+        _populateSelect(container.querySelector('#drawerTitleFieldSelector'), allFieldIds);
+        _populateSelect(container.querySelector('#drawer-head-bgfield'), allFieldIds);
+        _populateSelect(container.querySelector('#drawer-head-bgfield-raw'), allFieldIds);
+        _populateSelect(container.querySelector('#drawer-head-textfield'), allFieldIds);
+        _populateSelect(container.querySelector('#drawer-head-textfield-raw'), allFieldIds);
+
+        // Populate Styling Tab
+        _populateStylingTab(container, styling);
+
         _applyStageUI(currentEditingStage);
         addEventListeners(container);
         enableDragAndDrop(unifiedListEl);
-        updateDebugJson(); // Chamada inicial
+        updateDebugJson(); 
     }
 
-    // FUNÇÃO READ CORRIGIDA
+    function _populateSelect(select, values) {
+        if (!select) return;
+        values.forEach(v => {
+            const opt = document.createElement('option');
+            opt.value = v;
+            opt.textContent = v;
+            select.appendChild(opt);
+        });
+    }
+
+    function _populateStylingTab(container, s) {
+        const styling = { ...DEFAULT_STYLING, ...s };
+        
+        container.querySelector('#drawerTitleFieldSelector').value = styling.titleField || '';
+        
+        // Header BG
+        const bgModeInput = container.querySelector(`input[name='headBgMode'][value='${styling.headerBackgroundMode || 'solid'}']`);
+        if (bgModeInput) bgModeInput.checked = true;
+        container.querySelector('#drawer-head-bgcolor').value = styling.headerBackgroundSolidColor || '#f8fafc';
+        container.querySelector('#drawer-head-bggradient-type').value = styling.headerBackgroundGradientType || 'linear-gradient(to right, {c1}, {c2})';
+        container.querySelector('#drawer-head-bggradient-c1').value = styling.headerBackgroundGradientColor1 || '#f8fafc';
+        container.querySelector('#drawer-head-bggradient-c2').value = styling.headerBackgroundGradientColor2 || '#f1f5f9';
+        container.querySelector('#drawer-head-bgfield').value = styling.headerBackgroundField || '';
+        container.querySelector('#drawer-head-bgfield-raw').value = styling.headerBackgroundField || '';
+
+        // Header Text
+        const textModeInput = container.querySelector(`input[name='headTextMode'][value='${styling.headerTextMode || 'solid'}']`);
+        if (textModeInput) textModeInput.checked = true;
+        container.querySelector('#drawer-head-textcolor').value = styling.headerTextSolidColor || '#1e293b';
+        container.querySelector('#drawer-head-textfield').value = styling.headerTextField || '';
+        container.querySelector('#drawer-head-textfield-raw').value = styling.headerTextField || '';
+
+        // Mode switchers
+        container.querySelectorAll('fieldset').forEach(fieldset => {
+            const radios = fieldset.querySelectorAll('input[type="radio"]');
+            radios.forEach(radio => {
+                const update = () => {
+                    const mode = fieldset.querySelector('input[type="radio"]:checked')?.value;
+                    fieldset.querySelectorAll('.style-control-group').forEach(group => {
+                        group.style.display = group.dataset.mode === mode ? 'block' : 'none';
+                    });
+                };
+                radio.addEventListener('change', update);
+                update();
+            });
+        });
+    }
+
     function read(container) {
         const fullConfig = _readFromUI();
         
         // --- TRIPARTIÇÃO ---
-        
-        // 1. Mapping: Definição dos campos e estrutura
         const mapping = {
             tableId: fullConfig.tableId,
             tabs: fullConfig.tabs,
@@ -136,14 +298,13 @@ export const DrawerConfigEditor = (() => {
             fieldOptions: fullConfig.fieldOptions
         };
         
-        // 2. Styling: Aparência
         const styling = {
             displayMode: fullConfig.displayMode,
             width: fullConfig.width,
-            showDebugInfo: fullConfig.showDebugInfo
+            showDebugInfo: fullConfig.showDebugInfo,
+            ..._readStylingFromUI(container)
         };
         
-        // 3. Actions: Lógica e Fluxo
         const actions = {
             workflow: fullConfig.workflow
         };
@@ -151,7 +312,30 @@ export const DrawerConfigEditor = (() => {
         return { mapping, styling, actions };
     }
 
-    // Renomeado para uso interno
+    function _readStylingFromUI(container) {
+        const getVal = id => container.querySelector(id)?.value;
+        const getRadio = name => container.querySelector(`input[name="${name}"]:checked`)?.value;
+
+        const bgMode = getRadio('headBgMode');
+        const bgField = (bgMode === 'text-value') ? getVal('#drawer-head-bgfield-raw') : getVal('#drawer-head-bgfield');
+        
+        const textMode = getRadio('headTextMode');
+        const textField = (textMode === 'text-value') ? getVal('#drawer-head-textfield-raw') : getVal('#drawer-head-textfield');
+
+        return {
+            titleField: getVal('#drawerTitleFieldSelector'),
+            headerBackgroundMode: bgMode,
+            headerBackgroundSolidColor: getVal('#drawer-head-bgcolor'),
+            headerBackgroundGradientType: getVal('#drawer-head-bggradient-type'),
+            headerBackgroundGradientColor1: getVal('#drawer-head-bggradient-c1'),
+            headerBackgroundGradientColor2: getVal('#drawer-head-bggradient-c2'),
+            headerBackgroundField: bgField,
+            headerTextMode: textMode,
+            headerTextSolidColor: getVal('#drawer-head-textcolor'),
+            headerTextField: textField
+        };
+    }
+
     function _readFromUI() {
         if (!currentSchema) return {};
         const container = _mainContainer;
@@ -168,8 +352,7 @@ export const DrawerConfigEditor = (() => {
             refListFieldConfig: {},
             styleOverrides: {},
             widgetOverrides: {},
-            fieldOptions: {}, // Initialize fieldOptions
-            // Persist workflow and stage configs
+            fieldOptions: {},
             workflow: {
                 enabled: container.querySelector('#workflowEnabledCheckbox')?.checked || false,
                 stageField: container.querySelector('#stageFieldSelector')?.value || null,
@@ -185,35 +368,20 @@ export const DrawerConfigEditor = (() => {
 
         listItems.forEach(item => {
             if (item.classList.contains('tab-card')) {
-                if (currentTab) {
-                    drawerConfig.tabs.push(currentTab);
-                }
-                currentTab = {
-                    title: item.querySelector('.tab-card-input').value,
-                    fields: []
-                };
+                if (currentTab) drawerConfig.tabs.push(currentTab);
+                currentTab = { title: item.querySelector('.tab-card-input').value, fields: [] };
             } else if (item.classList.contains('field-card')) {
-                if (!currentTab) {
-                    // If a field appears before any tab, create a default 'Principal' tab.
-                    currentTab = { title: 'Principal', fields: [] };
-                }
+                if (!currentTab) currentTab = { title: 'Principal', fields: [] };
                 const colId = item.dataset.colId;
                 currentTab.fields.push(colId);
 
                 const rendererSelect = item.querySelector('.special-renderer-select');
                 if (rendererSelect && rendererSelect.value) {
-                    if (!drawerConfig.fieldOptions[colId]) {
-                        drawerConfig.fieldOptions[colId] = {};
-                    }
-                    if (rendererSelect.value === 'colorPicker') {
-                        drawerConfig.fieldOptions[colId].colorPicker = true;
-                    }
-                    if (rendererSelect.value === 'progressBar') {
-                        drawerConfig.fieldOptions[colId].progressBar = true;
-                    }
+                    if (!drawerConfig.fieldOptions[colId]) drawerConfig.fieldOptions[colId] = {};
+                    if (rendererSelect.value === 'colorPicker') drawerConfig.fieldOptions[colId].colorPicker = true;
+                    if (rendererSelect.value === 'progressBar') drawerConfig.fieldOptions[colId].progressBar = true;
                 }
 
-                // Read RefList config
                 const refListConfigPanel = item.querySelector('.reflist-config-panel');
                 if (refListConfigPanel) {
                     const refConfig = {
@@ -225,7 +393,6 @@ export const DrawerConfigEditor = (() => {
                             addRecordConfigId: refListConfigPanel.querySelector('.reflist-add-config-id').value.trim()
                         }
                     };
-                    
                     refListConfigPanel.querySelectorAll('tbody tr').forEach(row => {
                         const refColId = row.dataset.refColId;
                         refConfig[refColId] = {
@@ -235,14 +402,10 @@ export const DrawerConfigEditor = (() => {
                             requireInModal: row.querySelector('[data-config-key="requireInModal"]').checked
                         };
                     });
-                    
-                    refConfig._options = {
-                        zebra: item.querySelector('.reflist-zebra-checkbox')?.checked || false
-                    };
+                    refConfig._options = { zebra: item.querySelector('.reflist-zebra-checkbox')?.checked || false };
                     drawerConfig.refListFieldConfig[colId] = refConfig;
                 }
 
-                // Read Style Overrides
                 const styleConfigPanel = item.querySelector('.style-config-panel');
                 if (styleConfigPanel) {
                     const overrides = {
@@ -255,13 +418,11 @@ export const DrawerConfigEditor = (() => {
                     }
                 }
 
-                // Read Widget Overrides
                 const widgetConfigPanel = item.querySelector('.widget-config-panel');
                 if (widgetConfigPanel) {
                     const isColorPicker = widgetConfigPanel.querySelector('.is-color-picker-checkbox')?.checked;
                     const widgetTypeRadio = widgetConfigPanel.querySelector('.widget-type-radio:checked');
                     const widgetType = widgetTypeRadio?.value;
-
                     if (isColorPicker) {
                         drawerConfig.widgetOverrides[colId] = {
                             widget: 'ColorPicker',
@@ -276,14 +437,9 @@ export const DrawerConfigEditor = (() => {
                         widgetConfigPanel.querySelectorAll('.color-rule-row').forEach(row => {
                             const threshold = parseFloat(row.querySelector('.rule-threshold').value);
                             const color = row.querySelector('.rule-color').value;
-                            if (!isNaN(threshold)) {
-                                rules.push({ threshold, color });
-                            }
+                            if (!isNaN(threshold)) rules.push({ threshold, color });
                         });
-                        drawerConfig.widgetOverrides[colId] = {
-                            widget: 'ProgressBar',
-                            options: { striped, colorRules: rules }
-                        };
+                        drawerConfig.widgetOverrides[colId] = { widget: 'ProgressBar', options: { striped, colorRules: rules } };
                     } else if (widgetType) {
                         drawerConfig.widgetOverrides[colId] = { widget: widgetType, options: {} };
                     }
@@ -291,26 +447,119 @@ export const DrawerConfigEditor = (() => {
             }
         });
 
-        // Push the last tab
-        if (currentTab) {
-            drawerConfig.tabs.push(currentTab);
-        }
-
+        if (currentTab) drawerConfig.tabs.push(currentTab);
         return drawerConfig;
     }
 
     function _persistCurrentStageUI(stageName) { if (!stageName) return; const stageData = { hiddenFields: [], lockedFields: [], requiredFields: [] }; document.querySelectorAll('#unifiedFieldList .field-card').forEach(card => { const colId = card.dataset.colId; if (card.querySelector('.is-hidden-checkbox').checked) stageData.hiddenFields.push(colId); if (card.querySelector('.is-locked-checkbox').checked) stageData.lockedFields.push(colId); if (card.querySelector('.is-required-checkbox').checked) stageData.requiredFields.push(colId); }); stageConfigs[stageName] = stageData; }
-    function _applyStageUI(stageName) { currentEditingStage = stageName; const stageData = stageConfigs[stageName] || { hiddenFields: [], lockedFields: [], requiredFields: [] }; document.querySelectorAll('#unifiedFieldList .field-card').forEach(card => { const colId = card.dataset.colId; card.querySelector('.is-hidden-checkbox').checked = stageData.hiddenFields.includes(colId); card.querySelector('.is-locked-checkbox').checked = stageData.lockedFields.includes(colId); card.querySelector('.is-required-checkbox').checked = stageData.requiredFields.includes(colId); }); const copyBtn = document.getElementById('copyStageConfigBtn'); if (copyBtn) { copyBtn.disabled = (stageName === '_global'); copyBtn.title = (stageName === '_global') ? "Não é possível copiar as regras do estágio Padrão" : "Copiar regras deste estágio para outros"; } }
-    function _handleCopyStageConfig() { const sourceStage = currentEditingStage; if (!sourceStage || sourceStage === '_global') { alert("Selecione um estágio válido para copiar as regras."); return; } _persistCurrentStageUI(sourceStage); const sourceConfig = stageConfigs[sourceStage]; if (!sourceConfig) { alert("Não foi possível encontrar a configuração para o estágio de origem."); return; } const stageSelector = document.getElementById('stageSelector'); const otherStages = Array.from(stageSelector.options).map(opt => opt.value).filter(val => val !== '_global' && val !== sourceStage); if (otherStages.length === 0) { alert("Não há outros estágios para os quais copiar as regras."); return; } const modal = document.createElement('div'); modal.className = 'copy-stage-modal'; modal.innerHTML = ` <div class="copy-stage-content"> <h3>Copiar regras de "${sourceStage}" para:</h3> <div class="copy-stage-list"> <label><input type="checkbox" id="rep-all" /> Marcar todos</label> <div id="rep-list"></div> </div> <div class="copy-stage-actions"> <button id="rep-ok" class="btn btn-primary">OK</button> <button id="rep-cancel" class="btn btn-secondary">Cancelar</button> </div> </div> `; document.body.appendChild(modal); const list = modal.querySelector('#rep-list'); otherStages.forEach(stage => { list.innerHTML += ` <div> <label><input type="checkbox" class="rep-cb" value="${stage}"> ${stage}</label></div> `; }); modal.querySelector('#rep-all').onchange = e => { list.querySelectorAll('.rep-cb').forEach(cb => cb.checked = e.target.checked); }; modal.querySelector('#rep-cancel').onclick = () => document.body.removeChild(modal); modal.querySelector('#rep-ok').onclick = () => { const targets = Array.from(list.querySelectorAll('.rep-cb:checked')).map(cb => cb.value); if (targets.length > 0) { targets.forEach(targetStage => { stageConfigs[targetStage] = JSON.parse(JSON.stringify(sourceConfig)); }); alert(`Regras copiadas para: ${targets.join(', ')}.\nAs mudanças serão aplicadas ao salvar.`); } document.body.removeChild(modal); }; };
-    function _renderWorkflowUI(workflowConfig, tableSchema) { const container = document.getElementById('workflowConfigContainer'); const choiceColumns = Object.values(tableSchema).filter(col => col.type === 'Choice'); container.innerHTML = `<div class="workflow-section"><label class="config-toggle"><input type="checkbox" id="workflowEnabledCheckbox" ${workflowConfig?.enabled ? 'checked' : ''}> Habilitar Workflow Condicional</label><div id="workflowControls" style="display: ${workflowConfig?.enabled ? 'flex' : 'none'};"><label for="stageFieldSelector">Campo de Estágio:</label><select id="stageFieldSelector"><option value="">Selecione...</option>${choiceColumns.map(col => `<option value="${col.colId}" ${workflowConfig?.stageField === col.colId ? 'selected' : ''}>${col.label}</option>`).join('')}</select></div></div>`; const enabledCheckbox = container.querySelector('#workflowEnabledCheckbox'); const controlsContainer = container.querySelector('#workflowControls'); const stageFieldSelector = container.querySelector('#stageFieldSelector'); const stageSelectorContainer = document.getElementById('stageSelectorContainer'); const stageSelector = document.getElementById('stageSelector'); document.getElementById('copyStageConfigBtn').addEventListener('click', _handleCopyStageConfig); function updateStageDropdown() { const stageFieldId = stageFieldSelector.value; const workflowEnabled = enabledCheckbox.checked; if (workflowEnabled && stageFieldId) { stageSelectorContainer.style.display = 'flex'; const stageColumn = tableSchema[stageFieldId]; const choices = stageColumn?.widgetOptions?.choices || []; stageSelector.innerHTML = ` <option value="_global"> Padrão(Global)</option> `; choices.forEach(choice => { stageSelector.innerHTML += ` <option value="${choice}"> ${choice}</option> `; }); stageSelector.value = '_global'; _applyStageUI('_global'); } else { stageSelectorContainer.style.display = 'none'; _applyStageUI('_global'); } } enabledCheckbox.addEventListener('change', () => { controlsContainer.style.display = enabledCheckbox.checked ? 'flex' : 'none'; updateStageDropdown(); }); stageFieldSelector.addEventListener('change', () => { updateStageDropdown(); }); stageSelector.addEventListener('change', () => { _persistCurrentStageUI(currentEditingStage); _applyStageUI(stageSelector.value); }); if (workflowConfig?.enabled) { updateStageDropdown(); if (stageSelector.options.length > 1) { stageSelector.value = workflowConfig.stageField ? '_global' : stageSelector.options[1].value; _applyStageUI(stageSelector.value); } } }
-    function addEventListeners(container) { container.addEventListener('change', updateDebugJson); container.addEventListener('input', updateDebugJson); container.querySelector('#addTabBtn').addEventListener('click', () => { const list = container.querySelector('#unifiedFieldList'); list.appendChild(createTabCard('Nova Aba')); }); const fieldOrderList = container.querySelector('#unifiedFieldList'); if (fieldOrderList) fieldOrderList.addEventListener('drop', () => setTimeout(updateDebugJson, 0)); }
-    function createTabCard(title) { const card = document.createElement('li'); card.className = 'tab-card'; card.draggable = true; card.innerHTML = ` <span class="tab-card-icon">📑</span> <input type="text" class="tab-card-input" value="${title}"> <button type="button" class="delete-tab-btn" title="Deletar Aba">🗑️</button> `; card.querySelector('.delete-tab-btn').addEventListener('click', (e) => { e.preventDefault(); const tabTitle = card.querySelector('.tab-card-input').value; if (confirm(`Tem certeza que deseja deletar a aba "${tabTitle}"?`)) { const fieldsToMove = []; let nextSibling = card.nextElementSibling; while (nextSibling && nextSibling.classList.contains('field-card')) { fieldsToMove.push(nextSibling); nextSibling = nextSibling.nextElementSibling; } let insertionPoint = null; let previousSibling = card.previousElementSibling; while (previousSibling) { if (previousSibling.classList.contains('tab-card')) { insertionPoint = previousSibling; break; } previousSibling = previousSibling.previousElementSibling; } for (let i = fieldsToMove.length - 1; i >= 0; i--) { const field = fieldsToMove[i]; if (insertionPoint) { insertionPoint.insertAdjacentElement('afterend', field); } else { card.parentElement.prepend(field); } } card.remove(); } }); return card; }
-    function enableDragAndDrop(listElement) { if (!listElement) return; let draggedItem = null; listElement.addEventListener('dragstart', e => { draggedItem = e.target.closest('li'); setTimeout(() => draggedItem.classList.add('dragging'), 0); }); listElement.addEventListener('dragend', () => { if (draggedItem) draggedItem.classList.remove('dragging'); }); listElement.addEventListener('dragover', e => { e.preventDefault(); const afterElement = getDragAfterElement(listElement, e.clientY); if (afterElement == null) { listElement.appendChild(draggedItem); } else { listElement.insertBefore(draggedItem, afterElement); } }); }
-    function getDragAfterElement(container, y) { const draggableElements = [...container.querySelectorAll('.field-card:not(.dragging), .tab-card:not(.dragging)')]; return draggableElements.reduce((closest, child) => { const box = child.getBoundingClientRect(); const offset = y - box.top - box.height / 2; if (offset < 0 && offset > closest.offset) { return { offset: offset, element: child }; } else { return closest; } }, { offset: Number.NEGATIVE_INFINITY }).element; }
-    function createFieldCard(col, configData, lens) {
-        const card = document.createElement('li'); card.className = 'field-card'; card.dataset.colId = col.colId; card.draggable = true; const styleOverrides = configData.styleOverrides?.[col.colId] || {}; const styleConfigHtml = ` <div class="field-card-extra-actions"> <button type="button" class="btn btn-secondary btn-sm toggle-style-config">Configurar Estilos</button> </div> <div class="style-config-panel" style="display: none;"> <h5>Opções de Estilo para "${col.label}"</h5> <div class="style-config-list"> <label><input type="checkbox" data-style-key="ignoreConditional" ${styleOverrides.ignoreConditional ? 'checked' : ''}> Ignorar Formatação Condicional</label> <label><input type="checkbox" data-style-key="ignoreHeader" ${styleOverrides.ignoreHeader ? 'checked' : ''}> Ignorar Estilo do Cabeçalho</label> <label><input type="checkbox" data-style-key="ignoreCell" ${styleOverrides.ignoreCell ? 'checked' : ''}> Ignorar Estilo da Célula</label> </div> </div> `;
+    function _applyStageUI(stageName) { currentEditingStage = stageName; const stageData = stageConfigs[stageName] || { hiddenFields: [], lockedFields: [], requiredFields: [] }; document.querySelectorAll('#unifiedFieldList .field-card').forEach(card => { const colId = card.dataset.colId; card.querySelector('.is-hidden-checkbox').checked = stageData.hiddenFields.includes(colId); card.querySelector('.is-locked-checkbox').checked = stageData.lockedFields.includes(colId); card.querySelector('.is-required-checkbox').checked = stageData.requiredFields.includes(colId); }); const copyBtn = document.getElementById('copyStageConfigBtn'); if (copyBtn) { copyBtn.disabled = (stageName === '_global'); } }
+    
+    function _handleCopyStageConfig() { 
+        const sourceStage = currentEditingStage; 
+        if (!sourceStage || sourceStage === '_global') return; 
+        _persistCurrentStageUI(sourceStage); 
+        const sourceConfig = stageConfigs[sourceStage]; 
+        const stageSelector = document.getElementById('stageSelector'); 
+        const otherStages = Array.from(stageSelector.options).map(opt => opt.value).filter(val => val !== '_global' && val !== sourceStage); 
+        if (otherStages.length === 0) return; 
+        const modal = document.createElement('div'); 
+        modal.className = 'copy-stage-modal'; 
+        modal.innerHTML = ` <div class="copy-stage-content" style="position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:white; padding:20px; border-radius:8px; box-shadow:0 0 20px rgba(0,0,0,0.3); z-index:10000;"> <h3>Copiar regras de "${sourceStage}" para:</h3> <div class="copy-stage-list"> <label><input type="checkbox" id="rep-all" /> Marcar todos</label> <div id="rep-list"></div> </div> <div class="copy-stage-actions" style="margin-top:15px; display:flex; gap:10px;"> <button id="rep-ok" class="btn btn-primary">OK</button> <button id="rep-cancel" class="btn btn-secondary">Cancelar</button> </div> </div> `; 
+        document.body.appendChild(modal); 
+        const list = modal.querySelector('#rep-list'); 
+        otherStages.forEach(stage => { list.innerHTML += ` <div> <label><input type="checkbox" class="rep-cb" value="${stage}"> ${stage}</label></div> `; }); 
+        modal.querySelector('#rep-all').onchange = e => { list.querySelectorAll('.rep-cb').forEach(cb => cb.checked = e.target.checked); }; 
+        modal.querySelector('#rep-cancel').onclick = () => document.body.removeChild(modal); 
+        modal.querySelector('#rep-ok').onclick = () => { const targets = Array.from(list.querySelectorAll('.rep-cb:checked')).map(cb => cb.value); targets.forEach(targetStage => { stageConfigs[targetStage] = JSON.parse(JSON.stringify(sourceConfig)); }); document.body.removeChild(modal); updateDebugJson(); }; 
+    }
 
-        // Widget Overrides HTML
+    function _renderWorkflowUI(workflowConfig, tableSchema) { 
+        const container = document.getElementById('workflowConfigContainer'); 
+        const choiceColumns = Object.values(tableSchema).filter(col => col.type === 'Choice'); 
+        container.innerHTML = `<div class="workflow-section"><label class="config-toggle"><input type="checkbox" id="workflowEnabledCheckbox" ${workflowConfig?.enabled ? 'checked' : ''}> Habilitar Workflow Condicional</label><div id="workflowControls" style="display: ${workflowConfig?.enabled ? 'flex' : 'none'}; flex-direction:column; gap:10px; margin-top:10px;"><label for="stageFieldSelector">Campo de Estágio:</label><select id="stageFieldSelector"><option value="">Selecione...</option>${choiceColumns.map(col => `<option value="${col.colId}" ${workflowConfig?.stageField === col.colId ? 'selected' : ''}>${col.label}</option>`).join('')}</select></div></div>`; 
+        const enabledCheckbox = container.querySelector('#workflowEnabledCheckbox'); 
+        const controlsContainer = container.querySelector('#workflowControls'); 
+        const stageFieldSelector = container.querySelector('#stageFieldSelector'); 
+        const stageSelectorContainer = document.getElementById('stageSelectorContainer'); 
+        const stageSelector = document.getElementById('stageSelector'); 
+        document.getElementById('copyStageConfigBtn').addEventListener('click', _handleCopyStageConfig); 
+        function updateStageDropdown() { 
+            const stageFieldId = stageFieldSelector.value; 
+            const workflowEnabled = enabledCheckbox.checked; 
+            if (workflowEnabled && stageFieldId) { 
+                stageSelectorContainer.style.display = 'flex'; 
+                const stageColumn = tableSchema[stageFieldId]; 
+                const choices = stageColumn?.widgetOptions?.choices || []; 
+                stageSelector.innerHTML = `<option value="_global"> Padrão(Global)</option>`; 
+                choices.forEach(choice => { stageSelector.innerHTML += `<option value="${choice}"> ${choice}</option>`; }); 
+                stageSelector.value = '_global'; _applyStageUI('_global'); 
+            } else { 
+                stageSelectorContainer.style.display = 'none'; _applyStageUI('_global'); 
+            } 
+        } 
+        enabledCheckbox.addEventListener('change', () => { controlsContainer.style.display = enabledCheckbox.checked ? 'flex' : 'none'; updateStageDropdown(); }); 
+        stageFieldSelector.addEventListener('change', updateStageDropdown); 
+        stageSelector.addEventListener('change', (e) => { _persistCurrentStageUI(currentEditingStage); _applyStageUI(e.target.value); }); 
+        updateStageDropdown(); 
+    }
+
+    function addEventListeners(container) { 
+        container.addEventListener('change', updateDebugJson); 
+        container.addEventListener('input', updateDebugJson); 
+        container.querySelector('#addTabBtn').addEventListener('click', () => { 
+            const list = container.querySelector('#unifiedFieldList'); 
+            list.appendChild(createTabCard('Nova Aba')); 
+        }); 
+    }
+
+    function createTabCard(title) { 
+        const card = document.createElement('li'); card.className = 'tab-card'; card.draggable = true; 
+        card.innerHTML = ` <span class="tab-card-icon">📑</span> <input type="text" class="tab-card-input" value="${title}"> <button type="button" class="delete-tab-btn" title="Deletar Aba">🗑️</button> `; 
+        card.querySelector('.delete-tab-btn').addEventListener('click', (e) => { 
+            e.preventDefault(); 
+            if (confirm(`Deletar aba?`)) card.remove(); 
+        }); 
+        return card; 
+    }
+
+    function enableDragAndDrop(listElement) { 
+        if (!listElement) return; 
+        let draggedItem = null; 
+        listElement.addEventListener('dragstart', e => { draggedItem = e.target.closest('li'); setTimeout(() => draggedItem.classList.add('dragging'), 0); }); 
+        listElement.addEventListener('dragend', () => { if (draggedItem) draggedItem.classList.remove('dragging'); }); 
+        listElement.addEventListener('dragover', e => { 
+            e.preventDefault(); 
+            const afterElement = getDragAfterElement(listElement, e.clientY); 
+            if (afterElement == null) listElement.appendChild(draggedItem); 
+            else listElement.insertBefore(draggedItem, afterElement); 
+        }); 
+    }
+
+    function getDragAfterElement(container, y) { 
+        const draggableElements = [...container.querySelectorAll('.field-card:not(.dragging), .tab-card:not(.dragging)')]; 
+        return draggableElements.reduce((closest, child) => { 
+            const box = child.getBoundingClientRect(); 
+            const offset = y - box.top - box.height / 2; 
+            if (offset < 0 && offset > closest.offset) return { offset: offset, element: child }; 
+            else return closest; 
+        }, { offset: Number.NEGATIVE_INFINITY }).element; 
+    }
+
+    function createFieldCard(col, configData, lens) {
+        const card = document.createElement('li'); card.className = 'field-card'; card.dataset.colId = col.colId; card.draggable = true; 
+        const styleOverrides = configData.styleOverrides?.[col.colId] || {}; 
+        
+        const styleConfigHtml = ` 
+            <div class="field-card-extra-actions"> <button type="button" class="btn btn-secondary btn-sm toggle-style-config">Configurar Estilos</button> </div> 
+            <div class="style-config-panel" style="display: none;"> 
+                <h5>Opções de Estilo para "${col.label}"</h5> 
+                <div class="style-config-list"> 
+                    <label><input type="checkbox" data-style-key="ignoreConditional" ${styleOverrides.ignoreConditional ? 'checked' : ''}> Ignorar Formatação Condicional</label> 
+                    <label><input type="checkbox" data-style-key="ignoreHeader" ${styleOverrides.ignoreHeader ? 'checked' : ''}> Ignorar Estilo do Cabeçalho</label> 
+                    <label><input type="checkbox" data-style-key="ignoreCell" ${styleOverrides.ignoreCell ? 'checked' : ''}> Ignorar Estilo da Célula</label> 
+                </div> 
+            </div> `;
+
         let widgetConfigHtml = '';
         const currentWidgetOverride = configData.widgetOverrides?.[col.colId];
 
@@ -319,215 +568,74 @@ export const DrawerConfigEditor = (() => {
             const isColorWidget = widgetCfg === 'ColorPicker' || widgetCfg?.widget === 'ColorPicker';
             const colorMode = widgetCfg?.options?.mode || 'picker';
             const swatches = widgetCfg?.options?.swatches || '';
-
             widgetConfigHtml = `
-            <div class="field-card-extra-actions">
-                 <button type="button" class="btn btn-secondary btn-sm toggle-widget-config">Configurar Widget</button>
-            </div>
+            <div class="field-card-extra-actions"> <button type="button" class="btn btn-secondary btn-sm toggle-widget-config">Configurar Widget</button> </div>
             <div class="widget-config-panel" style="display: none; padding: 10px; background: #f1f5f9; border-radius: 4px; margin-top: 5px;">
                 <h5>Configuração de Cor para "${col.label}"</h5>
-                <div class="drawer-config-section">
-                    <label><input type="checkbox" class="is-color-picker-checkbox" ${isColorWidget ? 'checked' : ''}> Habilitar Componente de Cor</label>
-                </div>
+                <div class="drawer-config-section"><label><input type="checkbox" class="is-color-picker-checkbox" ${isColorWidget ? 'checked' : ''}> Habilitar Componente de Cor</label></div>
                 <div class="color-options-container" style="display: ${isColorWidget ? 'block' : 'none'}; margin-top: 10px; border-top: 1px solid #ddd; padding-top: 10px;">
                     <div class="drawer-config-section">
                         <label>Modo de Exibição:</label>
-                        <select class="color-mode-select">
-                            <option value="picker" ${colorMode === 'picker' ? 'selected' : ''}>Apenas Seletor (Color Picker)</option>
-                            <option value="swatches" ${colorMode === 'swatches' ? 'selected' : ''}>Apenas Sugestões (Swatches)</option>
-                            <option value="both" ${colorMode === 'both' ? 'selected' : ''}>Seletor + Sugestões</option>
-                        </select>
+                        <select class="color-mode-select"><option value="picker" ${colorMode === 'picker' ? 'selected' : ''}>Apenas Seletor</option><option value="swatches" ${colorMode === 'swatches' ? 'selected' : ''}>Apenas Sugestões</option><option value="both" ${colorMode === 'both' ? 'selected' : ''}>Ambos</option></select>
                     </div>
-                    <div class="drawer-config-section">
-                        <label>Sugestões de Cores (Hex separados por vírgula):</label>
-                        <input type="text" class="color-swatches-input" value="${swatches}" placeholder="#ffffff, #000000, #ff0000">
-                    </div>
+                    <div class="drawer-config-section"><label>Sugestões (Hex):</label><input type="text" class="color-swatches-input" value="${swatches}" placeholder="#ffffff, #000000"></div>
                 </div>
-            </div>
-        `;
+            </div>`;
         } else if (col.type === 'Numeric' || col.type === 'Int') {
-            const isProgressBar = currentWidgetOverride?.widget === 'ProgressBar' || currentWidgetOverride === 'ProgressBar';
+            const isProgressBar = currentWidgetOverride?.widget === 'ProgressBar';
             const progressOptions = currentWidgetOverride?.options || {};
-            const rulesHtml = (progressOptions.colorRules || []).map(rule => `
-                <div class="color-rule-row" style="display: flex; gap: 5px; margin-bottom: 5px; align-items: center;">
-                    <span><=</span>
-                    <input type="number" class="rule-threshold" value="${rule.threshold}" placeholder="Val" style="width: 60px;">
-                    <input type="color" class="rule-color" value="${rule.color}">
-                    <button type="button" class="btn btn-sm btn-danger remove-rule-btn" style="padding: 0 5px;">x</button>
-                </div>
-            `).join('');
-
             widgetConfigHtml = `
-            <div class="field-card-extra-actions">
-                 <button type="button" class="btn btn-secondary btn-sm toggle-widget-config">Configurar Widget</button>
-            </div>
+            <div class="field-card-extra-actions"> <button type="button" class="btn btn-secondary btn-sm toggle-widget-config">Configurar Widget</button> </div>
             <div class="widget-config-panel" style="display: none;">
                 <h5>Tipo de Widget para "${col.label}"</h5>
-                <div class="widget-config-list">
-                    <label><input type="radio" name="widget-type-${col.colId}" value="" ${!isProgressBar ? 'checked' : ''} class="widget-type-radio"> Padrão (Número)</label>
-                    <label><input type="radio" name="widget-type-${col.colId}" value="ProgressBar" ${isProgressBar ? 'checked' : ''} class="widget-type-radio"> Barra de Progresso</label>
+                <label><input type="radio" name="widget-type-${col.colId}" value="" ${!isProgressBar ? 'checked' : ''} class="widget-type-radio"> Padrão</label>
+                <label><input type="radio" name="widget-type-${col.colId}" value="ProgressBar" ${isProgressBar ? 'checked' : ''} class="widget-type-radio"> Barra de Progresso</label>
+                <div class="progress-options" style="display: ${isProgressBar ? 'block' : 'none'}; padding: 8px; background: #f8f9fa;">
+                    <label><input type="checkbox" class="progress-striped" ${progressOptions.striped ? 'checked' : ''}> Listrado</label>
+                    <div class="rules-container">${(progressOptions.colorRules || []).map(r => `<div class="color-rule-row"><input type="number" class="rule-threshold" value="${r.threshold}"><input type="color" class="rule-color" value="${r.color}"><button type="button" class="btn-danger remove-rule-btn">x</button></div>`).join('')}</div>
+                    <button type="button" class="btn btn-sm btn-secondary add-rule-btn">+ Adicionar Regra</button>
                 </div>
-                <div class="progress-options" style="display: ${isProgressBar ? 'block' : 'none'}; margin-top: 10px; padding: 8px; background: #f8f9fa; border-radius: 4px;">
-                    <label style="display: block; margin-bottom: 8px; font-weight: bold;"><input type="checkbox" class="progress-striped" ${progressOptions.striped ? 'checked' : ''}> Listrado (Stripes)</label>
-                    <div style="margin-bottom: 5px; font-weight: bold; font-size: 0.9em;">Regras de Cor Dinâmica:</div>
-                    <div class="rules-container">
-                        ${rulesHtml}
-                    </div>
-                    <button type="button" class="btn btn-sm btn-secondary add-rule-btn" style="margin-top: 5px;">+ Adicionar Regra</button>
-                </div>
-            </div>
-        `;
+            </div>`;
         }
 
         let refListConfigHtml = '';
         if (col.type.startsWith('RefList:')) {
             const fieldConfig = configData.refListFieldConfig?.[col.colId] || {};
-            const refListConfig = fieldConfig._refListConfig || {}; // Usamos _refListConfig para evitar colisão com o mapping de colunas
+            const refListConfig = fieldConfig._refListConfig || {};
             const isZebra = fieldConfig?._options?.zebra === true;
-            const displayAs = refListConfig.displayAs || 'table';
-
             refListConfigHtml = `
-            <div class="field-card-extra-actions">
-                <button type="button" class="btn btn-secondary btn-sm toggle-reflist-config">Configurar Sub-Tabela</button>
-            </div>
+            <div class="field-card-extra-actions"> <button type="button" class="btn btn-secondary btn-sm toggle-reflist-config">Configurar Sub-Tabela</button> </div>
             <div class="reflist-config-panel" style="display: none; padding: 10px; background: #f8f9fa; border-radius: 4px; margin-top: 5px; border: 1px solid #dee2e6;">
                 <h5>Opções de Sub-Tabela (RefList)</h5>
-
-                <div class="drawer-config-section">
-                    <label>Exibir como:</label>
-                    <select class="reflist-display-as">
-                        <option value="table" ${displayAs === 'table' ? 'selected' : ''}>Tabela Simples</option>
-                        <option value="cards" ${displayAs === 'cards' ? 'selected' : ''}>Cards (Lista)</option>
-                        <option value="tabulator" ${displayAs === 'tabulator' ? 'selected' : ''}>Tabela Tabulator</option>
-                    </select>
-                </div>
-
-                <div class="drawer-config-section">
-                    <label><input type="checkbox" class="reflist-zebra-checkbox" ${isZebra ? 'checked' : ''}> Tabela Zebrada</label>
-                    <label style="margin-left: 15px;"><input type="checkbox" class="reflist-collapsible-checkbox" ${refListConfig.collapsible ? 'checked' : ''}> Retrátil (Collapsible)</label>
-                </div>
-
-                <div class="reflist-card-options" style="display: ${displayAs === 'cards' ? 'block' : 'none'}; border-top: 1px solid #eee; padding-top: 10px; margin-top: 10px;">
-                    <label>ID da Configuração de Card:</label>
-                    <input type="text" class="reflist-card-config-id" value="${refListConfig.cardConfigId || ''}" placeholder="Ex: card-objetivos-v1">
-                </div>
-
-                <div class="reflist-add-options" style="border-top: 1px solid #eee; padding-top: 10px; margin-top: 10px;">
-                    <label><input type="checkbox" class="reflist-show-add-checkbox" ${refListConfig.showAddButton !== false ? 'checked' : ''}> Mostrar Botão "Adicionar"</label>
-                    <div style="margin-top: 5px;">
-                        <label style="font-size: 11px;">Config de Adição (Drawer ID):</label>
-                        <input type="text" class="reflist-add-config-id" value="${refListConfig.addRecordConfigId || ''}" placeholder="Default" style="font-size: 11px; width: 100%;">
-                    </div>
-                </div>
-
-                <div class="reflist-column-config" style="margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px;">
-                    <label>Colunas da Sub-Tabela:</label>
-                    <div class="reflist-columns-container"><p>Carregando colunas...</p></div>
-                </div>
+                <div class="drawer-config-section"><label>Exibir como:</label><select class="reflist-display-as"><option value="table" ${refListConfig.displayAs === 'table' ? 'selected' : ''}>Tabela Simples</option><option value="cards" ${refListConfig.displayAs === 'cards' ? 'selected' : ''}>Cards</option><option value="tabulator" ${refListConfig.displayAs === 'tabulator' ? 'selected' : ''}>Tabulator</option></select></div>
+                <div class="drawer-config-section"><label><input type="checkbox" class="reflist-zebra-checkbox" ${isZebra ? 'checked' : ''}> Tabela Zebrada</label><label><input type="checkbox" class="reflist-collapsible-checkbox" ${refListConfig.collapsible ? 'checked' : ''}> Retrátil</label></div>
+                <div class="reflist-card-options" style="display: ${refListConfig.displayAs === 'cards' ? 'block' : 'none'};"><label>ID Config Card:</label><input type="text" class="reflist-card-config-id" value="${refListConfig.cardConfigId || ''}"></div>
+                <div class="reflist-add-options"><label><input type="checkbox" class="reflist-show-add-checkbox" ${refListConfig.showAddButton !== false ? 'checked' : ''}> Mostrar Botão "Adicionar"</label><input type="text" class="reflist-add-config-id" value="${refListConfig.addRecordConfigId || ''}" placeholder="Drawer ID"></div>
+                <div class="reflist-column-config" style="margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px;"><label>Colunas da Sub-Tabela:</label><div class="reflist-columns-container"><p>Carregando colunas...</p></div></div>
             </div>`;
         }
- card.innerHTML = ` <div class="field-card-main"> <div class="field-card-left"> <span class="field-card-label">${col.label} <span class="field-card-type">(${col.type})</span></span> </div> <div class="field-card-right"> <div class="field-card-controls"> <label><input type="checkbox" class="is-hidden-checkbox"> Oculto</label> <label><input type="checkbox" class="is-locked-checkbox"> Travado</label> <label><input type="checkbox" class="is-required-checkbox"> Obrigatório</label> </div> </div> </div> ${styleConfigHtml} ${widgetConfigHtml} ${refListConfigHtml} `; const toggleStyleBtn = card.querySelector('.toggle-style-config'); if (toggleStyleBtn) { toggleStyleBtn.addEventListener('click', (event) => { event.preventDefault(); const panel = card.querySelector('.style-config-panel'); panel.style.display = panel.style.display === 'none' ? 'block' : 'none'; }); }
-
-        const toggleWidgetBtn = card.querySelector('.toggle-widget-config');
-        if (toggleWidgetBtn) {
-            toggleWidgetBtn.addEventListener('click', (event) => {
-                event.preventDefault();
-                const panel = card.querySelector('.widget-config-panel');
-                panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-            });
-        }
-
-        // Event listeners for Progress Bar options
-        const widgetRadios = card.querySelectorAll('.widget-type-radio');
-        widgetRadios.forEach(radio => {
-            radio.addEventListener('change', (e) => {
-                const progressOptionsPanel = card.querySelector('.progress-options');
-                if (progressOptionsPanel) {
-                    progressOptionsPanel.style.display = e.target.value === 'ProgressBar' ? 'block' : 'none';
+        
+        card.innerHTML = ` <div class="field-card-main"> <div class="field-card-left"> <span class="field-card-label">${col.label} <span class="field-card-type">(${col.type})</span></span> </div> <div class="field-card-right"> <div class="field-card-controls"> <label><input type="checkbox" class="is-hidden-checkbox"> Oculto</label> <label><input type="checkbox" class="is-locked-checkbox"> Travado</label> <label><input type="checkbox" class="is-required-checkbox"> Obrigatório</label> </div> </div> </div> ${styleConfigHtml} ${widgetConfigHtml} ${refListConfigHtml} `; 
+        
+        card.querySelector('.toggle-style-config').onclick = () => { const p = card.querySelector('.style-config-panel'); p.style.display = p.style.display === 'none' ? 'block' : 'none'; };
+        if (card.querySelector('.toggle-widget-config')) card.querySelector('.toggle-widget-config').onclick = () => { const p = card.querySelector('.widget-config-panel'); p.style.display = p.style.display === 'none' ? 'block' : 'none'; };
+        if (card.querySelector('.toggle-reflist-config')) card.querySelector('.toggle-reflist-config').onclick = async () => {
+            const panel = card.querySelector('.reflist-config-panel');
+            if (panel.style.display === 'none') {
+                const referencedTableId = col.type.split(':')[1];
+                const referencedSchema = await lens.getTableSchema(referencedTableId);
+                const fieldConfig = configData.refListFieldConfig?.[col.colId] || {};
+                const columnsContainer = panel.querySelector('.reflist-columns-container');
+                if (referencedSchema) {
+                    columnsContainer.innerHTML = `<table class="reflist-config-table"><thead><tr><th>Campo</th><th>Exibir</th><th>Oculto</th><th>Travado</th><th>Obrig.</th></tr></thead><tbody>${Object.values(referencedSchema).filter(c => !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos').map(refCol => {
+                        const colConfig = fieldConfig[refCol.colId] || { showInTable: true };
+                        return `<tr data-ref-col-id="${refCol.colId}"><td>${refCol.label}</td><td><input type="checkbox" data-config-key="showInTable" ${colConfig.showInTable ? 'checked' : ''}></td><td><input type="checkbox" data-config-key="hideInModal" ${colConfig.hideInModal ? 'checked' : ''}></td><td><input type="checkbox" data-config-key="lockInModal" ${colConfig.lockInModal ? 'checked' : ''}></td><td><input type="checkbox" data-config-key="requireInModal" ${colConfig.requireInModal ? 'checked' : ''}></td></tr>`;
+                    }).join('')}</tbody></table>`;
                 }
-            });
-        });
-
-        const addRuleBtn = card.querySelector('.add-rule-btn');
-        if (addRuleBtn) {
-            addRuleBtn.addEventListener('click', () => {
-                const container = card.querySelector('.rules-container');
-                const row = document.createElement('div');
-                row.className = 'color-rule-row';
-                row.style.cssText = 'display: flex; gap: 5px; margin-bottom: 5px; align-items: center;';
-                row.innerHTML = `
-                    <span><=</span>
-                    <input type="number" class="rule-threshold" placeholder="Val" style="width: 60px;">
-                    <input type="color" class="rule-color" value="#28a745">
-                    <button type="button" class="btn btn-sm btn-danger remove-rule-btn" style="padding: 0 5px;">x</button>
-                `;
-                container.appendChild(row);
-                // Add listener to the new remove button
-                row.querySelector('.remove-rule-btn').addEventListener('click', () => row.remove());
-            });
-        }
-
-        // Delegate remove rule for existing buttons
-        card.querySelectorAll('.remove-rule-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => e.target.closest('.color-rule-row').remove());
-        });
-
-        const toggleRefListBtn = card.querySelector('.toggle-reflist-config');
-        if (toggleRefListBtn) {
-            toggleRefListBtn.addEventListener('click', async (event) => {
-                event.preventDefault();
-                const panel = card.querySelector('.reflist-config-panel');
-                if (panel.style.display === 'none') {
-                    const referencedTableId = col.type.split(':')[1];
-                    const referencedSchema = await lens.getTableSchema(referencedTableId);
-
-                    const fieldConfig = configData.refListFieldConfig?.[col.colId] || {};
-                    const refListConfig = fieldConfig._refListConfig || {};
-
-                    const columnsContainer = panel.querySelector('.reflist-columns-container');
-                    let tableRowsHtml = `<tr><td colspan="5">Schema não encontrado.</td></tr>`;
-
-                    if (referencedSchema) {
-                        tableRowsHtml = Object.values(referencedSchema)
-                            .filter(c => !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos')
-                            .map(refCol => {
-                                const colConfig = fieldConfig[refCol.colId] || { showInTable: true };
-                                return `
-                                    <tr data-ref-col-id="${refCol.colId}">
-                                        <td>${refCol.label}</td>
-                                        <td><input type="checkbox" data-config-key="showInTable" ${colConfig.showInTable ? 'checked' : ''}></td>
-                                        <td><input type="checkbox" data-config-key="hideInModal" ${colConfig.hideInModal ? 'checked' : ''}></td>
-                                        <td><input type="checkbox" data-config-key="lockInModal" ${colConfig.lockInModal ? 'checked' : ''}></td>
-                                        <td><input type="checkbox" data-config-key="requireInModal" ${colConfig.requireInModal ? 'checked' : ''}></td>
-                                    </tr>`;
-                            }).join('');
-                    }
-
-                    columnsContainer.innerHTML = `
-                        <table class="reflist-config-table">
-                            <thead>
-                                <tr><th>Campo</th><th>Exibir</th><th>Oculto</th><th>Travado</th><th>Obrig.</th></tr>
-                            </thead>
-                            <tbody>${tableRowsHtml}</tbody>
-                        </table>
-                    `;
-
-                    // Listeners para opções do widget
-                    const displayAsSelect = panel.querySelector('.reflist-display-as');
-                    const cardOptions = panel.querySelector('.reflist-card-options');
-
-                    displayAsSelect.onchange = (e) => {
-                        cardOptions.style.display = e.target.value === 'cards' ? 'block' : 'none';
-                        updateDebugJson();
-                    };
-
-                    panel.style.display = 'block';
-                } else {
-                    panel.style.display = 'none';
-                }
-            });
-        }
- return card;
+                panel.style.display = 'block';
+            } else panel.style.display = 'none';
+        };
+        return card;
     }
 
     return { render, read };
