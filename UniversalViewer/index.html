@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universal Grist Viewer</title>
+    
+    <!-- Base Styling -->
+    <link rel="stylesheet" href="../libraries/grist-style-utils/icons.css">
+    <link rel="stylesheet" href="../libraries/tabulator/tabulator.min.css">
+    <link rel="stylesheet" href="../libraries/grist-filter-bar/grist-filter-bar.css">
+    <link rel="stylesheet" href="../libraries/grist-config-manager/ConfigManagerComponent.css">
+    <link rel="stylesheet" href="../table-widget/style.css">
+    <link rel="stylesheet" href="../cards-widget/style.css">
+    <link rel="stylesheet" href="../BSCWidget/bsc-widget.css">
+
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; font-family: sans-serif; overflow: hidden; background: #f8fafc; }
+        #universal-app-container { display: flex; flex-direction: column; height: 100%; position: relative; }
+        #renderer-container { flex: 1; overflow: auto; position: relative; padding: 20px; box-sizing: border-box; }
+        #filter-bar-container { background: #fff; border-bottom: 1px solid #e2e8f0; }
+        .status-placeholder { display: flex; justify-content: center; align-items: center; height: 100%; color: #64748b; font-weight: 600; font-size: 14px; text-align: center; padding: 40px; }
+        
+        /* Fixed Settings Gear Style */
+        #settings-gear-btn { position: fixed; top: 15px; right: 15px; width: 32px; height: 32px; background: rgba(255,255,255,0.8); border: 1px solid #e2e8f0; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 999999; color: #64748b; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.2s; }
+        #settings-gear-btn:hover { background: #fff; color: #1e293b; transform: rotate(45deg); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+    </style>
+
+    <!-- Dependencies -->
+    <script src="../libraries/external/grist-plugin-api.js"></script>
+    <script src="../libraries/tabulator/tabulator.min.js"></script>
+    <script src="../libraries/external/leader-line.min.js"></script>
+</head>
+<body>
+    <div id="universal-app-container">
+        <div id="filter-bar-container"></div>
+        <div id="renderer-container">
+            <div class="status-placeholder">Inicializando visualizador universal...</div>
+        </div>
+    </div>
+
+    <!-- Main Entry Script -->
+    <script type="module" src="script.js"></script>
+</body>
+</html>
