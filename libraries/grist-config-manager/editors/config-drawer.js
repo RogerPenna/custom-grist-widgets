@@ -5,6 +5,7 @@ export const DrawerConfigEditor = (() => {
     let stageConfigs = {};
     let currentEditingStage = '_global';
     let _mainContainer = null;
+    let _allConfigs = []; // Cache all configs for dropdowns
 
     const DEFAULT_STYLING = {
         displayMode: 'drawer',
@@ -51,6 +52,8 @@ export const DrawerConfigEditor = (() => {
     async function render(container, configData, lens, tableId, allConfigs) {
         _mainContainer = container; 
         currentTableId = tableId; 
+        _allConfigs = allConfigs || [];
+
         if (!tableId) {
             container.innerHTML = '<p class="editor-placeholder">Selecione uma Tabela de Dados no menu acima para começar a configurar.</p>';
             return;
@@ -603,14 +606,45 @@ export const DrawerConfigEditor = (() => {
             const fieldConfig = configData.refListFieldConfig?.[col.colId] || {};
             const refListConfig = fieldConfig._refListConfig || {};
             const isZebra = fieldConfig?._options?.zebra === true;
+
+            // --- FILTRAGEM DE CONFIGS PARA DROPDOWNS ---
+            const cardConfigs = _allConfigs.filter(c => c.componentType === 'CardSystem' || c.componentType === 'Card System');
+            const drawerConfigs = _allConfigs.filter(c => c.componentType === 'Drawer');
+
+            const cardConfigOptions = `<option value="">-- Selecione um Card --</option>` + 
+                cardConfigs.map(c => {
+                    const unified = lens.parseConfigRecord(c);
+                    const tableDisplay = unified.tableId ? ` (${unified.tableId})` : '';
+                    return `<option value="${c.configId}" ${refListConfig.cardConfigId === c.configId ? 'selected' : ''}>${c.widgetTitle}${tableDisplay} [${c.configId}]</option>`;
+                }).join('');
+            
+            const drawerConfigOptions = `<option value="">-- Selecione um Drawer --</option>` + 
+                drawerConfigs.map(c => {
+                    const unified = lens.parseConfigRecord(c);
+                    const tableDisplay = unified.tableId ? ` (${unified.tableId})` : '';
+                    return `<option value="${c.configId}" ${refListConfig.addRecordConfigId === c.configId ? 'selected' : ''}>${c.widgetTitle}${tableDisplay} [${c.configId}]</option>`;
+                }).join('');
+
             refListConfigHtml = `
             <div class="field-card-extra-actions"> <button type="button" class="btn btn-secondary btn-sm toggle-reflist-config">Configurar Sub-Tabela</button> </div>
             <div class="reflist-config-panel" style="display: none; padding: 10px; background: #f8f9fa; border-radius: 4px; margin-top: 5px; border: 1px solid #dee2e6;">
                 <h5>Opções de Sub-Tabela (RefList)</h5>
                 <div class="drawer-config-section"><label>Exibir como:</label><select class="reflist-display-as"><option value="table" ${refListConfig.displayAs === 'table' ? 'selected' : ''}>Tabela Simples</option><option value="cards" ${refListConfig.displayAs === 'cards' ? 'selected' : ''}>Cards</option><option value="tabulator" ${refListConfig.displayAs === 'tabulator' ? 'selected' : ''}>Tabulator</option></select></div>
                 <div class="drawer-config-section"><label><input type="checkbox" class="reflist-zebra-checkbox" ${isZebra ? 'checked' : ''}> Tabela Zebrada</label><label><input type="checkbox" class="reflist-collapsible-checkbox" ${refListConfig.collapsible ? 'checked' : ''}> Retrátil</label></div>
-                <div class="reflist-card-options" style="display: ${refListConfig.displayAs === 'cards' ? 'block' : 'none'};"><label>ID Config Card:</label><input type="text" class="reflist-card-config-id" value="${refListConfig.cardConfigId || ''}"></div>
-                <div class="reflist-add-options"><label><input type="checkbox" class="reflist-show-add-checkbox" ${refListConfig.showAddButton !== false ? 'checked' : ''}> Mostrar Botão "Adicionar"</label><input type="text" class="reflist-add-config-id" value="${refListConfig.addRecordConfigId || ''}" placeholder="Drawer ID"></div>
+                
+                <div class="reflist-card-options" style="display: ${refListConfig.displayAs === 'cards' ? 'block' : 'none'};">
+                    <label>Config de Card:</label>
+                    <select class="reflist-card-config-id">${cardConfigOptions}</select>
+                </div>
+                
+                <div class="reflist-add-options">
+                    <label><input type="checkbox" class="reflist-show-add-checkbox" ${refListConfig.showAddButton !== false ? 'checked' : ''}> Mostrar Botão "Adicionar"</label>
+                    <div style="margin-top:5px;">
+                        <label style="font-size:11px; display:block;">Drawer para Adição:</label>
+                        <select class="reflist-add-config-id" style="width:100%; font-size:11px;">${drawerConfigOptions}</select>
+                    </div>
+                </div>
+
                 <div class="reflist-column-config" style="margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px;"><label>Colunas da Sub-Tabela:</label><div class="reflist-columns-container"><p>Carregando colunas...</p></div></div>
             </div>`;
         }
@@ -619,6 +653,15 @@ export const DrawerConfigEditor = (() => {
         
         card.querySelector('.toggle-style-config').onclick = () => { const p = card.querySelector('.style-config-panel'); p.style.display = p.style.display === 'none' ? 'block' : 'none'; };
         if (card.querySelector('.toggle-widget-config')) card.querySelector('.toggle-widget-config').onclick = () => { const p = card.querySelector('.widget-config-panel'); p.style.display = p.style.display === 'none' ? 'block' : 'none'; };
+        
+        if (card.querySelector('.reflist-display-as')) {
+            const select = card.querySelector('.reflist-display-as');
+            select.onchange = () => {
+                card.querySelector('.reflist-card-options').style.display = select.value === 'cards' ? 'block' : 'none';
+                updateDebugJson();
+            };
+        }
+
         if (card.querySelector('.toggle-reflist-config')) card.querySelector('.toggle-reflist-config').onclick = async () => {
             const panel = card.querySelector('.reflist-config-panel');
             if (panel.style.display === 'none') {

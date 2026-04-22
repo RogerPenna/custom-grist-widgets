@@ -260,7 +260,12 @@ export async function renderMainUI(grist, container, initialConfigId, componentT
                 groupedConfigs[type].forEach(c => {
                     const li = document.createElement('li');
                     const nameSpan = document.createElement('span');
-                    nameSpan.textContent = c.widgetTitle;
+                    
+                    // Parse para pegar a tabela
+                    const unified = tableLens.parseConfigRecord(c);
+                    const tableDisplay = unified.tableId ? ` (${unified.tableId})` : ' (Nenhuma Tabela)';
+                    
+                    nameSpan.textContent = c.widgetTitle + tableDisplay;
                     const typeCircle = document.createElement('span');
                     typeCircle.className = 'cm-type-circle';
                     typeCircle.style.backgroundColor = COMPONENT_TYPE_COLORS[c.componentType.replace(/\s+/g, '')] || COMPONENT_TYPE_COLORS['default'];

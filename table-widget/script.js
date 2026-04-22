@@ -3,6 +3,7 @@ import { GristTableLens } from '../libraries/grist-table-lens/grist-table-lens.j
 import { open as openConfigManager } from '../libraries/grist-config-manager/ConfigManagerComponent.js';
 import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js';
 import { renderField, getFieldStyle } from '../libraries/grist-field-renderer/grist-field-renderer.js';
+import { GristLauncherUtils } from '../libraries/grist-launcher-utils.js';
 
 // Assume Tabulator is globally available because it's imported in index.html
 // import Tabulator from '../libraries/tabulator/tabulator.min.js'; 
@@ -226,53 +227,25 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 
     // Helper to open the settings popover
-    function openSettingsPopover(event) {
+    async function openSettingsPopover(event) {
         event.stopPropagation();
-        closeSettingsPopover();
-
-        const activeConfigId = currentConfigId || '';
-        const isLinked = !!activeConfigId && !!currentConfig;
-
-        const overlay = document.createElement('div');
-        overlay.id = 'config-popover-overlay';
-        overlay.onclick = closeSettingsPopover;
-        document.body.appendChild(overlay);
-
-        const popover = document.createElement('div');
-        popover.className = 'config-popover';
-        popover.onclick = e => e.stopPropagation();
-
-        popover.innerHTML = `
-            <div>
-                <label for="popover-config-id">Config ID</label>
-                <div class="input-group">
-                    <input type="text" id="popover-config-id" value="${activeConfigId}" placeholder="Paste ID here...">
-                    <button id="popover-link-btn" class="config-popover-btn" title="${isLinked ? 'Unlink' : 'Link'}">
-                        ${isLinked ? getIcon('icon-link') : getIcon('icon-link-broken')}
-                    </button>
-                </div>
-            </div>
-            <button id="popover-manager-btn" class_="config-popover-btn" title="Open Configuration Manager">
-                ${getIcon('icon-settings')}
-            </button>
-        `;
-        document.body.appendChild(popover);
-
-        popover.querySelector('#popover-link-btn').onclick = async () => {
-            const newId = popover.querySelector('#popover-config-id').value.trim();
-            console.log('DEBUG: Calling grist.setOptions with configId:', newId || null);
-            grist.setOptions({ configId: newId || null });
-            // Manually update currentConfigId and re-initialize as a workaround for grist.onOptions not firing reliably after setOptions
-            currentConfigId = newId || null;
-            isInitialized = true; // Ensure re-initialization
-            await initializeAndUpdate();
-            closeSettingsPopover();
-        };
-
-        popover.querySelector('#popover-manager-btn').onclick = () => {
-            closeSettingsPopover();
-            openConfigManager(grist, { initialConfigId: currentConfigId, componentTypes: ['Table'] });
-        };
+        
+        await GristLauncherUtils.renderSettingsPopover({
+            grist: window.grist,
+            tableLens: tableLens,
+            currentConfigId: currentConfigId,
+            currentConfig: currentConfig,
+            componentType: 'Table',
+            onLink: async (newId) => {
+                grist.setOptions({ configId: newId || null });
+                currentConfigId = newId || null;
+                isInitialized = true;
+                await initializeAndUpdate();
+            },
+            onOpenManager: () => {
+                openConfigManager(grist, { initialConfigId: currentConfigId, componentTypes: ['Table'] });
+            }
+        });
     }
 
     function closeSettingsPopover() {

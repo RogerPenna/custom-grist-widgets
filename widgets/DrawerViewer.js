@@ -6,6 +6,7 @@ import { GristTableLens } from '../libraries/grist-table-lens/grist-table-lens.j
 import { open as openConfigManager } from '../libraries/grist-config-manager/ConfigManagerComponent.js';
 import { subscribe } from '../libraries/grist-event-bus/grist-event-bus.js';
 import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js';
+import { GristLauncherUtils } from '../libraries/grist-launcher-utils.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
     
@@ -64,48 +65,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         appContainer.appendChild(gearBtn);
     }
 
-    function openSettingsPopover(event) {
+    async function openSettingsPopover(event) {
         event.stopPropagation();
-        closeSettingsPopover();
         
-        const activeConfigId = state.configId || '';
-        const isLinked = !!activeConfigId && !!state.configData;
-
-        const overlay = document.createElement('div');
-        overlay.id = 'config-popover-overlay';
-        overlay.onclick = closeSettingsPopover;
-        document.body.appendChild(overlay);
-
-        const popover = document.createElement('div');
-        popover.className = 'config-popover';
-        popover.onclick = e => e.stopPropagation();
-        
-        popover.innerHTML = `
-            <div>
-                <label for="popover-config-id">Config ID</label>
-                <div class="input-group">
-                    <input type="text" id="popover-config-id" value="${activeConfigId}" placeholder="Cole o ID aqui...">
-                    <button id="popover-link-btn" class="config-popover-btn" title="${isLinked ? 'Desvincular' : 'Vincular'}">
-                        ${isLinked ? getIcon('icon-link') : getIcon('icon-link-broken')}
-                    </button>
-                </div>
-            </div>
-            <button id="popover-manager-btn" class="config-popover-btn" title="Abrir Gerenciador de Configurações">
-                ${getIcon('icon-settings')}
-            </button>
-        `;
-        document.body.appendChild(popover);
-
-        popover.querySelector('#popover-link-btn').onclick = () => {
-            const newId = popover.querySelector('#popover-config-id').value.trim();
-            grist.setOptions({ configId: newId || null });
-            closeSettingsPopover();
-        };
-        
-        popover.querySelector('#popover-manager-btn').onclick = () => {
-            closeSettingsPopover();
-            openConfigManager();
-        };
+        await GristLauncherUtils.renderSettingsPopover({
+            grist: window.grist,
+            tableLens: tableLens,
+            currentConfigId: state.configId,
+            currentConfig: state.configData,
+            componentType: 'Drawer',
+            onLink: async (newId) => {
+                await window.grist.setOptions({ configId: newId || null });
+                state.configId = newId || null;
+                // Note: onOptions will trigger fetch and renderAdminView
+            },
+            onOpenManager: () => {
+                openConfigManager(window.grist, { initialConfigId: state.configId, componentTypes: ['Drawer'] });
+            }
+        });
     }
 
     function closeSettingsPopover() {

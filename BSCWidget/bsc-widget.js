@@ -5,6 +5,7 @@ import { openDrawer } from '../libraries/grist-drawer-component/drawer-component
 import { subscribe } from '../libraries/grist-event-bus/grist-event-bus.js';
 import { open as openConfigManager } from '../libraries/grist-config-manager/ConfigManagerComponent.js';
 import { RelationshipLines } from '../libraries/grist-relationship-lines/RelationshipLines.js';
+import { GristLauncherUtils } from '../libraries/grist-launcher-utils.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
     try {
@@ -470,47 +471,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const getIcon = (id) => `<svg class="icon"><use href="#${id}"></use></svg>`;
 
-        function openSettingsPopover(event) {
+        async function openSettingsPopover(event) {
             event.stopPropagation();
-            closeSettingsPopover(); 
-
-            const isLinked = !!currentConfigId;
-
-            const overlay = document.createElement('div');
-            overlay.id = 'config-popover-overlay';
-            overlay.onclick = closeSettingsPopover;
-            document.body.appendChild(overlay);
-
-            const popover = document.createElement('div');
-            popover.className = 'config-popover';
-            popover.onclick = e => e.stopPropagation();
-
-            popover.innerHTML = `
-                <div>
-                    <label for="popover-config-id">Config ID</label>
-                    <div class="input-group">
-                        <input type="text" id="popover-config-id" value="${currentConfigId || ''}" placeholder="Paste ID here...">
-                        <button id="popover-link-btn" class="config-popover-btn" title="${isLinked ? 'Unlink' : 'Link'}">
-                            ${isLinked ? getIcon('icon-link') : getIcon('icon-link-broken')}
-                        </button>
-                    </div>
-                </div>
-                <button id="popover-manager-btn" class="config-popover-btn" title="Open Configuration Manager">
-                    ${getIcon('icon-settings')}
-                </button>
-            `;
-            document.body.appendChild(popover);
-
-            popover.querySelector('#popover-link-btn').onclick = () => {
-                const newId = popover.querySelector('#popover-config-id').value.trim();
-                grist.setOptions({ configId: newId || null });
-                closeSettingsPopover();
-            };
-
-            popover.querySelector('#popover-manager-btn').onclick = () => {
-                closeSettingsPopover();
-                openConfigManager(grist, { initialConfigId: currentConfigId, componentTypes: ['BSC', 'Card System', 'Drawer', 'Card Style', 'Table'] });
-            };
+            
+            await GristLauncherUtils.renderSettingsPopover({
+                grist: window.grist,
+                tableLens: tableLens,
+                currentConfigId: currentConfigId,
+                currentConfig: widgetConfig,
+                onLink: async (newId) => {
+                    await grist.setOptions({ configId: newId || null });
+                    currentConfigId = newId || null;
+                    await initializeAndUpdate();
+                },
+                onOpenManager: () => {
+                    openConfigManager(grist, { initialConfigId: currentConfigId, componentTypes: ['BSC', 'Card System', 'Drawer', 'Card Style', 'Table'] });
+                }
+            });
         }
 
         function closeSettingsPopover() {
