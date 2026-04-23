@@ -132,35 +132,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                 });
             }
-            else if (type === 'bsc') {
-                const { BSCRenderer } = await import('../libraries/grist-bsc-renderer/BSCRenderer.js');
-                // O BSC precisa de um modelo selecionado. Vamos usar o lastModelId dos options do Grist ou o primeiro disponível.
-                const options = await window.grist.getOptions() || {};
-                let modelId = options.lastModelId;
-                
-                if (!modelId) {
-                    const models = await tableLens.fetchTableRecords('Modelos');
-                    if (models.length > 0) modelId = models[0].id;
-                }
-
-                if (modelId) {
-                    const bscData = await BSCRenderer.fetchFullBscStructure(modelId, tableLens);
-                    rendererContainer.innerHTML = '';
-                    const bscDiv = document.createElement('div');
-                    rendererContainer.appendChild(bscDiv);
-                    await BSCRenderer.renderBsc({
-                        container: bscDiv,
-                        bscData,
-                        config: currentConfig,
-                        tableLens,
-                        showRelationships: false
-                    });
-                } else {
-                    rendererContainer.innerHTML = `<div class="status-placeholder">Nenhum Modelo de BSC encontrado na tabela 'Modelos'.</div>`;
-                }
-            }
             else {
-                rendererContainer.innerHTML = `<div class="status-placeholder">Tipo de componente desconhecido: ${currentConfig.componentType}</div>`;
+                rendererContainer.innerHTML = `<div class="status-placeholder">Tipo de componente "${currentConfig.componentType}" não suportado pelo Visualizador Universal. Por favor, use o widget específico ou uma configuração de Cards/Tabela.</div>`;
             }
 
         } catch (e) {
@@ -222,22 +195,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // --- 4. INICIALIZAÇÃO GRIST ---
-    window.grist.ready({ requiredAccess: 'full' });
+    if (!urlConfigId || !urlDocId) {
+        console.log("[UniversalViewer] Inicializando Grist Plugin API...");
+        window.grist.ready({ requiredAccess: 'full' });
 
-    window.grist.onOptions(async (options) => {
-        const newId = options?.configId || null;
-        if (newId !== currentConfigId || !isInitialized) {
-            isInitialized = true;
-            currentConfigId = newId;
-            await initializeAndUpdate();
-        }
-    });
+        window.grist.onOptions(async (options) => {
+            const newId = options?.configId || null;
+            if (newId !== currentConfigId || !isInitialized) {
+                isInitialized = true;
+                currentConfigId = newId;
+                await initializeAndUpdate();
+            }
+        });
 
-    window.grist.onRecords(async () => {
-        if (isInitialized) await initializeAndUpdate();
-    });
-
-    if (urlConfigId) {
+        window.grist.onRecords(async () => {
+            if (isInitialized) await initializeAndUpdate();
+        });
+    } else {
+        // MODO HEADLESS: Inicializa diretamente sem esperar pelo Grist
+        console.log("[UniversalViewer] Pulando Grist API (Modo Headless)");
         isInitialized = true;
         await initializeAndUpdate();
     }
