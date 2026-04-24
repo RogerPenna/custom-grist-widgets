@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Configurador de Páginas</title>
     
-    <link rel="stylesheet" href="/static/libraries/grist-config-manager/ConfigManagerComponent.css">
-    <link rel="stylesheet" href="/static/libraries/grist-field-renderer/styles/renderer-styles.css">
+    <link rel="stylesheet" href="libraries/grist-config-manager/ConfigManagerComponent.css">
+    <link rel="stylesheet" href="libraries/grist-field-renderer/styles/renderer-styles.css">
     
     <style>
         body, html {
@@ -16,70 +16,74 @@
         }
         #configurator-container {
             width: 100%; height: 100vh;
-            overflow-y: auto;
             padding: 20px;
             box-sizing: border-box;
         }
         .grf-cm-main-container {
             height: auto !important;
-            min-height: 80vh;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-            border-radius: 12px;
-            border: 1px solid #e2e8f0;
+            min-height: 85vh;
             background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
         }
     </style>
 </head>
 <body>
     <div id="configurator-container">
-        <div id="loading-msg">Iniciando Configurador...</div>
+        <div id="loading">Iniciando Configurador com Ponte de Dados...</div>
     </div>
 
     <script type="module">
-        // Usando caminhos absolutos para evitar erros de MIME type do Streamlit
-        import { GristRestAdapter } from '/static/libraries/headless-rest-adapter.js';
-        import { renderMainUI } from '/static/libraries/grist-config-manager/ConfigManagerComponent.js';
+        import { GristRestAdapter } from './libraries/headless-rest-adapter.js';
+        import { renderMainUI } from './libraries/grist-config-manager/ConfigManagerComponent.js';
 
         async function init() {
             const container = document.getElementById('configurator-container');
             const urlParams = new URLSearchParams(window.location.search);
             
-            const gristUrl = urlParams.get('gristUrl');
             const docId = urlParams.get('docId');
-            const apiKey = urlParams.get('apiKey');
+            
+            // IMPORTANTE: Agora usamos a nossa PROPRIO servidor como base para a API
+            // O GristRestAdapter enviará para http://localhost:3000/grist-proxy/...
+            const proxyUrl = window.location.origin + "/grist-proxy";
 
-            if (!gristUrl || !docId || !apiKey) {
-                container.innerHTML = '<div style="color: red; padding: 20px;">Erro: Faltam credenciais do Grist na URL.</div>';
+            if (!docId) {
+                container.innerHTML = '<div style="color: red; padding: 20px;">Erro: Document ID ausente.</div>';
                 return;
             }
 
-            try {
-                const adapter = new GristRestAdapter({ gristUrl, docId, apiKey });
-                
-                adapter.docApi.listTables = async () => {
-                    const url = `${gristUrl.replace(/\/$/, '')}/api/docs/${docId}/tables`;
-                    const res = await fetch(url, { headers: { 'Authorization': `Bearer ${apiKey}` } });
+            // O adaptador agora fala com o PROXY, não com o Grist direto
+            // A API Key não é necessária no JS (o Proxy a injetará com segurança)
+            const adapter = new GristRestAdapter({ 
+                gristUrl: proxyUrl, 
+                docId: docId, 
+                apiKey: "" 
+            });
+            
+            window.grist = {
+                docApi: adapter.docApi,
+                ready: () => {},
+                onOptions: () => {},
+                onRecords: () => {},
+                setOptions: () => {}
+            };
+            
+            // Patch listTables usando a rota do Proxy
+            window.grist.docApi.listTables = async () => {
+                try {
+                    const res = await fetch(`${proxyUrl}/api/docs/${docId}/tables`);
+                    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
                     const data = await res.json();
-                    return data.tables.map(t => t.id);
-                };
+                    return (data.tables || []).map(t => t.id);
+                } catch (e) {
+                    console.error("Erro ao listar tabelas via Proxy:", e);
+                    return [];
+                }
+            };
 
-                window.grist = {
-                    docApi: adapter.docApi,
-                    ready: () => {},
-                    onOptions: () => {},
-                    onRecords: () => {},
-                    setOptions: () => {}
-                };
-
-                container.innerHTML = ''; 
-                await renderMainUI(container, null, ['Card System', 'Drawer', 'Card Style', 'Table', 'BSC']);
-                
-            } catch (err) {
-                console.error(err);
-                container.innerHTML = '<div style="color: red; padding: 20px;">Erro ao carregar dados do Grist: ' + err.message + '</div>';
-            }
+            container.innerHTML = '';
+            await renderMainUI(window.grist, container, null, ['Card System', 'Drawer', 'Card Style', 'Table', 'BSC']);
         }
-
         init();
     </script>
 </body>

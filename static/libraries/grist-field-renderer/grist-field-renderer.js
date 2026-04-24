@@ -142,14 +142,18 @@ function renderSimpleText(options) {
 export async function renderField(options) {
   const { container, colSchema, record, isEditing = false, labelElement, styleOverride, styling, tableLens, isChild = false } = options;
 
+  console.log(`[renderField] Rendering field: ${colSchema?.colId}`, { isEditing, hasRecord: !!record });
+
   if (isChild && colSchema.type.startsWith('RefList')) {
     container.innerHTML = '<span class="error-msg">[Nested RefList not supported]</span>';
     return;
   }
 
   // 1. Configurações customizadas do nosso widget (Card/Drawer)
-  const customFieldStyle = options.fieldStyle || {};
+  const customFieldStyle = options.fieldStyle || options.styleOverride || {};
   const useGristStyle = customFieldStyle.useGristStyle !== false;
+
+  console.log(`[renderField] customFieldStyle for ${colSchema?.colId}:`, customFieldStyle);
 
   // 2. Metadados do Grist (Formatação Condicional, cores da coluna, etc)
   let tableSchema = null;
@@ -165,6 +169,7 @@ export async function renderField(options) {
 
   // Se o usuário desabilitou explicitamente o estilo do Grist para este campo
   if (!useGristStyle) {
+    console.log(`[renderField] useGristStyle is false for ${colSchema.colId}, rendering simple text.`);
     renderSimpleText({ container, colSchema, record, styling });
     return;
   }
@@ -193,24 +198,37 @@ export async function renderField(options) {
   }
 
   // 4. Despacho de Renderização (Prioridade para Widgets Customizados)
-  const callOptions = { ...options, container, cellValue, fieldStyle: customFieldStyle };
   const type = colSchema.type || '';
-  const widgetType = customFieldStyle.widget;
+  const widgetType = (customFieldStyle.widget || '').toLowerCase().replace(/\s+/g, '');
+  
+  console.log(`[renderField] type: ${type}, widgetType: ${widgetType}`);
+
+  const callOptions = { 
+    ...options, 
+    container, 
+    cellValue, 
+    fieldStyle: customFieldStyle,
+    fieldOptions: customFieldStyle.widgetOptions || {}, 
+    refListConfig: customFieldStyle.refListConfig,
+    fieldConfig: customFieldStyle
+  };
 
   // WIDGETS ESPECIAIS (Prioridade Máxima)
-  const wtLower = (widgetType || '').toLowerCase();
-  if (wtLower === 'toggle switch' || wtLower === 'switch') {
-    renderToggle(callOptions);
-    return;
-  }
-  
-  if (customFieldStyle.widgetOptions?.colorPicker || widgetType === 'Color Picker') {
+  if (customFieldStyle.widgetOptions?.colorPicker || widgetType === 'colorpicker') {
+    console.log(`[renderField] Triggering renderColorPicker for ${colSchema.colId}`);
     renderColorPicker(callOptions);
     return;
   }
 
-  if ((customFieldStyle.widgetOptions?.progressBar || widgetType === 'Progress Bar') && (type === 'Numeric' || type === 'Int')) {
+  if ((customFieldStyle.widgetOptions?.progressBar || widgetType === 'progressbar') && (type === 'Numeric' || type === 'Int')) {
+    console.log(`[renderField] Triggering renderProgressBar for ${colSchema.colId}`);
     renderProgressBar(callOptions);
+    return;
+  }
+
+  if (widgetType === 'toggleswitch' || widgetType === 'switch') {
+    console.log(`[renderField] Triggering renderToggle for ${colSchema.colId}`);
+    renderToggle(callOptions);
     return;
   }
 

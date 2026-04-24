@@ -648,6 +648,15 @@ export const CardSystem = (() => {
             containerForField.style.textTransform = 'uppercase';
           }
 
+          // --- NOVO: Se for campo de título e a barra de topo estiver OFF, herda estilos de título ---
+          if (fieldStyle.isTitleField && !styling.cardTitleTopBarEnabled) {
+            if (styling.cardTitleAllCaps) containerForField.style.textTransform = 'uppercase';
+            if (styling.cardTitleFontColor) containerForField.style.color = styling.cardTitleFontColor;
+            if (styling.cardTitleFontSize) containerForField.style.fontSize = styling.cardTitleFontSize;
+            if (styling.cardTitleFontStyle) containerForField.style.fontFamily = styling.cardTitleFontStyle;
+            containerForField.style.fontWeight = "bold";
+          }
+
           // Apply Limit Height (Line Clamp) and Tooltip
           if (fieldStyle.heightLimited && fieldStyle.maxHeightRows > 0) {
             containerForField.style.display = "-webkit-box";
@@ -749,7 +758,8 @@ export const CardSystem = (() => {
     publish('grf-card-clicked', {
       drawerConfigId: drawerConfigId, // Pode ser null para gaveta padrão
       recordId: record.id,
-      tableId: tableId
+      tableId: tableId,
+      cardConfig: options // Passamos a config do card que disparou o clique
     });
   }
 
@@ -759,6 +769,9 @@ export const CardSystem = (() => {
       const colSchema = schema[fieldName];
       const fieldStyle = getFieldStyle(record, colSchema, schema);
       return fieldStyle.fillColor || solidColor;
+    }
+    if (mode === 'text-value' && fieldName && record) {
+      return record[fieldName] || solidColor;
     }
     return solidColor;
   }

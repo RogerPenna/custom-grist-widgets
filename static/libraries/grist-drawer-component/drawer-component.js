@@ -2,7 +2,7 @@
 import { GristTableLens } from '../grist-table-lens/grist-table-lens.js';
 import { GristDataWriter } from '../grist-data-writer.js';
 import { openModal } from '../grist-modal-component/modal-component.js';
-import { renderField } from '../grist-field-renderer/grist-field-renderer.js';
+import { renderField, getFieldStyle } from '../grist-field-renderer/grist-field-renderer.js';
 import { publish } from '../grist-event-bus/grist-event-bus.js';
 
 let drawerPanel, drawerOverlay;
@@ -21,8 +21,6 @@ let perfStartTime = 0;
 function logPerf(stage) {
     const elapsed = (performance.now() - perfStartTime).toFixed(0);
     console.log(`[Drawer Perf] ${stage} em ${elapsed}ms`);
-    const statusEl = document.getElementById('grf-drawer-perf-status');
-    if (statusEl) statusEl.textContent = `Progresso: ${stage} (${elapsed}ms)`;
 }
 
 function _ensureTools(options = {}) {
@@ -36,6 +34,23 @@ function _ensureTools(options = {}) {
     } else if (!dataWriter) {
         try { dataWriter = new GristDataWriter(window.grist); } catch (e) { console.warn("[Drawer] Falha ao criar DataWriter", e); }
     }
+}
+
+// --- HELPERS DE ESTILO ---
+
+function resolveStyle(record, schema, mode, solidColor, gradientOptions, fieldName) {
+    if (mode === 'gradient' && gradientOptions?.type) { 
+        return gradientOptions.type.replace('{c1}', gradientOptions.c1).replace('{c2}', gradientOptions.c2); 
+    }
+    if (mode === 'conditional' && fieldName && record && schema?.[fieldName]) {
+        const colSchema = schema[fieldName];
+        const fieldStyle = getFieldStyle(record, colSchema, schema);
+        return fieldStyle.fillColor || solidColor;
+    }
+    if (mode === 'text-value' && fieldName && record) {
+        return record[fieldName] || solidColor;
+    }
+    return solidColor;
 }
 
 // --- INTERFACE ---
@@ -133,45 +148,57 @@ async function _renderDrawerContent() {
     tabsContainer.innerHTML = ''; 
     panelsContainer.innerHTML = '<div style="padding:20px; color:#666;">Carregando...</div>';
 
-    // O objeto 'currentDrawerOptions' agora vem do GristTableLens.parseConfigRecord, 
-    // que já mesclou mapping, styling e actions.
     const config = currentDrawerOptions || {};
-    
-    // Suporte robusto para tripartição: mapping contém tabs e definições de campos
-    // Alguns configuradores salvam na raiz, outros dentro de 'mapping'
     const tabs = config.tabs || config.mapping?.tabs || null;
     const styleOverrides = config.styleOverrides || config.mapping?.styleOverrides || {};
     const widgetOverrides = config.widgetOverrides || config.mapping?.widgetOverrides || {};
     const fieldOptions = config.fieldOptions || config.mapping?.fieldOptions || {};
+    const refListFieldConfig = config.refListFieldConfig || config.mapping?.refListFieldConfig || {};
     const hiddenFields = config.hiddenFields || config.mapping?.hiddenFields || [];
     const lockedFields = config.lockedFields || config.mapping?.lockedFields || [];
     const styling = config.styling || config.styling?.styling || {};
 
-    console.log("[Drawer] Diagnóstico de Configuração:", { 
-        configKeys: Object.keys(config),
-        hasTabs: !!tabs, 
-        hasWidgetOverrides: Object.keys(widgetOverrides).length > 0,
-        hasFieldOptions: Object.keys(fieldOptions).length > 0,
-        widgetOverrides
-    });
-
     try {
-        logPerf("Iniciando Busca de Schema");
         const schema = await tableLens.getTableSchema(currentTableId);
         currentSchema = schema;
-        logPerf("Schema Recebido");
 
         if (currentRecordId === 'new') {
             currentRecord = currentRecord || {};
         } else {
-            logPerf("Buscando Registro");
             currentRecord = await tableLens.fetchRecordById(currentTableId, currentRecordId);
-            logPerf("Registro Recebido");
+        }
+
+        // --- APLICAÇÃO DE ESTILOS DO CABEÇALHO ---
+        const headerEl = drawerPanel.querySelector('.drawer-header');
+        const titleEl = drawerPanel.querySelector('#drawer-title');
+        const closeBtn = drawerPanel.querySelector('.drawer-close-btn');
+
+        if (headerEl && styling) {
+            const bg = resolveStyle(currentRecord, schema, styling.headerBackgroundMode, styling.headerBackgroundSolidColor, {
+                type: styling.headerBackgroundGradientType,
+                c1: styling.headerBackgroundGradientColor1,
+                c2: styling.headerBackgroundGradientColor2
+            }, styling.headerBackgroundField);
+            headerEl.style.background = bg;
+
+            const textCol = resolveStyle(currentRecord, schema, styling.headerTextMode, styling.headerTextSolidColor, null, styling.headerTextField);
+            if (titleEl) titleEl.style.color = textCol;
+            if (closeBtn) closeBtn.style.color = textCol;
+            
+            // Atualiza cor dos ícones de ação
+            drawerPanel.querySelectorAll('.drawer-header-buttons svg').forEach(svg => {
+                svg.style.stroke = textCol;
+            });
+
+            // Título Dinâmico
+            if (titleEl && styling.titleField && currentRecord && currentRecordId !== 'new') {
+                titleEl.textContent = currentRecord[styling.titleField] || `Registro #${currentRecordId}`;
+            } else if (titleEl && currentRecordId === 'new') {
+                titleEl.textContent = 'Novo Registro';
+            }
         }
 
         panelsContainer.innerHTML = '';
-        
-        // Se não houver abas configuradas, mostramos todos os campos não técnicos e NÃO OCULTOS
         const finalTabs = (tabs && tabs.length > 0) ? tabs : [{ 
             title: "Principal", 
             fields: Object.keys(schema).filter(id => {
@@ -198,10 +225,7 @@ async function _renderDrawerContent() {
 
             tabConfig.fields.forEach(fieldId => {
                 const col = schema[fieldId];
-                if (!col) return;
-                
-                // Pular se o campo estiver na lista de ocultos (Workflow ou Config)
-                if (hiddenFields.includes(fieldId)) return;
+                if (!col || hiddenFields.includes(fieldId)) return;
 
                 const row = document.createElement('div');
                 row.className = 'drawer-field-row';
@@ -215,14 +239,10 @@ async function _renderDrawerContent() {
                 `;
                 panelEl.appendChild(row);
 
-                // Normalização de opções para o renderer
                 const widgetCfg = widgetOverrides[fieldId] || {};
                 const fOpts = fieldOptions[fieldId] || {};
                 const sOverride = styleOverrides[fieldId] || {};
                 
-                // Mapeamos para o formato que o grist-field-renderer espera
-                // Prioridade 1: Widget explicitamente definido no mapping.widgetOverrides
-                // Prioridade 2: Flag 'colorPicker' ou 'progressBar' no mapping.fieldOptions (legado/configurator)
                 let widgetType = widgetCfg.widget;
                 if (!widgetType) {
                     if (fOpts.colorPicker) widgetType = 'Color Picker';
@@ -232,7 +252,8 @@ async function _renderDrawerContent() {
                 const mergedFieldConfig = {
                     widget: widgetType,
                     widgetOptions: widgetCfg.options || fOpts,
-                    dataStyle: sOverride // O renderer espera 'dataStyle' para cores/fontes fixas
+                    dataStyle: sOverride,
+                    refListConfig: refListFieldConfig[fieldId]
                 };
 
                 renderField({
@@ -247,21 +268,8 @@ async function _renderDrawerContent() {
                 });
             });
         });
-        
-        logPerf("Renderização Finalizada");
-        
-        // Listener de interatividade
-        setTimeout(() => {
-            const inputs = drawerPanel.querySelectorAll('input, select, textarea');
-            inputs.forEach(input => {
-                input.addEventListener('focus', () => {
-                    logPerf("INTERAÇÃO DETECTADA (TTI)");
-                }, { once: true });
-            });
-        }, 100);
 
     } catch (e) {
-        logPerf(`ERRO: ${e.message}`);
         panelsContainer.innerHTML = `<div style="color:red; padding:20px; background:#fee2e2; border-radius:8px;">Erro: ${e.message}</div>`;
     }
 }
@@ -280,13 +288,12 @@ function _initializeDrawerDOM() {
 
     drawerPanel = document.createElement('div');
     drawerPanel.id = 'grist-drawer-panel';
-    drawerPanel.style.cssText = "position:fixed; top:0; right:-650px; width:600px; height:100%; background:white; z-index:2147483641; transition:right 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow:-5px 0 25px rgba(0,0,0,0.15); display:flex; flex-direction:column; font-family:sans-serif;";
+    drawerPanel.style.cssText = "position:fixed; top:0; right:-100%; width:600px; height:100%; background:white; z-index:2147483641; transition:right 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow:-5px 0 25px rgba(0,0,0,0.15); display:flex; flex-direction:column; font-family:sans-serif;";
 
     drawerPanel.innerHTML = `
         <div class="drawer-header" style="padding:20px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
             <h2 id="drawer-title" style="margin:0; font-size:18px; font-weight:800; color:#1e293b;"></h2>
             <div class="drawer-header-actions" style="display:flex; gap:10px; align-items:center;">
-                <div id="grf-drawer-perf-status" style="font-size:10px; color:#999; margin-right:10px;"></div>
                 <div class="drawer-header-buttons" style="display:flex; gap:8px;">
                     <button id="drawer-delete-btn" title="Deletar" style="background:none; border:none; cursor:pointer;"><svg class="icon" style="width:20px; height:20px; stroke:#64748b; fill:none; stroke-width:2;"><use href="#icon-trashbin"></use></svg></button>
                     <button id="drawer-edit-btn" title="Editar" style="background:none; border:none; cursor:pointer;"><svg class="icon" style="width:20px; height:20px; stroke:#64748b; fill:none; stroke-width:2;"><use href="#icon-edit"></use></svg></button>
@@ -326,7 +333,6 @@ function _initializeDrawerDOM() {
 
 export async function openDrawer(tableId, recordId, options = {}) {
     perfStartTime = performance.now();
-    logPerf("Chamada openDrawer");
     
     _ensureTools(options);
     _initializeDrawerDOM();
@@ -339,6 +345,13 @@ export async function openDrawer(tableId, recordId, options = {}) {
     if (recordId === 'new') {
         currentRecord = options.initialData || {};
     }
+
+    // --- CORREÇÃO DA LARGURA ---
+    const styling = options.styling || options;
+    const width = styling.width || options.width || '600px';
+    drawerPanel.style.width = width;
+    // Garante que comece fora da tela antes da transição
+    drawerPanel.style.right = `-${width}`;
 
     drawerOverlay.style.setProperty('display', 'block', 'important');
     
@@ -363,7 +376,8 @@ export function closeDrawer() {
     }
     if (!drawerPanel) return;
 
-    drawerPanel.style.setProperty('right', '-650px', 'important');
+    const width = drawerPanel.style.width || '600px';
+    drawerPanel.style.setProperty('right', `-${width}`, 'important');
     setTimeout(() => {
         if (drawerOverlay) drawerOverlay.style.setProperty('display', 'none', 'important');
         isOpen = false;

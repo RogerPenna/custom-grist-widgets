@@ -61,11 +61,18 @@ class GristProxyHandler(http.server.SimpleHTTPRequestHandler):
             self.send_error(404)
 
     def _handle_proxy(self, method):
+        # Reload environment on every request to pick up .env changes without restart
+        load_dotenv(override=True)
+        server = os.getenv("GRIST_SERVER", "").rstrip("/")
+        api_key = os.getenv("GRIST_API_KEY", "")
+        
         path = self.path.replace('/grist-proxy', '')
-        url = f"{GRIST_SERVER}{path}"
+        url = f"{server}{path}"
+        masked_key = (api_key[:5] + "..." + api_key[-5:]) if api_key else "MISSING"
+        self.log_message(f"RELOADED PROXY: {method} to: {url} | Server: {server} | Key: {masked_key}")
         
         headers = {
-            "Authorization": f"Bearer {GRIST_API_KEY}",
+            "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json"
         }
 

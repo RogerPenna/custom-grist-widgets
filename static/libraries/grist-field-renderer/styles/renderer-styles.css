@@ -298,3 +298,68 @@ input:checked+.grf-slider:before {
     color: #495057;
     font-weight: 500;
 }
+
+/* --- Global Add Button (Shared Style) --- */
+.grf-global-add-btn {
+    position: sticky;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 40px;
+    background: #3b82f6;
+    color: white;
+    border: 2px solid white;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    margin: 10px auto;
+    flex-shrink: 0;
+}
+
+.grf-global-add-btn:hover {
+    background: #2563eb;
+    transform: translateX(-50%) scale(1.1);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+.grf-global-add-btn svg {
+    width: 24px;
+    height: 24px;
+    stroke-width: 3;
+    fill: none;
+    stroke: currentColor;
+}
+
+.grf-global-add-btn.pos-inline {
+    position: static;
+    transform: none;
+    margin: 0;
+    width: 28px;
+    height: 28px;
+    box-shadow: none;
+    background: #64748b;
+    z-index: 10;
+}
+
+.grf-global-add-btn.pos-inline:hover {
+    background: #475569;
+    transform: scale(1.1);
+}
+
+.grf-global-add-btn.pos-inline svg {
+    width: 18px;
+    height: 18px;
+}
+
+.grf-global-add-btn.pos-static-top,
+.grf-global-add-btn.pos-static-bottom {
+    position: static !important;
+    transform: none !important;
+    margin: 20px auto !important;
+}

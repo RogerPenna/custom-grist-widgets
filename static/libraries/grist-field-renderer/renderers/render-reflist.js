@@ -1,4 +1,3 @@
-// static/libraries/grist-field-renderer/renderers/render-reflist.js
 // render-reflist.js - VERSÃO 3.1 (ULTRA-ROBUSTA: CORREÇÃO DE ANINHAMENTO)
 import { openModal } from '../../grist-modal-component/modal-component.js';
 import { GristDataWriter } from '../../grist-data-writer.js';
@@ -40,6 +39,8 @@ export async function renderRefList(options) {
     const fieldConfig = options.fieldConfig || options.fieldStyle || {};
     
     // --- LÓGICA DE EXTRAÇÃO ULTRA-ROBUSTA (RESOLVE ANINHAMENTO) ---
+    // Às vezes o Grist manda { _refListConfig: ... }
+    // Às vezes o sistema aninha { refListConfig: { _refListConfig: ... } }
     let rawRefConfig = fieldConfig._refListConfig || fieldConfig.refListConfig?._refListConfig || fieldConfig.refListConfig || {};
     let optionsNode = fieldConfig._options || fieldConfig.refListConfig?._options || {};
 
@@ -47,7 +48,7 @@ export async function renderRefList(options) {
     const isCollapsible = rawRefConfig.collapsible || false;
     const displayMode = rawRefConfig.displayAs || 'table';
 
-    console.group(`%c [RefList Renderer 3.1 STATIC] ${colSchema.colId} `, 'background: #700; color: #fff; font-weight: bold;');
+    console.group(`%c [RefList Renderer 3.1] ${colSchema.colId} `, 'background: #700; color: #fff; font-weight: bold;');
     console.log("JSON Bruto recebido:", fieldConfig);
     console.log("Config Extraída (Normalizada):", { displayMode, zebraEnabled, isCollapsible });
     console.groupEnd();
@@ -55,6 +56,7 @@ export async function renderRefList(options) {
     let isCollapsed = container.dataset.collapsed === 'true' || (container.dataset.collapsed === undefined && isCollapsible);
     
     const dataWriter = (tableLens && tableLens.docApi) ? new GristDataWriter(tableLens.docApi) : new GristDataWriter(window.grist);
+    const iconPath = '../libraries/icons/icons.svg';
     const referencedTableId = colSchema.type.split(':')[1];
 
     const renderContent = async () => {
@@ -94,6 +96,7 @@ export async function renderRefList(options) {
 
         let columnsToDisplay = Object.values(relatedSchema).filter(c => c && !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos');
         
+        // Colunas: Tenta ler do aninhamento correto
         const configColumns = rawRefConfig.columns || [];
         if (Array.isArray(configColumns) && configColumns.length > 0) {
              if (typeof configColumns[0] === 'object') {
@@ -102,6 +105,7 @@ export async function renderRefList(options) {
                  columnsToDisplay = columnsToDisplay.filter(c => configColumns.includes(c.colId));
              }
         } else {
+            // Fallback para campos marcados como showInTable:true no nó pai ou no nó refListConfig
             const source = fieldConfig.refListConfig || fieldConfig;
             const configured = columnsToDisplay.filter(c => source[c.colId]?.showInTable === true);
             if (configured.length > 0) columnsToDisplay = configured;
@@ -116,6 +120,7 @@ export async function renderRefList(options) {
             container.appendChild(addBtn);
         }
 
+        // --- RENDERIZAR TABULATOR ---
         if (displayMode === 'tabulator' && window.Tabulator) {
             const tabDiv = document.createElement('div');
             tabDiv.style.borderRadius = "8px";
@@ -140,6 +145,7 @@ export async function renderRefList(options) {
                 ]
             });
         } 
+        // --- RENDERIZAR CARDS ---
         else if (displayMode === 'cards') {
             const { CardSystem } = await import('../../grist-card-system/CardSystem.js');
             const cardConfig = await tableLens.fetchConfig(rawRefConfig.cardConfigId);
@@ -147,6 +153,7 @@ export async function renderRefList(options) {
             container.appendChild(cardWrap);
             if (CardSystem) CardSystem.renderCards(cardWrap, relatedRecords, { ...cardConfig, isRefList: true }, relatedSchema, tableLens);
         }
+        // --- RENDERIZAR TABELA SIMPLES ---
         else {
             const wrap = document.createElement('div');
             wrap.className = 'grf-reflist-table-container';
@@ -176,5 +183,6 @@ export async function renderRefList(options) {
             container.appendChild(wrap);
         }
     };
+
     await renderContent();
 }

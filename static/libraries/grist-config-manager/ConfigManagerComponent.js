@@ -43,7 +43,10 @@ function renderSetupInstructions(container) {
                     <tr><td>widgetTitle</td><td>Text</td></tr>
                     <tr><td>description</td><td>Text</td></tr>
                     <tr><td>componentType</td><td>Text</td></tr>
-                    <tr><td>configJson</td><td>Text</td></tr>
+                    <tr><td>mappingJson</td><td>Text (O "Onde")</td></tr>
+                    <tr><td>stylingJson</td><td>Text (O "Como")</td></tr>
+                    <tr><td>actionsJson</td><td>Text (O "O que faz")</td></tr>
+                    <tr><td>configJson</td><td>Text (Legado)</td></tr>
                     <tr><td>pageId</td><td>Numeric</td></tr>
                 </tbody>
             </table>
@@ -58,14 +61,31 @@ function close() {
     overlay = null;
 }
 
-export async function renderMainUI(container, initialConfigId, componentTypes) {
+export async function renderMainUI(grist, container, initialConfigId, componentTypes) {
+    console.log("ConfigManager: renderMainUI inicializado com grist:", grist);
+    const activeGrist = grist || window.grist;
+    if (!activeGrist) {
+        console.error("ConfigManager: Objeto grist não encontrado!");
+        throw new Error("ConfigManager: Instância do Grist não fornecida.");
+    }
     const CONFIG_TABLE = 'Grf_config';
-    const tableLens = new GristTableLens(_grist);
-    const dataWriter = new GristDataWriter(_grist);
+    const tableLens = new GristTableLens(activeGrist);
+    const dataWriter = new GristDataWriter(activeGrist);
 
     try {
-        const allTableIds = await _grist.docApi.listTables();
+        const allTableIds = await activeGrist.docApi.listTables();
         if (!allTableIds.includes(CONFIG_TABLE)) {
+            renderSetupInstructions(container);
+            return;
+        }
+
+        // --- NOVA VERIFICAÇÃO DE COLUNAS (TRIPARTIÇÃO) ---
+        const tableSchema = await tableLens.getTableSchema(CONFIG_TABLE, { mode: 'raw' });
+        const requiredColumns = ['mappingJson', 'stylingJson', 'actionsJson'];
+        const missingColumns = requiredColumns.filter(col => !tableSchema[col]);
+
+        if (missingColumns.length > 0) {
+            console.warn("ConfigManager: Colunas de tripartição ausentes:", missingColumns);
             renderSetupInstructions(container);
             return;
         }
@@ -240,7 +260,12 @@ export async function renderMainUI(container, initialConfigId, componentTypes) {
                 groupedConfigs[type].forEach(c => {
                     const li = document.createElement('li');
                     const nameSpan = document.createElement('span');
-                    nameSpan.textContent = c.widgetTitle;
+                    
+                    // Parse para pegar a tabela
+                    const unified = tableLens.parseConfigRecord(c);
+                    const tableDisplay = unified.tableId ? ` (${unified.tableId})` : ' (Nenhuma Tabela)';
+                    
+                    nameSpan.textContent = c.widgetTitle + tableDisplay;
                     const typeCircle = document.createElement('span');
                     typeCircle.className = 'cm-type-circle';
                     typeCircle.style.backgroundColor = COMPONENT_TYPE_COLORS[c.componentType.replace(/\s+/g, '')] || COMPONENT_TYPE_COLORS['default'];
@@ -272,7 +297,10 @@ export async function renderMainUI(container, initialConfigId, componentTypes) {
         newTypeSelectorEl.addEventListener('change', () => colorizeDropdown(newTypeSelectorEl));
 
         const displayConfig = async (config) => {
-            selectedConfig = config;
+            // Unifica a configuração (Tripartição) antes de passar para o editor
+            const unifiedConfig = tableLens.parseConfigRecord(config);
+            
+            selectedConfig = { ...config, ...unifiedConfig }; // Mantém IDs e campos extras
             formEl.querySelector('#cm-record-id').value = config.id || '';
             formEl.querySelector('#cm-widget-title').value = config.widgetTitle || '';
             formEl.querySelector('#cm-config-id').value = config.configId || '';
@@ -285,8 +313,7 @@ export async function renderMainUI(container, initialConfigId, componentTypes) {
                 return;
             }
             const tables = await tableLens.listAllTables();
-            const configData = JSON.parse(config.configJson || '{}');
-            const targetTableId = configData.tableId || '';
+            const targetTableId = unifiedConfig.tableId || '';
             editorContentEl.innerHTML = `
                 <div class="form-group" id="cm-table-selector-container">
                     <label for="cm-table-selector">Tabela de Dados Alvo:</label>
@@ -296,7 +323,7 @@ export async function renderMainUI(container, initialConfigId, componentTypes) {
             const tableSelector = editorContentEl.querySelector('#cm-table-selector');
             const specializedEditorContainer = editorContentEl.querySelector('#cm-specialized-editor');
             const renderSpecializedEditor = (tableId, configsToPass) => {
-                if (tableId) { currentEditorModule.render(specializedEditorContainer, configData, tableLens, tableId, configsToPass); }
+                if (tableId) { currentEditorModule.render(specializedEditorContainer, unifiedConfig, tableLens, tableId, configsToPass); }
                 else { specializedEditorContainer.innerHTML = ''; }
             };
             tableSelector.onchange = () => { renderSpecializedEditor(tableSelector.value, allConfigs); };
@@ -317,13 +344,42 @@ export async function renderMainUI(container, initialConfigId, componentTypes) {
             if (!selectedConfig || !currentEditorModule) return;
             const specializedEditorContainer = editorContentEl.querySelector('#cm-specialized-editor');
             const newConfigData = currentEditorModule.read(specializedEditorContainer);
+            
+            // --- Lógica de Tripartição no Salvamento ---
+            let mappingJson = "";
+            let stylingJson = "";
+            let actionsJson = "";
+            let unifiedConfig = {};
+
+            if (newConfigData.mapping && newConfigData.styling && newConfigData.actions) {
+                // O editor já retornou tripartido
+                mappingJson = JSON.stringify(newConfigData.mapping);
+                stylingJson = JSON.stringify(newConfigData.styling);
+                actionsJson = JSON.stringify(newConfigData.actions);
+                // Unifica para o configJson (legado e fallback)
+                // IMPORTANTE: O styling deve ser uma propriedade 'styling' dentro do objeto raiz
+                unifiedConfig = { 
+                    ...newConfigData.mapping, 
+                    ...newConfigData.actions,
+                    styling: newConfigData.styling 
+                };
+            } else {
+                // Editor legado: salvamos tudo no mapping e mantemos configJson
+                mappingJson = JSON.stringify(newConfigData);
+                unifiedConfig = newConfigData;
+            }
+
             const recordData = {
                 widgetTitle: formEl.querySelector('#cm-widget-title').value.trim(),
                 configId: formEl.querySelector('#cm-config-id').value.trim(),
                 description: formEl.querySelector('#cm-description').value.trim(),
                 componentType: selectedConfig.componentType,
-                configJson: JSON.stringify(newConfigData)
+                mappingJson: mappingJson,
+                stylingJson: stylingJson,
+                actionsJson: actionsJson,
+                configJson: JSON.stringify(unifiedConfig) // Mantém legado para segurança
             };
+
             try {
                 if (selectedConfig.id) {
                     await dataWriter.updateRecord(CONFIG_TABLE, selectedConfig.id, recordData);
@@ -364,5 +420,5 @@ export function open(grist, options = {}) {
     document.body.appendChild(overlay);
     overlay.querySelector('.grf-cm-close').onclick = close;
     overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
-    renderMainUI(overlay.querySelector('.grf-cm-body'), initialConfigId, componentTypes);
+    renderMainUI(grist, overlay.querySelector('.grf-cm-body'), initialConfigId, componentTypes);
 }

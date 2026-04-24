@@ -1,0 +1,990 @@
+import grist
+from functions import *       # global uppercase functions
+import datetime, math, re     # modules commonly needed in formulas
+
+
+@grist.UserTable
+class A_Organizacao:
+  Ano = grist.Int()
+  Negocio = grist.Text()
+  Missao = grist.Text()
+  Valores = grist.Text()
+  Visao = grist.Text()
+  Fatores_Criticos_de_Sucesso = grist.Text()
+
+  def html(rec, table):
+    def generate_quality_html(record):
+        # URLs das imagens
+        logo_url = "https://i.imgur.com/82J7dfg.png"
+        background_url = "https://i.imgur.com/7okDLkw.png"
+
+        # Recupera os campos da tabela A_Organizacao
+        negocio = record.Negocio
+        missao = record.Missao
+        valores = record.Valores
+        visao = record.Visao
+        fatores_criticos = record.Fatores_Criticos_de_Sucesso
+
+        # Função auxiliar para converter texto em lista com bullets
+        def format_with_bullets(text):
+            lines = text.splitlines()
+            return ''.join(f"<div>&#8226; {line}</div>" for line in lines if line.strip())
+
+        # Gera conteúdo HTML
+        html_content = f"""
+        <html>
+        <body style="margin: 0; padding: 0;">
+            <img src="{background_url}" alt="Background Image" 
+                style="position: absolute; top: 0; right: 0; width: 150%; height: 120%; z-index: -1; 
+                object-fit: cover; filter: blur(5px);">
+
+            <div class="content" style="font-family: 'Roboto', Arial, Helvetica, sans-serif; margin: 20px;">
+                <img src="{logo_url}" alt="Pavicon Logo" 
+                    style="width: 20%; max-width: 400px; height: auto; margin: 10px 0; float: left;">
+            
+                <div style="clear: both;"></div> <!-- Garante que o próximo texto não fique ao lado do logotipo -->
+            
+                <h1 style="font-size: 2.4vw; margin-bottom: 5px;">Negócio</h1>
+                <div style="font-size: 1.8vw; white-space: pre-wrap; margin-bottom: 15px;">
+                    {format_with_bullets(negocio)}
+                </div>
+
+                <h1 style="font-size: 2.4vw; margin-bottom: 5px;">Missão</h1>
+                <div style="font-size: 1.8vw; white-space: pre-wrap; margin-bottom: 15px;">
+                    {format_with_bullets(missao)}
+                </div>
+
+                <h1 style="font-size: 2.4vw; margin-bottom: 5px;">Valores</h1>
+                <div style="font-size: 1.8vw; white-space: pre-wrap; margin-bottom: 15px;">
+                    {format_with_bullets(valores)}
+                </div>
+
+                <h1 style="font-size: 2.4vw; margin-bottom: 5px;">Visão</h1>
+                <div style="font-size: 1.8vw; white-space: pre-wrap; margin-bottom: 15px;">
+                    {format_with_bullets(visao)}
+                </div>
+
+                <h1 style="font-size: 2.4vw; margin-bottom: 5px;">Fatores Críticos de Sucesso</h1>
+                <div style="font-size: 1.8vw; white-space: pre-wrap; margin-bottom: 15px;">
+                    {format_with_bullets(fatores_criticos)}
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+    
+        return html_content
+
+    # Uso da função
+    html_content = generate_quality_html(rec)
+    return html_content
+
+
+
+@grist.UserTable
+class Analise_PESTAL:
+  Ano = grist.Int()
+  Descricao = grist.Text()
+  Data_de_Criacao = grist.Date()
+
+
+@grist.UserTable
+class Analise_SWOT:
+  Ano = grist.Int()
+  Descricao = grist.Text()
+  Data = grist.Date()
+  Mostrar_Descricoes = grist.Bool()
+
+  @grist.formulaType(grist.Text())
+  def HTML(rec, table):
+    elems = SWOT_Elementos.lookupRecords(RefSWOT=rec.id)
+    strengths = sorted([e for e in elems if e.Tipo == "Força"], key=lambda x: x.Pontuacao_Pontos, reverse=True)
+    weaknesses = sorted([e for e in elems if e.Tipo == "Fraqueza"], key=lambda x: x.Pontuacao_Pontos, reverse=True)
+    opportunities = sorted([e for e in elems if e.Tipo == "Oportunidade"], key=lambda x: x.Pontuacao_Pontos, reverse=True)
+    threats = sorted([e for e in elems if e.Tipo == "Ameaça"], key=lambda x: x.Pontuacao_Pontos, reverse=True)
+
+    html_template = """
+    <div style="display: flex; flex-wrap: wrap; width: 100%; align-items: stretch; gap: 15px; color: white;">
+      <div style="flex: 1 1 45%; padding: 5px 10px 5px 5px; box-sizing: border-box;">
+        <div style="position: relative; padding: 10px; background-color: #116FCD; text-align: center; height: 100%; border: 5px solid #0D5AA5; border-radius: 10px;">
+          <h2 style="position: absolute; opacity: 0.15; font-size: 50vw; top: 50%; left: 50%; transform: translate(-50%, -50%); margin: auto; color: white;">S</h2>
+          <div style="position: relative; z-index: 1; text-align: center;">
+            <strong style="font-size: 180%; color: white;">Forças</strong>
+            <ul style="font-size: 115%; text-align: left; color: white; padding-left: 10px; list-style-type: none;">
+              {strengths}
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div style="flex: 1 1 45%; padding: 5px 10px 5px 5px; box-sizing: border-box;">
+        <div style="position: relative; padding: 10px; background-color: #FCB22D; text-align: center; height: 100%; border: 5px solid #C98724; border-radius: 10px;">
+          <h2 style="position: absolute; opacity: 0.2; font-size: 50vw; top: 50%; left: 50%; transform: translate(-50%, -50%); margin: auto; color: white;">W</h2>
+          <div style="position: relative; z-index: 1; text-align: center;">
+            <strong style="font-size: 180%; color: white;">Fraquezas</strong>
+            <ul style="font-size: 115%; text-align: left; color: white; padding-left: 10px; list-style-type: none;">
+              {weaknesses}
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div style="flex-basis: 100%; height: 20px;"></div> <!-- Adding white space between top and bottom rows -->
+      <div style="flex: 1 1 45%; padding: 5px 10px 5px 5px; box-sizing: border-box;">
+        <div style="position: relative; padding: 10px; background-color: #11A186; text-align: center; height: 100%; border: 5px solid #0D7D68; border-radius: 10px;">
+          <h2 style="position: absolute; opacity: 0.15; font-size: 50vw; top: 50%; left: 50%; transform: translate(-50%, -50%); margin: auto; color: white;">O</h2>
+          <div style="position: relative; z-index: 1; text-align: center;">
+            <strong style="font-size: 180%; color: white;">Oportunidades</strong>
+            <ul style="font-size: 115%; text-align: left; color: white; padding-left: 10px; list-style-type: none;">
+              {opportunities}
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div style="flex: 1 1 45%; padding: 5px 10px 5px 5px; box-sizing: border-box;">
+        <div style="position: relative; padding: 10px; background-color: #D6362A; text-align: center; height: 100%; border: 5px solid #A52821; border-radius: 10px;">
+          <h2 style="position: absolute; opacity: 0.15; font-size: 50vw; top: 50%; left: 50%; transform: translate(-50%, -50%); margin: auto; color: white;">T</h2>
+          <div style="position: relative; z-index: 1; text-align: center;">
+            <strong style="font-size: 180%; color: white;">Ameaças</strong>
+            <ul style="font-size: 115%; text-align: left; color: white; padding-left: 10px; list-style-type: none;">
+              {threats}
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+    """
+
+    formatted_html = html_template.format(
+      strengths='\n'.join(f"<li style='display: flex; justify-content: space-between; padding: 2px; background-color: rgba(22, 86, 161, 0.3);'>{item.Elemento}<span style='margin-left: 20px;'>{item.Pontuacao_Pontos}</span></li>" if i % 2 == 0 else f"<li style='display: flex; justify-content: space-between; padding: 5px; background-color: rgba(17, 111, 205, 0.5);'>{item.Elemento}<span style='margin-left: 20px;'>{item.Pontuacao_Pontos}</span></li>" for i, item in enumerate(strengths)),
+      weaknesses='\n'.join(f"<li style='display: flex; justify-content: space-between; padding: 2px; background-color: rgba(200, 135, 36, 0.3);'>{item.Elemento}<span style='margin-left: 20px;'>{item.Pontuacao_Pontos}</span></li>" if i % 2 == 0 else f"<li style='display: flex; justify-content: space-between; padding: 5px; background-color: rgba(252, 178, 45, 0.5);'>{item.Elemento}<span style='margin-left: 20px;'>{item.Pontuacao_Pontos}</span></li>" for i, item in enumerate(weaknesses)),
+      opportunities='\n'.join(f"<li style='display: flex; justify-content: space-between; padding: 2px; background-color: rgba(13, 125, 104, 0.3);'>{item.Elemento}<span style='margin-left: 20px;'>{item.Pontuacao_Pontos}</span></li>" if i % 2 == 0 else f"<li style='display: flex; justify-content: space-between; padding: 5px; background-color: rgba(17, 161, 134, 0.5);'>{item.Elemento}<span style='margin-left: 20px;'>{item.Pontuacao_Pontos}</span></li>" for i, item in enumerate(opportunities)),
+      threats='\n'.join(f"<li style='display: flex; justify-content: space-between; padding: 2px; background-color: rgba(165, 40, 33, 0.3);'>{item.Elemento}<span style='margin-left: 20px;'>{item.Pontuacao_Pontos}</span></li>" if i % 2 == 0 else f"<li style='display: flex; justify-content: space-between; padding: 5px; background-color: rgba(214, 54, 42, 0.5);'>{item.Elemento}<span style='margin-left: 20px;'>{item.Pontuacao_Pontos}</span></li>" for i, item in enumerate(threats))
+    )
+
+    return formatted_html
+
+
+  def Action(rec, table):
+    actions = []
+
+    # Buscar elementos do ano atual
+    elementos_ano = SWOT_Elementos.lookupRecords(RefSWOT=rec.id)
+
+    # Separar internos (Força, Fraqueza) e externos (Oportunidade, Ameaça)
+    internos = [e for e in elementos_ano if e.Tipo in ('Força', 'Fraqueza')]
+    externos = [e for e in elementos_ano if e.Tipo in ('Oportunidade', 'Ameaça')]
+
+    # Criar combinações
+    for interno in internos:
+      for externo in externos:
+        actions.append([
+          "AddRecord", "SWOT_Cruzada", None,
+          {
+            "Ano": rec.id,  # Referência correta à análise SWOT
+            "Internas": interno.Tipo,
+            "Item_Interno": interno.id,  # <- Agora passamos o ID do elemento
+            "Externas": externo.Tipo,
+            "Item_Externo": externo.id,  # <- Também passamos o ID do elemento externo
+            "Multi": None
+          }
+        ])
+
+    return {
+      "button": "Gerar {} combinações".format(len(actions)),
+      "description": "Gerar SWOT Cruzada para o ano {} com {} internos × {} externos".format(rec.Ano, len(internos), len(externos)),
+      "actions": actions,
+    }
+
+
+
+@grist.UserTable
+class BSC:
+
+  def A(rec, table):
+    return None
+
+  def B(rec, table):
+    return None
+
+  def C(rec, table):
+    return None
+
+
+@grist.UserTable
+class Cadastros:
+
+  def C(rec, table):
+    return None
+
+
+@grist.UserTable
+class DadosIndicadores:
+  ref_indicator = grist.Reference('Indicadores')
+  dt_result = grist.Date()
+  meta = grist.Numeric()
+  result = grist.Numeric()
+
+  def _default_LimiteInf(rec, table, value, user):
+    return rec.meta-(rec.meta*rec.ref_indicator_meta_limit_lower/100)
+  LimiteInf = grist.Numeric()
+
+  def _default_LimiteSup(rec, table, value, user):
+    return rec.meta+(rec.meta*rec.ref_indicator_meta_limit_upper/100)
+  LimiteSup = grist.Numeric()
+
+  def _default_LimiteMed(rec, table, value, user):
+    return rec.meta*rec.ref_indicator_meta_limit_match/100
+  LimiteMed = grist.Numeric()
+  A = grist.Date()
+
+  def _default_DataCalculada(rec, table, value, user):
+    import datetime
+
+    def proxima_data(data, meses):
+        # Calcula o mês e o ano do próximo período
+        novo_mes = (data.month - 1 + meses) % 12 + 1
+        novo_ano = data.year + (data.month - 1 + meses) // 12
+
+        # Tenta definir a data com o mesmo dia
+        dia = data.day
+        while True:
+            try:
+                nova_data = datetime.date(novo_ano, novo_mes, dia)
+                return nova_data
+            except ValueError:
+                # Reduz o dia até encontrar uma data válida
+                dia -= 1
+
+    return proxima_data(rec.dt_meta, rec.Meses)
+
+  DataCalculada = grist.Date()
+
+  @grist.formulaType(grist.Date())
+  def dt_meta(rec, table):
+    return DATEADD(rec.A, days=rec.ref_indicator.ajuste)
+
+  def ref_indicator_name(rec, table):
+    return rec.ref_indicator.Nome
+
+  def ref_indicator_meta_limit_upper(rec, table):
+    return rec.ref_indicator.meta_limit_upper
+
+  def ref_indicator_meta_limit_match(rec, table):
+    return rec.ref_indicator.meta_limit_match
+
+  def ref_indicator_meta_limit_lower(rec, table):
+    return rec.ref_indicator.meta_limit_lower
+
+  @grist.formulaType(grist.Choice())
+  def ref_indicator_Periodicidade(rec, table):
+    return rec.ref_indicator.Periodicidade
+
+  def Meses(rec, table):
+    return rec.ref_indicator.Meses
+
+  @grist.formulaType(grist.Numeric())
+  def ref_indicator_chart_min(rec, table):
+    return rec.ref_indicator.chart_min
+
+  @grist.formulaType(grist.Numeric())
+  def ref_indicator_chart_max(rec, table):
+    return rec.ref_indicator.chart_max
+
+
+@grist.UserTable
+class Departamentos:
+  Departamento = grist.Text()
+
+  def _default_Usuario(rec, table, value, user):
+    return rec.C.name
+  Usuario = grist.Reference('Users')
+  Responsavel = grist.Reference('Users')
+  UUID = grist.Text()
+
+
+@grist.UserTable
+class Estrategias:
+  id2 = grist.Numeric()
+  ref_model = grist.Reference('Modelos')
+  ref_perspectiva = grist.Reference('Perspectivas')
+  ref_obj = grist.Reference('Objetivos')
+  Name = grist.Text()
+
+
+@grist.UserTable
+class Indicadores:
+  Parte_de_Modelo_ = grist.Bool()
+  ref_model = grist.Reference('Modelos')
+  ref_perspective = grist.Reference('Perspectivas')
+  ref_objective = grist.ReferenceList('Objetivos')
+  ref_strategy = grist.Reference('Estrategias')
+  Dono = grist.Reference('Users')
+  Nome = grist.Text()
+  Informacao = grist.Text()
+  Periodicidade = grist.Choice()
+  Un_ = grist.Choice()
+  chart_min = grist.Numeric()
+  chart_max = grist.Numeric()
+  Direcao = grist.Choice()
+
+  def _default_meta_limit_upper(rec, table, value, user):
+    return 10
+  meta_limit_upper = grist.Numeric()
+  meta_limit_lower = grist.Numeric()
+  result = grist.Text()
+  benchmark = grist.Numeric()
+  performance = grist.Text()
+  state_performance = grist.Numeric()
+  state_update = grist.Numeric()
+  score = grist.Text()
+  tendence = grist.Numeric()
+  restriction = grist.Numeric()
+  formula = grist.Text()
+  dt_future = grist.Date()
+  weight = grist.Numeric()
+  ATIVO_ = grist.Bool()
+  Sinalizador = grist.Choice()
+
+  def _default_Performance2(rec, table, value, user):
+    return IF(rec.Direcao == "⬆️Maior Melhor",lambda: (rec.PerfMaiorMelhor),lambda: (rec.PerfMenorMelhor))
+  Performance2 = grist.Numeric()
+
+  def _default_Periodo_Media_Movel(rec, table, value, user):
+    return 3
+  Periodo_Media_Movel = grist.Int()
+  Departamento = grist.Reference('Departamentos')
+  ajuste = grist.Numeric()
+
+  def Responsavel(rec, table):
+    return rec.Dono.email
+
+  @grist.formulaType(grist.Numeric())
+  def meta_limit_match(rec, table):
+    return ((100+rec.meta_limit_upper)+(100-rec.meta_limit_lower))/2
+
+  @grist.formulaType(grist.Numeric())
+  def SinalResult(rec, table):
+    return IF(rec.Sinalizador == "Último Valor",
+       (lambda: (IFERROR(lambda: (list(DadosIndicadores.lookupRecords(ref_indicator=rec.id, sort_by="dt_meta").result)[-1]), 1))),
+    lambda: (IF(rec.Sinalizador == "Valor Acumulado",
+       lambda: (SUM(DadosIndicadores.lookupRecords(ref_indicator=rec.id).result)),
+    lambda: (IF(rec.Sinalizador == "Valor Médio",
+       lambda: (AVERAGE(DadosIndicadores.lookupRecords(ref_indicator=rec.id).result)),
+       lambda: (0))))))
+
+
+  @grist.formulaType(grist.Date())
+  def Data_Ultimo_Resultado(rec, table):
+    ultimovalordata = list( DadosIndicadores.lookupRecords( ref_indicator=rec.id, sort_by="dt_meta").dt_meta)
+    return ultimovalordata[-1] if ultimovalordata else " "
+
+  def Atraso(rec, table):
+    return DATEDIF(rec.Proxima_Data,TODAY(), "D")
+
+  @grist.formulaType(grist.Numeric())
+  def UltimaMeta(rec, table):
+    ultimameta = list( DadosIndicadores.lookupRecords( ref_indicator=rec.id, sort_by="dt_meta").meta)
+    return ultimameta[-1] if ultimameta else 0
+
+  def PerfMaiorMelhor(rec, table):
+    return IF(rec.UltimaMeta == 0,
+       lambda: (IF(rec.SinalResult > 0, lambda: (100), lambda: (0))),  # Se há resultado mas meta é zero, considerar performance máxima
+       lambda: ((rec.SinalResult / rec.UltimaMeta) * 100))
+
+
+
+  def PerfMenorMelhor(rec, table):
+    return IF(rec.UltimaMeta == 0,
+       lambda: (IF(rec.SinalResult == 0, lambda: (100), lambda: (0))),  # Se tanto resultado quanto meta são zero, performance é máxima
+       lambda: (IF(rec.SinalResult == 0, lambda: (100), lambda: ((rec.UltimaMeta / rec.SinalResult) * 100))))
+
+
+  def Semaforo(rec, table):
+    return IF(rec.Performance2>100, lambda: ("🔵"),
+    lambda: (IF(rec.Performance2<50, lambda: ("🔴"),
+    lambda: (IF(rec.Performance2<70, lambda: ("🟠"),
+    lambda: (IF(rec.Performance2<80, lambda: ("🟡"),
+    lambda: (IF(rec.Performance2<90, lambda: ("🟢"),
+    lambda: (IF(rec.Performance2<=100, lambda: ("🟩"),lambda: ("ERRO")
+    )))))))))))
+
+  def Meses(rec, table):
+    if rec.Periodicidade=="Mensal":
+      return 1
+    if rec.Periodicidade=="Bimestral":
+      return 2
+    if rec.Periodicidade=="Trimestral":
+      return 3
+    if rec.Periodicidade=="Semestral":
+      return 6
+    else:
+      return 12
+
+  @grist.formulaType(grist.Date())
+  def Proxima_Data(rec, table):
+    return DATEADD(rec.Data_Ultimo_Resultado, months=rec.Meses)
+
+  def B(rec, table):
+    return rec.Direcao
+
+  def DepartamentoID(rec, table):
+    return rec.Departamento.UUID
+
+  @grist.formulaType(grist.Text())
+  def A(rec, table):
+    return SELF_HYPERLINK(LinkKey_UUID=rec.DepartamentoID, label="Ver Indicadores")
+
+
+  def C(rec, table):
+    return SELF_HYPERLINK(LinkKey_DepartmentUUID=rec.DepartamentoID)
+
+
+@grist.UserTable
+class IntxExt:
+  Internas = grist.Text()
+  Externas = grist.Text()
+
+  def C(rec, table):
+    return None
+
+
+@grist.UserTable
+class Modelos:
+  id2 = grist.Numeric()
+  Nome = grist.Text()
+  C = grist.Date()
+  date_from = grist.Date()
+  date_until = grist.Date()
+  obsoleto = grist.Bool()
+  TIPO_MODELO = grist.Choice()
+  Descricao = grist.Text()
+  Anexos = grist.Attachments()
+
+  def A(rec, table):
+    return len(Perspectivas.lookupRecords(ref_model=rec.id))
+
+
+  def HTML(rec, table):
+    def generate_html(record):
+        perspectives = Perspectivas.lookupRecords(ref_model=record.id)
+    
+        perspective_template = """
+        <div style="background-color: #000080; color: white; font-weight: bold; padding: 10px; text-align: center; margin-top: 10px; page-break-inside: avoid;">
+            {perspective_name}
+        </div>
+        <div style="padding-left: 20px;">
+            {objectives_html}
+        </div>
+        """
+
+        objective_template_with_strategy = """
+        <div style="padding-left: 20px; margin-top: 5px; page-break-inside: avoid;">
+            <div style="font-weight: bold; color: #333;">
+                {objective_name}
+            </div>
+            <div style="padding-left: 20px;">
+                {strategies_html}
+            </div>
+            <div style="padding-left: 20px;">
+                {indicators_html}
+            </div>
+        </div>
+        """
+
+        objective_template_without_strategy = """
+        <div style="padding-left: 20px; margin-top: 5px; page-break-inside: avoid;">
+            <div style="font-weight: bold; color: #333;">
+                {objective_name}
+            </div>
+            <div style="padding-left: 20px;">
+                {indicators_html}
+            </div>
+        </div>
+        """
+
+        strategy_template = """
+        <div style="padding-left: 20px; margin-top: 5px; page-break-inside: avoid;">
+            <div style="font-weight: bold; color: #555;">
+                {strategy_name}
+            </div>
+            <div style="padding-left: 20px;">
+                {indicators_html}
+            </div>
+        </div>
+        """
+
+        indicator_template = """
+        <div style="padding-left: 20px; margin-top: 5px; page-break-inside: avoid;">
+            <div style="color: #777;">
+                {indicator_name}
+            </div>
+        </div>
+        """
+
+        perspectives_html = ""
+
+        for perspective in perspectives:
+            objectives = Objetivos.lookupRecords(ref_persp=perspective.id)
+            objectives_html = ""
+            for objective in objectives:
+                indicators_html = ""
+                indicators = []
+                for ind in Indicadores.lookupRecords():
+                    if ind.ref_objective is not None:
+                        if isinstance(ind.ref_objective, list):
+                            if objective.id in ind.ref_objective:
+                                indicators.append(ind)
+                        elif isinstance(ind.ref_objective, int):
+                            if objective.id == ind.ref_objective:
+                                indicators.append(ind)
+                for indicator in indicators:
+                    indicators_html += indicator_template.format(indicator_name=indicator.Nome)
+            
+                if record.TIPO_MODELO in ["Objetivos", "Balanced Scorecard"]:
+                    strategies_html = ""
+                    strategies = Estrategias.lookupRecords(ref_obj=objective.id)
+                    for strategy in strategies:
+                        strategy_indicators_html = ""
+                        strategy_indicators = []
+                        for ind in Indicadores.lookupRecords():
+                            if ind.ref_strategy is not None:
+                                if isinstance(ind.ref_strategy, list):
+                                    if strategy.id in ind.ref_strategy:
+                                        strategy_indicators.append(ind)
+                                elif isinstance(ind.ref_strategy, int):
+                                    if strategy.id == ind.ref_strategy:
+                                        strategy_indicators.append(ind)
+                        for indicator in strategy_indicators:
+                            strategy_indicators_html += indicator_template.format(indicator_name=indicator.Nome)
+                        strategies_html += strategy_template.format(strategy_name=strategy.Name, indicators_html=strategy_indicators_html)
+                    objectives_html += objective_template_with_strategy.format(objective_name=objective.Nome, strategies_html=strategies_html, indicators_html=indicators_html)
+                else:
+                    indicators_html = ""
+                    indicators = []
+                    for ind in Indicadores.lookupRecords():
+                        if ind.ref_objective is not None:
+                            if isinstance(ind.ref_objective, list):
+                                if objective.id in ind.ref_objective:
+                                    indicators.append(ind)
+                            elif isinstance(ind.ref_objective, int):
+                                if objective.id == ind.ref_objective:
+                                    indicators.append(ind)
+                    for indicator in indicators:
+                        indicators_html += indicator_template.format(indicator_name=indicator.Nome)
+                    objectives_html += objective_template_without_strategy.format(objective_name=objective.Nome, indicators_html=indicators_html)
+            perspectives_html += perspective_template.format(perspective_name=perspective.Name, objectives_html=objectives_html)
+    
+        return f"""
+        <div style="font-family: Arial, sans-serif;">
+            <h1 style="text-align: center;">{record.Nome}</h1>
+            {perspectives_html}
+        </div>
+        """
+
+    return generate_html(rec)
+
+
+  def FormattedMarkdown(rec, table):
+    # Find the "PRESENTATION" TEMPLATE in the TEMPLATES table
+    TEMPLATE = TEMPLATES.lookupOne(NAME="PRESENTATION").TEMPLATE_FORMATTING
+
+    # Function to find data associated with this record
+    def find_data(record):
+        class FindData(dict):
+            def __missing__(self, key):
+                # Attempt to get the value from the record attribute
+                value = getattr(record, key, None)
+            
+                # If the value is None, check if it's a reference to another table
+                if value is None and '.' in key:
+                    table_name, field = key.split('.', 1)
+                    related_record = getattr(record, table_name, None)
+                    if related_record:
+                        value = getattr(related_record, field, None)
+
+                # If still no value, return the placeholder
+                return value if value is not None else f"{{{{{key}}}}}"
+
+        return FindData()
+
+    # Format the TEMPLATE with the fields from this table as well as fields from the reference table
+    formatted_template = TEMPLATE.format_map(find_data(rec))
+    return formatted_template
+
+
+  def GeneratedMarkdown(rec, table):
+    def generate_markdown(record):
+        perspectives = Perspectivas.lookupRecords(ref_model=record.id)
+
+        perspective_template = """
+    <div style="background-color: #000080; color: white; padding: 10px; margin-top: 10px;">
+    ## {perspective_name}
+    </div>
+
+    {objectives_md}
+    """
+
+        objective_template_with_strategy = """
+    ### {objective_name}
+
+    {strategies_md}
+    {indicators_md}
+    """
+
+        objective_template_without_strategy = """
+    ### {objective_name}
+
+    {indicators_md}
+    """
+
+        strategy_template = """
+    #### {strategy_name}
+
+    {indicators_md}
+    """
+
+        indicator_template = """
+    - {indicator_name}
+    """
+
+        perspectives_md = ""
+
+        for perspective in perspectives:
+            objectives = Objetivos.lookupRecords(ref_persp=perspective.id)
+            objectives_md = ""
+            for objective in objectives:
+                indicators_md = ""
+                indicators = []
+                for ind in Indicadores.lookupRecords():
+                    if ind.ref_objective is not None:
+                        if isinstance(ind.ref_objective, list):
+                            if objective.id in ind.ref_objective:
+                                indicators.append(ind)
+                        elif isinstance(ind.ref_objective, int):
+                            if objective.id == ind.ref_objective:
+                                indicators.append(ind)
+                for indicator in indicators:
+                    indicators_md += indicator_template.format(indicator_name=indicator.Nome)
+            
+                if record.TIPO_MODELO in ["Objetivos", "Balanced Scorecard"]:
+                    strategies_md = ""
+                    strategies = Estrategias.lookupRecords(ref_obj=objective.id)
+                    for strategy in strategies:
+                        strategy_indicators_md = ""
+                        strategy_indicators = []
+                        for ind in Indicadores.lookupRecords():
+                            if ind.ref_strategy is not None:
+                                if isinstance(ind.ref_strategy, list):
+                                    if strategy.id in ind.ref_strategy:
+                                        strategy_indicators.append(ind)
+                                elif isinstance(ind.ref_strategy, int):
+                                    if strategy.id == ind.ref_strategy:
+                                        strategy_indicators.append(ind)
+                        for indicator in strategy_indicators:
+                            strategy_indicators_md += indicator_template.format(indicator_name=indicator.Nome)
+                        strategies_md += strategy_template.format(strategy_name=strategy.Name, indicators_md=strategy_indicators_md)
+                    objectives_md += objective_template_with_strategy.format(objective_name=objective.Nome, strategies_md=strategies_md, indicators_md=indicators_md)
+                else:
+                    indicators_md = ""
+                    indicators = []
+                    for ind in Indicadores.lookupRecords():
+                        if ind.ref_objective is not None:
+                            if isinstance(ind.ref_objective, list):
+                                if objective.id in ind.ref_objective:
+                                    indicators.append(ind)
+                            elif isinstance(ind.ref_objective, int):
+                                if objective.id == ind.ref_objective:
+                                    indicators.append(ind)
+                    for indicator in indicators:
+                        indicators_md += indicator_template.format(indicator_name=indicator.Nome)
+                    objectives_md += objective_template_without_strategy.format(objective_name=objective.Nome, indicators_md=indicators_md)
+            perspectives_md += perspective_template.format(perspective_name=perspective.Name, objectives_md=objectives_md)
+    
+        return f"""
+    # {record.Nome}
+
+    {perspectives_md}
+    """
+
+    # Use the generate_markdown function to create the markdown content
+    markdown_content = generate_markdown(rec)
+    return markdown_content
+
+
+  def HTMLPolitica(rec, table):
+    def generate_quality_html(record):
+        # URLs of the images
+        logo_url = "https://i.imgur.com/82J7dfg.png"
+        background_url = "https://i.imgur.com/7okDLkw.png"
+
+        # Retrieve the description from the Modelos table
+        description = record.Descricao
+
+        # Generate the objetivos list from related Perspectivas
+        perspectivas = Perspectivas.lookupRecords(ref_model=record.id)
+        objetivos_list = ""
+        for perspectiva in perspectivas:
+            objetivos = Objetivos.lookupRecords(ref_persp=perspectiva.id)
+            for objetivo in objetivos:
+                objetivos_list += f"<div class='objetivo'><span class='bullet'>&#8226;</span> {objetivo.Nome}</div>"
+
+        # Create the HTML content
+        html_content = f"""
+        <body>
+            <img src="{background_url}" alt="Background Image" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: -1;">
+            <img src="{logo_url}" alt="Pavicon Logo" style="position: relative; top: 40px; left: 40px; width: 38%; max-width: 1000px; height: auto; margin: 0 5,88% 40px 120px;">
+            <div class="content" style="font-family: 'Roboto', Arial, Helvetica, sans-serif; text-align: center;">
+                <h1 style="font-size: 4.3vw; font-family: 'Calibri', sans-serif; letter-spacing: -0.12vw; font-weight: bold; margin: 40px 120px 10px 120px;">POLÍTICA DA QUALIDADE</h1>
+                <p style="font-size: 2.2vw; font-family: 'Arial', sans-serif; letter-spacing: -0.005vw; font-weight: bold; margin: 0 120px 0px 120px;">{description}</p>
+                <br><br>
+                <h1 style="font-size: 4.3vw; font-family: 'Calibri', sans-serif; letter-spacing: -0.12vw; font-weight: bold; margin: 20px 120px 10px 120px;">OBJETIVOS DA QUALIDADE</h1>
+                <div class="objetivos" style="font-size: 2.2vw; font-family: 'Arial', sans-serif; letter-spacing: -0.005vw; font-weight: bold; margin: 0 250px 40px 250px;">
+                    {objetivos_list}
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+
+        return html_content
+
+    # Use the generate_quality_html function to create the HTML content
+    html_content = generate_quality_html(rec)
+    return html_content
+
+
+
+@grist.UserTable
+class Objetivos:
+  Nome = grist.Text()
+  ref_model = grist.Reference('Modelos')
+  ref_persp = grist.Reference('Perspectivas')
+  Tipo = grist.Choice()
+  ref_obj = grist.Reference('Objetivos')
+
+  def Indicadores(rec, table):
+    return len(Indicadores.lookupRecords(ref_objective=CONTAINS(rec.id)))
+
+  def Estrategias(rec, table):
+    return len(Objetivos.lookupRecords(ref_obj=rec.id))
+
+
+
+@grist.UserTable
+class PESTAL_Detalhes:
+  PestalRef = grist.Reference('Analise_PESTAL')
+  Tipo = grist.Choice()
+  Vincular_Elemento_SWOT = grist.Reference('SWOT_Elementos')
+  DescElementoPESTAL = grist.Text()
+
+  @grist.formulaType(grist.Text())
+  def Descricao(rec, table):
+    return rec.Vincular_Elemento_SWOT.Elemento or rec.DescElementoPESTAL
+
+
+
+@grist.UserTable
+class Perspectivas:
+  id2 = grist.Numeric()
+  ref_model = grist.Reference('Modelos')
+  Name = grist.Text()
+
+  def Objetivos(rec, table):
+    return len(Objetivos.lookupRecords(ref_persp=rec.id))
+
+  @grist.formulaType(grist.Text())
+  def Link(rec, table):
+    return SELF_HYPERLINK(LinkKey_id=rec.id, label="🪪")
+
+
+
+@grist.UserTable
+class Pontuacao_SWOT:
+  Grau_Importancia = grist.Text()
+  Pontos = grist.Numeric()
+
+
+@grist.UserTable
+class SWOT_Cruzada:
+  Internas = grist.Choice()
+  Item_Interno = grist.Reference('SWOT_Elementos')
+  Item_Externo = grist.Reference('SWOT_Elementos')
+  Externas = grist.Choice()
+  Ano = grist.Reference('Analise_SWOT')
+  Multi = grist.Numeric()
+
+  def Logica_para_criacao_do_Objetivo_Estrategico(rec, table):
+    # Definir a função frase_orientadora no campo calculado 'Frase Orientadora'
+    def frase_orientadora(Internas, Item_Interno, Externas, Item_Externo):
+        if Internas == "Força" and Externas == "Oportunidade":
+            return f"Minha força {Item_Interno} vai ser usada para alavancar a oportunidade {Item_Externo}."
+        elif Internas == "Força" and Externas == "Ameaça":
+            return f"Minha força {Item_Interno} vai ser usada para mitigar a ameaça {Item_Externo}."
+        elif Internas == "Fraqueza" and Externas == "Oportunidade":
+            return f"Vou trabalhar na fraqueza {Item_Interno} para aproveitar a oportunidade {Item_Externo}."
+        elif Internas == "Fraqueza" and Externas == "Ameaça":
+            return f"Vou trabalhar na fraqueza {Item_Interno} para reduzir o impacto da ameaça {Item_Externo}."
+        else:
+            return ""
+
+    # Aplicar a fórmula aos campos correspondentes
+    return frase_orientadora(rec.Internas, rec.Item_Interno.Elemento, rec.Externas, rec.Item_Externo.Elemento)
+
+
+
+  def A(rec, table):
+    return rec.id
+
+
+@grist.UserTable
+class SWOT_Elementos:
+  RefSWOT = grist.Reference('Analise_SWOT')
+  Tipo = grist.Choice()
+
+  def _default_Elemento(rec, table, value, user):
+    return rec.Vincular_Elemento_PESTAL.Descricao
+  Elemento = grist.Text()
+  Pontuacao = grist.Reference('Pontuacao_SWOT')
+  Descricao = grist.Text()
+  Vincular_Elemento_PESTAL = grist.Reference('PESTAL_Detalhes')
+
+  @grist.formulaType(grist.Numeric())
+  def Pontuacao_Pontos(rec, table):
+    return rec.Pontuacao.Pontos
+
+  def HTML(rec, table):
+    def generate_html(record):
+        elems = SWOT_Elementos.lookupRecords(RefSWOT=record.RefSWOT)
+        current_id = record.id
+
+        # Sort elements by Pontuacao_Pontos
+        strengths = sorted([e for e in elems if e.Tipo == "Força"], key=lambda x: x.Pontuacao_Pontos, reverse=True)
+        weaknesses = sorted([e for e in elems if e.Tipo == "Fraqueza"], key=lambda x: x.Pontuacao_Pontos, reverse=True)
+        opportunities = sorted([e for e in elems if e.Tipo == "Oportunidade"], key=lambda x: x.Pontuacao_Pontos, reverse=True)
+        threats = sorted([e for e in elems if e.Tipo == "Ameaça"], key=lambda x: x.Pontuacao_Pontos, reverse=True)
+
+        # Define a function to format each item
+        def format_item(item, i):
+            background_color = {
+                'Força': "rgba(22, 86, 161, 0.3);" if i % 2 == 0 else "rgba(17, 111, 205, 0.5);",
+                'Fraqueza': "rgba(200, 135, 36, 0.3);" if i % 2 == 0 else "rgba(252, 178, 45, 0.5);",
+                'Oportunidade': "rgba(13, 125, 104, 0.3);" if i % 2 == 0 else "rgba(17, 161, 134, 0.5);",
+                'Ameaça': "rgba(165, 40, 33, 0.3);" if i % 2 == 0 else "rgba(214, 54, 42, 0.5);"
+            }[item.Tipo]
+        
+            highlight_background_color = {
+                'Força': "rgba(22, 86, 161, 0.8);",
+                'Fraqueza': "rgba(200, 135, 36, 0.8);",
+                'Oportunidade': "rgba(13, 125, 104, 0.8);",
+                'Ameaça': "rgba(165, 40, 33, 0.8);"
+            }[item.Tipo]
+        
+            highlight_font_color = "white"
+
+            if item.id == current_id:
+                background_color = highlight_background_color
+                font_color = highlight_font_color
+            else:
+                font_color = "white"
+        
+            symbol = "> " if item.id == current_id else ''
+        
+            description_html = f"<div style='font-size: 70%;'>{item.Descricao}</div>" if item.RefSWOT_Mostrar_Descricoes else ""
+        
+            return f"<li id='{item.Tipo.lower()}-{item.id}' style='padding: 5px; background-color: {background_color}; color: {font_color};'>" \
+                   f"<div style='display: flex; justify-content: space-between; align-items: center;'>" \
+                   f"{symbol}{item.Elemento}<span>{item.Pontuacao_Pontos}</span></div>" \
+                   f"{description_html}</li>"
+
+        strengths_html = '\n'.join(format_item(item, i) for i, item in enumerate(strengths))
+        weaknesses_html = '\n'.join(format_item(item, i) for i, item in enumerate(weaknesses))
+        opportunities_html = '\n'.join(format_item(item, i) for i, item in enumerate(opportunities))
+        threats_html = '\n'.join(format_item(item, i) for i, item in enumerate(threats))
+
+        html_template = """
+        <div style="display: flex; flex-wrap: wrap; width: 100%; align-items: stretch; gap: 15px; color: white;">
+          <div style="flex: 1 1 45%; padding: 5px 10px 5px 5px; box-sizing: border-box;">
+            <div style="position: relative; padding: 10px; background-color: #116FCD; text-align: center; height: 100%; border: 5px solid #0D5AA5; border-radius: 10px;">
+              <h2 style="position: absolute; opacity: 0.15; font-size: 50vw; top: 50%; left: 50%; transform: translate(-50%, -50%); margin: auto; color: white;">S</h2>
+              <div style="position: relative; z-index: 1; text-align: center;">
+                <strong style="font-size: 180%; color: white;">Forças</strong>
+                <ul style="font-size: 115%; text-align: left; color: white; padding-left: 10px; list-style-type: none;">
+                  {strengths_html}
+                </ul>
+              </div>
+            </div>
+          </div>
+          <div style="flex: 1 1 45%; padding: 5px 10px 5px 5px; box-sizing: border-box;">
+            <div style="position: relative; padding: 10px; background-color: #FCB22D; text-align: center; height: 100%; border: 5px solid #C98724; border-radius: 10px;">
+              <h2 style="position: absolute; opacity: 0.2; font-size: 50vw; top: 50%; left: 50%; transform: translate(-50%, -50%); margin: auto; color: white;">W</h2>
+              <div style="position: relative; z-index: 1; text-align: center;">
+                <strong style="font-size: 180%; color: white;">Fraquezas</strong>
+                <ul style="font-size: 115%; text-align: left; color: white; padding-left: 10px; list-style-type: none;">
+                  {weaknesses_html}
+                </ul>
+              </div>
+            </div>
+          </div>
+          <div style="flex-basis: 100%; height: 20px;"></div> <!-- Adding white space between top and bottom rows -->
+          <div style="flex: 1 1 45%; padding: 5px 10px 5px 5px; box-sizing: border-box;">
+            <div style="position: relative; padding: 10px; background-color: #11A186; text-align: center; height: 100%; border: 5px solid #0D7D68; border-radius: 10px;">
+              <h2 style="position: absolute; opacity: 0.15; font-size: 50vw; top: 50%; left: 50%; transform: translate(-50%, -50%); margin: auto; color: white;">O</h2>
+              <div style="position: relative; z-index: 1; text-align: center;">
+                <strong style="font-size: 180%; color: white;">Oportunidades</strong>
+                <ul style="font-size: 115%; text-align: left; color: white; padding-left: 10px; list-style-type: none;">
+                  {opportunities_html}
+                </ul>
+              </div>
+            </div>
+          </div>
+          <div style="flex: 1 1 45%; padding: 5px 10px 5px 5px; box-sizing: border-box;">
+            <div style="position: relative; padding: 10px; background-color: #D6362A; text-align: center; height: 100%; border: 5px solid #A52821; border-radius: 10px;">
+              <h2 style="position: absolute; opacity: 0.15; font-size: 50vw; top: 50%; left: 50%; transform: translate(-50%, -50%); margin: auto; color: white;">T</h2>
+              <div style="position: relative; z-index: 1; text-align: center;">
+                <strong style="font-size: 180%; color: white;">Ameaças</strong>
+                <ul style="font-size: 115%; text-align: left; color: white; padding-left: 10px; list-style-type: none;">
+                  {threats_html}
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+        """
+
+        formatted_html = html_template.format(
+            strengths_html=strengths_html,
+            weaknesses_html=weaknesses_html,
+            opportunities_html=opportunities_html,
+            threats_html=threats_html
+        )
+
+        return formatted_html
+
+    return generate_html(rec)
+
+
+  @grist.formulaType(grist.Bool())
+  def RefSWOT_Mostrar_Descricoes(rec, table):
+    return rec.RefSWOT.Mostrar_Descricoes
+
+
+@grist.UserTable
+class TEMPLATES:
+  NAME = grist.Text()
+  TEMPLATE_FORMATTING = grist.Text()
+
+  def C(rec, table):
+    return None
+
+
+@grist.UserTable
+class Users:
+  name = grist.Text()
+  email = grist.Text()
+
+  def _default_DeptPertence(rec, table, value, user):
+    return IF(rec.Departamentos_Departamento!="",(lambda: (Departamentos.lookupRecords(Usuario=rec.id).id)),lambda: (None))
+  DeptPertence = grist.ReferenceList('Departamentos')
+  A = grist.Bool()
+
+  def Departamentos_Departamento(rec, table):
+    return Departamentos.lookupRecords(Usuario=rec.id).Departamento

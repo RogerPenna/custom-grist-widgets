@@ -16,14 +16,20 @@ def apply_custom_styles():
     """Aplica o CSS Industrial ao Streamlit."""
     st.markdown(f"""
         <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+            @import url('https://fonts.googleapis.com/icon?family=Material+Icons');
+            
             /* Reset e Fundo Global */
-            .stApp {{ background-color: {STITCH['bg']}; color: {STITCH['text']}; font-family: 'Inter', sans-serif; }}
+            .stApp {{ 
+                background-color: {STITCH['bg']}; 
+                color: {STITCH['text']}; 
+                font-family: 'Inter', sans-serif; 
+            }}
             
             /* Sidebar Customizada */
-            [data-testid="stSidebar"] {{ 
-                background-color: {STITCH['panel']}; 
+            [data-testid="stSidebar"], [data-testid="stSidebarNav"] {{ 
+                background-color: {STITCH['panel']} !important; 
                 border-right: 1px solid {STITCH['border']}; 
-                padding-top: 0;
             }}
             
             /* Top Bar de Estilo Industrial */
@@ -45,27 +51,35 @@ def apply_custom_styles():
                 width: 100%; 
                 background: transparent; 
                 border: none; 
-                color: {STITCH['text_dim']}; 
+                color: {STITCH['text_dim']} !important; 
                 text-align: left; 
                 padding: 0.6rem 1rem; 
-                transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                transition: all 0.2s;
                 border-radius: 6px;
                 font-weight: 500;
+                font-family: 'Material Icons', 'Inter', sans-serif;
             }}
-            .stButton > button:hover {{ color: white; background: rgba(255,255,255,0.05); }}
+            .stButton > button:hover {{ color: white !important; background: rgba(255,255,255,0.05); }}
             
-            /* Inputs e Formulários */
-            .stTextInput > div > div > input {{ background: {STITCH['bg']}; color: white; border-color: {STITCH['border']}; }}
+            /* Expanders */
+            .stExpander {{
+                background-color: {STITCH['panel']} !important;
+                border: 1px solid {STITCH['border']} !important;
+            }}
             
-            /* Tabs Estilizadas */
-            .stTabs [data-baseweb="tab-list"] {{ gap: 24px; background-color: transparent; }}
-            .stTabs [data-baseweb="tab"] {{ color: {STITCH['text_dim']}; padding: 10px 0; font-weight: 700; }}
+            /* Labels de Input */
+            .stTextInput label, .stSelectbox label {{
+                color: {STITCH['text_dim']} !important;
+            }}
+
+            /* Tabs */
+            .stTabs [data-baseweb="tab-list"] {{ border-bottom: 1px solid {STITCH['border']}; }}
+            .stTabs [data-baseweb="tab"] {{ color: {STITCH['text_dim']} !important; font-weight: 700; }}
             .stTabs [aria-selected="true"] {{ color: {STITCH['primary']} !important; }}
 
-            /* Scrollbars */
-            ::-webkit-scrollbar {{ width: 6px; height: 6px; }}
-            ::-webkit-scrollbar-track {{ background: {STITCH['bg']}; }}
-            ::-webkit-scrollbar-thumb {{ background: {STITCH['border']}; border-radius: 10px; }}
-            ::-webkit-scrollbar-thumb:hover {{ background: {STITCH['text_dim']}; }}
+            /* Esconder elementos nativos do Streamlit que poluem a UI industrial */
+            #MainMenu {{ visibility: hidden; }}
+            footer {{ visibility: hidden; }}
+            header {{ visibility: hidden; }}
         </style>
     """, unsafe_allow_html=True)

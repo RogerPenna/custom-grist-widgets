@@ -8,6 +8,8 @@ import { GristRestAdapter } from '../libraries/headless-rest-adapter.js';
 import { HeadlessTableLens } from '../libraries/headless-table-lens.js';
 import { GristFilterBar } from '../libraries/grist-filter-bar/grist-filter-bar.js';
 
+import { GristLauncherUtils } from '../libraries/grist-launcher-utils.js';
+
 document.addEventListener('DOMContentLoaded', async () => {
     console.log("[CardViewer] DOMContentLoaded - Inicializando...");
     const appContainer = document.getElementById('app-container');
@@ -240,66 +242,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.body.appendChild(gearBtn);
     }
 
-    function openSettingsPopover(event) {
+    async function openSettingsPopover(event) {
         event.stopPropagation();
-        const existing = document.querySelector('.config-popover');
-        if (existing) { existing.remove(); return; }
-
-        const popover = document.createElement('div');
-        popover.className = 'config-popover';
         
-        // O tema só aparece no modo Headless para testes. No Grist, focamos no ID.
-        const themeSection = urlConfigId ? `
-            <div class="popover-section">
-                <label>Tema (Preview)</label>
-                <div class="theme-toggle-group">
-                    <button id="theme-night-btn" class="${currentTheme === 'night' ? 'active' : ''}">Escuro</button>
-                    <button id="theme-light-btn" class="${currentTheme === 'light' ? 'active' : ''}">Claro</button>
-                </div>
-            </div>` : '';
-
-        popover.innerHTML = `
-            <div class="popover-section">
-                <label>ID de Configuração</label>
-                <input type="text" id="popover-config-id" value="${currentConfigId || ''}" placeholder="Ex: GestMud_123">
-            </div>
-            ${themeSection}
-            <button id="popover-link-btn" class="config-popover-btn">Salvar Vínculo</button>
-            <button id="popover-mgr-btn" class="config-popover-btn" style="background:#64748b;">Abrir Configurador</button>
-        `;
-        document.body.appendChild(popover);
-
-        popover.querySelector('#popover-link-btn').onclick = () => {
-            const newId = document.getElementById('popover-config-id').value.trim();
-            if (urlConfigId) {
-                alert("No Modo Headless, altere via menu do Dashboard.");
-            } else {
-                // Ao salvar no Grist, enviamos o objeto completo para não perder nada
+        await GristLauncherUtils.renderSettingsPopover({
+            grist: window.grist,
+            tableLens: tableLens,
+            currentConfigId: currentConfigId,
+            currentConfig: currentConfig,
+            onLink: async (newId) => {
                 window.grist.setOptions({ 
                     configId: newId,
                     theme: currentTheme 
                 });
+                currentConfigId = newId;
+                await initializeAndUpdate();
+            },
+            onOpenManager: () => {
+                openConfigManager(window.grist, { initialConfigId: currentConfigId, componentTypes: ['Card System'] });
             }
-            popover.remove();
-        };
-
-        if (urlConfigId) {
-            popover.querySelector('#theme-night-btn').onclick = () => {
-                currentTheme = 'night';
-                initializeAndUpdate();
-                popover.remove();
-            };
-            popover.querySelector('#theme-light-btn').onclick = () => {
-                currentTheme = 'light';
-                initializeAndUpdate();
-                popover.remove();
-            };
-        }
-
-        popover.querySelector('#popover-mgr-btn').onclick = () => {
-            popover.remove();
-            openConfigManager(window.grist, { initialConfigId: currentConfigId, componentTypes: ['Card System'] });
-        };
+        });
     }
 
     // --- 6. EVENTOS E SUBSCRIPÇÕES (Grist Standard) ---

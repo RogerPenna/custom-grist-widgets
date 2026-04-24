@@ -70,9 +70,15 @@
             
             // Patch listTables usando a rota do Proxy
             window.grist.docApi.listTables = async () => {
-                const res = await fetch(`${proxyUrl}/api/docs/${docId}/tables`);
-                const data = await res.json();
-                return data.tables.map(t => t.id);
+                try {
+                    const res = await fetch(`${proxyUrl}/api/docs/${docId}/tables`);
+                    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+                    const data = await res.json();
+                    return (data.tables || []).map(t => t.id);
+                } catch (e) {
+                    console.error("Erro ao listar tabelas via Proxy:", e);
+                    return [];
+                }
             };
 
             container.innerHTML = '';

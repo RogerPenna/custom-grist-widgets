@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Grist Icon Manager</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background: #f4f7f6; color: #333; }
+        .header { position: sticky; top: 0; background: white; padding: 15px; border-bottom: 2px solid #ddd; z-index: 100; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .controls-global { display: flex; gap: 10px; }
+        .icon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 15px; margin-top: 20px; }
+        .icon-card { background: white; padding: 15px; border-radius: 8px; border: 1px solid #eee; display: flex; align-items: center; gap: 20px; transition: transform 0.2s; }
+        .icon-card:hover { border-color: #aaa; }
+        .preview-box { width: 64px; height: 64px; border: 1px solid #ddd; border-radius: 4px; display: flex; align-items: center; justify-content: center; background: #fff; flex-shrink: 0; }
+        .preview-box svg { width: 48px; height: 48px; }
+        .icon-info { flex-grow: 1; }
+        .icon-name { font-weight: bold; font-size: 14px; margin-bottom: 8px; display: block; color: #000; }
+        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px; }
+        .control-group { display: flex; align-items: center; gap: 5px; }
+        input[type="number"] { width: 45px; }
+        button { cursor: pointer; padding: 8px 12px; border-radius: 4px; border: 1px solid #007bff; background: #007bff; color: white; font-weight: bold; }
+        button.secondary { background: #6c757d; border-color: #6c757d; }
+        #json-output { width: 100%; height: 200px; margin-top: 20px; display: none; font-family: monospace; font-size: 12px; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h2>Grist Icon Manager</h2>
+    <div class="controls-global">
+        <button onclick="generateJSON()">Generate Config JSON</button>
+        <button class="secondary" onclick="window.location.reload()">Reset All</button>
+    </div>
+</div>
+
+<textarea id="json-output" placeholder="Config JSON will appear here..."></textarea>
+
+<div id="icon-container" class="icon-grid">
+    <p>Loading icons...</p>
+</div>
+
+<!-- Load the SVG library into the DOM -->
+<div id="svg-library-container" style="display:none;"></div>
+
+<script>
+    const svgUrl = './icons.svg';
+    let iconConfigs = {};
+
+    async function loadIcons() {
+        const response = await fetch(svgUrl);
+        const text = await response.text();
+        const container = document.getElementById('svg-library-container');
+        container.innerHTML = text;
+
+        const symbols = container.querySelectorAll('symbol');
+        const grid = document.getElementById('icon-container');
+        grid.innerHTML = '';
+
+        symbols.forEach(symbol => {
+            const id = symbol.id;
+            const paths = symbol.querySelectorAll('path');
+            
+            // Analyze first path for initial state
+            const firstPath = paths[0];
+            const hasFill = firstPath.getAttribute('fill') !== 'none';
+            const hasStroke = firstPath.hasAttribute('stroke') && firstPath.getAttribute('stroke') !== 'none';
+            const strokeWidth = firstPath.getAttribute('stroke-width') || 0;
+
+            iconConfigs[id] = {
+                fill: hasFill,
+                stroke: hasStroke,
+                strokeWidth: parseFloat(strokeWidth) || (hasStroke ? 2 : 0)
+            };
+
+            const card = document.createElement('div');
+            card.className = 'icon-card';
+            card.innerHTML = `
+                <div class="preview-box" id="preview-${id}">
+                    <svg><use href="#${id}"></use></svg>
+                </div>
+                <div class="icon-info">
+                    <span class="icon-name">${id}</span>
+                    <div class="controls">
+                        <div class="control-group">
+                            <input type="checkbox" id="fill-${id}" ${hasFill ? 'checked' : ''} onchange="updateIcon('${id}')">
+                            <label for="fill-${id}">Fill</label>
+                        </div>
+                        <div class="control-group">
+                            <input type="checkbox" id="stroke-${id}" ${hasStroke ? 'checked' : ''} onchange="updateIcon('${id}')">
+                            <label for="stroke-${id}">Stroke</label>
+                        </div>
+                        <div class="control-group" style="grid-column: span 2;">
+                            <label>Width:</label>
+                            <input type="number" id="width-${id}" value="${iconConfigs[id].strokeWidth}" step="0.1" min="0" max="5" oninput="updateIcon('${id}')">
+                        </div>
+                    </div>
+                </div>
+            `;
+            grid.appendChild(card);
+            updateIcon(id); // Initial render
+        });
+    }
+
+    function updateIcon(id) {
+        const fill = document.getElementById(`fill-${id}`).checked;
+        const stroke = document.getElementById(`stroke-${id}`).checked;
+        const width = document.getElementById(`width-${id}`).value;
+
+        iconConfigs[id] = { fill, stroke, strokeWidth: parseFloat(width) };
+
+        // We update the styles in the hidden library, which affects all <use> instances
+        const symbol = document.getElementById(id);
+        const paths = symbol.querySelectorAll('path');
+        
+        paths.forEach(p => {
+            p.setAttribute('fill', fill ? 'currentColor' : 'none');
+            if (stroke) {
+                p.setAttribute('stroke', 'currentColor');
+                p.setAttribute('stroke-width', width);
+                p.setAttribute('stroke-linecap', 'round');
+                p.setAttribute('stroke-linejoin', 'round');
+            } else {
+                p.removeAttribute('stroke');
+                p.removeAttribute('stroke-width');
+            }
+        });
+    }
+
+    function generateJSON() {
+        const output = document.getElementById('json-output');
+        output.value = JSON.stringify(iconConfigs, null, 2);
+        output.style.display = 'block';
+        output.select();
+        document.execCommand('copy');
+        alert('JSON Config copied to clipboard!');
+    }
+
+    loadIcons();
+</script>
+
+</body>
+</html>

@@ -12,7 +12,10 @@ if 'menu_structure' not in st.session_state:
     st.session_state.menu_structure = load_menu()
 if 'logo_b64' not in st.session_state:
     if os.path.exists(LOGO_PATH):
-        with open(LOGO_PATH, "r") as f: st.session_state.logo_b64 = f.read()
+        try:
+            with open(LOGO_PATH, "r") as f: st.session_state.logo_b64 = f.read()
+        except:
+            st.session_state.logo_b64 = None
     else: st.session_state.logo_b64 = None
 if 'current_page' not in st.session_state:
     st.session_state.current_page = "Dashboard"
@@ -89,9 +92,9 @@ def render_dynamic_widget(config_id):
     records = grist.get_records(config['tableId'])
     
     # Prepara o HTML com injeção de dados e scripts locais
-    # Nota: Usamos caminhos absolutos ou relativos baseados no servidor porta 3000 que deve estar rodando
-    widget_html = f'''
-        <div id="universal-widget-root" style="width: 100%; height: 800px; background: {STITCH['panel']}; border-radius: 12px; border: 1px solid {STITCH['border']}; overflow: hidden;">
+    # Usamos string templates normais em vez de f-strings para o JS para evitar conflitos com chaves {}
+    widget_html = '''
+        <div id="universal-widget-root" style="width: 100%; height: 800px; background: ''' + STITCH['panel'] + '''; border-radius: 12px; border: 1px solid ''' + STITCH['border'] + '''; overflow: hidden;">
             <div id="renderer-container" style="height: 100%; padding: 20px;">
                 <div style="color: #64748b; text-align: center; padding-top: 100px;">Carregando Motor de Renderização...</div>
             </div>
@@ -99,42 +102,48 @@ def render_dynamic_widget(config_id):
 
         <!-- Injeção de Dados -->
         <script>
-            window.WIDGET_DATA = {{
-                records: {json.dumps(records)},
-                config: {json.dumps(config)}
-            }};
+            window.WIDGET_DATA = {
+                records: ''' + json.dumps(records) + ''',
+                config: ''' + json.dumps(config) + '''
+            };
             console.log("[Portal Admin] Dados injetados com sucesso.", window.WIDGET_DATA);
         </script>
 
         <!-- Importação das Bibliotecas -->
         <script type="module">
-            import {{ TableRenderer }} from "http://localhost:3000/libraries/grist-table-renderer/TableRenderer.js";
-            import {{ CardSystem }} from "http://localhost:3000/libraries/grist-card-system/CardSystem.js";
+            import { TableRenderer } from "http://localhost:3000/libraries/grist-table-renderer/TableRenderer.js";
+            import { CardSystem } from "http://localhost:3000/libraries/grist-card-system/CardSystem.js";
             
             const container = document.getElementById('renderer-container');
-            const {{ config, records }} = window.WIDGET_DATA;
-            const type = (config.componentType || "").replace(/\s+/g, "").toLowerCase();
+            const { config, records } = window.WIDGET_DATA;
+            const type = (config.componentType || "").replace(/\\s+/g, "").toLowerCase();
 
-            try {{
+            try {
                 container.innerHTML = "";
-                if (type === "table") {{
-                    await TableRenderer.renderTable({{
+
+                // MOCK TABLE LENS PARA MODO INJEÇÃO DIRETA
+                const mockTableLens = {
+                    getTableSchema: (tableId) => Promise.resolve(window.WIDGET_DATA.schema || {}),
+                    fetchTableRecords: (tableId) => Promise.resolve(records),
+                    updateRecord: (t, r, d) => console.log("Edição direta não habilitada no Portal Admin"),
+                    fetchConfig: (id) => Promise.resolve(config)
+                };
+
+                if (type === "table") {
+                    await TableRenderer.renderTable({
                         container: container,
                         records: records,
                         config: config,
-                        tableLens: {{ /* Mock TableLens for direct data */
-                            getTableSchema: () => Promise.resolve({{}}), 
-                            updateRecord: () => console.log("Edição não habilitada no modo injeção direta")
-                        }}
-                    }});
-                }} else if (type === "cardsystem") {{
-                    await CardSystem.renderCards(container, records, config, {{}});
-                }} else {{
+                        tableLens: mockTableLens
+                    });
+                } else if (type === "cardsystem" || type === "cardviewer") {
+                    await CardSystem.renderCards(container, records, config, window.WIDGET_DATA.schema || {});
+                } else {
                     container.innerHTML = "<div style='color: white; padding: 20px;'>Tipo de widget '" + type + "' ainda não suportado via injeção direta.</div>";
-                }}
-            }} catch (e) {{
+                }
+            } catch (e) {
                 container.innerHTML = "<div style='color: red; padding: 20px;'>Erro na renderização: " + e.message + "</div>";
-            }}
+            }
         </script>
     '''
     st.components.v1.html(widget_html, height=850)
@@ -161,7 +170,7 @@ if st.session_state.current_page == "Configurações":
         if st.button("💾 Salvar Menu Estruturado", type="primary"): save_menu(menu); st.success("Estrutura de Menu Salva!")
 
     with tab_configurator:
-        doc_id = os.getenv("GRIST_DOC_ID", "")
+        doc_id = os.getenv("GRIST_DOC_ID", "qiVPiRA3ULcU")
         st.components.v1.html(f'<iframe src="http://localhost:3000/configurator.html?docId={doc_id}" style="width:100%; height:80vh; border:none; border-radius: 12px; background: white;"></iframe>', height=800)
 
 elif st.session_state.current_page == "Explorador":

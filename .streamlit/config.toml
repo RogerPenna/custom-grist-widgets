@@ -1,9 +1,14 @@
 [theme]
-primaryColor = "#4f46e5"
-backgroundColor = "#f8fafc"
-secondaryBackgroundColor = "#ffffff"
-textColor = "#0f172a"
+primaryColor = "#3b82f6"
+backgroundColor = "#0b1020"
+secondaryBackgroundColor = "#121a2f"
+textColor = "#f8fafc"
 font = "sans serif"
+
+# Cores adicionais para evitar erros de "Invalid color"
+widgetBackgroundColor = "#1e293b"
+widgetBorderColor = "#334155"
+skeletonBackgroundColor = "#1e293b"
 
 [server]
 headless = true

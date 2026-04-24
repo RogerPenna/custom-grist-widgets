@@ -1,0 +1,213 @@
+// --- START OF 100% COMPLETE DrawerViewer.js WITH DEBUG LOGS ---
+
+console.log("DrawerViewer.js script started.");
+
+import { GristTableLens } from '../libraries/grist-table-lens/grist-table-lens.js';
+import { open as openConfigManager } from '../libraries/grist-config-manager/ConfigManagerComponent.js';
+import { subscribe } from '../libraries/grist-event-bus/grist-event-bus.js';
+import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js';
+import { GristLauncherUtils } from '../libraries/grist-launcher-utils.js';
+
+document.addEventListener('DOMContentLoaded', async () => {
+    
+    console.log("[DrawerViewer] DOMContentLoaded event fired.");
+
+    async function loadIcons() {
+        try {
+            const response = await fetch('/libraries/icons/icons.svg');
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const svgText = await response.text();
+            const div = document.createElement('div');
+            div.style.display = 'none';
+            div.innerHTML = svgText;
+            document.body.insertBefore(div, document.body.firstChild);
+        } catch (error) {
+            console.error('Falha ao carregar o arquivo de ícones:', error);
+        }
+    }
+    await loadIcons();
+
+    const getIcon = (id) => `<svg class="icon"><use href="#${id}"></use></svg>`;
+
+    if (typeof grist === 'undefined') {
+        document.body.innerHTML = `<p class="error-msg">Erro Crítico: Grist API não carregada.</p>`;
+        return;
+    }
+
+    const appContainer = document.getElementById('app-container');
+    const tableLens = new GristTableLens(grist);
+
+    let state = {
+        configData: null,
+        configId: grist.getOptions()?.configId || null,
+    };
+
+    function renderAdminView() {
+        console.log("[DrawerViewer] renderAdminView called. State:", state);
+        appContainer.innerHTML = '';
+        if (state.configId && state.configData) {
+            appContainer.innerHTML = `<div class="admin-placeholder">✔️ DrawerViewer vinculado à config: <strong>${state.configId}</strong>. Pronto para receber eventos.</div>`;
+        } else if (state.configId && !state.configData) {
+            appContainer.innerHTML = `<div class="admin-placeholder">⚠️ Configuração "${state.configId}" não encontrada. Verifique o ID.</div>`;
+        } else {
+            appContainer.innerHTML = `<div class="admin-placeholder">⚠️ DrawerViewer não configurado. Clique na engrenagem.</div>`;
+        }
+        addSettingsGear();
+    }
+
+    function addSettingsGear() {
+        if (document.getElementById('settings-gear-btn')) return;
+        const gearBtn = document.createElement('div');
+        gearBtn.id = 'settings-gear-btn';
+        gearBtn.innerHTML = getIcon('icon-settings');
+        gearBtn.title = 'Configurações do Widget';
+        gearBtn.onclick = openSettingsPopover;
+        appContainer.appendChild(gearBtn);
+    }
+
+    async function openSettingsPopover(event) {
+        event.stopPropagation();
+        
+        await GristLauncherUtils.renderSettingsPopover({
+            grist: window.grist,
+            tableLens: tableLens,
+            currentConfigId: state.configId,
+            currentConfig: state.configData,
+            componentType: 'Drawer',
+            onLink: async (newId) => {
+                await window.grist.setOptions({ configId: newId || null });
+                state.configId = newId || null;
+                // Note: onOptions will trigger fetch and renderAdminView
+            },
+            onOpenManager: () => {
+                openConfigManager(window.grist, { initialConfigId: state.configId, componentTypes: ['Drawer'] });
+            }
+        });
+    }
+
+    function closeSettingsPopover() {
+        const popover = document.querySelector('.config-popover');
+        if (popover) popover.remove();
+        const overlay = document.getElementById('config-popover-overlay');
+        if (overlay) overlay.remove();
+    }
+
+    grist.ready({ requiredAccess: 'full' });
+    console.log("[DrawerViewer] Grist is ready.");
+
+    subscribe('grf-navigation-action-triggered', async (eventData) => {
+        console.log("[DrawerViewer] Navigation action triggered.", eventData);
+        await handleNavigationAction(eventData.config, eventData.sourceRecord, eventData.tableId);
+    });
+
+    subscribe('grf-card-clicked', (eventData) => {
+    console.log(`[DrawerViewer] Evento 'grf-card-clicked' detectado!`, {
+        eventoRecebido: eventData,
+        meuConfigId: state.configId
+    });
+
+    if (eventData.drawerConfigId === state.configId) {
+        console.log(`[DrawerViewer] CONDIÇÃO ATENDIDA! Os configIds correspondem. Tentando abrir o drawer...`);
+        openDrawer(eventData.tableId, eventData.recordId, state.configData);
+    } else {
+        console.log(`[DrawerViewer] Condição não atendida. O evento era para '${eventData.drawerConfigId}', mas eu sou '${state.configId}'. Ignorando.`);
+    }
+});
+    console.log("[DrawerViewer] Inscrito no evento 'grf-card-clicked'.");
+
+    grist.onOptions(async (options) => {
+        console.log("[DrawerViewer] onOptions event fired with:", options);
+        const newConfigId = options?.configId || null;
+        if (newConfigId === state.configId && state.configData) return;
+
+        state.configId = newConfigId;
+        state.configData = null;
+
+        if (state.configId) {
+            try {
+                const configRecord = await tableLens.findRecord('Grf_config', { configId: state.configId });
+                state.configData = configRecord ? JSON.parse(configRecord.configJson) : null;
+            } catch (e) {
+                console.error("Erro ao carregar config do Drawer:", e);
+            }
+        }
+        renderAdminView();
+    });
+
+    /**
+     * Executa ações de navegação ou atualização de dados.
+     */
+    async function handleNavigationAction(config, record, tableId) {
+        console.log("[DrawerViewer] handleNavigationAction disparado:", { actionType: config.actionType, recordId: record.id, tableId });
+        try {
+            if (config.actionType === 'navigateToGristPage') {
+                const rowId = record[config.sourceValueColumn] || record.id;
+                console.log(`[DrawerViewer] Navegando para página ${config.targetPageId}, rowId: ${rowId}`);
+                await window.grist.setCursorPos({ sectionId: parseInt(config.targetPageId), rowId: rowId });
+            } 
+            else if (config.actionType === 'openUrlFromColumn') {
+                const url = record[config.urlColumn];
+                if (url) {
+                    console.log(`[DrawerViewer] Abrindo URL: ${url}`);
+                    window.open(url, '_blank');
+                } else {
+                    console.warn(`[DrawerViewer] Coluna de URL '${config.urlColumn}' está vazia.`);
+                }
+            } 
+            else if (config.actionType === 'updateRecord') {
+                const data = { [config.updateField]: config.updateValue };
+                console.log(`[DrawerViewer] Atualizando record ${record.id} na tabela ${tableId}:`, data);
+                await window.grist.docApi.applyUserActions([
+                    ['UpdateRecord', tableId, record.id, data]
+                ]);
+            }
+            else if (config.actionType === 'deleteRecord') {
+                const msg = config.confirmationMessage || 'Are you sure you want to delete this record?';
+                if (confirm(msg)) {
+                    console.log(`[DrawerViewer] Deletando record ${record.id} na tabela ${tableId}`);
+                    await window.grist.docApi.applyUserActions([
+                        ['RemoveRecord', tableId, record.id]
+                    ]);
+                }
+            }
+            else if (config.actionType === 'editRecord') {
+                if (window.GristDrawer) {
+                    console.log(`[DrawerViewer] Abrindo Gaveta para editar record ${record.id}`);
+                    window.GristDrawer.open(tableId, record.id, { 
+                        tableLens: tableLens,
+                        ...state.configData
+                    });
+                } else {
+                    console.error("[DrawerViewer] window.GristDrawer não encontrado para editRecord");
+                }
+            }
+            else if (config.actionType === 'addSubRecord') {
+                if (window.GristDrawer && config.subRecordRefField) {
+                    console.log(`[DrawerViewer] Adicionando sub-registro vinculado ao record ${record.id}`);
+                    const subTableId = await tableLens.getReferencedTableId(config.subRecordRefField);
+                    if (!subTableId) {
+                        console.error(`[DrawerViewer] Não foi possível determinar a tabela vinculada ao campo ${config.subRecordRefField}`);
+                        alert("Erro de configuração: Tabela do sub-registro não encontrada.");
+                        return;
+                    }
+                    let addConfig = {};
+                    if (config.subRecordConfigId) {
+                        addConfig = await tableLens.fetchConfig(config.subRecordConfigId);
+                    }
+                    const initialData = { [config.subRecordRefField]: record.id };
+                    window.GristDrawer.open(subTableId, 'new', { 
+                        ...(addConfig || {}),
+                        tableLens: tableLens,
+                        initialData: initialData
+                    });
+                } else {
+                    console.error("[DrawerViewer] GristDrawer ou subRecordRefField ausente para addSubRecord", config);
+                }
+            }
+        } catch (e) {
+            console.error("[DrawerViewer] Erro ao executar handleNavigationAction:", e);
+        }
+    }
+});
+
+// --- END OF 100% COMPLETE DrawerViewer.js WITH DEBUG LOGS ---
