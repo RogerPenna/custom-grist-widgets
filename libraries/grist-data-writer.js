@@ -35,6 +35,32 @@ export const GristDataWriter = function(grist) {
     };
 
     /**
+     * Updates multiple records in a single transaction.
+     * @param {string} tableId - The ID of the table to update.
+     * @param {Array<{id: number, fields: object}>} updates - Array of update objects.
+     */
+    this.updateRecords = async function(tableId, updates) {
+        if (!tableId || !Array.isArray(updates) || updates.length === 0) {
+            throw new Error("updateRecords requires tableId and an array of updates.");
+        }
+        const actions = updates.map(u => ['UpdateRecord', tableId, u.id, u.fields]);
+        return grist.docApi.applyUserActions(actions);
+    };
+
+    /**
+     * Adds multiple records in a single transaction.
+     * @param {string} tableId - The ID of the table.
+     * @param {Array<object>} records - Array of objects with field values.
+     */
+    this.addRecords = async function(tableId, records) {
+        if (!tableId || !Array.isArray(records) || records.length === 0) {
+            throw new Error("addRecords requires tableId and an array of records.");
+        }
+        const actions = records.map(r => ['AddRecord', tableId, null, r]);
+        return grist.docApi.applyUserActions(actions);
+    };
+
+    /**
      * Deletes one or more records.
      * @param {string} tableId - The ID of the table to delete from.
      * @param {number[]} recordIds - An array of record IDs to delete.

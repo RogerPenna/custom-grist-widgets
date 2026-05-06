@@ -9,6 +9,7 @@ import { renderBool } from './renderers/render-bool.js';
 import { renderColorPicker } from './renderers/render-color-picker.js';
 import { renderProgressBar } from './renderers/render-progress-bar.js';
 import { renderToggle } from './renderers/render-toggle.js';
+import { renderIndicatorJson } from './renderers/render-indicator-json.js';
 
 (function () {
   if (document.getElementById('grf-styles')) return;
@@ -229,6 +230,12 @@ export async function renderField(options) {
   if (widgetType === 'toggleswitch' || widgetType === 'switch') {
     console.log(`[renderField] Triggering renderToggle for ${colSchema.colId}`);
     renderToggle(callOptions);
+    return;
+  }
+
+  if (widgetType === 'indicatorjson') {
+    console.log(`[renderField] Triggering renderIndicatorJson for ${colSchema.colId}`);
+    renderIndicatorJson(callOptions);
     return;
   }
 
