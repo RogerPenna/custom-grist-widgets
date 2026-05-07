@@ -26,6 +26,12 @@ export const IndicatorsConfigEditor = (() => {
             staticAchievementField: mapping.staticAchievementField || '',
             staticStatusField: mapping.staticStatusField || '',
             staticConsolidatedValueField: mapping.staticConsolidatedValueField || '',
+
+            // Goal Limits
+            useUpperLimitField: mapping.useUpperLimitField || '',
+            useLowerLimitField: mapping.useLowerLimitField || '',
+            lowerLimitValueField: mapping.lowerLimitValueField || '',
+            upperLimitValueField: mapping.upperLimitValueField || '',
             
             // Value Mappings
             directionMap: mapping.directionMap || {}, 
@@ -82,6 +88,26 @@ export const IndicatorsConfigEditor = (() => {
                         <div class="form-group">
                             <label>Semáforo (Emoji):</label>
                             <select id="ind-static-status-field" class="form-control">${createColumnOptions(columns, state.staticStatusField)}</select>
+                        </div>
+                        <hr>
+                        <h4>Limites da Meta (% da Meta)</h4>
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
+                            <div class="form-group">
+                                <label>Ativar Limite Superior:</label>
+                                <select id="ind-use-upper-limit-field" class="form-control">${createColumnOptions(columns, state.useUpperLimitField)}</select>
+                            </div>
+                            <div class="form-group">
+                                <label>Valor % Superior:</label>
+                                <select id="ind-upper-limit-value-field" class="form-control">${createColumnOptions(columns, state.upperLimitValueField)}</select>
+                            </div>
+                            <div class="form-group">
+                                <label>Ativar Limite Inferior:</label>
+                                <select id="ind-use-lower-limit-field" class="form-control">${createColumnOptions(columns, state.useLowerLimitField)}</select>
+                            </div>
+                            <div class="form-group">
+                                <label>Valor % Inferior:</label>
+                                <select id="ind-lower-limit-value-field" class="form-control">${createColumnOptions(columns, state.lowerLimitValueField)}</select>
+                            </div>
                         </div>
                     </div>
 
@@ -247,6 +273,10 @@ export const IndicatorsConfigEditor = (() => {
             staticConsolidatedValueField: container.querySelector('#ind-static-consolidated-field').value,
             staticAchievementField: container.querySelector('#ind-static-achievement-field').value,
             staticStatusField: container.querySelector('#ind-static-status-field').value,
+            useUpperLimitField: container.querySelector('#ind-use-upper-limit-field').value,
+            upperLimitValueField: container.querySelector('#ind-upper-limit-value-field').value,
+            useLowerLimitField: container.querySelector('#ind-use-lower-limit-field').value,
+            lowerLimitValueField: container.querySelector('#ind-lower-limit-value-field').value,
             directionMap: dirMap,
             consolidationMap: consMap,
             periodicityMap: perMap
