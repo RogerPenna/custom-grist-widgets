@@ -344,6 +344,7 @@ export const IndicatorsRenderer = (() => {
         const { xValues, resultY, targetY, upperY, lowerY, chartRange } = timeline;
         
         const traces = [];
+        const shapes = [];
 
         // --- Resultado com Monotonic Cubic Spline ---
         // 1. Separamos os dados em segmentos contínuos (sem nulls)
@@ -402,7 +403,7 @@ export const IndicatorsRenderer = (() => {
         traces.push({
             x: xValues, y: targetY,
             type: 'scatter', mode: 'lines', name: 'Meta',
-            line: { color: '#ff7f0e', width: 1, dash: 'dot' },
+            line: { color: '#ff7f0e', width: 1, dash: 'solid' },
             xaxis: 'x', yaxis: 'y1'
         });
 
@@ -432,14 +433,13 @@ export const IndicatorsRenderer = (() => {
         });
 
         // --- Configuração da Tabela e Layout ---
-        const tableY = { res: 0, meta: 1 };
+        const tableY = { res: 0.3, meta: 0.7 };
 
         // Text traces for the table cells
         const resultText = resultY.map(v => v !== null ? v.toLocaleString() : '-');
         const targetText = targetY.map(v => v.toLocaleString(undefined, {maximumFractionDigits: 1}));
 
         // Table background "cells" as colored scatter markers
-        // Results with vibrant colors
         xValues.forEach((date, i) => {
             const val = resultY[i];
             const tar = targetY[i];
@@ -456,13 +456,26 @@ export const IndicatorsRenderer = (() => {
                     case '🟢': color = '#28a745'; break;
                     case '🟩': color = '#198754'; break;
                 }
+                
+                // Add Pill-shaped background using shape
+                const halfWidth = 14 * 24 * 60 * 60 * 1000; // ~14 days for wider pill
+                shapes.push({
+                    type: 'rect',
+                    xref: 'x', yref: 'y2',
+                    x0: date.getTime() - halfWidth,
+                    x1: date.getTime() + halfWidth,
+                    y0: tableY.res - 0.25,
+                    y1: tableY.res + 0.25,
+                    fillcolor: color,
+                    line: { width: 0 },
+                    layer: 'below'
+                });
+
                 traces.push({
                     x: [date], y: [tableY.res],
-                    type: 'scatter', mode: 'markers+text',
+                    type: 'scatter', mode: 'text',
                     text: [resultText[i]],
-                    textposition: 'middle center',
                     textfont: { color: textColor, weight: 'bold', size: 10 },
-                    marker: { symbol: 'square', size: 35, color: color },
                     xaxis: 'x', yaxis: 'y2', showlegend: false, hoverinfo: 'none'
                 });
             } else {
@@ -482,11 +495,24 @@ export const IndicatorsRenderer = (() => {
             });
         });
 
+        // Add Border around timeline area (white area only)
+        shapes.push({
+            type: 'rect',
+            xref: 'paper', yref: 'paper',
+            x0: 0, x1: 1,
+            y0: 0, y1: 0.1,
+            line: { color: '#707070', width: 1 },
+            layer: 'above'
+        });
+
         const layout = {
             grid: { rows: 2, columns: 1, pattern: 'independent' },
-            margin: { t: 40, b: 60, l: 100, r: 150 },
+            margin: { t: 40, b: 40, l: 50, r: 100 },
             showlegend: true,
-            legend: { x: 1.05, y: 1 },
+            legend: { 
+                x: 1.02, y: 1,
+                font: { size: 10 }
+            },
             xaxis: {
                 type: 'date',
                 rangeslider: { visible: true, thickness: 0.05 },
@@ -496,36 +522,41 @@ export const IndicatorsRenderer = (() => {
                         { count: 5, label: '5 anos', step: 'year', stepmode: 'backward' },
                         { label: 'Reset', step: 'all' }
                     ],
-                    x: 0, y: 1.1,
+                    x: 0, y: 1.05,
                     bgcolor: '#D5E3E9',
                     activecolor: '#9CC2D1',
                     bordercolor: '#ABB1B4',
                     borderwidth: 1
                 },
                 gridcolor: '#F0F0F0',
+                showgrid: true,
+                layer: 'below traces',
                 nticks: 20
             },
             yaxis: {
-                domain: [0.3, 1],
+                domain: [0.2, 1],
                 range: chartRange,
                 autorange: chartRange ? false : true,
                 gridcolor: '#F0F0F0',
                 nticks: 20,
-                title: 'Valores'
+                title: ''
             },
             yaxis2: {
-                domain: [0, 0.25],
-                range: [-0.5, 1.5], // For Res and Meta rows
+                domain: [0, 0.1],
+                range: [-0.2, 1.2], 
                 autorange: false,
                 showgrid: false,
                 zeroline: false,
                 showline: false,
-                tickvals: [0, 1],
+                side: 'right',
+                tickvals: [0.3, 0.7],
                 ticktext: ['RESULTADO', 'META'],
+                tickfont: { size: 9 },
                 fixedrange: true
             },
             plot_bgcolor: '#FFFFFF',
-            paper_bgcolor: '#EBEFEF'
+            paper_bgcolor: '#EBEFEF',
+            shapes: shapes
         };
 
         const chartEl = document.getElementById(elementId);
