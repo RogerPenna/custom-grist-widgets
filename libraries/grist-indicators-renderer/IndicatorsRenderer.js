@@ -33,47 +33,66 @@ export const IndicatorsRenderer = (() => {
         return "❓";
     }
 
-    function interpolateTargets(targetsJson) {
-        const result = new Array(12).fill(null);
-        if (!targetsJson || Object.keys(targetsJson).length === 0) return result;
+    function calculateProgressiveTargets(targetsJson, selectedYear) {
+        const allAnchors = [];
+        const yearsInJson = Object.keys(targetsJson).sort();
+        
+        // Collect all anchors from all years
+        yearsInJson.forEach(year => {
+            MONTH_KEYS.forEach((m, i) => {
+                const entry = targetsJson[year][m];
+                if (entry && (entry.m === true || entry.manual === true)) {
+                    allAnchors.push({
+                        time: parseInt(year) * 12 + i,
+                        val: typeof entry === 'object' ? entry.v : entry
+                    });
+                }
+            });
+        });
 
-        const definedMonths = MONTH_KEYS
-            .map((m, i) => ({ index: i, val: targetsJson[m] }))
-            .filter(item => item.val !== undefined && item.val !== null);
-
-        if (definedMonths.length === 0) return result;
-
-        // Sort by month index
-        definedMonths.sort((a, b) => a.index - b.index);
-
-        // If only one point, fill all with that point
-        if (definedMonths.length === 1) {
-            return result.fill(definedMonths[0].val);
+        // Fallback: If no anchors at all, return empty line for selectedYear
+        if (allAnchors.length === 0) {
+            const result = {};
+            result[selectedYear] = new Array(12).fill(0);
+            return result;
         }
 
-        // Interpolate between defined points
-        for (let i = 0; i < definedMonths.length - 1; i++) {
-            const start = definedMonths[i];
-            const end = definedMonths[i + 1];
-            const steps = end.index - start.index;
-            const stepVal = (end.val - start.val) / steps;
+        // Sort anchors chronologically
+        allAnchors.sort((a, b) => a.time - b.time);
 
-            for (let j = 0; j <= steps; j++) {
-                result[start.index + j] = start.val + (stepVal * j);
+        const result = {};
+        const targetYearNum = parseInt(selectedYear);
+        
+        // We calculate at least the selectedYear, plus any year present in JSON
+        const yearsToCalculate = new Set([...yearsInJson, selectedYear]);
+        
+        yearsToCalculate.forEach(year => {
+            const yearNum = parseInt(year);
+            result[year] = new Array(12).fill(0);
+            
+            for (let i = 0; i < 12; i++) {
+                const currentTime = yearNum * 12 + i;
+                
+                const nextIdx = allAnchors.findIndex(a => a.time >= currentTime);
+                const prevIdx = nextIdx === -1 ? allAnchors.length - 1 : nextIdx - 1;
+
+                if (nextIdx === 0) {
+                    // Before or at the first anchor
+                    result[year][i] = allAnchors[0].val;
+                } else if (nextIdx === -1) {
+                    // After the last anchor
+                    result[year][i] = allAnchors[allAnchors.length - 1].val;
+                } else {
+                    // Between two anchors -> linear interpolation
+                    const start = allAnchors[prevIdx];
+                    const end = allAnchors[nextIdx];
+                    
+                    const steps = end.time - start.time;
+                    const elapsed = currentTime - start.time;
+                    result[year][i] = start.val + ((end.val - start.val) / steps) * elapsed;
+                }
             }
-        }
-
-        // Extrapolate backwards from first point
-        const first = definedMonths[0];
-        for (let i = 0; i < first.index; i++) {
-            result[i] = first.val;
-        }
-
-        // Extrapolate forwards from last point
-        const last = definedMonths[definedMonths.length - 1];
-        for (let i = last.index + 1; i < 12; i++) {
-            result[i] = last.val;
-        }
+        });
 
         return result;
     }
@@ -100,22 +119,25 @@ export const IndicatorsRenderer = (() => {
     function getIndicatorMetrics(record, config, selectedYear) {
         const mapping = config.mapping || config || {};
         const resultsField = mapping.resultsField || config.resultsField;
-        const rawJson = record[resultsField];
-        let data = {};
-        try {
-            data = typeof rawJson === 'string' ? JSON.parse(rawJson) : (rawJson || {});
-        } catch (e) {
-            console.error("Error parsing indicator JSON:", e);
-        }
-
-        // Master JSON detection: data[selectedYear] might have .results and .targets
-        let yearNode = data[selectedYear] || {};
+        const targetField = mapping.targetField || config.targetField;
         
-        // Backward compatibility fallback
-        let results = yearNode.results || {};
-        if (!yearNode.results && (yearNode.jan !== undefined || data.jan !== undefined)) {
-            // It's a legacy flat JSON
-            results = yearNode.jan !== undefined ? yearNode : data;
+        const rawResultsJson = record[resultsField];
+        const rawTargetsJson = record[targetField];
+
+        const _parseJson = (val) => {
+            try {
+                return (typeof val === 'string' && val.trim().startsWith('{')) ? JSON.parse(val) : (typeof val === 'object' && val !== null ? val : {});
+            } catch(e) { return {}; }
+        };
+
+        let resultsData = _parseJson(rawResultsJson);
+        let targetsData = _parseJson(rawTargetsJson);
+
+        // Master JSON detection for results
+        let yearResultsNode = resultsData[selectedYear] || {};
+        let results = yearResultsNode.results || {};
+        if (!yearResultsNode.results && (yearResultsNode.jan !== undefined || resultsData.jan !== undefined)) {
+            results = yearResultsNode.jan !== undefined ? yearResultsNode : resultsData;
         }
 
         const rawPeriodicity = record[mapping.periodicityField || config.periodicityField];
@@ -128,25 +150,23 @@ export const IndicatorsRenderer = (() => {
         const rawConsolidation = record[mapping.consolidationField || config.consolidationField];
         const consolidationType = mapping.consolidationMap?.[rawConsolidation] || 'SUM';
 
-        // Targets: priority to Master JSON .targets, fallback to cycle target field
-        const targetsJson = yearNode.targets || {};
-        const cycleTarget = record[mapping.targetField || config.targetField] || 0;
+        // Progressive Goals Calculation - Pass selectedYear to ensure it's generated
+        const progressiveTargets = calculateProgressiveTargets(targetsData, selectedYear);
         
-        // If targetsJson is empty, we'll use cycleTarget as a flat line
-        const interpolatedTargets = interpolateTargets(targetsJson);
-        const hasSpecificTargets = Object.keys(targetsJson).length > 0;
-        const targetLine = hasSpecificTargets ? interpolatedTargets : new Array(12).fill(cycleTarget);
+        // Safe fallback: If not in JSON, use the raw targetField only if it's a number
+        let fallbackTarget = 0;
+        if (typeof rawTargetsJson === 'number') fallbackTarget = rawTargetsJson;
+        else if (typeof rawTargetsJson === 'string' && !rawTargetsJson.trim().startsWith('{')) {
+            const parsed = parseFloat(rawTargetsJson);
+            if (!isNaN(parsed)) fallbackTarget = parsed;
+        }
 
-        // Consolidation should only consider months defined in periodicity
+        const targetLine = progressiveTargets[selectedYear] || new Array(12).fill(fallbackTarget);
+
         const consolidatedValue = consolidateYearData(results, consolidationType, periodicity.months);
         
-        // Target for performance: if specific targets exist, use the last one from the periodicity months
-        // or a cycle target if flat.
-        let targetForPerformance = cycleTarget;
-        if (hasSpecificTargets) {
-            const lastMonthIdx = MONTH_KEYS.indexOf(periodicity.months[periodicity.months.length - 1]);
-            targetForPerformance = targetLine[lastMonthIdx];
-        }
+        const lastMonthIdx = MONTH_KEYS.indexOf(periodicity.months[periodicity.months.length - 1]);
+        const targetForPerformance = targetLine[lastMonthIdx] || 0;
 
         const performance = calculatePerformance(consolidatedValue, targetForPerformance, direction);
         const status = getStatusEmoji(performance);
@@ -159,11 +179,10 @@ export const IndicatorsRenderer = (() => {
             performance,
             status,
             results,
-            targetsJson,
+            targetsJson: targetsData[selectedYear] || {},
             targetLine,
             periodicity,
             direction,
-            cycleTarget,
             chartRange: (chartMin !== undefined && chartMax !== undefined) ? [chartMin, chartMax] : null
         };
     }
@@ -273,6 +292,7 @@ export const IndicatorsRenderer = (() => {
     return {
         renderIndicatorDetails,
         getIndicatorMetrics,
+        calculateProgressiveTargets,
         PERIODICITY_CONFIG
     };
 

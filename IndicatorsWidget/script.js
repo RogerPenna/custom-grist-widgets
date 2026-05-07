@@ -146,25 +146,41 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function handleSaveMasterData(record, newData) {
         const mapping = widgetConfig.mapping || widgetConfig || {};
         const resultsField = mapping.resultsField || widgetConfig.resultsField;
+        const targetField = mapping.targetField || widgetConfig.targetField;
         
-        let masterData = {};
+        // Handle Results Master JSON - Robust Parsing
+        let resultsMaster = {};
         try {
-            masterData = typeof record[resultsField] === 'string' ? JSON.parse(record[resultsField]) : (record[resultsField] || {});
-        } catch (e) {}
+            const val = record[resultsField];
+            resultsMaster = (typeof val === 'string' && val.trim().startsWith('{')) ? JSON.parse(val) : (typeof val === 'object' && val !== null ? val : {});
+        } catch (e) { resultsMaster = {}; }
+        if (typeof resultsMaster !== 'object' || resultsMaster === null) resultsMaster = {};
 
         const rawPeriodicity = record[mapping.periodicityField || widgetConfig.periodicityField];
         const periodicityKey = mapping.periodicityMap?.[rawPeriodicity] || 'MONTHLY';
 
-        // Update year node
-        masterData[currentYear] = {
+        resultsMaster[currentYear] = {
             periodicity: periodicityKey,
             results: newData.results,
-            targets: newData.targets
+            targets: {} // We no longer store targets here, but keeping node structure for compatibility
         };
+
+        // Handle Targets Master JSON - Robust Parsing
+        let targetsMaster = {};
+        try {
+            const val = record[targetField];
+            targetsMaster = (typeof val === 'string' && val.trim().startsWith('{')) ? JSON.parse(val) : (typeof val === 'object' && val !== null ? val : {});
+        } catch (e) { targetsMaster = {}; }
+        if (typeof targetsMaster !== 'object' || targetsMaster === null) targetsMaster = {};
+
+        targetsMaster[currentYear] = newData.targets;
 
         const updates = [{
             id: record.id,
-            fields: { [resultsField]: JSON.stringify(masterData) }
+            fields: { 
+                [resultsField]: JSON.stringify(resultsMaster),
+                [targetField]: JSON.stringify(targetsMaster)
+            }
         }];
 
         try {

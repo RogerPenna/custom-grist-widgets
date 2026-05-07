@@ -101,6 +101,7 @@ export const IndicatorsConfigEditor = (() => {
 
                         <div id="consolidation-mapping-container" style="margin-top:20px;">
                             <h4>Tipo de Consolidação</h4>
+                            <p class="help-text">Define como os valores mensais são agrupados para o cálculo anual (Soma, Média ou o valor mais recente).</p>
                             <div id="cons-val-map-list"></div>
                         </div>
                     </div>
@@ -163,9 +164,9 @@ export const IndicatorsConfigEditor = (() => {
             if (!colId) { listEl.innerHTML = '<p>Selecione uma coluna de consolidação primeiro.</p>'; return; }
             const options = await getFieldOptions(colId, schema);
             listEl.innerHTML = options.map(opt => `
-                <div class="mapping-row" style="display:flex; gap:10px; align-items:center; margin-bottom:5px;">
-                    <span style="flex:1">${opt}</span>
-                    <select class="cons-map-input" data-value="${opt}" style="flex:1">
+                <div class="mapping-row" style="display:flex; gap:10px; align-items:center; margin-bottom:10px;">
+                    <span style="flex:1; font-weight:bold;">${opt}</span>
+                    <select class="cons-map-input" data-value="${opt}" style="flex:1.5; padding:5px;">
                         <option value="SUM" ${state.consolidationMap[opt] === 'SUM' ? 'selected' : ''}>Soma / Acumulado</option>
                         <option value="AVG" ${state.consolidationMap[opt] === 'AVG' ? 'selected' : ''}>Média</option>
                         <option value="LAST" ${state.consolidationMap[opt] === 'LAST' ? 'selected' : ''}>Último Valor</option>
