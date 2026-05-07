@@ -267,10 +267,6 @@ export const IndicatorsRenderer = (() => {
     async function renderIndicatorDetails(container, record, config, selectedYear) {
         const metrics = getIndicatorMetrics(record, config, selectedYear);
         const timelineMetrics = getFullTimelineMetrics(record, config);
-        const { results, targetLine, upperLimitLine, lowerLimitLine, periodicity, direction } = metrics;
-
-        const hasUpper = upperLimitLine.some(v => v !== null);
-        const hasLower = lowerLimitLine.some(v => v !== null);
 
         container.innerHTML = `
             <div class="indicator-header">
@@ -278,145 +274,222 @@ export const IndicatorsRenderer = (() => {
                 <div class="metrics-summary">
                     <div class="metric-box">
                         <span class="label">Valor Consolidado (${selectedYear})</span>
-                        <span class="value">${metrics.consolidatedValue.toLocaleString()}</span>
+                        <span class="value consolidated-value">${metrics.consolidatedValue.toLocaleString()}</span>
                     </div>
                     <div class="metric-box">
                         <span class="label">Atingimento</span>
-                        <span class="value">${(metrics.performance * 100).toFixed(1)}%</span>
+                        <span class="value performance-value">${(metrics.performance * 100).toFixed(1)}%</span>
                     </div>
                     <div class="metric-box">
                         <span class="label">Status</span>
-                        <span class="value status-icon">${metrics.status}</span>
+                        <span class="value status-value status-icon">${metrics.status}</span>
                     </div>
                 </div>
             </div>
-            <div id="plotly-chart" style="width:100%;height:400px;"></div>
-            <div class="data-table-container">
-                <table class="indicator-data-table horizontal-table">
-                    <thead>
-                        <tr>
-                            <th>TIPO</th>
-                            ${periodicity.months.map(m => `<th>${m.toUpperCase()}</th>`).join('')}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${hasUpper ? `
-                        <tr>
-                            <td class="row-label">LIM. SUP</td>
-                            ${periodicity.months.map(m => {
-                                const val = upperLimitLine[MONTH_KEYS.indexOf(m)];
-                                return `<td>${val !== null ? val.toLocaleString(undefined, {maximumFractionDigits: 1}) : '-'}</td>`;
-                            }).join('')}
-                        </tr>` : ''}
-                        <tr>
-                            <td class="row-label">META</td>
-                            ${periodicity.months.map(m => {
-                                const val = targetLine[MONTH_KEYS.indexOf(m)];
-                                return `<td style="font-weight:bold">${val.toLocaleString(undefined, {maximumFractionDigits: 1})}</td>`;
-                            }).join('')}
-                        </tr>
-                        ${hasLower ? `
-                        <tr>
-                            <td class="row-label">LIM. INF</td>
-                            ${periodicity.months.map(m => {
-                                const val = lowerLimitLine[MONTH_KEYS.indexOf(m)];
-                                return `<td>${val !== null ? val.toLocaleString(undefined, {maximumFractionDigits: 1}) : '-'}</td>`;
-                            }).join('')}
-                        </tr>` : ''}
-                        <tr>
-                            <td class="row-label">RESULTADO</td>
-                            ${periodicity.months.map(m => {
-                                const monthIdx = MONTH_KEYS.indexOf(m);
-                                const entry = results[m];
-                                const val = (entry && typeof entry === 'object') ? entry.v : entry;
-                                
-                                let color = "transparent";
-                                let textColor = "inherit";
-                                if (val !== null && val !== undefined) {
-                                    const perf = calculatePerformance(val, targetLine[monthIdx], direction);
-                                    const status = getStatusEmoji(perf);
-                                    textColor = "#fff";
-                                    switch(status) {
-                                        case '🔵': color = '#007bff'; break;
-                                        case '🔴': color = '#dc3545'; break;
-                                        case '🟠': color = '#fd7e14'; break;
-                                        case '🟡': color = '#ffc107'; textColor = "#000"; break;
-                                        case '🟢': color = '#28a745'; break;
-                                        case '🟩': color = '#198754'; break;
-                                    }
-                                }
-                                return `<td style="background-color: ${color}; color: ${textColor}; font-weight: bold;">${val !== null && val !== undefined ? val.toLocaleString() : '-'}</td>`;
-                            }).join('')}
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+            <div id="plotly-chart" style="width:100%;height:600px;"></div>
         `;
 
         if (timelineMetrics) {
-            renderChart('plotly-chart', timelineMetrics, selectedYear);
+            renderChart('plotly-chart', timelineMetrics, selectedYear, metrics.direction, metrics, container);
         }
     }
 
-    function renderChart(elementId, timeline, selectedYear) {
+    // --- Monotonic Cubic Spline Interpolation Engine ---
+    function createMonotoneCubicSpline(x, y) {
+        const n = x.length;
+        if (n < 2) return (tx) => y[0];
+
+        // 1. Compute slopes between points
+        const delta = new Array(n - 1);
+        for (let i = 0; i < n - 1; i++) {
+            delta[i] = (y[i + 1] - y[i]) / (x[i + 1] - x[i]);
+        }
+
+        // 2. Compute tangents (tangentes nos pontos)
+        const m = new Array(n);
+        m[0] = delta[0];
+        for (let i = 1; i < n - 1; i++) {
+            if (delta[i - 1] * delta[i] <= 0) {
+                m[i] = 0; // Platô ou pico/vale -> inclinação zero
+            } else {
+                // Média ponderada para suavidade (Fritsch-Butland)
+                const hi = x[i + 1] - x[i];
+                const hprev = x[i] - x[i - 1];
+                const common = hi + hprev;
+                m[i] = 3 * common / ((common + hi) / delta[i - 1] + (common + hprev) / delta[i]);
+            }
+        }
+        m[n - 1] = delta[n - 2];
+
+        // 3. Interpolation function (Hermite Cubic)
+        return (tx) => {
+            let i = 0;
+            while (i < n - 2 && tx > x[i + 1]) i++;
+
+            const h = x[i + 1] - x[i];
+            const t = (tx - x[i]) / h;
+            const t2 = t * t;
+            const t3 = t2 * t;
+
+            const h00 = 2 * t3 - 3 * t2 + 1;
+            const h10 = t3 - 2 * t2 + t;
+            const h01 = -2 * t3 + 3 * t2;
+            const h11 = t3 - t2;
+
+            return h00 * y[i] + h10 * h * m[i] + h01 * y[i + 1] + h11 * h * m[i + 1];
+        };
+    }
+
+    function renderChart(elementId, timeline, selectedYear, direction, yearlyMetrics, container) {
         const { xValues, resultY, targetY, upperY, lowerY, chartRange } = timeline;
         
         const traces = [];
 
-        // Resultado - Azul Sólido com Suavização Spline
-        traces.push({
-            x: xValues, y: resultY,
-            type: 'scatter', mode: 'lines+markers', name: 'Resultado',
-            line: { color: '#1f77b4', width: 2, shape: 'spline', smoothing: 0.8 },
-            marker: { size: 6 }
+        // --- Resultado com Monotonic Cubic Spline ---
+        // 1. Separamos os dados em segmentos contínuos (sem nulls)
+        const segments = [];
+        let currentSegment = null;
+        xValues.forEach((x, i) => {
+            if (resultY[i] !== null && resultY[i] !== undefined) {
+                if (!currentSegment) currentSegment = { x: [], y: [] };
+                currentSegment.x.push(x.getTime());
+                currentSegment.y.push(resultY[i]);
+            } else if (currentSegment) {
+                segments.push(currentSegment);
+                currentSegment = null;
+            }
+        });
+        if (currentSegment) segments.push(currentSegment);
+
+        // 2. Para cada segmento, geramos a curva suave de alta densidade
+        segments.forEach((seg, segIdx) => {
+            const spline = createMonotoneCubicSpline(seg.x, seg.y);
+            const smoothX = [];
+            const smoothY = [];
+            
+            // Geramos ~10 pontos entre cada mês para suavidade total
+            const startTime = seg.x[0];
+            const endTime = seg.x[seg.x.length - 1];
+            const step = (30 * 24 * 60 * 60 * 1000) / 10; // ~3 dias por ponto
+
+            for (let t = startTime; t <= endTime; t += step) {
+                smoothX.push(new Date(t));
+                smoothY.push(spline(t));
+            }
+            // Garantimos o último ponto exato
+            smoothX.push(new Date(endTime));
+            smoothY.push(seg.y[seg.y.length - 1]);
+
+            traces.push({
+                x: smoothX, y: smoothY,
+                type: 'scatter', mode: 'lines',
+                line: { color: '#1F77B4', width: 2, shape: 'linear' },
+                showlegend: segIdx === 0, name: 'Resultado',
+                hoverinfo: 'skip'
+            });
         });
 
-        // Meta - Laranja Sólido
+        // 3. Adicionamos apenas os marcadores (bolinhas) nos pontos mensais reais
+        traces.push({
+            x: xValues, y: resultY,
+            type: 'scatter', mode: 'markers',
+            marker: { size: 6, color: '#1F77B4' },
+            showlegend: false, name: 'Pontos Reais',
+            hoverinfo: 'x+y'
+        });
+
+        // --- Meta e Limites ---
         traces.push({
             x: xValues, y: targetY,
             type: 'scatter', mode: 'lines', name: 'Meta',
-            line: { color: '#ff7f0e', width: 2 }
+            line: { color: '#ff7f0e', width: 1, dash: 'dot' },
+            xaxis: 'x', yaxis: 'y1'
         });
 
-        // Limite Superior - Roxo Pontilhado
         if (upperY.some(v => v !== null)) {
             traces.push({
                 x: xValues, y: upperY,
                 type: 'scatter', mode: 'lines', name: 'Lim. Sup.',
-                line: { color: '#9467bd', dash: 'dot', width: 1.5 }
+                line: { color: '#9467bd', dash: 'dot', width: 1 },
+                xaxis: 'x', yaxis: 'y1'
             });
         }
 
-        // Limite Inferior - Vermelho Pontilhado
         if (lowerY.some(v => v !== null)) {
             traces.push({
                 x: xValues, y: lowerY,
                 type: 'scatter', mode: 'lines', name: 'Lim. Inf.',
-                line: { color: '#d62728', dash: 'dot', width: 1.5 }
+                line: { color: '#d62728', dash: 'dot', width: 1 },
+                xaxis: 'x', yaxis: 'y1'
             });
         }
 
-        // Limite Médio / Meta Interpolada - Verde Pontilhado
         traces.push({
             x: xValues, y: targetY,
             type: 'scatter', mode: 'lines', name: 'Lim. Méd.',
-            line: { color: '#2ca02c', dash: 'dot', width: 1.5 },
-            showlegend: true
+            line: { color: '#2ca02c', dash: 'dot', width: 1 },
+            xaxis: 'x', yaxis: 'y1'
+        });
+
+        // --- Configuração da Tabela e Layout ---
+        const tableY = { res: 0, meta: 1 };
+
+        // Text traces for the table cells
+        const resultText = resultY.map(v => v !== null ? v.toLocaleString() : '-');
+        const targetText = targetY.map(v => v.toLocaleString(undefined, {maximumFractionDigits: 1}));
+
+        // Table background "cells" as colored scatter markers
+        // Results with vibrant colors
+        xValues.forEach((date, i) => {
+            const val = resultY[i];
+            const tar = targetY[i];
+            if (val !== null && val !== undefined) {
+                const perf = calculatePerformance(val, tar, direction);
+                const status = getStatusEmoji(perf);
+                let color = '#eee';
+                let textColor = '#fff';
+                switch(status) {
+                    case '🔵': color = '#007bff'; break;
+                    case '🔴': color = '#dc3545'; break;
+                    case '🟠': color = '#fd7e14'; break;
+                    case '🟡': color = '#ffc107'; textColor = '#000'; break;
+                    case '🟢': color = '#28a745'; break;
+                    case '🟩': color = '#198754'; break;
+                }
+                traces.push({
+                    x: [date], y: [tableY.res],
+                    type: 'scatter', mode: 'markers+text',
+                    text: [resultText[i]],
+                    textposition: 'middle center',
+                    textfont: { color: textColor, weight: 'bold', size: 10 },
+                    marker: { symbol: 'square', size: 35, color: color },
+                    xaxis: 'x', yaxis: 'y2', showlegend: false, hoverinfo: 'none'
+                });
+            } else {
+                traces.push({
+                    x: [date], y: [tableY.res],
+                    type: 'scatter', mode: 'text', text: ['-'],
+                    xaxis: 'x', yaxis: 'y2', showlegend: false, hoverinfo: 'none'
+                });
+            }
+            
+            // Meta Row
+            traces.push({
+                x: [date], y: [tableY.meta],
+                type: 'scatter', mode: 'text', text: [targetText[i]],
+                textfont: { color: '#000', weight: 'bold', size: 10 },
+                xaxis: 'x', yaxis: 'y2', showlegend: false, hoverinfo: 'none'
+            });
         });
 
         const layout = {
-            margin: { t: 40, b: 60, l: 60, r: 150 },
+            grid: { rows: 2, columns: 1, pattern: 'independent' },
+            margin: { t: 40, b: 60, l: 100, r: 150 },
             showlegend: true,
-            legend: { 
-                x: 1.05, y: 1,
-                font: { size: 10 },
-                bgcolor: 'rgba(255,255,255,0.5)',
-                bordercolor: '#eee',
-                borderwidth: 1
-            },
+            legend: { x: 1.05, y: 1 },
             xaxis: {
                 type: 'date',
-                rangeslider: { visible: true, thickness: 0.1 },
+                rangeslider: { visible: true, thickness: 0.05 },
                 rangeselector: {
                     buttons: [
                         { count: 12, label: '1 ano', step: 'month', stepmode: 'backward' },
@@ -424,24 +497,74 @@ export const IndicatorsRenderer = (() => {
                         { label: 'Reset', step: 'all' }
                     ],
                     x: 0, y: 1.1,
-                    font: { size: 11 },
-                    bgcolor: '#f8f9fa'
-                }
+                    bgcolor: '#D5E3E9',
+                    activecolor: '#9CC2D1',
+                    bordercolor: '#ABB1B4',
+                    borderwidth: 1
+                },
+                gridcolor: '#F0F0F0',
+                nticks: 20
             },
             yaxis: {
+                domain: [0.3, 1],
                 range: chartRange,
                 autorange: chartRange ? false : true,
-                gridcolor: '#f0f0f0'
+                gridcolor: '#F0F0F0',
+                nticks: 20,
+                title: 'Valores'
             },
-            plot_bgcolor: '#fff',
-            paper_bgcolor: '#fff'
+            yaxis2: {
+                domain: [0, 0.25],
+                range: [-0.5, 1.5], // For Res and Meta rows
+                autorange: false,
+                showgrid: false,
+                zeroline: false,
+                showline: false,
+                tickvals: [0, 1],
+                ticktext: ['RESULTADO', 'META'],
+                fixedrange: true
+            },
+            plot_bgcolor: '#FFFFFF',
+            paper_bgcolor: '#EBEFEF'
         };
 
-        Plotly.newPlot(elementId, traces, layout, { responsive: true, displayModeBar: true });
+        const chartEl = document.getElementById(elementId);
+        Plotly.newPlot(chartEl, traces, layout, { responsive: true, displayModeBar: true });
         
+        // --- Interactivity: Hover Sync ---
+        chartEl.on('plotly_hover', (data) => {
+            const pt = data.points[0];
+            const xDate = new Date(pt.x);
+            // Find closest month in xValues
+            const monthIdx = xValues.findIndex(d => 
+                d.getFullYear() === xDate.getFullYear() && d.getMonth() === xDate.getMonth()
+            );
+
+            if (monthIdx !== -1) {
+                const val = resultY[monthIdx];
+                const tar = targetY[monthIdx];
+                const perf = calculatePerformance(val, tar, direction);
+                const status = getStatusEmoji(perf);
+                const monthName = MONTH_KEYS[monthIdx % 12].toUpperCase();
+                const year = xValues[monthIdx].getFullYear();
+
+                container.querySelector('.consolidated-value').textContent = val !== null ? val.toLocaleString() : '-';
+                container.querySelector('.performance-value').textContent = val !== null ? (perf * 100).toFixed(1) + '%' : '-';
+                container.querySelector('.status-value').textContent = val !== null ? status : '';
+                container.querySelector('.metric-box:nth-child(1) .label').textContent = `Valor (${monthName}/${year})`;
+            }
+        });
+
+        chartEl.on('plotly_unhover', () => {
+            container.querySelector('.consolidated-value').textContent = yearlyMetrics.consolidatedValue.toLocaleString();
+            container.querySelector('.performance-value').textContent = (yearlyMetrics.performance * 100).toFixed(1) + '%';
+            container.querySelector('.status-value').textContent = yearlyMetrics.status;
+            container.querySelector('.metric-box:nth-child(1) .label').textContent = `Valor Consolidado (${selectedYear})`;
+        });
+
         const start = new Date(parseInt(selectedYear), 0, 1);
         const end = new Date(parseInt(selectedYear), 11, 31);
-        Plotly.relayout(elementId, { 'xaxis.range': [start.getTime(), end.getTime()] });
+        Plotly.relayout(chartEl, { 'xaxis.range': [start.getTime(), end.getTime()] });
     }
 
     return {
