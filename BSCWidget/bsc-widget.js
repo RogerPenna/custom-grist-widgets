@@ -11,7 +11,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const mainContainer = document.getElementById('main-container');
     const modelSelector = document.getElementById('model-selector');
     const toggleArrowsBtn = document.getElementById('toggle-arrows-btn');
-    const tableLens = new GristTableLens(window.grist);
+    let tableLens;
+    try {
+        tableLens = new GristTableLens(window.grist);
+    } catch (e) {
+        console.warn("[BSC Widget] TableLens delayed initialization");
+    }
 
     let currentConfigId = null;
     let widgetConfig = null;
@@ -31,6 +36,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     async function initializeAndUpdate() {
+        if (!tableLens) {
+            try { tableLens = new GristTableLens(window.grist); } catch (e) { console.warn("[BSC Widget] Grist not ready yet"); return; }
+        }
         const options = await window.grist.getOptions() || {};
         
         // Atualiza IDs locais a partir das opções do Grist

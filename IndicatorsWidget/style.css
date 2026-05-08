@@ -194,14 +194,8 @@ body {
 }
 
 .grf-modal-header, .grf-editor-header {
-    padding: 10px 20px; border-bottom: 1px solid #eee;
+    padding: 15px 25px; border-bottom: 1px solid #eee;
     display: flex; justify-content: space-between; align-items: center; background: #f8f9fa;
-}
-
-.grf-modal-header h3, .grf-editor-header h3 {
-    margin: 0;
-    font-size: 16px;
-    color: #333;
 }
 
 .grf-modal-body, .grf-editor-body { padding: 20px; flex: 1; overflow-y: auto; background: #EBEFEF; }
@@ -234,4 +228,3 @@ body {
 
 .header-select:hover { border-color: #adb5bd; background-color: #fff; }
 .header-select:focus { border-color: #80bdff; box-shadow: 0 0 0 2px rgba(0,123,255,0.25); }
-

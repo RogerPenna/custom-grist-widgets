@@ -271,22 +271,21 @@ export const IndicatorsRenderer = (() => {
         // Single, ultra-compact horizontal summary bar
         container.innerHTML = `
             <div class="indicator-summary-bar" style="display:flex; align-items:center; justify-content: space-around; padding:5px 10px; background:#f1f5f9; border-radius:6px; margin-bottom:8px; font-size:12px; border:1px solid #e2e8f0;">
-                <div class="metric-item">
-                    <span style="color:#64748b; font-weight:600;">Valor (${selectedYear}):</span>
-                    <b style="color:#0f172a; margin-left:4px;">${metrics.consolidatedValue.toLocaleString()}</b>
+                <div class="metric-box">
+                    <span class="label" style="color:#64748b; font-weight:600;">Valor Consolidado (${selectedYear}):</span>
+                    <b class="consolidated-value" style="color:#0f172a; margin-left:4px;">${metrics.consolidatedValue.toLocaleString()}</b>
                 </div>
-                <div class="metric-item">
-                    <span style="color:#64748b; font-weight:600;">Atingimento:</span>
-                    <b style="color:#0f172a; margin-left:4px;">${(metrics.performance * 100).toFixed(1)}%</b>
+                <div class="metric-box">
+                    <span class="label" style="color:#64748b; font-weight:600;">Atingimento:</span>
+                    <b class="performance-value" style="color:#0f172a; margin-left:4px;">${(metrics.performance * 100).toFixed(1)}%</b>
                 </div>
-                <div class="metric-item">
-                    <span style="color:#64748b; font-weight:600;">Status:</span>
-                    <span style="margin-left:4px; font-size:14px;">${metrics.status}</span>
+                <div class="metric-box">
+                    <span class="label" style="color:#64748b; font-weight:600;">Status:</span>
+                    <span class="status-value" style="margin-left:4px; font-size:14px;">${metrics.status}</span>
                 </div>
             </div>
             <div id="plotly-chart" style="width:100%; height:calc(100vh - 160px); min-height:450px;"></div>
         `;
-
         if (timelineMetrics) {
             renderChart('plotly-chart', timelineMetrics, selectedYear, metrics.direction, metrics, container);
         }

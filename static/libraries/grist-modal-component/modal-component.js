@@ -10,11 +10,21 @@ let currentSchema = {};
 let currentRequiredFields = [];
 
 // Motores dinâmicos
-let activeTableLens = new GristTableLens(window.grist);
-let activeDataWriter = new GristDataWriter(window.grist);
+let activeTableLens;
+let activeDataWriter;
+
+function _ensureTools() {
+    if (!activeTableLens) {
+        try { activeTableLens = new GristTableLens(window.grist); } catch (e) { console.warn("[Modal] TableLens not ready"); }
+    }
+    if (!activeDataWriter) {
+        try { activeDataWriter = new GristDataWriter(window.grist); } catch (e) { console.warn("[Modal] DataWriter not ready"); }
+    }
+}
 
 function _initializeModalDOM() {
     if (document.getElementById('grist-modal-overlay')) return;
+    _ensureTools();
     
     modalOverlay = document.createElement('div');
     modalOverlay.id = 'grist-modal-overlay';

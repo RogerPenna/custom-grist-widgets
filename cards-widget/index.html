@@ -3,17 +3,27 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Cards Widget</title>
+    <title>Cards Widget - Universal</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="../libraries/grist-filter-bar/grist-filter-bar.css">
-    <link href="../libraries/tabulator/tabulator.min.css" rel="stylesheet">
-    <script type="text/javascript" src="../libraries/tabulator/tabulator.min.js"></script>
+    
+    <!-- Grist API -->
+    <script src="https://grist.getgrist.com/grist-plugin-api.js"></script>
+    
+    <!-- Dependencies -->
     <script src="../libraries/external/sortable.min.js"></script>
 </head>
 <body>
+    <!-- Container para a barra de filtros -->
     <div id="filter-bar-container"></div>
+
     <div id="app">
-        <div id="card-container"></div>
+        <!-- O CardSystem renderizará os cards aqui -->
+        <div id="card-container">
+            <div class="status-placeholder">Aguardando inicialização do Grist...</div>
+        </div>
     </div>
+
+    <script type="module" src="script.js"></script>
 </body>
 </html>

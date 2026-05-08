@@ -1,4 +1,3 @@
-// --- START OF CORRECTED config-cards.js ---
 
 export const CardConfigEditor = (() => {
     let state = {};
@@ -863,6 +862,12 @@ export const CardConfigEditor = (() => {
             box.style.backgroundColor = gbox.backgroundColor;
             box.style.opacity = 0.7;
             box.style.zIndex = 0;
+
+            box.draggable = true;
+            box.addEventListener("dragstart", e => {
+                e.dataTransfer.setData("text/gboxid", gbox.id);
+            });
+
             box.innerHTML = `<span class="group-box-name">${gbox.name}</span>`;
 
             const gearIcon = document.createElement("div");
@@ -1002,20 +1007,29 @@ export const CardConfigEditor = (() => {
 
                 if (colId) {
                     const isIconGroup = e.dataTransfer.getData("text/isIconGroup") === "true";
-                    const newLayoutItem = {
-                        colId,
-                        row: r,
-                        col,
-                        colSpan: isIconGroup ? 2 : 2, // Default span for icon groups
-                        rowSpan: 1,
-                        style: { ...DEFAULT_FIELD_STYLE }
-                    };
+                    
+                    // Check if it's already in layout (move) or new (add)
+                    const existingItem = state.layout.find(f => f.colId === colId);
+                    if (existingItem) {
+                        existingItem.row = r;
+                        existingItem.col = col;
+                    } else {
+                        const newLayoutItem = {
+                            colId,
+                            row: r,
+                            col,
+                            colSpan: isIconGroup ? 2 : 2, // Default span for icon groups
+                            rowSpan: 1,
+                            style: { ...DEFAULT_FIELD_STYLE }
+                        };
 
-                    if (isIconGroup) {
-                        newLayoutItem.isIconGroup = true;
+                        if (isIconGroup) {
+                            newLayoutItem.isIconGroup = true;
+                        }
+
+                        state.layout.push(newLayoutItem);
                     }
 
-                    state.layout.push(newLayoutItem);
                     buildGridUI(gridEl, tabEl);
                     buildAvailableFieldsList(_mainContainer.querySelector("#cs-layout-fields"));
                     updateDebugJson();
@@ -1053,6 +1067,14 @@ export const CardConfigEditor = (() => {
         box.style.left = (fieldDef.col * COL_WIDTH) + "px";
         box.style.width = (fieldDef.colSpan * COL_WIDTH) + "px";
         box.style.height = (((fieldDef.rowSpan || 1) * 40) - 8) + "px";
+
+        box.draggable = true;
+        box.addEventListener("dragstart", e => {
+            e.dataTransfer.setData("text/colid", fieldDef.colId);
+            if (fieldDef.isIconGroup) {
+                e.dataTransfer.setData("text/isIconGroup", "true");
+            }
+        });
 
         const gearIcon = document.createElement("div");
         gearIcon.innerHTML = "⚙️";
@@ -1425,6 +1447,7 @@ export const CardConfigEditor = (() => {
                     <option value="deleteRecord" ${btn.actionType === 'deleteRecord' ? 'selected' : ''}>Delete Record</option>
                     <option value="addSubRecord" ${btn.actionType === 'addSubRecord' ? 'selected' : ''}>Add Sub-record</option>
                     <option value="showTooltipField" ${btn.actionType === 'showTooltipField' ? 'selected' : ''}>Display Field as Tooltip</option>
+                    <option value="SHOW_INDICATOR_CHART" ${btn.actionType === 'SHOW_INDICATOR_CHART' ? 'selected' : ''}>Show Indicator Chart</option>
                     <option value="moveRecord" ${btn.actionType === 'moveRecord' ? 'selected' : ''}>Move Card (Grab Handle)</option>
                 </select>
                 <div id="btn-action-help-container">${renderActionHelp(btn.actionType)}</div>
@@ -1650,7 +1673,7 @@ export const CardConfigEditor = (() => {
 
         _iconPickerPopup.querySelectorAll('.icon-option').forEach(iconEl => {
             iconEl.addEventListener('click', () => {
-                const selectedIcon = iconEl.dataset.iconId;
+                const selectedIcon = iconEl.dataset.id;
                 // Update the button config object directly
                 buttonConfig.icon = selectedIcon;
                 
