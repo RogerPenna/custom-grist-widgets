@@ -1515,7 +1515,7 @@ export const CardConfigEditor = (() => {
         
         _fieldStylePopup = document.createElement("div");
         _fieldStylePopup.className = 'field-style-popup';
-        _fieldStylePopup.style.cssText = `position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1060; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); width: 320px;`;
+        _fieldStylePopup.style.cssText = `position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1060; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); width: 320px; max-height: 90vh; overflow-y: auto;`;
         
         _fieldStylePopup.innerHTML = `
             <h3>Edit Group</h3>

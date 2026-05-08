@@ -349,6 +349,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     console.error("[CardViewer] window.GristDrawer não encontrado para editRecord");
                 }
             }
+            else if (config.actionType === 'SHOW_INDICATOR_CHART') {
+                console.log(`[CardViewer] SHOW_INDICATOR_CHART acionado para record ${record.id}`);
+                publish('grf-action-triggered', {
+                    actionType: 'SHOW_INDICATOR_CHART',
+                    recordId: record.id
+                });
+            }
             else if (config.actionType === 'addSubRecord') {
                 if (window.GristDrawer && config.subRecordRefField) {
                     console.log(`[CardViewer] Adicionando sub-registro vinculado ao record ${record.id}`);

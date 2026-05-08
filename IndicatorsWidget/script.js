@@ -25,6 +25,7 @@ const detailModal = document.getElementById('detail-modal');
 const modalContent = document.getElementById('modal-content');
 const modalTitle = document.getElementById('modal-title');
 const closeModalBtn = document.getElementById('close-modal');
+const yearSelector = document.getElementById('year-selector');
 
 let currentConfigId = null;
 let widgetConfig = null;
@@ -39,8 +40,27 @@ closeModalBtn.onclick = () => {
     modalContent.innerHTML = '';
 };
 
+function populateYearSelector() {
+    if (!yearSelector) return;
+    const current = new Date().getFullYear();
+    yearSelector.innerHTML = '';
+    for (let i = current - 5; i <= current + 1; i++) {
+        const opt = document.createElement('option');
+        opt.value = i.toString();
+        opt.textContent = i.toString();
+        yearSelector.appendChild(opt);
+    }
+    yearSelector.value = currentYear;
+}
+
+yearSelector.onchange = (e) => {
+    currentYear = e.target.value;
+    debouncedInitialize();
+};
+
 async function start() {
     if (debugEl) debugEl.textContent = "Grist ready. Initializing...";
+    populateYearSelector();
     tableLens = new GristTableLens(window.grist);
     dataWriter = new GristDataWriter(window.grist);
 
