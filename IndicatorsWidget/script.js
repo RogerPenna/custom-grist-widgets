@@ -96,6 +96,14 @@ async function start() {
         }
     });
 
+    subscribe('grf-navigation-action-triggered', async (data) => {
+        const record = currentRecords.find(r => Number(r.id) === Number(data.sourceRecord?.id || data.recordId));
+        if (!record) return;
+        if (data.config?.actionType === 'SHOW_INDICATOR_CHART') {
+            openDetailModal(record);
+        }
+    });
+
     window.grist.onOptions(async (options) => { if (options.configId && options.configId !== currentConfigId) debouncedInitialize(); });
     window.grist.onRecords(async () => { if (currentConfigId) debouncedInitialize(); });
 
