@@ -1,4 +1,4 @@
-// libraries/grist-indicators-renderer/IndicatorsRenderer.js
+import { CardSystem } from '../grist-card-system/CardSystem.js';
 
 export const IndicatorsRenderer = (() => {
 
@@ -268,25 +268,23 @@ export const IndicatorsRenderer = (() => {
         const metrics = getIndicatorMetrics(record, config, selectedYear);
         const timelineMetrics = getFullTimelineMetrics(record, config);
 
+        // Single, ultra-compact horizontal summary bar
         container.innerHTML = `
-            <div class="indicator-header">
-                <h3>${record.Nome || 'Indicador'}</h3>
-                <div class="metrics-summary">
-                    <div class="metric-box">
-                        <span class="label">Valor Consolidado (${selectedYear})</span>
-                        <span class="value consolidated-value">${metrics.consolidatedValue.toLocaleString()}</span>
-                    </div>
-                    <div class="metric-box">
-                        <span class="label">Atingimento</span>
-                        <span class="value performance-value">${(metrics.performance * 100).toFixed(1)}%</span>
-                    </div>
-                    <div class="metric-box">
-                        <span class="label">Status</span>
-                        <span class="value status-value status-icon">${metrics.status}</span>
-                    </div>
+            <div class="indicator-summary-bar" style="display:flex; align-items:center; justify-content: space-around; padding:5px 10px; background:#f1f5f9; border-radius:6px; margin-bottom:8px; font-size:12px; border:1px solid #e2e8f0;">
+                <div class="metric-item">
+                    <span style="color:#64748b; font-weight:600;">Valor (${selectedYear}):</span>
+                    <b style="color:#0f172a; margin-left:4px;">${metrics.consolidatedValue.toLocaleString()}</b>
+                </div>
+                <div class="metric-item">
+                    <span style="color:#64748b; font-weight:600;">Atingimento:</span>
+                    <b style="color:#0f172a; margin-left:4px;">${(metrics.performance * 100).toFixed(1)}%</b>
+                </div>
+                <div class="metric-item">
+                    <span style="color:#64748b; font-weight:600;">Status:</span>
+                    <span style="margin-left:4px; font-size:14px;">${metrics.status}</span>
                 </div>
             </div>
-            <div id="plotly-chart" style="width:100%;height:600px;"></div>
+            <div id="plotly-chart" style="width:100%; height:calc(100vh - 160px); min-height:450px;"></div>
         `;
 
         if (timelineMetrics) {
@@ -433,7 +431,7 @@ export const IndicatorsRenderer = (() => {
         });
 
         // --- Configuração da Tabela e Layout ---
-        const tableY = { res: 0.3, meta: 0.7 };
+        const tableY = { res: 0.35, meta: 0.65 };
 
         // Text traces for the table cells
         const resultText = resultY.map(v => v !== null ? v.toLocaleString() : '-');
@@ -534,7 +532,7 @@ export const IndicatorsRenderer = (() => {
                 nticks: 20
             },
             yaxis: {
-                domain: [0.2, 1],
+                domain: [0.14, 1],
                 range: chartRange,
                 autorange: chartRange ? false : true,
                 gridcolor: '#F0F0F0',
@@ -542,14 +540,14 @@ export const IndicatorsRenderer = (() => {
                 title: ''
             },
             yaxis2: {
-                domain: [0, 0.1],
+                domain: [0, 0.12],
                 range: [-0.2, 1.2], 
                 autorange: false,
                 showgrid: false,
                 zeroline: false,
                 showline: false,
                 side: 'right',
-                tickvals: [0.3, 0.7],
+                tickvals: [0.35, 0.65],
                 ticktext: ['RESULTADO', 'META'],
                 tickfont: { size: 9 },
                 fixedrange: true
@@ -598,8 +596,152 @@ export const IndicatorsRenderer = (() => {
         Plotly.relayout(chartEl, { 'xaxis.range': [start.getTime(), end.getTime()] });
     }
 
+    function getYearlySummary(record, config, years) {
+        const summaries = {};
+        years.forEach(year => {
+            summaries[year] = getIndicatorMetrics(record, config, year.toString());
+        });
+        return summaries;
+    }
+
+    async function renderIndicatorRow(container, record, config, currentYear, styling = {}, receivedConfigs = [], tableLens = null) {
+        const yearsCount = styling.yearsCount !== undefined ? styling.yearsCount : 3;
+        const previousYears = Array.from({ length: yearsCount }, (_, i) => (parseInt(currentYear) - (i + 1)).toString()).reverse();
+        
+        const metrics = getIndicatorMetrics(record, config, currentYear);
+        const yearlySummaries = getYearlySummary(record, config, previousYears);
+        
+        const row = document.createElement('div');
+        row.className = 'indicator-row';
+        row.dataset.recordId = record.id;
+
+        // --- 1. Card Area (Sticky Left) ---
+        const cardContainer = document.createElement('div');
+        cardContainer.className = 'indicator-card-container sticky-col-left';
+        
+        if (styling.cardType === 'CUSTOM' && styling.cardConfigId) {
+            const customConfigRecord = receivedConfigs.find(c => c.configId === styling.cardConfigId);
+            if (customConfigRecord && tableLens) {
+                const customOptions = tableLens.parseConfigRecord(customConfigRecord);
+                // Get the actual table schema for better rendering
+                const tableSchema = await tableLens.getTableSchema(config.tableId);
+                await CardSystem.renderCards(cardContainer, [record], { ...customOptions, tableLens, tableId: config.tableId }, tableSchema);
+            } else {
+                cardContainer.innerHTML = `<div class="error-msg">Config "${styling.cardConfigId}" não encontrada</div>`;
+            }
+        } else {
+            const card = document.createElement('div');
+            card.className = 'indicator-card';
+            const iconHtml = record.Icone ? `<span class="indicator-icon">${record.Icone}</span>` : '';
+            card.innerHTML = `
+                <div class="card-content">
+                    <div class="card-top">
+                        ${iconHtml}
+                        <span class="indicator-name" title="${record.Nome || ''}">${record.Nome || 'Sem Nome'}</span>
+                    </div>
+                    <div class="card-bottom">
+                        <span class="indicator-status-emoji">${metrics.status}</span>
+                        <span class="indicator-consolidated">${metrics.consolidatedValue.toLocaleString(undefined, { maximumFractionDigits: 1 })}</span>
+                    </div>
+                </div>
+                <div class="card-actions">
+                    <button class="action-btn view-chart" title="Visualizar Gráfico">📊</button>
+                    <button class="action-btn edit-data" title="Editar Dados">✏️</button>
+                </div>
+            `;
+            cardContainer.appendChild(card);
+        }
+
+        // --- 2. Months Area (Scrollable Middle) ---
+        const monthsWrapper = document.createElement('div');
+        monthsWrapper.className = 'months-wrapper scrollable-area';
+        
+        const timeline = document.createElement('div');
+        timeline.className = 'indicator-timeline months-grid';
+
+        const monthsHtml = MONTH_KEYS.map((m, i) => {
+            const val = metrics.results[m];
+            const resultVal = (val && typeof val === 'object') ? val.v : val;
+            const targetVal = metrics.targetLine[i];
+            
+            let color = '#eee';
+            let textColor = '#666';
+            let statusEmoji = '';
+            
+            if (resultVal !== null && resultVal !== undefined) {
+                const perf = calculatePerformance(resultVal, targetVal, metrics.direction);
+                const status = getStatusEmoji(perf);
+                statusEmoji = status;
+                textColor = '#fff';
+                switch(status) {
+                    case '🔵': color = '#007bff'; break;
+                    case '🔴': color = '#dc3545'; break;
+                    case '🟠': color = '#fd7e14'; break;
+                    case '🟡': color = '#ffc107'; textColor = '#000'; break;
+                    case '🟢': color = '#28a745'; break;
+                    case '🟩': color = '#198754'; break;
+                }
+            }
+
+            const displayVal = resultVal !== null && resultVal !== undefined ? 
+                resultVal.toLocaleString(undefined, { maximumFractionDigits: 1 }) : '-';
+
+            return `
+                <div class="timeline-cell month-cell" title="Meta: ${targetVal.toLocaleString()}">
+                    <div class="status-pill" style="background-color: ${color}; color: ${textColor};" data-status="${statusEmoji}">
+                        ${displayVal}
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        timeline.innerHTML = monthsHtml;
+        monthsWrapper.appendChild(timeline);
+
+        // --- 3. Years Area (Sticky Right) ---
+        const yearsContainer = document.createElement('div');
+        yearsContainer.className = 'years-container sticky-col-right';
+        
+        const prevYearsHtml = previousYears.map(year => {
+            const summary = yearlySummaries[year];
+            let color = '#eee';
+            let textColor = '#666';
+            
+            if (summary.consolidatedValue !== 0) {
+                const status = summary.status;
+                textColor = '#fff';
+                switch(status) {
+                    case '🔵': color = '#007bff'; break;
+                    case '🔴': color = '#dc3545'; break;
+                    case '🟠': color = '#fd7e14'; break;
+                    case '🟡': color = '#ffc107'; textColor = '#000'; break;
+                    case '🟢': color = '#28a745'; break;
+                    case '🟩': color = '#198754'; break;
+                }
+            }
+
+            return `
+                <div class="timeline-cell year-cell">
+                    <div class="status-pill" style="background-color: ${color}; color: ${textColor};">
+                        ${summary.consolidatedValue.toLocaleString(undefined, { maximumFractionDigits: 1 })}
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        yearsContainer.innerHTML = prevYearsHtml;
+
+        row.appendChild(cardContainer);
+        row.appendChild(monthsWrapper);
+        row.appendChild(yearsContainer);
+        container.appendChild(row);
+
+        return row;
+    }
+
     return {
         renderIndicatorDetails,
+        renderIndicatorRow,
         getIndicatorMetrics,
         calculateProgressiveTargets,
         PERIODICITY_CONFIG
