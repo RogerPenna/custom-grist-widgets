@@ -194,8 +194,13 @@ body {
 }
 
 .grf-modal-header, .grf-editor-header {
-    padding: 15px 25px; border-bottom: 1px solid #eee;
+    padding: 5px 15px; border-bottom: 1px solid #eee;
     display: flex; justify-content: space-between; align-items: center; background: #f8f9fa;
+}
+
+.grf-modal-header h3, .grf-editor-header h3 {
+    margin: 0;
+    font-size: 16px;
 }
 
 .grf-modal-body, .grf-editor-body { padding: 20px; flex: 1; overflow-y: auto; background: #EBEFEF; }
