@@ -30,7 +30,7 @@ export const BscConfigEditor = (() => {
         }
     }
 
-    async function render(container, config, tableLens, tableId, receivedConfigs = []) {
+    function render(container, config, tableLens, tableId, receivedConfigs = []) {
         _mainContainer = container;
         _targetTableId = tableId;
         const options = config || {};
@@ -48,11 +48,7 @@ export const BscConfigEditor = (() => {
             perspectivesConfigId: options.perspectivesConfigId || options.mapping?.perspectivesConfigId || null,
             qualityConfigId: options.qualityConfigId || options.mapping?.qualityConfigId || null,
             requirementsConfigId: options.requirementsConfigId || options.mapping?.requirementsConfigId || null,
-            modelsTable: options.modelsTable || options.mapping?.modelsTable || 'Modelos',
-            perspectivesTable: options.perspectivesTable || options.mapping?.perspectivesTable || 'Perspectivas',
-            objectivesTable: options.objectivesTable || options.mapping?.objectivesTable || 'Objetivos',
-            receivedConfigs: receivedConfigs,
-            allTables: await tableLens.listAllTables()
+            receivedConfigs: receivedConfigs
         };
 
         container.innerHTML = `
@@ -295,34 +291,6 @@ export const BscConfigEditor = (() => {
                     </label>
                     <div style="margin-top:5px; margin-left:20px;">
                         <label for="bsc-cfg-add-obj-id" style="font-size:11px;">Configuração da Gaveta:</label>
-                        <select id="bsc-cfg-add-obj-id" class="form-control">
-                            <option value="">-- Default --</option>
-                            ${createDrawerOptions(state.addObjectiveConfigId)}
-                        </select>
-                    </div>
-                </div>
-            </fieldset>
-        `;
-        container.appendChild(tabEl);
-    }
-
-    return {
-        render,
-        read
-    };
-})();
-    </div>
-            </fieldset>
-        `;
-        container.appendChild(tabEl);
-    }
-
-    return {
-        render,
-        read
-    };
-})();
-          <label for="bsc-cfg-add-obj-id" style="font-size:11px;">Configuração da Gaveta:</label>
                         <select id="bsc-cfg-add-obj-id" class="form-control">
                             <option value="">-- Default --</option>
                             ${createDrawerOptions(state.addObjectiveConfigId)}

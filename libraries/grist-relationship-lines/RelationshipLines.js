@@ -275,11 +275,14 @@ export const RelationshipLines = (() => {
     _buildDefs(svg, mergedOpts);
 
     let count = 0;
+    const mapping = bscData.mapping || {};
+    const relField = mapping.relationshipField || 'ref_obj';
+
     bscData.perspectives.forEach(p => {
       p.objectives.forEach(o => {
-        if (o.ref_obj && o.ref_obj > 0) {
+        if (o[relField] && o[relField] > 0) {
           const startEl = document.getElementById(`record-${o.id}`);
-          const endEl   = document.getElementById(`record-${o.ref_obj}`);
+          const endEl   = document.getElementById(`record-${o[relField]}`);
           if (_drawArrow(svg, startEl, endEl, mergedOpts)) {
             count++;
           }

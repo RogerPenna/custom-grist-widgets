@@ -45,15 +45,26 @@ export const BscConfigEditor = (() => {
             addPerspectiveConfigId: actions.addPerspectiveConfigId || null,
             showAddObjective: actions.showAddObjective || false,
             addObjectiveConfigId: actions.addObjectiveConfigId || null,
-            perspectivesConfigId: options.perspectivesConfigId || options.mapping?.perspectivesConfigId || null,
-            qualityConfigId: options.qualityConfigId || options.mapping?.qualityConfigId || null,
-            requirementsConfigId: options.requirementsConfigId || options.mapping?.requirementsConfigId || null,
+            
+            // Dynamic Mapping
             modelsTable: options.modelsTable || options.mapping?.modelsTable || 'Modelos',
             perspectivesTable: options.perspectivesTable || options.mapping?.perspectivesTable || 'Perspectivas',
             objectivesTable: options.objectivesTable || options.mapping?.objectivesTable || 'Objetivos',
+            typeField: options.typeField || options.mapping?.typeField || 'TipoModelo',
+            typeConfigMap: options.typeConfigMap || options.mapping?.typeConfigMap || {},
+            defaultCardConfigId: options.defaultCardConfigId || options.mapping?.defaultCardConfigId || options.perspectivesConfigId || options.mapping?.perspectivesConfigId || null,
+
+            refModelCol: options.refModelCol || options.mapping?.refModelCol || 'ref_model',
+            refPerspCol: options.refPerspCol || options.mapping?.refPerspCol || 'ref_persp',
+            relationshipField: options.relationshipField || options.mapping?.relationshipField || 'ref_obj',
+            
             receivedConfigs: receivedConfigs,
             allTables: await tableLens.listAllTables()
         };
+
+        // Fetch schemas for dynamic field selection
+        state.modelsSchema = await tableLens.getTableSchema(state.modelsTable);
+        state.perspectivesSchema = await tableLens.getTableSchema(state.perspectivesTable);
 
         container.innerHTML = `
             <style>
@@ -108,24 +119,47 @@ export const BscConfigEditor = (() => {
         const colsTab = container.querySelector("[data-tab-section='cols']");
         const actTab = container.querySelector("[data-tab-section='act']");
 
+        const typeConfigMap = {};
+        if (colsTab) {
+            colsTab.querySelectorAll(".dynamic-card-mapping").forEach(row => {
+                const choice = row.dataset.choice;
+                const configId = row.querySelector("select").value;
+                if (configId) typeConfigMap[choice] = configId;
+            });
+        }
+
         const fullConfig = {
             useColoris: genTab ? genTab.querySelector('#bsc-cfg-use-coloris').checked : state.useColoris,
+            modelsTable: genTab ? genTab.querySelector('#bsc-cfg-models-table').value : state.modelsTable,
+            perspectivesTable: genTab ? genTab.querySelector('#bsc-cfg-perspectives-table').value : state.perspectivesTable,
+            objectivesTable: genTab ? genTab.querySelector('#bsc-cfg-objectives-table').value : state.objectivesTable,
+            refModelCol: genTab ? genTab.querySelector('#bsc-cfg-ref-model-col').value : state.refModelCol,
+            refPerspCol: genTab ? genTab.querySelector('#bsc-cfg-ref-persp-col').value : state.refPerspCol,
+            relationshipField: genTab ? genTab.querySelector('#bsc-cfg-rel-field').value : state.relationshipField,
+            
+            typeField: colsTab ? colsTab.querySelector('#bsc-cfg-type-field').value : state.typeField,
+            defaultCardConfigId: colsTab ? colsTab.querySelector('#bsc-cfg-default-card-id').value : state.defaultCardConfigId,
+            typeConfigMap: typeConfigMap,
+
             drawerConfigId: actTab ? actTab.querySelector('#bsc-cfg-drawer-id').value : state.drawerConfigId,
             showAddPerspective: actTab ? actTab.querySelector('#bsc-cfg-show-add-persp').checked : state.showAddPerspective,
             addPerspectiveConfigId: actTab ? actTab.querySelector('#bsc-cfg-add-persp-id').value : state.addPerspectiveConfigId,
             showAddObjective: actTab ? actTab.querySelector('#bsc-cfg-show-add-obj').checked : state.showAddObjective,
-            addObjectiveConfigId: actTab ? actTab.querySelector('#bsc-cfg-add-obj-id').value : state.addObjectiveConfigId,
-            perspectivesConfigId: colsTab ? colsTab.querySelector('#bsc-cfg-persp-card-id').value : state.perspectivesConfigId,
-            qualityConfigId: colsTab ? colsTab.querySelector('#bsc-cfg-quality-card-id').value : state.qualityConfigId,
-            requirementsConfigId: colsTab ? colsTab.querySelector('#bsc-cfg-req-card-id').value : state.requirementsConfigId
+            addObjectiveConfigId: actTab ? actTab.querySelector('#bsc-cfg-add-obj-id').value : state.addObjectiveConfigId
         };
 
         // --- TRIPARTIÇÃO ---
         const mapping = {
             tableId: _targetTableId,
-            perspectivesConfigId: fullConfig.perspectivesConfigId,
-            qualityConfigId: fullConfig.qualityConfigId,
-            requirementsConfigId: fullConfig.requirementsConfigId
+            modelsTable: fullConfig.modelsTable,
+            perspectivesTable: fullConfig.perspectivesTable,
+            objectivesTable: fullConfig.objectivesTable,
+            refModelCol: fullConfig.refModelCol,
+            refPerspCol: fullConfig.refPerspCol,
+            relationshipField: fullConfig.relationshipField,
+            typeField: fullConfig.typeField,
+            defaultCardConfigId: fullConfig.defaultCardConfigId,
+            typeConfigMap: fullConfig.typeConfigMap
         };
 
         const styling = {
@@ -175,19 +209,60 @@ export const BscConfigEditor = (() => {
         const tabEl = document.createElement("div");
         tabEl.dataset.tabSection = "gen";
         tabEl.style.display = "none";
+
+        const createTableOptions = (selectedId) => state.allTables.map(t =>
+            `<option value="${t.id}" ${t.id === selectedId ? 'selected' : ''}>${t.name} (${t.id})</option>`
+        ).join('');
+
         tabEl.innerHTML = `
-            <h3>General Settings</h3>
+            <h3>Configuração das Tabelas Fonte</h3>
+            <fieldset>
+                <legend><b>Tabelas do Modelo BSC</b></legend>
+                <div class="form-group">
+                    <label for="bsc-cfg-models-table">Tabela de Modelos:</label>
+                    <select id="bsc-cfg-models-table" class="form-control">
+                        ${createTableOptions(state.modelsTable)}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="bsc-cfg-perspectives-table">Tabela de Perspectivas:</label>
+                    <select id="bsc-cfg-perspectives-table" class="form-control">
+                        ${createTableOptions(state.perspectivesTable)}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="bsc-cfg-objectives-table">Tabela de Objetivos:</label>
+                    <select id="bsc-cfg-objectives-table" class="form-control">
+                        ${createTableOptions(state.objectivesTable)}
+                    </select>
+                </div>
+            </fieldset>
+
+            <fieldset>
+                <legend><b>Mapeamento Avançado de Colunas</b></legend>
+                <div class="form-group">
+                    <label for="bsc-cfg-ref-model-col">Vínculo Perspectiva -> Modelo:</label>
+                    <input type="text" id="bsc-cfg-ref-model-col" class="form-control" value="${state.refModelCol}" placeholder="ex: ref_model">
+                    <p class="help-text">Nome da coluna na tabela de <b>Perspectivas</b> que aponta para o Modelo.</p>
+                </div>
+                <div class="form-group">
+                    <label for="bsc-cfg-ref-persp-col">Vínculo Objetivo -> Perspectiva:</label>
+                    <input type="text" id="bsc-cfg-ref-persp-col" class="form-control" value="${state.refPerspCol}" placeholder="ex: ref_persp">
+                    <p class="help-text">Nome da coluna na tabela de <b>Objetivos</b> que aponta para a Perspectiva.</p>
+                </div>
+                <div class="form-group">
+                    <label for="bsc-cfg-rel-field">Vínculo Relacionamento (Setas):</label>
+                    <input type="text" id="bsc-cfg-rel-field" class="form-control" value="${state.relationshipField}" placeholder="ex: ref_obj">
+                    <p class="help-text">Nome da coluna na tabela de <b>Objetivos</b> que aponta para o objetivo de origem da seta.</p>
+                </div>
+            </fieldset>
+
+            <h3>Outras Configurações</h3>
             <div class="form-group">
                 <label>
                     <input type="checkbox" id="bsc-cfg-use-coloris" ${state.useColoris ? 'checked' : ''}>
                     Use Coloris library (Legacy)
                 </label>
-                <p class="help-text">
-                    Use the legacy Coloris library for color picking instead of the native browser picker.
-                </p>
-            </div>
-            <div class="placeholder-notice">
-                <p>More general settings will be available here.</p>
             </div>
         `;
         container.appendChild(tabEl);
@@ -200,47 +275,81 @@ export const BscConfigEditor = (() => {
 
         // Filter for Card System configs
         const cardConfigs = state.receivedConfigs.filter(c => c.componentType === 'Card System');
-        
-        const createOptions = (selectedId) => cardConfigs.map(c =>
+        const createCardOptions = (selectedId) => cardConfigs.map(c =>
             `<option value="${c.configId}" ${c.configId === selectedId ? 'selected' : ''}>
                 ${c.widgetTitle} (${c.configId})
             </option>`
         ).join('');
 
+        // Create options for Choice columns in Models table
+        const choiceColumns = Object.values(state.modelsSchema).filter(col => 
+            col.type === 'Choice' || col.type === 'Text'
+        );
+        const createFieldOptions = (selectedId) => choiceColumns.map(col =>
+            `<option value="${col.colId}" ${col.colId === selectedId ? 'selected' : ''}>${col.label} (${col.colId})</option>`
+        ).join('');
+
+        // Detect choices if typeField is a Choice column
+        let choiceRowsHtml = '';
+        const selectedCol = state.modelsSchema[state.typeField];
+        if (selectedCol && selectedCol.type === 'Choice') {
+            const choices = selectedCol.widgetOptions?.choices || [];
+            choiceRowsHtml = choices.map(choice => `
+                <div class="form-group dynamic-card-mapping" data-choice="${choice}">
+                    <label>${choice}:</label>
+                    <select class="form-control">
+                        <option value="">-- Usar Padrão --</option>
+                        ${createCardOptions(state.typeConfigMap[choice])}
+                    </select>
+                </div>
+            `).join('');
+        }
+
         tabEl.innerHTML = `
-            <h3>Display Settings</h3>
+            <h3>Configuração de Exibição (Cards)</h3>
             <fieldset>
-                <legend><b>Map Display Configuration (by Model Type)</b></legend>
+                <legend><b>Mapeamento Dinâmico por Tipo de Modelo</b></legend>
                 
                 <div class="form-group">
-                    <label for="bsc-cfg-persp-card-id">Mapa Estratégico:</label>
-                    <select id="bsc-cfg-persp-card-id" class="form-control">
-                        <option value="">-- Default --</option>
-                        ${createOptions(state.perspectivesConfigId)}
+                    <label for="bsc-cfg-type-field">Coluna que define o Tipo (na tabela de Modelos):</label>
+                    <select id="bsc-cfg-type-field" class="form-control">
+                        <option value="">-- Selecionar Coluna --</option>
+                        ${createFieldOptions(state.typeField)}
                     </select>
-                    <p class="help-text">Controls rendering for "Mapa Estratégico".</p>
+                    <p class="help-text">Escolha uma coluna do tipo "Choice" na tabela de Modelos.</p>
                 </div>
 
                 <div class="form-group">
-                    <label for="bsc-cfg-quality-card-id">Objetivos Qualidade:</label>
-                    <select id="bsc-cfg-quality-card-id" class="form-control">
-                        <option value="">-- Same as Default --</option>
-                        ${createOptions(state.qualityConfigId)}
+                    <label for="bsc-cfg-default-card-id">Card Padrão (Fallback):</label>
+                    <select id="bsc-cfg-default-card-id" class="form-control">
+                        <option value="">-- Selecionar Card --</option>
+                        ${createCardOptions(state.defaultCardConfigId)}
                     </select>
-                    <p class="help-text">Controls rendering for "Objetivos Qualidade".</p>
+                    <p class="help-text">Card usado se não houver mapeamento específico ou a coluna de tipo estiver vazia.</p>
                 </div>
 
-                <div class="form-group">
-                    <label for="bsc-cfg-req-card-id">Requisitos Partes Interessadas:</label>
-                    <select id="bsc-cfg-req-card-id" class="form-control">
-                        <option value="">-- Same as Default --</option>
-                        ${createOptions(state.requirementsConfigId)}
-                    </select>
-                    <p class="help-text">Controls rendering for "Requisitos Partes Interessadas".</p>
-                </div>
+                ${choiceRowsHtml ? `
+                    <div style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed #ccc;">
+                        <h4>Configuração por Opção:</h4>
+                        ${choiceRowsHtml}
+                    </div>
+                ` : ''}
+
             </fieldset>
         `;
         container.appendChild(tabEl);
+        
+        // Listener to refresh tab when typeField changes to show choices
+        const fieldSelect = tabEl.querySelector('#bsc-cfg-type-field');
+        if (fieldSelect) {
+            fieldSelect.addEventListener('change', async (e) => {
+                state.typeField = e.target.value;
+                // We need to re-render this tab to show choices
+                tabEl.remove();
+                buildColumnsTab(container);
+                switchTab('cols', _mainContainer);
+            });
+        }
     }
 
     function buildActionsTab(container) {
@@ -295,34 +404,6 @@ export const BscConfigEditor = (() => {
                     </label>
                     <div style="margin-top:5px; margin-left:20px;">
                         <label for="bsc-cfg-add-obj-id" style="font-size:11px;">Configuração da Gaveta:</label>
-                        <select id="bsc-cfg-add-obj-id" class="form-control">
-                            <option value="">-- Default --</option>
-                            ${createDrawerOptions(state.addObjectiveConfigId)}
-                        </select>
-                    </div>
-                </div>
-            </fieldset>
-        `;
-        container.appendChild(tabEl);
-    }
-
-    return {
-        render,
-        read
-    };
-})();
-    </div>
-            </fieldset>
-        `;
-        container.appendChild(tabEl);
-    }
-
-    return {
-        render,
-        read
-    };
-})();
-          <label for="bsc-cfg-add-obj-id" style="font-size:11px;">Configuração da Gaveta:</label>
                         <select id="bsc-cfg-add-obj-id" class="form-control">
                             <option value="">-- Default --</option>
                             ${createDrawerOptions(state.addObjectiveConfigId)}

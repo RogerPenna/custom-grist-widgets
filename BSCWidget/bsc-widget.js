@@ -36,43 +36,60 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     async function initializeAndUpdate() {
+        console.log("[BSC Widget] Iniciando initializeAndUpdate...");
         if (!tableLens) {
-            try { tableLens = new GristTableLens(window.grist); } catch (e) { console.warn("[BSC Widget] Grist not ready yet"); return; }
+            try { 
+                tableLens = new GristTableLens(window.grist); 
+                console.log("[BSC Widget] TableLens instanciado.");
+            } catch (e) { 
+                console.error("[BSC Widget] Falha ao instanciar TableLens:", e);
+                mainContainer.innerHTML = `<div class="status-placeholder" style="color:red">Erro TableLens: ${e.message}</div>`;
+                return; 
+            }
         }
-        const options = await window.grist.getOptions() || {};
         
-        // Atualiza IDs locais a partir das opções do Grist
+        const options = await window.grist.getOptions() || {};
+        console.log("[BSC Widget] Opções do Grist:", options);
+        
         if (options.configId) currentConfigId = options.configId;
         if (options.lastModelId) currentModelId = parseInt(options.lastModelId, 10);
 
-        console.log("[BSC Widget] Verificando estado:", { currentConfigId, currentModelId });
-
         if (!currentConfigId) {
+            console.warn("[BSC Widget] Nenhum configId encontrado nas opções.");
             mainContainer.innerHTML = '<div class="status-placeholder">Widget BSC não configurado. Use a engrenagem ⚙️ para vincular um ID de configuração.</div>';
             return;
         }
 
         try {
-            // Busca a configuração se ainda não tiver ou se mudou
-            if (!widgetConfig || widgetConfig.configId !== currentConfigId) {
-                const configRecord = await tableLens.findRecord('Grf_config', { configId: currentConfigId });
-                if (!configRecord) throw new Error(`Configuração "${currentConfigId}" não encontrada.`);
-                widgetConfig = tableLens.parseConfigRecord(configRecord);
+            console.log("[BSC Widget] Buscando configuração:", currentConfigId);
+            tableLens.clearConfigCache(currentConfigId);
+            const configRecord = await tableLens.findRecord('Grf_config', { configId: currentConfigId });
+            
+            if (!configRecord) {
+                console.error("[BSC Widget] Registro de configuração não encontrado na Grf_config.");
+                throw new Error(`Configuração "${currentConfigId}" não encontrada na tabela Grf_config.`);
             }
+            
+            widgetConfig = tableLens.parseConfigRecord(configRecord);
+            console.log("[BSC Widget] Configuração processada:", widgetConfig);
 
-            const mapping = widgetConfig.mapping || {};
+            const mapping = widgetConfig.mapping || widgetConfig || {};
             const tableNames = {
                 modelsTable: mapping.modelsTable || 'Modelos',
                 perspectivesTable: mapping.perspectivesTable || 'Perspectivas',
-                objectivesTable: mapping.objectivesTable || 'Objetivos'
+                objectivesTable: mapping.objectivesTable || 'Objetivos',
+                refModelCol: mapping.refModelCol || 'ref_model',
+                refPerspCol: mapping.refPerspCol || 'ref_persp',
+                relationshipField: mapping.relationshipField || 'ref_obj'
             };
 
-            // Sempre tenta popular/atualizar o dropdown de Modelos
             await createModelDropdown(tableNames.modelsTable);
 
-            // Se houver um modelo selecionado, renderiza o Mapa
             if (currentModelId) {
+                console.log("[BSC Widget] Renderizando modelo:", currentModelId);
                 const bscData = await BSCRenderer.fetchFullBscStructure(currentModelId, tableLens, tableNames);
+                console.log("[BSC Widget] Dados do BSC carregados:", bscData);
+                
                 await BSCRenderer.renderBsc({
                     container: mainContainer,
                     bscData: bscData,
@@ -80,12 +97,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                     tableLens: tableLens,
                     showRelationships: showRelationships
                 });
+                console.log("[BSC Widget] Renderização concluída.");
             } else {
+                console.log("[BSC Widget] Aguardando seleção de modelo.");
                 mainContainer.innerHTML = '<div class="status-placeholder">Configuração vinculada com sucesso. <br><br> Agora selecione um <b>Modelo</b> no menu superior para visualizar o Mapa Estratégico.</div>';
             }
         } catch (e) {
-            console.error("[BSC Widget] Erro na renderização:", e);
-            mainContainer.innerHTML = `<div class="status-placeholder" style="color:red">Erro: ${e.message}</div>`;
+            console.error("[BSC Widget] Erro FATAL na renderização:", e);
+            mainContainer.innerHTML = `<div class="status-placeholder" style="color:red"><b>Erro na inicialização:</b><br>${e.message}</div>`;
         }
     }
 

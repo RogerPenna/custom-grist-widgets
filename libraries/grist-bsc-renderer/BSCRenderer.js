@@ -9,21 +9,30 @@ export const BSCRenderer = (() => {
         const perspectivesTable = tableNames.perspectivesTable || 'Perspectivas';
         const objectivesTable = tableNames.objectivesTable || 'Objetivos';
 
+        // Tenta buscar as tabelas de forma segura
         const [modelRecord, allPerspectives, allObjectives] = await Promise.all([
             lens.findRecord(modelsTable, { id: modelId }),
             lens.fetchTableRecords(perspectivesTable),
             lens.fetchTableRecords(objectivesTable),
         ]);
-        if (!modelRecord) throw new Error(`Model with ID ${modelId} not found in table "${modelsTable}".`);
+
+        if (!modelRecord) throw new Error(`Modelo ID ${modelId} não encontrado na tabela "${modelsTable}".`);
+        if (!allPerspectives || allPerspectives.length === 0) console.warn(`Nenhuma perspectiva encontrada na tabela "${perspectivesTable}".`);
+
+        // Descoberta automática de campos de relação se não fornecidos
+        const refModelCol = tableNames.refModelCol || await lens.findRelationField(perspectivesTable, modelsTable) || 'ref_model';
+        const refPerspCol = tableNames.refPerspCol || await lens.findRelationField(objectivesTable, perspectivesTable) || 'ref_persp';
+        
+        console.log(`[BSC Renderer] Usando relações: Persp->Model: ${refModelCol}, Obj->Persp: ${refPerspCol}`);
 
         const perspectivesForModel = allPerspectives
-            .filter(p => p.ref_model === modelId)
+            .filter(p => p[refModelCol] === modelId)
             .sort((a, b) => (a.Ordem || a.id) - (b.Ordem || b.id))
             .map(p => ({
                 ...p,
-                objectives: allObjectives.filter(o => o.ref_persp === p.id)
+                objectives: allObjectives.filter(o => o[refPerspCol] === p.id)
             }));
-        return { ...modelRecord, perspectives: perspectivesForModel };
+        return { ...modelRecord, perspectives: perspectivesForModel, mapping: { ...tableNames, refModelCol, refPerspCol } };
     }
 
     function patchConfigForBSC(config, schema) {
@@ -45,16 +54,20 @@ export const BSCRenderer = (() => {
         const { container, bscData, config, tableLens, onCardClick, onAddRecord, showRelationships } = options;
         container.innerHTML = "";
 
-        const actions = config.actions || {};
-        const mapping = config.mapping || {};
-        const modelType = bscData.TipoModelo;
-        let targetConfigId = config.perspectivesConfigId;
-
+        const actions = config.actions || config || {};
+        const mapping = config.mapping || config || {};
+        
         const perspectivesTable = mapping.perspectivesTable || 'Perspectivas';
         const objectivesTable = mapping.objectivesTable || 'Objetivos';
 
-        if (modelType === 'Objetivos Qualidade' && config.qualityConfigId) targetConfigId = config.qualityConfigId;
-        else if (modelType === 'Requisitos Partes Interessadas' && config.requirementsConfigId) targetConfigId = config.requirementsConfigId;
+        // Lógica Dinâmica de Seleção de Card
+        const typeField = mapping.typeField || 'TipoModelo';
+        const typeValue = bscData[typeField];
+        const typeConfigMap = mapping.typeConfigMap || {};
+        
+        let targetConfigId = typeConfigMap[typeValue] || mapping.defaultCardConfigId || mapping.perspectivesConfigId;
+
+        console.log(`[BSC Renderer] Tipo detectado: ${typeValue} (Campo: ${typeField}). Card ID: ${targetConfigId}`);
 
         if (targetConfigId) {
             try {

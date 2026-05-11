@@ -327,6 +327,8 @@ export const GristTableLens = function(gristInstance) {
             try {
                 const mapping = JSON.parse(record.mappingJson);
                 Object.assign(mergedConfig, mapping);
+                // Mantém o objeto mapping original para compatibilidade com widgets que buscam config.mapping
+                mergedConfig.mapping = mapping;
             } catch (e) { console.error("GTL.parseConfigRecord: Erro mappingJson.", e); }
         }
         
@@ -334,15 +336,9 @@ export const GristTableLens = function(gristInstance) {
         if (record.stylingJson) {
             try {
                 const styling = JSON.parse(record.stylingJson);
-                // Se o stylingJson for o objeto de estilo direto
                 if (styling && typeof styling === 'object') {
-                    if (styling.styling) {
-                        // Se for um objeto que CONTÉM a chave styling
-                        mergedConfig.styling = { ...(mergedConfig.styling || {}), ...styling.styling };
-                    } else {
-                        // Se for o objeto de estilo propriamente dito
-                        mergedConfig.styling = { ...(mergedConfig.styling || {}), ...styling };
-                    }
+                    const actualStyling = styling.styling || styling;
+                    mergedConfig.styling = { ...(mergedConfig.styling || {}), ...actualStyling };
                 }
             } catch (e) { console.error("GTL.parseConfigRecord: Erro stylingJson.", e); }
         }
@@ -352,6 +348,8 @@ export const GristTableLens = function(gristInstance) {
             try {
                 const actions = JSON.parse(record.actionsJson);
                 Object.assign(mergedConfig, actions);
+                // Mantém o objeto actions original para compatibilidade
+                mergedConfig.actions = actions;
             } catch (e) { console.error("GTL.parseConfigRecord: Erro actionsJson.", e); }
         }
         
