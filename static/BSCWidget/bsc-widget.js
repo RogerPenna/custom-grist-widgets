@@ -11,7 +11,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const mainContainer = document.getElementById('main-container');
     const modelSelector = document.getElementById('model-selector');
     const toggleArrowsBtn = document.getElementById('toggle-arrows-btn');
-    const tableLens = new GristTableLens(window.grist);
+    let tableLens;
+    try {
+        tableLens = new GristTableLens(window.grist);
+    } catch (e) {
+        console.warn("[BSC Widget] TableLens delayed initialization");
+    }
 
     let currentConfigId = null;
     let widgetConfig = null;
@@ -31,6 +36,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     async function initializeAndUpdate() {
+        if (!tableLens) {
+            try { tableLens = new GristTableLens(window.grist); } catch (e) { console.warn("[BSC Widget] Grist not ready yet"); return; }
+        }
         const options = await window.grist.getOptions() || {};
         
         // Atualiza IDs locais a partir das opções do Grist
@@ -52,12 +60,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                 widgetConfig = tableLens.parseConfigRecord(configRecord);
             }
 
+            const mapping = widgetConfig.mapping || {};
+            const tableNames = {
+                modelsTable: mapping.modelsTable || 'Modelos',
+                perspectivesTable: mapping.perspectivesTable || 'Perspectivas',
+                objectivesTable: mapping.objectivesTable || 'Objetivos'
+            };
+
             // Sempre tenta popular/atualizar o dropdown de Modelos
-            await createModelDropdown();
+            await createModelDropdown(tableNames.modelsTable);
 
             // Se houver um modelo selecionado, renderiza o Mapa
             if (currentModelId) {
-                const bscData = await BSCRenderer.fetchFullBscStructure(currentModelId, tableLens);
+                const bscData = await BSCRenderer.fetchFullBscStructure(currentModelId, tableLens, tableNames);
                 await BSCRenderer.renderBsc({
                     container: mainContainer,
                     bscData: bscData,
@@ -74,9 +89,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    async function createModelDropdown() {
-        if (modelSelector.options.length > 1) return;
-        const allModels = await tableLens.fetchTableRecords('Modelos');
+    async function createModelDropdown(modelsTable = 'Modelos') {
+        if (modelSelector.options.length > 1 && modelSelector.dataset.table === modelsTable) return;
+        const allModels = await tableLens.fetchTableRecords(modelsTable);
+        modelSelector.dataset.table = modelsTable;
         modelSelector.innerHTML = '<option value="" disabled selected>Selecionar Modelo...</option>';
         allModels.forEach(m => {
             const opt = document.createElement('option');

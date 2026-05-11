@@ -4,13 +4,17 @@ import { RelationshipLines } from '../grist-relationship-lines/RelationshipLines
 
 export const BSCRenderer = (() => {
 
-    async function fetchFullBscStructure(modelId, lens) {
+    async function fetchFullBscStructure(modelId, lens, tableNames = {}) {
+        const modelsTable = tableNames.modelsTable || 'Modelos';
+        const perspectivesTable = tableNames.perspectivesTable || 'Perspectivas';
+        const objectivesTable = tableNames.objectivesTable || 'Objetivos';
+
         const [modelRecord, allPerspectives, allObjectives] = await Promise.all([
-            lens.findRecord('Modelos', { id: modelId }),
-            lens.fetchTableRecords('Perspectivas'),
-            lens.fetchTableRecords('Objetivos'),
+            lens.findRecord(modelsTable, { id: modelId }),
+            lens.fetchTableRecords(perspectivesTable),
+            lens.fetchTableRecords(objectivesTable),
         ]);
-        if (!modelRecord) throw new Error(`Model with ID ${modelId} not found.`);
+        if (!modelRecord) throw new Error(`Model with ID ${modelId} not found in table "${modelsTable}".`);
 
         const perspectivesForModel = allPerspectives
             .filter(p => p.ref_model === modelId)
@@ -42,8 +46,12 @@ export const BSCRenderer = (() => {
         container.innerHTML = "";
 
         const actions = config.actions || {};
+        const mapping = config.mapping || {};
         const modelType = bscData.TipoModelo;
         let targetConfigId = config.perspectivesConfigId;
+
+        const perspectivesTable = mapping.perspectivesTable || 'Perspectivas';
+        const objectivesTable = mapping.objectivesTable || 'Objetivos';
 
         if (modelType === 'Objetivos Qualidade' && config.qualityConfigId) targetConfigId = config.qualityConfigId;
         else if (modelType === 'Requisitos Partes Interessadas' && config.requirementsConfigId) targetConfigId = config.requirementsConfigId;
@@ -52,7 +60,7 @@ export const BSCRenderer = (() => {
             try {
                 let cardConfig = await tableLens.fetchConfig(targetConfigId);
                 if (cardConfig) {
-                    const perspectiveSchema = await tableLens.getTableSchema('Perspectivas');
+                    const perspectiveSchema = await tableLens.getTableSchema(perspectivesTable);
                     cardConfig = patchConfigForBSC(cardConfig, perspectiveSchema);
                     
                     const cardsContainer = document.createElement('div');
@@ -61,7 +69,7 @@ export const BSCRenderer = (() => {
                     // Pass overrides if needed
                     const fieldConfigOverrides = {};
                     if (actions.showAddObjective !== undefined) {
-                        fieldConfigOverrides['Objetivos'] = {
+                        fieldConfigOverrides[objectivesTable] = {
                             showAddButton: actions.showAddObjective,
                             addRecordConfigId: actions.addObjectiveConfigId
                         };
