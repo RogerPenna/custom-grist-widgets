@@ -23,6 +23,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentModelId = null;
     let showRelationships = false;
     let isInitialized = false;
+    let initTimeout = null;
 
     // Inicializa o sistema de linhas no container de scroll
     RelationshipLines.init(mainContainer);
@@ -31,16 +32,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         toggleArrowsBtn.onclick = () => {
             showRelationships = !showRelationships;
             toggleArrowsBtn.textContent = showRelationships ? 'Ocultar Relacionamentos' : 'Mostrar Relacionamentos';
-            initializeAndUpdate();
+            debouncedUpdate();
         };
     }
 
+    function debouncedUpdate() {
+        if (initTimeout) clearTimeout(initTimeout);
+        initTimeout = setTimeout(() => {
+            initializeAndUpdate();
+        }, 100);
+    }
+
     async function initializeAndUpdate() {
-        console.log("[BSC Widget] Iniciando initializeAndUpdate...");
+        console.log("[BSC Widget] Executando initializeAndUpdate...");
         if (!tableLens) {
             try { 
                 tableLens = new GristTableLens(window.grist); 
-                console.log("[BSC Widget] TableLens instanciado.");
             } catch (e) { 
                 console.error("[BSC Widget] Falha ao instanciar TableLens:", e);
                 mainContainer.innerHTML = `<div class="status-placeholder" style="color:red">Erro TableLens: ${e.message}</div>`;
@@ -49,7 +56,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         const options = await window.grist.getOptions() || {};
-        console.log("[BSC Widget] Opções do Grist:", options);
         
         if (options.configId) currentConfigId = options.configId;
         if (options.lastModelId) currentModelId = parseInt(options.lastModelId, 10);
@@ -61,17 +67,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         try {
-            console.log("[BSC Widget] Buscando configuração:", currentConfigId);
             tableLens.clearConfigCache(currentConfigId);
             const configRecord = await tableLens.findRecord('Grf_config', { configId: currentConfigId });
             
             if (!configRecord) {
-                console.error("[BSC Widget] Registro de configuração não encontrado na Grf_config.");
                 throw new Error(`Configuração "${currentConfigId}" não encontrada na tabela Grf_config.`);
             }
             
             widgetConfig = tableLens.parseConfigRecord(configRecord);
-            console.log("[BSC Widget] Configuração processada:", widgetConfig);
 
             const mapping = widgetConfig.mapping || widgetConfig || {};
             const tableNames = {
@@ -86,9 +89,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             await createModelDropdown(tableNames.modelsTable);
 
             if (currentModelId) {
-                console.log("[BSC Widget] Renderizando modelo:", currentModelId);
                 const bscData = await BSCRenderer.fetchFullBscStructure(currentModelId, tableLens, tableNames);
-                console.log("[BSC Widget] Dados do BSC carregados:", bscData);
                 
                 await BSCRenderer.renderBsc({
                     container: mainContainer,
@@ -97,13 +98,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                     tableLens: tableLens,
                     showRelationships: showRelationships
                 });
-                console.log("[BSC Widget] Renderização concluída.");
             } else {
-                console.log("[BSC Widget] Aguardando seleção de modelo.");
                 mainContainer.innerHTML = '<div class="status-placeholder">Configuração vinculada com sucesso. <br><br> Agora selecione um <b>Modelo</b> no menu superior para visualizar o Mapa Estratégico.</div>';
             }
         } catch (e) {
-            console.error("[BSC Widget] Erro FATAL na renderização:", e);
+            console.error("[BSC Widget] Erro na renderização:", e);
             mainContainer.innerHTML = `<div class="status-placeholder" style="color:red"><b>Erro na inicialização:</b><br>${e.message}</div>`;
         }
     }
@@ -122,14 +121,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         modelSelector.value = currentModelId || "";
         modelSelector.onchange = async (e) => {
             currentModelId = parseInt(e.target.value, 10);
-            // Pega as opções atuais para não sobrescrever o configId
             const options = await window.grist.getOptions() || {};
             await window.grist.setOptions({ ...options, lastModelId: currentModelId });
-            initializeAndUpdate();
+            debouncedUpdate();
         };
     }
 
-    // Configuração da Engrenagem (Launcher unificado)
+    // Configuração da Engrenagem
     const settingsIcon = document.getElementById('settings-gear-btn');
     if (settingsIcon) {
         settingsIcon.onclick = () => GristLauncherUtils.renderSettingsPopover({
@@ -138,12 +136,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             currentConfigId,
             currentConfig: widgetConfig,
             onLink: async (newId) => {
-                console.log("[BSC Widget] Vinculando novo ID:", newId);
                 const options = await window.grist.getOptions() || {};
                 await window.grist.setOptions({ ...options, configId: newId });
                 currentConfigId = newId;
-                isInitialized = true;
-                await initializeAndUpdate();
+                debouncedUpdate();
             },
             onOpenManager: () => openConfigManager(window.grist, { initialConfigId: currentConfigId, componentTypes: ['BSC'] })
         });
@@ -152,19 +148,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.grist.ready({ requiredAccess: 'full' });
 
     window.grist.onOptions(async (options) => {
-        console.log("[BSC Widget] onOptions recebido:", options);
+        console.log("[BSC Widget] onOptions recebido");
         const newId = options?.configId;
-        
-        // Só atualiza se o ID realmente mudou ou se é a primeira vez
         if (!isInitialized || (newId && newId !== currentConfigId)) {
             isInitialized = true;
             currentConfigId = newId;
-            await initializeAndUpdate();
+            debouncedUpdate();
         }
     });
 
     window.grist.onRecords(async () => {
-        if (isInitialized) await initializeAndUpdate();
+        if (isInitialized) debouncedUpdate();
     });
 
     // Subscrições globais do framework
@@ -177,6 +171,4 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         window.GristDrawer.open(data.tableId, data.recordId, drawerOptions);
     });
-
-    await initializeAndUpdate();
 });

@@ -4,6 +4,7 @@ export const BscConfigEditor = (() => {
     let state = {};
     let _mainContainer = null;
     let _targetTableId = null;
+    let _tableLens = null;
 
     function updateDebugJson() {
         if (!_mainContainer) return;
@@ -30,9 +31,48 @@ export const BscConfigEditor = (() => {
         }
     }
 
+    function syncState() {
+        if (!_mainContainer) return;
+        const current = read(_mainContainer);
+        
+        // Flatten tripartition back into state
+        state.modelsTable = current.mapping.modelsTable;
+        state.perspectivesTable = current.mapping.perspectivesTable;
+        state.objectivesTable = current.mapping.objectivesTable;
+        state.refModelCol = current.mapping.refModelCol;
+        state.refPerspCol = current.mapping.refPerspCol;
+        state.relationshipField = current.mapping.relationshipField;
+        state.typeField = current.mapping.typeField;
+        state.defaultCardConfigId = current.mapping.defaultCardConfigId;
+        state.typeConfigMap = current.mapping.typeConfigMap;
+
+        state.useColoris = current.styling.useColoris;
+
+        state.drawerConfigId = current.actions.drawerConfigId;
+        state.showAddPerspective = current.actions.showAddPerspective;
+        state.addPerspectiveConfigId = current.actions.addPerspectiveConfigId;
+        state.showAddObjective = current.actions.showAddObjective;
+        state.addObjectiveConfigId = current.actions.addObjectiveConfigId;
+    }
+
+    function rebuildAll() {
+        if (!_mainContainer) return;
+        const contentArea = _mainContainer.querySelector("#bsc-config-contents");
+        const activeTab = _mainContainer.querySelector(".config-tab-button.active")?.dataset.tabId || "gen";
+        
+        contentArea.innerHTML = "";
+        buildGeneralTab(contentArea);
+        buildColumnsTab(contentArea);
+        buildActionsTab(contentArea);
+        
+        switchTab(activeTab, _mainContainer);
+        updateDebugJson();
+    }
+
     async function render(container, config, tableLens, tableId, receivedConfigs = []) {
         _mainContainer = container;
         _targetTableId = tableId;
+        _tableLens = tableLens;
         const options = config || {};
         
         // Se vier de um widget unificado (GTL.fetchConfig), as ações estarão na raiz ou dentro de .actions
@@ -65,6 +105,7 @@ export const BscConfigEditor = (() => {
         // Fetch schemas for dynamic field selection
         state.modelsSchema = await tableLens.getTableSchema(state.modelsTable);
         state.perspectivesSchema = await tableLens.getTableSchema(state.perspectivesTable);
+        state.objectivesSchema = await tableLens.getTableSchema(state.objectivesTable);
 
         container.innerHTML = `
             <style>
@@ -214,6 +255,13 @@ export const BscConfigEditor = (() => {
             `<option value="${t.id}" ${t.id === selectedId ? 'selected' : ''}>${t.name} (${t.id})</option>`
         ).join('');
 
+        const createColumnOptions = (schema, selectedId) => {
+            if (!schema) return `<option value="">-- Selecione a Tabela Primeiro --</option>`;
+            return Object.values(schema).map(col =>
+                `<option value="${col.colId}" ${col.colId === selectedId ? 'selected' : ''}>${col.label} (${col.colId})</option>`
+            ).join('');
+        };
+
         tabEl.innerHTML = `
             <h3>Configuração das Tabelas Fonte</h3>
             <fieldset>
@@ -242,17 +290,26 @@ export const BscConfigEditor = (() => {
                 <legend><b>Mapeamento Avançado de Colunas</b></legend>
                 <div class="form-group">
                     <label for="bsc-cfg-ref-model-col">Vínculo Perspectiva -> Modelo:</label>
-                    <input type="text" id="bsc-cfg-ref-model-col" class="form-control" value="${state.refModelCol}" placeholder="ex: ref_model">
+                    <select id="bsc-cfg-ref-model-col" class="form-control">
+                        <option value="">-- Selecionar Coluna --</option>
+                        ${createColumnOptions(state.perspectivesSchema, state.refModelCol)}
+                    </select>
                     <p class="help-text">Nome da coluna na tabela de <b>Perspectivas</b> que aponta para o Modelo.</p>
                 </div>
                 <div class="form-group">
                     <label for="bsc-cfg-ref-persp-col">Vínculo Objetivo -> Perspectiva:</label>
-                    <input type="text" id="bsc-cfg-ref-persp-col" class="form-control" value="${state.refPerspCol}" placeholder="ex: ref_persp">
+                    <select id="bsc-cfg-ref-persp-col" class="form-control">
+                        <option value="">-- Selecionar Coluna --</option>
+                        ${createColumnOptions(state.objectivesSchema, state.refPerspCol)}
+                    </select>
                     <p class="help-text">Nome da coluna na tabela de <b>Objetivos</b> que aponta para a Perspectiva.</p>
                 </div>
                 <div class="form-group">
                     <label for="bsc-cfg-rel-field">Vínculo Relacionamento (Setas):</label>
-                    <input type="text" id="bsc-cfg-rel-field" class="form-control" value="${state.relationshipField}" placeholder="ex: ref_obj">
+                    <select id="bsc-cfg-rel-field" class="form-control">
+                        <option value="">-- Selecionar Coluna --</option>
+                        ${createColumnOptions(state.objectivesSchema, state.relationshipField)}
+                    </select>
                     <p class="help-text">Nome da coluna na tabela de <b>Objetivos</b> que aponta para o objetivo de origem da seta.</p>
                 </div>
             </fieldset>
@@ -266,6 +323,28 @@ export const BscConfigEditor = (() => {
             </div>
         `;
         container.appendChild(tabEl);
+
+        // Listeners for Table changes to refresh schemas
+        tabEl.querySelector('#bsc-cfg-models-table').addEventListener('change', async (e) => {
+            syncState();
+            state.modelsTable = e.target.value;
+            state.modelsSchema = await _tableLens.getTableSchema(state.modelsTable);
+            rebuildAll();
+        });
+
+        tabEl.querySelector('#bsc-cfg-perspectives-table').addEventListener('change', async (e) => {
+            syncState();
+            state.perspectivesTable = e.target.value;
+            state.perspectivesSchema = await _tableLens.getTableSchema(state.perspectivesTable);
+            rebuildAll();
+        });
+
+        tabEl.querySelector('#bsc-cfg-objectives-table').addEventListener('change', async (e) => {
+            syncState();
+            state.objectivesTable = e.target.value;
+            state.objectivesSchema = await _tableLens.getTableSchema(state.objectivesTable);
+            rebuildAll();
+        });
     }
 
     function buildColumnsTab(container) {
@@ -282,7 +361,7 @@ export const BscConfigEditor = (() => {
         ).join('');
 
         // Create options for Choice columns in Models table
-        const choiceColumns = Object.values(state.modelsSchema).filter(col => 
+        const choiceColumns = Object.values(state.modelsSchema || {}).filter(col => 
             col.type === 'Choice' || col.type === 'Text'
         );
         const createFieldOptions = (selectedId) => choiceColumns.map(col =>
@@ -291,7 +370,7 @@ export const BscConfigEditor = (() => {
 
         // Detect choices if typeField is a Choice column
         let choiceRowsHtml = '';
-        const selectedCol = state.modelsSchema[state.typeField];
+        const selectedCol = state.modelsSchema ? state.modelsSchema[state.typeField] : null;
         if (selectedCol && selectedCol.type === 'Choice') {
             const choices = selectedCol.widgetOptions?.choices || [];
             choiceRowsHtml = choices.map(choice => `
@@ -343,11 +422,9 @@ export const BscConfigEditor = (() => {
         const fieldSelect = tabEl.querySelector('#bsc-cfg-type-field');
         if (fieldSelect) {
             fieldSelect.addEventListener('change', async (e) => {
+                syncState();
                 state.typeField = e.target.value;
-                // We need to re-render this tab to show choices
-                tabEl.remove();
-                buildColumnsTab(container);
-                switchTab('cols', _mainContainer);
+                rebuildAll();
             });
         }
     }

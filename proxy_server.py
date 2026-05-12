@@ -31,15 +31,16 @@ class GristProxyHandler(http.server.SimpleHTTPRequestHandler):
         sys.stderr.write(log_entry)
 
     def end_headers(self):
-        if self.path.endswith('.js'):
-            self.send_header('Content-Type', 'application/javascript')
+        # --- CORS HEADERS ---
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Grist-API-Key')
         
-        # --- DESATIVAR CACHE PARA DESENVOLVIMENTO ---
+        # --- CACHE CONTROL (Disabled for dev) ---
         self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
         self.send_header('Pragma', 'no-cache')
         self.send_header('Expires', '0')
         
-        self.send_header('Access-Control-Allow-Origin', '*')
         super().end_headers()
 
     def do_GET(self):
@@ -60,16 +61,22 @@ class GristProxyHandler(http.server.SimpleHTTPRequestHandler):
         else:
             self.send_error(404)
 
+    def do_DELETE(self):
+        if self.path.startswith('/grist-proxy/'):
+            self._handle_proxy('DELETE')
+        else:
+            self.send_error(404)
+
     def _handle_proxy(self, method):
-        # Reload environment on every request to pick up .env changes without restart
-        load_dotenv(override=True)
+        # Reload environment sparingly or only if needed
+        # For now, keeping it but it's risky in multi-threaded if multiple writes happen
+        # load_dotenv(override=True) 
+        
         server = os.getenv("GRIST_SERVER", "").rstrip("/")
         api_key = os.getenv("GRIST_API_KEY", "")
         
         path = self.path.replace('/grist-proxy', '')
         url = f"{server}{path}"
-        masked_key = (api_key[:5] + "..." + api_key[-5:]) if api_key else "MISSING"
-        self.log_message(f"RELOADED PROXY: {method} to: {url} | Server: {server} | Key: {masked_key}")
         
         headers = {
             "Authorization": f"Bearer {api_key}",
@@ -80,29 +87,42 @@ class GristProxyHandler(http.server.SimpleHTTPRequestHandler):
         body = self.rfile.read(content_length) if content_length > 0 else None
 
         try:
-            response = requests.request(method, url, headers=headers, data=body)
+            self.log_message(f"PROXY {method}: {url}")
+            response = requests.request(method, url, headers=headers, data=body, timeout=10)
             self.send_response(response.status_code)
-            self.send_header('Content-Type', 'application/json')
+            
+            # Forward content-type if available
+            remote_content_type = response.headers.get('Content-Type', 'application/json')
+            self.send_header('Content-Type', remote_content_type)
+            
             self.end_headers()
             self.wfile.write(response.content)
         except Exception as e:
             self.log_message("Erro no Proxy: %s", str(e))
-            self.send_error(500, f"Proxy Error: {str(e)}")
+            # Send error without blocking
+            if not self.wfile.closed:
+                try:
+                    self.send_error(500, f"Proxy Error: {str(e)}")
+                except: pass
 
     def do_OPTIONS(self):
         self.send_response(200)
-        self.send_header('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
         self.end_headers()
 
-class MyTCPServer(socketserver.TCPServer):
+class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     allow_reuse_address = True
+    daemon_threads = True
 
-if os.path.exists(LOG_FILE): os.remove(LOG_FILE) # Limpa log ao iniciar
+if __name__ == "__main__":
+    if os.path.exists(LOG_FILE): os.remove(LOG_FILE)
 
-print(f"--- SERVIDOR PROXY COM LOG ATIVO (Porta {PORT}) ---")
-try:
-    with MyTCPServer(("", PORT), GristProxyHandler) as httpd:
-        httpd.serve_forever()
-except Exception as e:
-    print(f"Erro ao iniciar: {e}")
+    print(f"--- SERVIDOR MULTI-THREAD ATIVO (Porta {PORT}) ---")
+    print(f"Suporta Grist Desktop e Servidores remotos simultaneamente.")
+    
+    with ThreadedTCPServer(("", PORT), GristProxyHandler) as httpd:
+        try:
+            httpd.serve_forever()
+        except KeyboardInterrupt:
+            print("\nEncerrando servidor...")
+            httpd.shutdown()
+            sys.exit(0)

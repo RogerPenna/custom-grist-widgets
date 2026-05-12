@@ -12,8 +12,8 @@ export const BSCRenderer = (() => {
         // Tenta buscar as tabelas de forma segura
         const [modelRecord, allPerspectives, allObjectives] = await Promise.all([
             lens.findRecord(modelsTable, { id: modelId }),
-            lens.fetchTableRecords(perspectivesTable),
-            lens.fetchTableRecords(objectivesTable),
+            lens.fetchTableRecordsOrThrow(perspectivesTable),
+            lens.fetchTableRecordsOrThrow(objectivesTable),
         ]);
 
         if (!modelRecord) throw new Error(`Modelo ID ${modelId} não encontrado na tabela "${modelsTable}".`);
