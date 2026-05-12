@@ -1091,7 +1091,44 @@ export const CardConfigEditor = (() => {
         }
         _fieldStylePopup.innerHTML = `<div class="field-style-popup-content"><h3 style="margin-top:0;">Style: ${fieldDef.colId}</h3><div><label><input type="checkbox" id="fs-use-grist-style"> Use Grist Style</label></div><hr><h4>Widget</h4><div class="form-group"><label>Type:</label><select id="fs-widget-type"><option value="">Default</option><option value="Toggle Switch">Toggle Switch</option><option value="Progress Bar">Progress Bar</option><option value="Color Picker">Color Picker</option></select></div><div id="fs-widget-options-container" style="display: none;"></div><hr><h4>Font</h4><div class="form-group"><label>Size:</label><input type="number" id="fs-data-size" min="8" style="width: 60px;"></div><div class="form-group"><label>Color:</label><input type="color" id="fs-data-color"> <label><input type="checkbox" id="fs-data-color-default" checked> Default</label></div><hr><div><label>Rows: <input type="number" id="fs-card-rows" min="1" style="width:50px;"></label></div><div><label><input type="checkbox" id="fs-lv"> Label Visible</label></div>${refListOptionsHtml}<div class="popup-actions"><button id="fs-cancel" type="button" class="btn btn-secondary">Cancel</button><button id="fs-save" type="button" class="btn btn-primary">Save</button></div></div>`;
         _mainContainer.appendChild(_fieldStylePopup);
+        
         const s = { ...DEFAULT_FIELD_STYLE, ...fieldDef.style };
+        const widgetSelect = _fieldStylePopup.querySelector('#fs-widget-type');
+        const widgetOptionsContainer = _fieldStylePopup.querySelector('#fs-widget-options-container');
+        let tempWidgetOptions = s.widgetOptions ? JSON.parse(JSON.stringify(s.widgetOptions)) : {};
+
+        const renderWidgetOptions = () => {
+            const widgetType = widgetSelect.value;
+            widgetOptionsContainer.innerHTML = '';
+            widgetOptionsContainer.style.display = widgetType ? 'block' : 'none';
+
+            if (widgetType === 'Toggle Switch') {
+                widgetOptionsContainer.innerHTML = `
+                    <div class="form-group"><label>On Color:</label><input type="color" id="fs-toggle-on-color" value="${tempWidgetOptions.onColor || '#198754'}"></div>
+                    <div class="form-group"><label>Off Color:</label><input type="color" id="fs-toggle-off-color" value="${tempWidgetOptions.offColor || '#ced4da'}"></div>
+                    <div class="form-group"><label><input type="checkbox" id="fs-toggle-labels" ${tempWidgetOptions.showLabels !== false ? 'checked' : ''}> Show Yes/No Labels</label></div>
+                `;
+                widgetOptionsContainer.querySelector('#fs-toggle-on-color').onchange = e => tempWidgetOptions.onColor = e.target.value;
+                widgetOptionsContainer.querySelector('#fs-toggle-off-color').onchange = e => tempWidgetOptions.offColor = e.target.value;
+                widgetOptionsContainer.querySelector('#fs-toggle-labels').onchange = e => tempWidgetOptions.showLabels = e.target.checked;
+            } else if (widgetType === 'Progress Bar') {
+                widgetOptionsContainer.innerHTML = `
+                    <div class="form-group"><label>Main Color:</label><input type="color" id="fs-pb-color" value="${tempWidgetOptions.mainColor || '#4caf50'}"></div>
+                    <div class="form-group"><label><input type="checkbox" id="fs-pb-striped" ${tempWidgetOptions.striped ? 'checked' : ''}> Striped</label></div>
+                    <div class="form-group"><label>Thickness:</label><select id="fs-pb-thick" style="width:100%"><option value="100%">Default</option><option value="150%">Thick</option><option value="200%">Extra Thick</option></select></div>
+                `;
+                widgetOptionsContainer.querySelector('#fs-pb-color').onchange = e => tempWidgetOptions.mainColor = e.target.value;
+                widgetOptionsContainer.querySelector('#fs-pb-striped').onchange = e => tempWidgetOptions.striped = e.target.checked;
+                const thickSelect = widgetOptionsContainer.querySelector('#fs-pb-thick');
+                thickSelect.value = tempWidgetOptions.thickness || "100%";
+                thickSelect.onchange = e => tempWidgetOptions.thickness = e.target.value;
+            }
+        };
+
+        widgetSelect.value = s.widget || "";
+        widgetSelect.addEventListener('change', renderWidgetOptions);
+        renderWidgetOptions();
+
         _fieldStylePopup.querySelector('#fs-card-rows').value = fieldDef.rowSpan || 1;
         _fieldStylePopup.querySelector('#fs-use-grist-style').checked = s.useGristStyle;
         _fieldStylePopup.querySelector('#fs-data-size').value = s.dataStyle?.size ? parseInt(s.dataStyle.size, 10) : "";
@@ -1102,7 +1139,7 @@ export const CardConfigEditor = (() => {
         _fieldStylePopup.querySelector('#fs-cancel').onclick = () => { backdrop.remove(); _fieldStylePopup.remove(); };
         _fieldStylePopup.querySelector('#fs-save').onclick = () => {
             fieldDef.rowSpan = parseInt(_fieldStylePopup.querySelector('#fs-card-rows').value, 10) || 1;
-            fieldDef.style = { ...s, useGristStyle: _fieldStylePopup.querySelector('#fs-use-grist-style').checked, labelVisible: _fieldStylePopup.querySelector('#fs-lv').checked, dataStyle: { size: _fieldStylePopup.querySelector('#fs-data-size').value ? `${_fieldStylePopup.querySelector('#fs-data-size').value}px` : null, color: colorDefault.checked ? null : colorInput.value } };
+            fieldDef.style = { ...s, widget: widgetSelect.value, widgetOptions: tempWidgetOptions, useGristStyle: _fieldStylePopup.querySelector('#fs-use-grist-style').checked, labelVisible: _fieldStylePopup.querySelector('#fs-lv').checked, dataStyle: { size: _fieldStylePopup.querySelector('#fs-data-size').value ? `${_fieldStylePopup.querySelector('#fs-data-size').value}px` : null, color: colorDefault.checked ? null : colorInput.value } };
             if (isRefList) { fieldDef.style.refListConfig = { displayAs: _fieldStylePopup.querySelector('#fs-reflist-display-as').value, cardConfigId: _fieldStylePopup.querySelector('#fs-reflist-card-config-id')?.value, tabulatorConfigId: _fieldStylePopup.querySelector('#fs-reflist-tabulator-config-id')?.value }; }
             backdrop.remove(); _fieldStylePopup.remove(); buildGridUI(gridEl, tabEl); updateDebugJson();
         };
