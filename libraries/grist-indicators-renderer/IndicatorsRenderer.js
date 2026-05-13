@@ -1,7 +1,7 @@
 import { CardSystem } from '../grist-card-system/CardSystem.js';
 
 export const IndicatorsRenderer = (() => {
-
+    console.log("IndicatorsRenderer v1.0.2 loading...");
     const MONTH_KEYS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 
     const PERIODICITY_CONFIG = {
@@ -264,20 +264,65 @@ export const IndicatorsRenderer = (() => {
         return { xValues, resultY, targetY, upperY, lowerY, chartRange: (chartMin !== undefined && chartMax !== undefined) ? [chartMin, chartMax] : null };
     }
 
-    async function renderIndicatorDetails(container, record, config, selectedYear) {
+    /**
+     * Helper para formatar valores numéricos usando o TableLens.
+     * Tenta encontrar o esquema da coluna de resultados para saber a precisão.
+     */
+    async function formatMetricValue(value, tableLens, tableId, config, forceField = null) {
+        if (value === null || value === undefined) return '-';
+        
+        // Failsafe imediato: se tableLens não existe, usa toLocaleString direto
+        if (!tableLens) return value.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
+        const mapping = config.mapping || config || {};
+        const fieldToUse = forceField || mapping.resultsField || config.resultsField;
+        
+        let colSchema = null;
+        if (tableId && fieldToUse) {
+            try {
+                const schema = await tableLens.getTableSchema(tableId);
+                colSchema = schema[fieldToUse];
+            } catch (e) {
+                console.warn("GTL: Erro ao buscar schema para formatar.", e);
+            }
+        }
+
+        // Se não encontrou o schema, usa um padrão numérico
+        if (!colSchema) {
+            colSchema = { type: 'Numeric', widgetOptions: { numDecimalPlaces: 1 } };
+        }
+
+        let formatted = tableLens.formatValue(value, colSchema);
+        
+        // SLEDGEHAMMER FALLBACK: se o valor formatado parece bruto (ex: 120.0000001)
+        // ou se String(value) é igual ao formatted (indicando que formatValue apenas fez String(v))
+        if (typeof value === 'number' && (formatted.includes('.') && formatted.split('.')[1]?.length > 4)) {
+            return value.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+        }
+        if (typeof value === 'number' && formatted === String(value)) {
+            return value.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+        }
+
+        return formatted;
+    }
+
+    async function renderIndicatorDetails(container, record, config, selectedYear, tableLens = null) {
         const metrics = getIndicatorMetrics(record, config, selectedYear);
         const timelineMetrics = getFullTimelineMetrics(record, config);
+
+        const consolidatedStr = await formatMetricValue(metrics.consolidatedValue, tableLens, config.tableId, config);
+        const performanceStr = (metrics.performance * 100).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
 
         // Single, ultra-compact horizontal summary bar
         container.innerHTML = `
             <div class="indicator-summary-bar" style="display:flex; align-items:center; justify-content: space-around; padding:5px 10px; background:#f1f5f9; border-radius:6px; margin-bottom:8px; font-size:12px; border:1px solid #e2e8f0;">
                 <div class="metric-box">
                     <span class="label" style="color:#64748b; font-weight:600;">Valor Consolidado (${selectedYear}):</span>
-                    <b class="consolidated-value" style="color:#0f172a; margin-left:4px;">${metrics.consolidatedValue.toLocaleString()}</b>
+                    <b class="consolidated-value" style="color:#0f172a; margin-left:4px;">${consolidatedStr}</b>
                 </div>
                 <div class="metric-box">
                     <span class="label" style="color:#64748b; font-weight:600;">Atingimento:</span>
-                    <b class="performance-value" style="color:#0f172a; margin-left:4px;">${(metrics.performance * 100).toFixed(1)}%</b>
+                    <b class="performance-value" style="color:#0f172a; margin-left:4px;">${performanceStr}</b>
                 </div>
                 <div class="metric-box">
                     <span class="label" style="color:#64748b; font-weight:600;">Status:</span>
@@ -287,29 +332,25 @@ export const IndicatorsRenderer = (() => {
             <div id="plotly-chart" style="width:100%; height:calc(100vh - 160px); min-height:450px;"></div>
         `;
         if (timelineMetrics) {
-            renderChart('plotly-chart', timelineMetrics, selectedYear, metrics.direction, metrics, container);
+            renderChart('plotly-chart', timelineMetrics, selectedYear, metrics.direction, metrics, container, tableLens, config);
         }
     }
 
-    // --- Monotonic Cubic Spline Interpolation Engine ---
     function createMonotoneCubicSpline(x, y) {
         const n = x.length;
         if (n < 2) return (tx) => y[0];
 
-        // 1. Compute slopes between points
         const delta = new Array(n - 1);
         for (let i = 0; i < n - 1; i++) {
             delta[i] = (y[i + 1] - y[i]) / (x[i + 1] - x[i]);
         }
 
-        // 2. Compute tangents (tangentes nos pontos)
         const m = new Array(n);
         m[0] = delta[0];
         for (let i = 1; i < n - 1; i++) {
             if (delta[i - 1] * delta[i] <= 0) {
-                m[i] = 0; // Platô ou pico/vale -> inclinação zero
+                m[i] = 0;
             } else {
-                // Média ponderada para suavidade (Fritsch-Butland)
                 const hi = x[i + 1] - x[i];
                 const hprev = x[i] - x[i - 1];
                 const common = hi + hprev;
@@ -318,7 +359,6 @@ export const IndicatorsRenderer = (() => {
         }
         m[n - 1] = delta[n - 2];
 
-        // 3. Interpolation function (Hermite Cubic)
         return (tx) => {
             let i = 0;
             while (i < n - 2 && tx > x[i + 1]) i++;
@@ -337,14 +377,20 @@ export const IndicatorsRenderer = (() => {
         };
     }
 
-    function renderChart(elementId, timeline, selectedYear, direction, yearlyMetrics, container) {
+    async function renderChart(elementId, timeline, selectedYear, direction, yearlyMetrics, container, tableLens = null, config = {}) {
         const { xValues, resultY, targetY, upperY, lowerY, chartRange } = timeline;
-        
+        const mapping = config.mapping || config || {};
+
         const traces = [];
         const shapes = [];
 
+        // Pre-calculate formatted texts with failsafe
+        const resultText = await Promise.all(resultY.map(v => formatMetricValue(v, tableLens, config.tableId, config, mapping.resultsField)));
+        const targetText = await Promise.all(targetY.map(v => formatMetricValue(v, tableLens, config.tableId, config, mapping.targetField)));
+        const upperText = await Promise.all(upperY.map(v => formatMetricValue(v, tableLens, config.tableId, config, mapping.resultsField)));
+        const lowerText = await Promise.all(lowerY.map(v => formatMetricValue(v, tableLens, config.tableId, config, mapping.resultsField)));
+
         // --- Resultado com Monotonic Cubic Spline ---
-        // 1. Separamos os dados em segmentos contínuos (sem nulls)
         const segments = [];
         let currentSegment = null;
         xValues.forEach((x, i) => {
@@ -359,22 +405,18 @@ export const IndicatorsRenderer = (() => {
         });
         if (currentSegment) segments.push(currentSegment);
 
-        // 2. Para cada segmento, geramos a curva suave de alta densidade
         segments.forEach((seg, segIdx) => {
             const spline = createMonotoneCubicSpline(seg.x, seg.y);
             const smoothX = [];
             const smoothY = [];
-            
-            // Geramos ~10 pontos entre cada mês para suavidade total
             const startTime = seg.x[0];
             const endTime = seg.x[seg.x.length - 1];
-            const step = (30 * 24 * 60 * 60 * 1000) / 10; // ~3 dias por ponto
+            const step = (30 * 24 * 60 * 60 * 1000) / 10;
 
             for (let t = startTime; t <= endTime; t += step) {
                 smoothX.push(new Date(t));
                 smoothY.push(spline(t));
             }
-            // Garantimos o último ponto exato
             smoothX.push(new Date(endTime));
             smoothY.push(seg.y[seg.y.length - 1]);
 
@@ -387,21 +429,22 @@ export const IndicatorsRenderer = (() => {
             });
         });
 
-        // 3. Adicionamos apenas os marcadores (bolinhas) nos pontos mensais reais
         traces.push({
             x: xValues, y: resultY,
             type: 'scatter', mode: 'markers',
             marker: { size: 6, color: '#1F77B4' },
             showlegend: false, name: 'Pontos Reais',
-            hoverinfo: 'x+y'
+            text: resultText,
+            hovertemplate: '<b>Resultado</b><br>Data: %{x}<br>Valor: %{text}<extra></extra>'
         });
 
-        // --- Meta e Limites ---
         traces.push({
             x: xValues, y: targetY,
             type: 'scatter', mode: 'lines', name: 'Meta',
             line: { color: '#ff7f0e', width: 1, dash: 'solid' },
-            xaxis: 'x', yaxis: 'y1'
+            xaxis: 'x', yaxis: 'y',
+            text: targetText,
+            hovertemplate: '<b>%{name}</b><br>Data: %{x}<br>Valor: %{text}<extra></extra>'
         });
 
         if (upperY.some(v => v !== null)) {
@@ -409,7 +452,9 @@ export const IndicatorsRenderer = (() => {
                 x: xValues, y: upperY,
                 type: 'scatter', mode: 'lines', name: 'Lim. Sup.',
                 line: { color: '#9467bd', dash: 'dot', width: 1 },
-                xaxis: 'x', yaxis: 'y1'
+                xaxis: 'x', yaxis: 'y',
+                text: upperText,
+                hovertemplate: '<b>%{name}</b><br>Data: %{x}<br>Valor: %{text}<extra></extra>'
             });
         }
 
@@ -418,7 +463,9 @@ export const IndicatorsRenderer = (() => {
                 x: xValues, y: lowerY,
                 type: 'scatter', mode: 'lines', name: 'Lim. Inf.',
                 line: { color: '#d62728', dash: 'dot', width: 1 },
-                xaxis: 'x', yaxis: 'y1'
+                xaxis: 'x', yaxis: 'y',
+                text: lowerText,
+                hovertemplate: '<b>%{name}</b><br>Data: %{x}<br>Valor: %{text}<extra></extra>'
             });
         }
 
@@ -426,17 +473,13 @@ export const IndicatorsRenderer = (() => {
             x: xValues, y: targetY,
             type: 'scatter', mode: 'lines', name: 'Lim. Méd.',
             line: { color: '#2ca02c', dash: 'dot', width: 1 },
-            xaxis: 'x', yaxis: 'y1'
+            xaxis: 'x', yaxis: 'y',
+            text: targetText,
+            hovertemplate: '<b>%{name}</b><br>Data: %{x}<br>Valor: %{text}<extra></extra>'
         });
 
-        // --- Configuração da Tabela e Layout ---
         const tableY = { res: 0.35, meta: 0.65 };
 
-        // Text traces for the table cells
-        const resultText = resultY.map(v => v !== null ? v.toLocaleString() : '-');
-        const targetText = targetY.map(v => v.toLocaleString(undefined, {maximumFractionDigits: 1}));
-
-        // Table background "cells" as colored scatter markers
         xValues.forEach((date, i) => {
             const val = resultY[i];
             const tar = targetY[i];
@@ -454,8 +497,7 @@ export const IndicatorsRenderer = (() => {
                     case '🟩': color = '#198754'; break;
                 }
                 
-                // Add Pill-shaped background using shape
-                const halfWidth = 14 * 24 * 60 * 60 * 1000; // ~14 days for wider pill
+                const halfWidth = 14 * 24 * 60 * 60 * 1000;
                 shapes.push({
                     type: 'rect',
                     xref: 'x', yref: 'y2',
@@ -468,6 +510,7 @@ export const IndicatorsRenderer = (() => {
                     layer: 'below'
                 });
 
+                // Keep ONLY result text in the status bar area to avoid overlaps
                 traces.push({
                     x: [date], y: [tableY.res],
                     type: 'scatter', mode: 'text',
@@ -483,16 +526,9 @@ export const IndicatorsRenderer = (() => {
                 });
             }
             
-            // Meta Row
-            traces.push({
-                x: [date], y: [tableY.meta],
-                type: 'scatter', mode: 'text', text: [targetText[i]],
-                textfont: { color: '#000', weight: 'bold', size: 10 },
-                xaxis: 'x', yaxis: 'y2', showlegend: false, hoverinfo: 'none'
-            });
+            // REMOVED redundant meta text label from status bar area to stop overlapping
         });
 
-        // Add Border around timeline area (white area only)
         shapes.push({
             type: 'rect',
             xref: 'paper', yref: 'paper',
@@ -506,67 +542,61 @@ export const IndicatorsRenderer = (() => {
             grid: { rows: 2, columns: 1, pattern: 'independent' },
             margin: { t: 40, b: 40, l: 50, r: 100 },
             showlegend: true,
-            legend: { 
-                x: 1.02, y: 1,
-                font: { size: 10 }
-            },
+            legend: { x: 1.02, y: 1, font: { size: 10 } },
             xaxis: {
                 type: 'date',
-                rangeslider: { visible: true, thickness: 0.05 },
+                rangeslider: { 
+                    visible: true, 
+                    thickness: 0.05,
+                    yaxis: {
+                        rangemode: 'match',
+                        showticklabels: false,
+                        ticks: ''
+                    }
+                },
                 rangeselector: {
                     buttons: [
                         { count: 12, label: '1 ano', step: 'month', stepmode: 'backward' },
                         { count: 5, label: '5 anos', step: 'year', stepmode: 'backward' },
                         { label: 'Reset', step: 'all' }
                     ],
-                    x: 0, y: 1.05,
-                    bgcolor: '#D5E3E9',
-                    activecolor: '#9CC2D1',
-                    bordercolor: '#ABB1B4',
-                    borderwidth: 1
+                    x: 0, y: 1.05, bgcolor: '#D5E3E9', activecolor: '#9CC2D1', bordercolor: '#ABB1B4', borderwidth: 1
                 },
-                gridcolor: '#F0F0F0',
-                showgrid: true,
-                layer: 'below traces',
-                nticks: 20
+                gridcolor: '#F0F0F0', showgrid: true, layer: 'below traces'
             },
-            yaxis: {
-                domain: [0.14, 1],
-                range: chartRange,
-                autorange: chartRange ? false : true,
-                gridcolor: '#F0F0F0',
-                nticks: 20,
-                title: ''
+            yaxis: { 
+                domain: [0.14, 1], 
+                range: chartRange, 
+                autorange: chartRange ? false : true, 
+                gridcolor: '#F0F0F0', 
+                nticks: 10, 
+                tickmode: 'auto',
+                title: '',
+                tickformat: '.1f',
+                hoverformat: '.1f'
             },
-            yaxis2: {
-                domain: [0, 0.12],
+            yaxis2: { 
+                domain: [0, 0.12], 
                 range: [-0.2, 1.2], 
-                autorange: false,
-                showgrid: false,
-                zeroline: false,
-                showline: false,
-                side: 'right',
-                tickvals: [0.35, 0.65],
-                ticktext: ['RESULTADO', 'META'],
-                tickfont: { size: 9 },
-                fixedrange: true
+                autorange: false, 
+                showgrid: false, 
+                zeroline: false, 
+                showline: false, 
+                showticklabels: false, 
+                ticks: '',
+                side: 'right', 
+                fixedrange: true 
             },
-            plot_bgcolor: '#FFFFFF',
-            paper_bgcolor: '#EBEFEF',
-            shapes: shapes
+            plot_bgcolor: '#FFFFFF', paper_bgcolor: '#EBEFEF', shapes: shapes
         };
 
         const chartEl = document.getElementById(elementId);
         Plotly.newPlot(chartEl, traces, layout, { responsive: true, displayModeBar: true });
         
-        // --- Interactivity: Hover Sync ---
-        chartEl.on('plotly_hover', (data) => {
+        chartEl.on('plotly_hover', async (data) => {
             const pt = data.points[0];
             const xDate = new Date(pt.x);
-            // Find closest month in xValues
-            const monthIdx = xValues.findIndex(d => 
-                d.getFullYear() === xDate.getFullYear() && d.getMonth() === xDate.getMonth()
-            );
+            const monthIdx = xValues.findIndex(d => d.getFullYear() === xDate.getFullYear() && d.getMonth() === xDate.getMonth());
 
             if (monthIdx !== -1) {
                 const val = resultY[monthIdx];
@@ -576,16 +606,16 @@ export const IndicatorsRenderer = (() => {
                 const monthName = MONTH_KEYS[monthIdx % 12].toUpperCase();
                 const year = xValues[monthIdx].getFullYear();
 
-                container.querySelector('.consolidated-value').textContent = val !== null ? val.toLocaleString() : '-';
-                container.querySelector('.performance-value').textContent = val !== null ? (perf * 100).toFixed(1) + '%' : '-';
+                container.querySelector('.consolidated-value').textContent = resultText[monthIdx];
+                container.querySelector('.performance-value').textContent = (perf * 100).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
                 container.querySelector('.status-value').textContent = val !== null ? status : '';
                 container.querySelector('.metric-box:nth-child(1) .label').textContent = `Valor (${monthName}/${year})`;
             }
         });
 
-        chartEl.on('plotly_unhover', () => {
-            container.querySelector('.consolidated-value').textContent = yearlyMetrics.consolidatedValue.toLocaleString();
-            container.querySelector('.performance-value').textContent = (yearlyMetrics.performance * 100).toFixed(1) + '%';
+        chartEl.on('plotly_unhover', async () => {
+            container.querySelector('.consolidated-value').textContent = await formatMetricValue(yearlyMetrics.consolidatedValue, tableLens, config.tableId, config, mapping.resultsField);
+            container.querySelector('.performance-value').textContent = (yearlyMetrics.performance * 100).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
             container.querySelector('.status-value').textContent = yearlyMetrics.status;
             container.querySelector('.metric-box:nth-child(1) .label').textContent = `Valor Consolidado (${selectedYear})`;
         });
@@ -606,7 +636,6 @@ export const IndicatorsRenderer = (() => {
     async function renderIndicatorRow(container, record, config, currentYear, styling = {}, receivedConfigs = [], tableLens = null) {
         const yearsCount = styling.yearsCount !== undefined ? styling.yearsCount : 3;
         const previousYears = Array.from({ length: yearsCount }, (_, i) => (parseInt(currentYear) - (i + 1)).toString()).reverse();
-        
         const metrics = getIndicatorMetrics(record, config, currentYear);
         const yearlySummaries = getYearlySummary(record, config, previousYears);
         
@@ -614,7 +643,6 @@ export const IndicatorsRenderer = (() => {
         row.className = 'indicator-row';
         row.dataset.recordId = record.id;
 
-        // --- 1. Card Area (Sticky Left) ---
         const cardContainer = document.createElement('div');
         cardContainer.className = 'indicator-card-container sticky-col-left';
         
@@ -622,7 +650,6 @@ export const IndicatorsRenderer = (() => {
             const customConfigRecord = receivedConfigs.find(c => c.configId === styling.cardConfigId);
             if (customConfigRecord && tableLens) {
                 const customOptions = tableLens.parseConfigRecord(customConfigRecord);
-                // Get the actual table schema for better rendering
                 const tableSchema = await tableLens.getTableSchema(config.tableId);
                 await CardSystem.renderCards(cardContainer, [record], { ...customOptions, tableLens, tableId: config.tableId }, tableSchema);
             } else {
@@ -640,7 +667,7 @@ export const IndicatorsRenderer = (() => {
                     </div>
                     <div class="card-bottom">
                         <span class="indicator-status-emoji">${metrics.status}</span>
-                        <span class="indicator-consolidated">${metrics.consolidatedValue.toLocaleString(undefined, { maximumFractionDigits: 1 })}</span>
+                        <span class="indicator-consolidated">${await formatMetricValue(metrics.consolidatedValue, tableLens, config.tableId, config)}</span>
                     </div>
                 </div>
                 <div class="card-actions">
@@ -651,21 +678,17 @@ export const IndicatorsRenderer = (() => {
             cardContainer.appendChild(card);
         }
 
-        // --- 2. Months Area (Scrollable Middle) ---
         const monthsWrapper = document.createElement('div');
         monthsWrapper.className = 'months-wrapper scrollable-area';
-        
         const timeline = document.createElement('div');
         timeline.className = 'indicator-timeline months-grid';
 
-        const monthsHtml = MONTH_KEYS.map((m, i) => {
+        for (let i = 0; i < 12; i++) {
+            const m = MONTH_KEYS[i];
             const val = metrics.results[m];
             const resultVal = (val && typeof val === 'object') ? val.v : val;
             const targetVal = metrics.targetLine[i];
-            
-            let color = '#eee';
-            let textColor = '#666';
-            let statusEmoji = '';
+            let color = '#eee', textColor = '#666', statusEmoji = '';
             
             if (resultVal !== null && resultVal !== undefined) {
                 const perf = calculatePerformance(resultVal, targetVal, metrics.direction);
@@ -682,30 +705,20 @@ export const IndicatorsRenderer = (() => {
                 }
             }
 
-            const displayVal = resultVal !== null && resultVal !== undefined ? 
-                resultVal.toLocaleString(undefined, { maximumFractionDigits: 1 }) : '-';
-
-            return `
-                <div class="timeline-cell month-cell" title="Meta: ${targetVal.toLocaleString()}">
-                    <div class="status-pill" style="background-color: ${color}; color: ${textColor};" data-status="${statusEmoji}">
-                        ${displayVal}
-                    </div>
-                </div>
-            `;
-        }).join('');
-
-        timeline.innerHTML = monthsHtml;
+            const displayVal = await formatMetricValue(resultVal, tableLens, config.tableId, config);
+            const monthCell = document.createElement('div');
+            monthCell.className = 'timeline-cell month-cell';
+            monthCell.title = `Meta: ${await formatMetricValue(targetVal, tableLens, config.tableId, config)}`;
+            monthCell.innerHTML = `<div class="status-pill" style="background-color: ${color}; color: ${textColor};" data-status="${statusEmoji}">${displayVal}</div>`;
+            timeline.appendChild(monthCell);
+        }
         monthsWrapper.appendChild(timeline);
 
-        // --- 3. Years Area (Sticky Right) ---
         const yearsContainer = document.createElement('div');
         yearsContainer.className = 'years-container sticky-col-right';
-        
-        const prevYearsHtml = previousYears.map(year => {
+        for (const year of previousYears) {
             const summary = yearlySummaries[year];
-            let color = '#eee';
-            let textColor = '#666';
-            
+            let color = '#eee', textColor = '#666';
             if (summary.consolidatedValue !== 0) {
                 const status = summary.status;
                 textColor = '#fff';
@@ -718,32 +731,19 @@ export const IndicatorsRenderer = (() => {
                     case '🟩': color = '#198754'; break;
                 }
             }
-
-            return `
-                <div class="timeline-cell year-cell">
-                    <div class="status-pill" style="background-color: ${color}; color: ${textColor};">
-                        ${summary.consolidatedValue.toLocaleString(undefined, { maximumFractionDigits: 1 })}
-                    </div>
-                </div>
-            `;
-        }).join('');
-
-        yearsContainer.innerHTML = prevYearsHtml;
+            const yearCell = document.createElement('div');
+            yearCell.className = 'timeline-cell year-cell';
+            yearCell.innerHTML = `<div class="status-pill" style="background-color: ${color}; color: ${textColor};">${await formatMetricValue(summary.consolidatedValue, tableLens, config.tableId, config)}</div>`;
+            yearsContainer.appendChild(yearCell);
+        }
 
         row.appendChild(cardContainer);
         row.appendChild(monthsWrapper);
         row.appendChild(yearsContainer);
         container.appendChild(row);
-
         return row;
     }
 
-    return {
-        renderIndicatorDetails,
-        renderIndicatorRow,
-        getIndicatorMetrics,
-        calculateProgressiveTargets,
-        PERIODICITY_CONFIG
-    };
+    return { renderIndicatorDetails, renderIndicatorRow, getIndicatorMetrics, calculateProgressiveTargets, PERIODICITY_CONFIG };
 
 })();

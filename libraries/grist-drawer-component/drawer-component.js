@@ -348,8 +348,12 @@ export async function openDrawer(tableId, recordId, options = {}) {
     }
 
     // --- CORREÇÃO DA LARGURA ---
+    // Priorizamos a largura definida em actions.sidePanel.size (que vem do widget gatilho no configurador)
+    // Se não houver, tentamos styling.width (que vem da config do próprio drawer)
+    // Se não houver nenhum, fallback para '600px'
     const styling = options.styling || options;
-    const width = styling.width || options.width || '600px';
+    const width = options.actions?.sidePanel?.size || options.sidePanel?.size || styling.width || options.width || '600px';
+    
     drawerPanel.style.width = width;
     // Garante que comece fora da tela antes da transição
     drawerPanel.style.right = `-${width}`;

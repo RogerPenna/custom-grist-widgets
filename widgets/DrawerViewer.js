@@ -108,7 +108,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (eventData.drawerConfigId === state.configId) {
         console.log(`[DrawerViewer] CONDIÇÃO ATENDIDA! Os configIds correspondem. Tentando abrir o drawer...`);
-        openDrawer(eventData.tableId, eventData.recordId, state.configData);
+        
+        // Injeta a largura vinda do widget gatilho (eventData.cardConfig) como override
+        let drawerOptions = { ...state.configData };
+        const triggerSize = eventData.cardConfig?.actions?.sidePanel?.size;
+        if (triggerSize) {
+            drawerOptions.actions = { ...(drawerOptions.actions || {}) };
+            drawerOptions.actions.sidePanel = { ...(drawerOptions.actions.sidePanel || {}), size: triggerSize };
+        }
+
+        openDrawer(eventData.tableId, eventData.recordId, drawerOptions);
     } else {
         console.log(`[DrawerViewer] Condição não atendida. O evento era para '${eventData.drawerConfigId}', mas eu sou '${state.configId}'. Ignorando.`);
     }
@@ -173,10 +182,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             else if (config.actionType === 'editRecord') {
                 if (window.GristDrawer) {
                     console.log(`[DrawerViewer] Abrindo Gaveta para editar record ${record.id}`);
-                    window.GristDrawer.open(tableId, record.id, { 
+                    
+                    let drawerOptions = { 
                         tableLens: tableLens,
                         ...state.configData
-                    });
+                    };
+
+                    // Injeta a largura vinda do widget gatilho (state.configData) como override
+                    const triggerSize = state.configData?.actions?.sidePanel?.size;
+                    if (triggerSize) {
+                        drawerOptions.actions = { ...(drawerOptions.actions || {}) };
+                        drawerOptions.actions.sidePanel = { ...(drawerOptions.actions.sidePanel || {}), size: triggerSize };
+                    }
+
+                    window.GristDrawer.open(tableId, record.id, drawerOptions);
                 } else {
                     console.error("[DrawerViewer] window.GristDrawer não encontrado para editRecord");
                 }

@@ -1,7 +1,19 @@
 export function renderProgressBar(options) {
-    const { container, cellValue, isEditing, isLocked, fieldOptions } = options;
+    const { container, cellValue, colSchema, isEditing, isLocked, fieldOptions, tableLens } = options;
     const value = Number(cellValue) || 0;
     const widgetOptions = fieldOptions?.widgetOptions || {};
+
+    // Formatação do label seguindo o padrão centralizado
+    let formattedLabel = '';
+    if (tableLens && colSchema) {
+        formattedLabel = tableLens.formatValue(cellValue, colSchema);
+        // Se a config do Grist já não incluir o %, nós adicionamos
+        if (!formattedLabel.includes('%')) {
+            formattedLabel += '%';
+        }
+    } else {
+        formattedLabel = `${value.toFixed(1)}%`;
+    }
 
     if (isEditing && !isLocked) {
         const input = document.createElement('input');
@@ -15,11 +27,13 @@ export function renderProgressBar(options) {
 
         const percentageLabel = document.createElement('span');
         percentageLabel.className = 'grf-progress-label';
-        percentageLabel.textContent = `${value}%`;
+        percentageLabel.textContent = formattedLabel;
         container.appendChild(percentageLabel);
 
         input.addEventListener('input', () => {
-            percentageLabel.textContent = `${input.value}%`;
+            const newVal = Number(input.value);
+            // No modo de edição "ao vivo", simplificamos para 0 ou 1 casa para feedback rápido
+            percentageLabel.textContent = `${newVal.toFixed(0)}%`;
         });
 
     } else {
@@ -29,7 +43,7 @@ export function renderProgressBar(options) {
         const progressBar = document.createElement('div');
         progressBar.className = 'grf-progress-bar';
         progressBar.style.width = `${value}%`;
-        progressBar.textContent = `${value}%`;
+        progressBar.textContent = formattedLabel;
         progressBar.style.color = 'white';
         progressBar.style.textShadow = '-1px -1px 0 #333, 1px -1px 0 #333, -1px 1px 0 #333, 1px 1px 0 #333';
 

@@ -169,6 +169,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             const fetched = await tableLens.fetchConfig(drawerConfigId);
             if (fetched) drawerOptions = { ...fetched, tableLens };
         }
+        
+        // Injeta a largura vinda do widget gatilho (widgetConfig) como override
+        const triggerSize = widgetConfig?.actions?.sidePanel?.size;
+        if (triggerSize) {
+            drawerOptions.actions = drawerOptions.actions || {};
+            drawerOptions.actions.sidePanel = { ...(drawerOptions.actions.sidePanel || {}), size: triggerSize };
+        }
+
         window.GristDrawer.open(data.tableId, data.recordId, drawerOptions);
     });
 });

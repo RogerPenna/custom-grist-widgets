@@ -1,15 +1,16 @@
 // IndicatorsWidget/script.js
+console.log("IndicatorsWidget v1.0.2 loading...");
 const debugEl = document.getElementById('debug-log');
 if (debugEl) debugEl.textContent = "Script loading...";
 
-import { GristTableLens } from '../libraries/grist-table-lens/grist-table-lens.js';
-import { GristDataWriter } from '../libraries/grist-data-writer.js';
-import { GristLauncherUtils } from '../libraries/grist-launcher-utils.js';
-import { IndicatorsRenderer } from '../libraries/grist-indicators-renderer/IndicatorsRenderer.js';
-import { IndicatorsEditor } from '../libraries/grist-indicators-renderer/IndicatorsEditor.js';
-import { open as openConfigManager } from '../libraries/grist-config-manager/ConfigManagerComponent.js';
-import { subscribe } from '../libraries/grist-event-bus/grist-event-bus.js';
-import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js'; 
+import { GristTableLens } from '../libraries/grist-table-lens/grist-table-lens.js?v=1.0.2';
+import { GristDataWriter } from '../libraries/grist-data-writer.js?v=1.0.2';
+import { GristLauncherUtils } from '../libraries/grist-launcher-utils.js?v=1.0.2';
+import { IndicatorsRenderer } from '../libraries/grist-indicators-renderer/IndicatorsRenderer.js?v=1.0.2';
+import { IndicatorsEditor } from '../libraries/grist-indicators-renderer/IndicatorsEditor.js?v=1.0.2';
+import { open as openConfigManager } from '../libraries/grist-config-manager/ConfigManagerComponent.js?v=1.0.2';
+import { subscribe } from '../libraries/grist-event-bus/grist-event-bus.js?v=1.0.2';
+import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js?v=1.0.2'; 
 
 if (debugEl) debugEl.textContent = "Imports done.";
 
@@ -84,7 +85,15 @@ async function start() {
         if (!record) return;
         const drawerConfigId = data.drawerConfigId || widgetConfig?.actions?.drawerConfigId;
         if (drawerConfigId) {
-            window.GristDrawer?.open(widgetConfig.tableId, record.id, { configId: drawerConfigId, tableLens });
+            let drawerOptions = { configId: drawerConfigId, tableLens };
+            
+            // Injeta largura do gatilho se existir
+            const triggerSize = widgetConfig?.actions?.sidePanel?.size;
+            if (triggerSize) {
+                drawerOptions.actions = { sidePanel: { size: triggerSize } };
+            }
+            
+            window.GristDrawer?.open(widgetConfig.tableId, record.id, drawerOptions);
         }
     });
 
@@ -274,7 +283,14 @@ function attachRowEvents(rowEl, record) {
     };
     rowEl.ondblclick = (e) => {
         if (e.target.closest('.action-btn')) return;
-        if (widgetConfig.actions?.drawerConfigId) { window.GristDrawer?.open(widgetConfig.tableId, record.id, { configId: widgetConfig.actions.drawerConfigId, tableLens }); }
+        if (widgetConfig.actions?.drawerConfigId) { 
+            let drawerOptions = { configId: widgetConfig.actions.drawerConfigId, tableLens };
+            const triggerSize = widgetConfig?.actions?.sidePanel?.size;
+            if (triggerSize) {
+                drawerOptions.actions = { sidePanel: { size: triggerSize } };
+            }
+            window.GristDrawer?.open(widgetConfig.tableId, record.id, drawerOptions); 
+        }
     };
 }
 
@@ -282,7 +298,7 @@ async function openDetailModal(record) {
     modalTitle.textContent = record.Nome || 'Detalhes do Indicador';
     modalContent.innerHTML = '<div class="loading" style="padding:40px; text-align:center; color:#666;">Carregando gráfico...</div>';
     detailModal.style.display = 'flex';
-    await IndicatorsRenderer.renderIndicatorDetails(modalContent, record, widgetConfig, currentYear);
+    await IndicatorsRenderer.renderIndicatorDetails(modalContent, record, widgetConfig, currentYear, tableLens);
 }
 
 async function handleSaveMasterData(record, newData) {

@@ -456,4 +456,57 @@ export const GristTableLens = function(gristInstance) {
             console.log("GTL: Todo o cache de configurações foi limpo.");
         }
     };
+
+    /**
+     * Formata um valor de célula com base no schema da coluna e opções do Grist.
+     * @param {*} value O valor bruto da célula.
+     * @param {object} colSchema O schema da coluna (ex: do getTableSchema).
+     * @returns {string} O valor formatado para exibição.
+     */
+    this.formatValue = function(value, colSchema) {
+        if (value === null || value === undefined || value === '') return '';
+        
+        // Se não tem schema, tenta formatar como número se for possível, senão retorna string
+        if (!colSchema) {
+            const num = Number(value);
+            return isNaN(num) ? String(value) : num.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+        }
+
+        const type = colSchema.type || '';
+        const wopts = colSchema.widgetOptions || {};
+        const numValue = Number(value);
+        const isActuallyNumeric = !isNaN(numValue) && typeof value !== 'boolean';
+
+        // --- FORMATAÇÃO NUMÉRICA (Numeric, Int, ou qualquer valor numérico se o schema for genérico) ---
+        if (type === 'Numeric' || type === 'Int' || (isActuallyNumeric && (type === 'Any' || type === ''))) {
+            let decimals = (type === 'Int') ? 0 : 2;
+            if (wopts.numDecimalPlaces !== undefined) {
+                decimals = parseInt(wopts.numDecimalPlaces, 10);
+            } else if (type === 'Any' || type === '') {
+                decimals = 1; // Default para tipos genéricos que contêm números
+            }
+
+            const numFormat = wopts.numFormat || 'comma'; // 'comma' ou 'none'
+            const symbol = wopts.symbol || ''; // Ex: R$, $, %
+            
+            // Usamos Intl.NumberFormat para respeitar o padrão brasileiro (pontos nos milhares, vírgula no decimal)
+            const formatterOptions = {
+                minimumFractionDigits: decimals,
+                maximumFractionDigits: decimals,
+                useGrouping: numFormat === 'comma'
+            };
+
+            const formatter = new Intl.NumberFormat('pt-BR', formatterOptions);
+            let formatted = formatter.format(numValue);
+
+            if (symbol) {
+                if (symbol === '%') return `${formatted}${symbol}`;
+                return `${symbol} ${formatted}`;
+            }
+            return formatted;
+        }
+
+        // Fallback para outros tipos (Data, Texto, etc.)
+        return String(value);
+    };
 };

@@ -66,6 +66,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             } else {
                 drawerConfig = currentConfig;
             }
+
+            // Injeta a largura vinda do widget gatilho (data.cardConfig) como override
+            const triggerSize = data.cardConfig?.actions?.sidePanel?.size;
+            if (triggerSize) {
+                // Garantimos que a config passada para o drawer tenha essa informação
+                drawerConfig = { ...drawerConfig };
+                drawerConfig.actions = { ...(drawerConfig.actions || {}) };
+                drawerConfig.actions.sidePanel = { ...(drawerConfig.actions.sidePanel || {}), size: triggerSize };
+            }
+
             if (window.GristDrawer) {
                 await window.GristDrawer.open(data.tableId, data.recordId, { ...drawerConfig, tableLens: tableLens });
             }
@@ -343,6 +353,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                             if (fetched) drawerOptions = { ...fetched, tableLens: tableLens };
                         }
                         
+                        // Injeta a largura vinda do widget gatilho (currentConfig) como override
+                        const triggerSize = currentConfig?.actions?.sidePanel?.size;
+                        if (triggerSize) {
+                            drawerOptions.actions = { ...(drawerOptions.actions || {}) };
+                            drawerOptions.actions.sidePanel = { ...(drawerOptions.actions.sidePanel || {}), size: triggerSize };
+                        }
+
                         window.GristDrawer.open(tableId, record.id, drawerOptions);
                     })();
                 } else {
