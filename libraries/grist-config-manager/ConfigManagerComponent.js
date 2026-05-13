@@ -2,12 +2,12 @@ import { GristTableLens } from '../grist-table-lens/grist-table-lens.js';
 import { GristDataWriter } from '../grist-data-writer.js';
 
 // Import editor modules
-import { CardConfigEditor } from './editors/config-cards.js';
-import { DrawerConfigEditor } from './editors/config-drawer.js';
-import { CardStyleConfigEditor } from './editors/config-card-style.js';
-import { TableConfigEditor } from './editors/config-table.js';
-import { BscConfigEditor } from './editors/config-bsc.js';
-import { IndicatorsConfigEditor } from './editors/config-indicators.js';
+import { CardConfigEditor } from './editors/config-cards.js?v=1.0.2';
+import { DrawerConfigEditor } from './editors/config-drawer.js?v=1.0.2';
+import { CardStyleConfigEditor } from './editors/config-card-style.js?v=1.0.2';
+import { TableConfigEditor } from './editors/config-table.js?v=1.0.2';
+import { BscConfigEditor } from './editors/config-bsc.js?v=1.0.2';
+import { IndicatorsConfigEditor } from './editors/config-indicators.js?v=1.0.2';
 
 let overlay = null;
 let _grist = null;

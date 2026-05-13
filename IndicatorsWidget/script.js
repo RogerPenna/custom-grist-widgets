@@ -59,6 +59,24 @@ yearSelector.onchange = (e) => {
     debouncedInitialize();
 };
 
+// --- Modal Helpers ---
+function openIndicatorChart(record) {
+    openDetailModal(record);
+}
+
+function openIndicatorEditor(record) {
+    const metrics = IndicatorsRenderer.getIndicatorMetrics(record, widgetConfig, currentYear);
+    IndicatorsEditor.open({
+        record,
+        config: widgetConfig,
+        selectedYear: currentYear,
+        periodicity: metrics.periodicity,
+        onSave: async (newData) => {
+            await handleSaveMasterData(record, newData);
+        }
+    });
+}
+
 async function start() {
     if (debugEl) debugEl.textContent = "Grist ready. Initializing...";
     populateYearSelector();
@@ -86,13 +104,13 @@ async function start() {
         const drawerConfigId = data.drawerConfigId || widgetConfig?.actions?.drawerConfigId;
         if (drawerConfigId) {
             let drawerOptions = { configId: drawerConfigId, tableLens };
-            
+
             // Injeta largura do gatilho se existir
             const triggerSize = widgetConfig?.actions?.sidePanel?.size;
             if (triggerSize) {
                 drawerOptions.actions = { sidePanel: { size: triggerSize } };
             }
-            
+
             window.GristDrawer?.open(widgetConfig.tableId, record.id, drawerOptions);
         }
     });
@@ -101,7 +119,9 @@ async function start() {
         const record = currentRecords.find(r => Number(r.id) === Number(data.recordId));
         if (!record) return;
         if (data.actionType === 'SHOW_INDICATOR_CHART') {
-            openDetailModal(record);
+            openIndicatorChart(record);
+        } else if (data.actionType === 'EDIT_INDICATOR_DATA') {
+            openIndicatorEditor(record);
         }
     });
 
@@ -109,10 +129,11 @@ async function start() {
         const record = currentRecords.find(r => Number(r.id) === Number(data.sourceRecord?.id || data.recordId));
         if (!record) return;
         if (data.config?.actionType === 'SHOW_INDICATOR_CHART') {
-            openDetailModal(record);
+            openIndicatorChart(record);
+        } else if (data.config?.actionType === 'EDIT_INDICATOR_DATA') {
+            openIndicatorEditor(record);
         }
     });
-
     window.grist.onOptions(async (options) => { if (options.configId && options.configId !== currentConfigId) debouncedInitialize(); });
     window.grist.onRecords(async () => { if (currentConfigId) debouncedInitialize(); });
 
