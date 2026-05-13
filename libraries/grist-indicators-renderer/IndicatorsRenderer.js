@@ -173,20 +173,27 @@ export const IndicatorsRenderer = (() => {
         });
 
         let runningSum = 0;
-        let hasStarted = false;
         const cumulativeResults = monthlyValues.map(v => {
-            if (v !== null) {
+            if (v !== null && v !== undefined) {
                 runningSum += v;
-                hasStarted = true;
+                return runningSum;
             }
-            return hasStarted ? runningSum : null;
+            return null;
         });
 
         const lastMonthWithDataIdx = monthlyValues.map((v, i) => v !== null ? i : -1).filter(i => i !== -1).pop();
         const lastMonthValue = lastMonthWithDataIdx !== undefined ? monthlyValues[lastMonthWithDataIdx] : null;
 
-        const lastMonthIdx = MONTH_KEYS.indexOf(periodicity.months[periodicity.months.length - 1]);
-        const targetForPerformance = targetLine[lastMonthIdx] || 0;
+        const numPeriods = periodicity.months.length;
+        const lastMonthIdx = MONTH_KEYS.indexOf(periodicity.months[numPeriods - 1]);
+        const yearlyTarget = targetLine[lastMonthIdx] || 0;
+        const monthlyTargetValue = yearlyTarget / numPeriods;
+
+        let targetForPerformance = yearlyTarget;
+        if (consolidationType === 'SUM' && lastMonthWithDataIdx !== undefined) {
+            const periodsSoFar = periodicity.months.filter(m => MONTH_KEYS.indexOf(m) <= lastMonthWithDataIdx).length;
+            targetForPerformance = monthlyTargetValue * periodsSoFar;
+        }
 
         const performance = calculatePerformance(consolidatedValue, targetForPerformance, direction);
         const status = getStatusEmoji(performance);
@@ -212,6 +219,9 @@ export const IndicatorsRenderer = (() => {
             monthlyValues,
             lastMonthValue,
             consolidationType,
+            numPeriods,
+            yearlyTarget,
+            monthlyTargetValue,
             targetsJson: targetsData[selectedYear] || {},
             targetLine,
             upperLimitLine,
@@ -286,11 +296,13 @@ export const IndicatorsRenderer = (() => {
                 const resVal = (resEntry && typeof resEntry === 'object') ? resEntry.v : (resEntry ?? null);
                 resultY.push(resVal);
 
-                if (resVal !== null) {
+                if (resVal !== null && resVal !== undefined) {
                     runningSum += resVal;
                     hasStarted = true;
+                    cumulativeY.push(runningSum);
+                } else {
+                    cumulativeY.push(null);
                 }
-                cumulativeY.push(hasStarted ? runningSum : null);
 
                 const tarVal = yearTargets[i];
                 targetY.push(tarVal);
@@ -431,6 +443,25 @@ export const IndicatorsRenderer = (() => {
         const { xValues, resultY, cumulativeY, consolidationType, targetY, upperY, lowerY, chartRange } = timeline;
         const mapping = config.mapping || config || {};
         const isSum = consolidationType === 'SUM';
+        const periodicity = yearlyMetrics.periodicity;
+        const numPeriods = periodicity.months.length;
+
+        // Pre-calculate targets for comparison in SUM mode
+        const yearlyTargetsCache = {};
+        const getYearlyTarget = (year) => {
+            if (yearlyTargetsCache[year] !== undefined) return yearlyTargetsCache[year];
+            const decIdx = xValues.findIndex(d => d.getFullYear() === year && d.getMonth() === 11);
+            yearlyTargetsCache[year] = (decIdx !== -1) ? targetY[decIdx] : (targetY[targetY.length - 1] || 0);
+            return yearlyTargetsCache[year];
+        };
+
+        const monthlyTargetsForTimeline = xValues.map((date, i) => getYearlyTarget(date.getFullYear()) / numPeriods);
+        const progressiveTargetsForTimeline = xValues.map((date, i) => {
+            const mTarget = monthlyTargetsForTimeline[i];
+            const monthIdx = date.getMonth();
+            const periodsSoFar = periodicity.months.filter(m => MONTH_KEYS.indexOf(m) <= monthIdx).length;
+            return mTarget * periodsSoFar;
+        });
 
         const traces = [];
         const shapes = [];
@@ -551,7 +582,7 @@ export const IndicatorsRenderer = (() => {
 
         xValues.forEach((date, i) => {
             const val = resultY[i];
-            const tar = targetY[i];
+            const tar = isSum ? monthlyTargetsForTimeline[i] : targetY[i];
             if (val !== null && val !== undefined) {
                 const perf = calculatePerformance(val, tar, direction);
                 const status = getStatusEmoji(perf);
@@ -674,11 +705,13 @@ export const IndicatorsRenderer = (() => {
             if (monthIdx !== -1) {
                 const valMonthly = resultY[monthIdx];
                 const valCumulative = cumulativeY[monthIdx];
-                const tar = targetY[monthIdx];
+                const year = xValues[monthIdx].getFullYear();
+                const yTarget = getYearlyTarget(year);
+                
+                const tar = isSum ? yTarget : targetY[monthIdx];
                 const perf = calculatePerformance(isSum ? valCumulative : valMonthly, tar, direction);
                 const status = getStatusEmoji(perf);
                 const monthName = MONTH_KEYS[monthIdx % 12].toUpperCase();
-                const year = xValues[monthIdx].getFullYear();
 
                 const consolidatedTextVal = isSum ? cumulativeText[monthIdx] : resultText[monthIdx];
                 container.querySelector('.consolidated-value').textContent = consolidatedTextVal;
@@ -817,14 +850,14 @@ export const IndicatorsRenderer = (() => {
 
         // Get targets
         const targetLine = metrics.targetLine;
-        const yearlyTarget = targetLine[11];
+        const periodicity = metrics.periodicity;
+        const lastMonthIdx = MONTH_KEYS.indexOf(periodicity.months[periodicity.months.length - 1]);
+        const yearlyTarget = targetLine[lastMonthIdx] || 0;
 
         for (let i = 0; i < 12; i++) {
             const m = MONTH_KEYS[i];
             const monthlyVal = metrics.monthlyValues[i];
             const cumulativeVal = metrics.cumulativeResults[i];
-            
-            const monthlyTarget = targetLine[i] - (i > 0 ? targetLine[i - 1] : 0);
             
             const monthCell = document.createElement('div');
             monthCell.className = 'timeline-cell month-cell';
@@ -833,11 +866,12 @@ export const IndicatorsRenderer = (() => {
             if (isSum) {
                 chipsHtml = `
                     <div class="dual-chip-container">
-                        ${_renderProgressChip(monthlyVal, monthlyTarget, metrics.direction, tableLens, config.tableId, config)}
+                        ${_renderProgressChip(monthlyVal, metrics.monthlyTargetValue, metrics.direction, tableLens, config.tableId, config)}
                         ${_renderProgressChip(cumulativeVal, yearlyTarget, metrics.direction, tableLens, config.tableId, config)}
                     </div>
                 `;
             } else {
+                const monthlyTarget = targetLine[i];
                 chipsHtml = _renderProgressChip(monthlyVal, monthlyTarget, metrics.direction, tableLens, config.tableId, config);
             }
 
