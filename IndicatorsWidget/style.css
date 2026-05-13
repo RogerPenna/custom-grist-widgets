@@ -138,8 +138,67 @@ body {
     text-overflow: ellipsis;
 }
 .card-bottom { display: flex; align-items: center; gap: 10px; }
-.indicator-status-emoji { font-size: 16px; }
-.indicator-consolidated { font-size: 12px; font-weight: bold; color: #666; }
+.indicator-status-emoji { font-size: 20px; }
+
+.performance-info {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.indicator-performance {
+    font-size: 14px;
+    font-weight: 800;
+    color: #0f172a;
+    line-height: 1.1;
+}
+
+.indicator-performance small {
+    font-size: 9px;
+    font-weight: 400;
+    color: #64748b;
+    margin-left: 2px;
+    text-transform: lowercase;
+}
+
+.indicator-consolidated {
+    font-size: 11px;
+    color: #64748b;
+    font-weight: 500;
+}
+
+/* SUM Indicator Styles */
+.sum-badge {
+    background: #e0f2fe;
+    color: #0369a1;
+    font-size: 9px;
+    font-weight: 800;
+    padding: 2px 5px;
+    border-radius: 4px;
+    border: 1px solid #bae6fd;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-left: auto;
+}
+
+.months-header-title {
+    font-size: 9px;
+    color: #94a3b8;
+    text-align: center;
+    padding: 4px 0;
+    letter-spacing: 1px;
+    background: #fdfdfd;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.is-cumulative {
+    background-color: #f0f7ff !important;
+}
+
+.is-cumulative .indicator-card {
+    border-left: 4px solid #3b82f6;
+    padding-left: 6px;
+}
 
 .card-actions { display: flex; gap: 5px; margin-left: 10px; }
 

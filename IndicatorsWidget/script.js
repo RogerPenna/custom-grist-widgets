@@ -265,7 +265,10 @@ async function renderGrid(receivedConfigs = []) {
     gridHeader.className = 'grid-header-row';
     gridHeader.innerHTML = `
         <div class="header-card-placeholder sticky-col-left">INDICADOR</div>
-        <div class="months-wrapper scrollable-area"><div class="months-grid">${['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'].map(m => `<div class="month-label">${m}</div>`).join('')}</div></div>
+        <div class="months-wrapper scrollable-area">
+            <div class="months-header-title">LANÇAMENTOS MENSAIS</div>
+            <div class="months-grid">${['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'].map(m => `<div class="month-label">${m}</div>`).join('')}</div>
+        </div>
         <div class="years-container sticky-col-right">${previousYears.map(y => `<div class="year-label">${y}</div>`).join('')}</div>`;
     indicatorsViewEl.appendChild(gridHeader);
 

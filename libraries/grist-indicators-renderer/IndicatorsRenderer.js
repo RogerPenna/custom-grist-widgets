@@ -165,6 +165,26 @@ export const IndicatorsRenderer = (() => {
 
         const consolidatedValue = consolidateYearData(results, consolidationType, periodicity.months);
         
+        // Calculate cumulative and monthly arrays for SUM visualization
+        const monthlyValues = MONTH_KEYS.map(m => {
+            const entry = results[m];
+            if (entry === null || entry === undefined) return null;
+            return (typeof entry === 'object') ? entry.v : entry;
+        });
+
+        let runningSum = 0;
+        let hasStarted = false;
+        const cumulativeResults = monthlyValues.map(v => {
+            if (v !== null) {
+                runningSum += v;
+                hasStarted = true;
+            }
+            return hasStarted ? runningSum : null;
+        });
+
+        const lastMonthWithDataIdx = monthlyValues.map((v, i) => v !== null ? i : -1).filter(i => i !== -1).pop();
+        const lastMonthValue = lastMonthWithDataIdx !== undefined ? monthlyValues[lastMonthWithDataIdx] : null;
+
         const lastMonthIdx = MONTH_KEYS.indexOf(periodicity.months[periodicity.months.length - 1]);
         const targetForPerformance = targetLine[lastMonthIdx] || 0;
 
@@ -188,6 +208,10 @@ export const IndicatorsRenderer = (() => {
             performance,
             status,
             results,
+            cumulativeResults,
+            monthlyValues,
+            lastMonthValue,
+            consolidationType,
             targetsJson: targetsData[selectedYear] || {},
             targetLine,
             upperLimitLine,
@@ -226,8 +250,12 @@ export const IndicatorsRenderer = (() => {
         const currentYear = new Date().getFullYear().toString();
         const progressiveTargets = calculateProgressiveTargets(targetsData, currentYear);
 
+        const rawConsolidation = record[mapping.consolidationField || config.consolidationField];
+        const consolidationType = mapping.consolidationMap?.[rawConsolidation] || 'SUM';
+
         const xValues = [];
         const resultY = [];
+        const cumulativeY = []; // NEW
         const targetY = [];
         const upperY = [];
         const lowerY = [];
@@ -238,9 +266,17 @@ export const IndicatorsRenderer = (() => {
         const upperPct = record[mapping.upperLimitValueField] || 0;
         const lowerPct = record[mapping.lowerLimitValueField] || 0;
 
+        let runningSum = 0;
+        let hasStarted = false;
+
         allYears.forEach(year => {
             const yearResults = resultsData[year]?.results || (resultsData[year]?.jan !== undefined ? resultsData[year] : {});
             const yearTargets = progressiveTargets[year] || new Array(12).fill(0);
+
+            // Reset running sum at start of year if consolidation is YTD? 
+            // Usually SUM indicators are year-to-date, so they reset each year.
+            runningSum = 0;
+            hasStarted = false;
 
             MONTH_KEYS.forEach((m, i) => {
                 const date = new Date(parseInt(year), i, 1);
@@ -249,6 +285,12 @@ export const IndicatorsRenderer = (() => {
                 const resEntry = yearResults[m];
                 const resVal = (resEntry && typeof resEntry === 'object') ? resEntry.v : (resEntry ?? null);
                 resultY.push(resVal);
+
+                if (resVal !== null) {
+                    runningSum += resVal;
+                    hasStarted = true;
+                }
+                cumulativeY.push(hasStarted ? runningSum : null);
 
                 const tarVal = yearTargets[i];
                 targetY.push(tarVal);
@@ -261,7 +303,7 @@ export const IndicatorsRenderer = (() => {
         const chartMin = record[mapping.chartMinField || config.chartMinField];
         const chartMax = record[mapping.chartMaxField || config.chartMaxField];
 
-        return { xValues, resultY, targetY, upperY, lowerY, chartRange: (chartMin !== undefined && chartMax !== undefined) ? [chartMin, chartMax] : null };
+        return { xValues, resultY, cumulativeY, consolidationType, targetY, upperY, lowerY, chartRange: (chartMin !== undefined && chartMax !== undefined) ? [chartMin, chartMax] : null };
     }
 
     /**
@@ -309,23 +351,31 @@ export const IndicatorsRenderer = (() => {
     async function renderIndicatorDetails(container, record, config, selectedYear, tableLens = null) {
         const metrics = getIndicatorMetrics(record, config, selectedYear);
         const timelineMetrics = getFullTimelineMetrics(record, config);
+        const isSum = metrics.consolidationType === 'SUM';
 
         const consolidatedStr = await formatMetricValue(metrics.consolidatedValue, tableLens, config.tableId, config);
+        const lastMonthStr = isSum ? await formatMetricValue(metrics.lastMonthValue, tableLens, config.tableId, config) : '';
         const performanceStr = (metrics.performance * 100).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
 
         // Single, ultra-compact horizontal summary bar
         container.innerHTML = `
             <div class="indicator-summary-bar" style="display:flex; align-items:center; justify-content: space-around; padding:5px 10px; background:#f1f5f9; border-radius:6px; margin-bottom:8px; font-size:12px; border:1px solid #e2e8f0;">
+                ${isSum ? `
+                    <div class="metric-box">
+                        <span class="label" style="color:#64748b; font-weight:600;">Lançamento (Último Mês):</span>
+                        <b class="last-month-value" style="color:#0f172a; margin-left:4px;">${lastMonthStr}</b>
+                    </div>
+                ` : ''}
                 <div class="metric-box">
-                    <span class="label" style="color:#64748b; font-weight:600;">Valor Consolidado (${selectedYear}):</span>
+                    <span class="label" style="color:#64748b; font-weight:600;">${isSum ? 'Soma Acumulada' : 'Valor Consolidado'} (${selectedYear}):</span>
                     <b class="consolidated-value" style="color:#0f172a; margin-left:4px;">${consolidatedStr}</b>
                 </div>
                 <div class="metric-box">
-                    <span class="label" style="color:#64748b; font-weight:600;">Atingimento:</span>
+                    <span class="label" style="color:#64748b; font-weight:600;">${isSum ? 'Atingimento (YTD)' : 'Atingimento'}:</span>
                     <b class="performance-value" style="color:#0f172a; margin-left:4px;">${performanceStr}</b>
                 </div>
                 <div class="metric-box">
-                    <span class="label" style="color:#64748b; font-weight:600;">Status:</span>
+                    <span class="label" style="color:#64748b; font-weight:600;">Status ${isSum ? '<small style="font-weight:400;">(Acumulado)</small>' : ''}:</span>
                     <span class="status-value" style="margin-left:4px; font-size:14px;">${metrics.status}</span>
                 </div>
             </div>
@@ -378,26 +428,44 @@ export const IndicatorsRenderer = (() => {
     }
 
     async function renderChart(elementId, timeline, selectedYear, direction, yearlyMetrics, container, tableLens = null, config = {}) {
-        const { xValues, resultY, targetY, upperY, lowerY, chartRange } = timeline;
+        const { xValues, resultY, cumulativeY, consolidationType, targetY, upperY, lowerY, chartRange } = timeline;
         const mapping = config.mapping || config || {};
+        const isSum = consolidationType === 'SUM';
 
         const traces = [];
         const shapes = [];
 
         // Pre-calculate formatted texts with failsafe
         const resultText = await Promise.all(resultY.map(v => formatMetricValue(v, tableLens, config.tableId, config, mapping.resultsField)));
+        const cumulativeText = isSum ? await Promise.all(cumulativeY.map(v => formatMetricValue(v, tableLens, config.tableId, config, mapping.resultsField))) : [];
         const targetText = await Promise.all(targetY.map(v => formatMetricValue(v, tableLens, config.tableId, config, mapping.targetField)));
         const upperText = await Promise.all(upperY.map(v => formatMetricValue(v, tableLens, config.tableId, config, mapping.resultsField)));
         const lowerText = await Promise.all(lowerY.map(v => formatMetricValue(v, tableLens, config.tableId, config, mapping.resultsField)));
 
-        // --- Resultado com Monotonic Cubic Spline ---
+        // --- Monthly Bars (Only for SUM) ---
+        if (isSum) {
+            traces.push({
+                x: xValues, y: resultY,
+                type: 'bar', name: 'Mensal (Lançamento)',
+                marker: { color: 'rgba(31, 119, 180, 0.3)', line: { color: '#1F77B4', width: 1 } },
+                text: resultText,
+                hovertemplate: '<b>Lançamento do Mês</b><br>Data: %{x}<br>Valor: %{text}<extra></extra>'
+            });
+        }
+
+        // --- Resultado / Acumulado com Monotonic Cubic Spline ---
+        const activeY = isSum ? cumulativeY : resultY;
+        const activeText = isSum ? cumulativeText : resultText;
+        const lineName = isSum ? 'Acumulado (YTD)' : 'Resultado';
+        const lineColor = '#1F77B4';
+
         const segments = [];
         let currentSegment = null;
         xValues.forEach((x, i) => {
-            if (resultY[i] !== null && resultY[i] !== undefined) {
+            if (activeY[i] !== null && activeY[i] !== undefined) {
                 if (!currentSegment) currentSegment = { x: [], y: [] };
                 currentSegment.x.push(x.getTime());
-                currentSegment.y.push(resultY[i]);
+                currentSegment.y.push(activeY[i]);
             } else if (currentSegment) {
                 segments.push(currentSegment);
                 currentSegment = null;
@@ -423,36 +491,38 @@ export const IndicatorsRenderer = (() => {
             traces.push({
                 x: smoothX, y: smoothY,
                 type: 'scatter', mode: 'lines',
-                line: { color: '#1F77B4', width: 2, shape: 'linear' },
-                showlegend: segIdx === 0, name: 'Resultado',
+                line: { color: lineColor, width: isSum ? 4 : 2, shape: 'linear' },
+                showlegend: segIdx === 0, name: lineName,
                 hoverinfo: 'skip'
             });
         });
 
         traces.push({
-            x: xValues, y: resultY,
+            x: xValues, y: activeY,
             type: 'scatter', mode: 'markers',
-            marker: { size: 6, color: '#1F77B4' },
-            showlegend: false, name: 'Pontos Reais',
-            text: resultText,
-            hovertemplate: '<b>Resultado</b><br>Data: %{x}<br>Valor: %{text}<extra></extra>'
+            marker: { size: isSum ? 8 : 6, color: lineColor },
+            showlegend: false, name: lineName + ' (Pontos)',
+            text: activeText,
+            hovertemplate: `<b>${lineName}</b><br>Data: %{x}<br>Valor: %{text}<extra></extra>`
         });
 
+        // --- Meta e Limites ---
         traces.push({
             x: xValues, y: targetY,
-            type: 'scatter', mode: 'lines', name: 'Meta',
-            line: { color: '#ff7f0e', width: 1, dash: 'solid' },
-            xaxis: 'x', yaxis: 'y',
+            type: 'scatter', mode: 'lines', name: isSum ? 'Meta Anual' : 'Meta',
+            line: { color: '#ff7f0e', width: 2, dash: 'solid' },
             text: targetText,
             hovertemplate: '<b>%{name}</b><br>Data: %{x}<br>Valor: %{text}<extra></extra>'
         });
+
+        const limitOpacity = isSum ? 0.4 : 1.0;
+        const limitWidth = isSum ? 1 : 1;
 
         if (upperY.some(v => v !== null)) {
             traces.push({
                 x: xValues, y: upperY,
                 type: 'scatter', mode: 'lines', name: 'Lim. Sup.',
-                line: { color: '#9467bd', dash: 'dot', width: 1 },
-                xaxis: 'x', yaxis: 'y',
+                line: { color: `rgba(148, 103, 189, ${limitOpacity})`, dash: 'dot', width: limitWidth },
                 text: upperText,
                 hovertemplate: '<b>%{name}</b><br>Data: %{x}<br>Valor: %{text}<extra></extra>'
             });
@@ -462,8 +532,7 @@ export const IndicatorsRenderer = (() => {
             traces.push({
                 x: xValues, y: lowerY,
                 type: 'scatter', mode: 'lines', name: 'Lim. Inf.',
-                line: { color: '#d62728', dash: 'dot', width: 1 },
-                xaxis: 'x', yaxis: 'y',
+                line: { color: `rgba(214, 39, 40, ${limitOpacity})`, dash: 'dot', width: limitWidth },
                 text: lowerText,
                 hovertemplate: '<b>%{name}</b><br>Data: %{x}<br>Valor: %{text}<extra></extra>'
             });
@@ -538,11 +607,15 @@ export const IndicatorsRenderer = (() => {
             layer: 'above'
         });
 
+        const isMobile = window.innerWidth < 600;
+
         const layout = {
             grid: { rows: 2, columns: 1, pattern: 'independent' },
-            margin: { t: 40, b: 40, l: 50, r: 100 },
-            showlegend: true,
+            margin: { t: 40, b: 40, l: 50, r: isMobile ? 30 : 100 },
+            showlegend: !isMobile,
             legend: { x: 1.02, y: 1, font: { size: 10 } },
+            barmode: 'group',
+            bargap: isMobile ? 0.4 : 0.2,
             xaxis: {
                 type: 'date',
                 rangeslider: { 
@@ -599,25 +672,41 @@ export const IndicatorsRenderer = (() => {
             const monthIdx = xValues.findIndex(d => d.getFullYear() === xDate.getFullYear() && d.getMonth() === xDate.getMonth());
 
             if (monthIdx !== -1) {
-                const val = resultY[monthIdx];
+                const valMonthly = resultY[monthIdx];
+                const valCumulative = cumulativeY[monthIdx];
                 const tar = targetY[monthIdx];
-                const perf = calculatePerformance(val, tar, direction);
+                const perf = calculatePerformance(isSum ? valCumulative : valMonthly, tar, direction);
                 const status = getStatusEmoji(perf);
                 const monthName = MONTH_KEYS[monthIdx % 12].toUpperCase();
                 const year = xValues[monthIdx].getFullYear();
 
-                container.querySelector('.consolidated-value').textContent = resultText[monthIdx];
+                const consolidatedTextVal = isSum ? cumulativeText[monthIdx] : resultText[monthIdx];
+                container.querySelector('.consolidated-value').textContent = consolidatedTextVal;
+                
+                if (isSum) {
+                    const lastMonthEl = container.querySelector('.last-month-value');
+                    if (lastMonthEl) lastMonthEl.textContent = resultText[monthIdx];
+                    container.querySelector('.metric-box:nth-child(2) .label').textContent = `Soma Acumulada (${monthName}/${year})`;
+                } else {
+                    container.querySelector('.metric-box:nth-child(1) .label').textContent = `Valor (${monthName}/${year})`;
+                }
+
                 container.querySelector('.performance-value').textContent = (perf * 100).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
-                container.querySelector('.status-value').textContent = val !== null ? status : '';
-                container.querySelector('.metric-box:nth-child(1) .label').textContent = `Valor (${monthName}/${year})`;
+                container.querySelector('.status-value').textContent = (isSum ? valCumulative : valMonthly) !== null ? status : '';
             }
         });
 
         chartEl.on('plotly_unhover', async () => {
             container.querySelector('.consolidated-value').textContent = await formatMetricValue(yearlyMetrics.consolidatedValue, tableLens, config.tableId, config, mapping.resultsField);
+            if (isSum) {
+                const lastMonthEl = container.querySelector('.last-month-value');
+                if (lastMonthEl) lastMonthEl.textContent = await formatMetricValue(yearlyMetrics.lastMonthValue, tableLens, config.tableId, config, mapping.resultsField);
+                container.querySelector('.metric-box:nth-child(2) .label').textContent = `Soma Acumulada (${selectedYear})`;
+            } else {
+                container.querySelector('.metric-box:nth-child(1) .label').textContent = `Valor Consolidado (${selectedYear})`;
+            }
             container.querySelector('.performance-value').textContent = (yearlyMetrics.performance * 100).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
             container.querySelector('.status-value').textContent = yearlyMetrics.status;
-            container.querySelector('.metric-box:nth-child(1) .label').textContent = `Valor Consolidado (${selectedYear})`;
         });
 
         const start = new Date(parseInt(selectedYear), 0, 1);
@@ -638,15 +727,17 @@ export const IndicatorsRenderer = (() => {
         const previousYears = Array.from({ length: yearsCount }, (_, i) => (parseInt(currentYear) - (i + 1)).toString()).reverse();
         const metrics = getIndicatorMetrics(record, config, currentYear);
         const yearlySummaries = getYearlySummary(record, config, previousYears);
+        const isSum = metrics.consolidationType === 'SUM';
         
         const row = document.createElement('div');
-        row.className = 'indicator-row';
+        row.className = `indicator-row ${isSum ? 'is-cumulative' : ''}`;
         row.dataset.recordId = record.id;
 
         const cardContainer = document.createElement('div');
         cardContainer.className = 'indicator-card-container sticky-col-left';
         
         if (styling.cardType === 'CUSTOM' && styling.cardConfigId) {
+            // ... (keep existing custom card logic)
             const customConfigRecord = receivedConfigs.find(c => c.configId === styling.cardConfigId);
             if (customConfigRecord && tableLens) {
                 const customOptions = tableLens.parseConfigRecord(customConfigRecord);
@@ -659,15 +750,21 @@ export const IndicatorsRenderer = (() => {
             const card = document.createElement('div');
             card.className = 'indicator-card';
             const iconHtml = record.Icone ? `<span class="indicator-icon">${record.Icone}</span>` : '';
+            const sumBadge = isSum ? '<span class="sum-badge">ACUMULADO</span>' : '';
+            
             card.innerHTML = `
                 <div class="card-content">
                     <div class="card-top">
                         ${iconHtml}
                         <span class="indicator-name" title="${record.Nome || ''}">${record.Nome || 'Sem Nome'}</span>
+                        ${sumBadge}
                     </div>
                     <div class="card-bottom">
                         <span class="indicator-status-emoji">${metrics.status}</span>
-                        <span class="indicator-consolidated">${await formatMetricValue(metrics.consolidatedValue, tableLens, config.tableId, config)}</span>
+                        <div class="performance-info">
+                            <span class="indicator-performance">${(metrics.performance * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}% ${isSum ? '<small>acumulado</small>' : ''}</span>
+                            <span class="indicator-consolidated">${isSum ? 'Acumulado: ' : ''}${await formatMetricValue(metrics.consolidatedValue, tableLens, config.tableId, config)}</span>
+                        </div>
                     </div>
                 </div>
                 <div class="card-actions">
