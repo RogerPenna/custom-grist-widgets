@@ -189,14 +189,41 @@ export const IndicatorsRenderer = (() => {
         const yearlyTarget = targetLine[lastMonthIdx] || 0;
         const monthlyTargetValue = yearlyTarget / numPeriods;
 
+        // Calculate specific targets for each month based on interpolation
+        // For SUM indicators, targetLine represents the cumulative target.
+        // The specific target for month i is targetLine[i] - targetLine[i-1].
+        // FALLBACK: If the targetLine is flat (no progressive anchors), we use the average.
+        const isFlatLine = targetLine.every(v => Math.abs(v - targetLine[0]) < 0.0001);
+        const specificMonthlyTargets = targetLine.map((val, i) => {
+            if (consolidationType !== 'SUM') return val;
+            if (isFlatLine) return monthlyTargetValue;
+            const prevVal = i > 0 ? targetLine[i - 1] : 0;
+            return val - prevVal;
+        });
+
         let targetForPerformance = yearlyTarget;
         if (consolidationType === 'SUM' && lastMonthWithDataIdx !== undefined) {
-            const periodsSoFar = periodicity.months.filter(m => MONTH_KEYS.indexOf(m) <= lastMonthWithDataIdx).length;
-            targetForPerformance = monthlyTargetValue * periodsSoFar;
+            targetForPerformance = targetLine[lastMonthWithDataIdx];
         }
 
         const performance = calculatePerformance(consolidatedValue, targetForPerformance, direction);
         const status = getStatusEmoji(performance);
+
+        // Calculate Monthly Snapshot (Latest Month vs its specific target)
+        // This is exactly what the individual monthly chips show.
+        let lastMonthPerformance = performance;
+        let lastMonthStatus = status;
+        if (lastMonthWithDataIdx !== undefined) {
+            const specificTarget = specificMonthlyTargets[lastMonthWithDataIdx];
+            lastMonthPerformance = calculatePerformance(lastMonthValue, specificTarget, direction);
+            lastMonthStatus = getStatusEmoji(lastMonthPerformance);
+        }
+
+        // Unified Persistence Metrics (What should be saved to Grist columns)
+        // Fixed to ensure the Grist table column matches the Gauge and the monthly chips
+        const persistValue = (lastMonthValue !== null) ? lastMonthValue : consolidatedValue;
+        const persistPerformance = (lastMonthValue !== null) ? lastMonthPerformance : performance;
+        const persistStatus = (lastMonthValue !== null) ? lastMonthStatus : status;
 
         const chartMin = record[mapping.chartMinField || config.chartMinField];
         const chartMax = record[mapping.chartMaxField || config.chartMaxField];
@@ -218,10 +245,17 @@ export const IndicatorsRenderer = (() => {
             cumulativeResults,
             monthlyValues,
             lastMonthValue,
+            lastMonthWithDataIdx,
+            lastMonthPerformance,
+            lastMonthStatus,
+            persistValue,
+            persistPerformance,
+            persistStatus,
             consolidationType,
             numPeriods,
             yearlyTarget,
             monthlyTargetValue,
+            specificMonthlyTargets,
             targetsJson: targetsData[selectedYear] || {},
             targetLine,
             upperLimitLine,
@@ -231,6 +265,102 @@ export const IndicatorsRenderer = (() => {
             chartRange: (chartMin !== undefined && chartMax !== undefined) ? [chartMin, chartMax] : null
         };
     }
+
+    // --- TOOLTIP & GAUGE HELPERS ---
+    let tooltipEl = null;
+
+    function getStatusColor(statusEmoji) {
+        switch(statusEmoji) {
+            case '🔵': return '#3b82f6';
+            case '🔴': return '#ef4444';
+            case '🟠': return '#f97316';
+            case '🟡': return '#eab308';
+            case '🟢': return '#22c55e';
+            case '🟩': return '#16a34a';
+            default: return '#94a3b8';
+        }
+    }
+
+    function renderGauge(container, value, title, statusEmoji) {
+        if (!window.Plotly) return;
+        const color = getStatusColor(statusEmoji);
+        const data = [
+            {
+                type: "indicator",
+                mode: "gauge+number",
+                value: value * 100,
+                title: { text: title, font: { size: 12, color: '#64748b' } },
+                number: { suffix: "%", font: { size: 28, color: '#1e293b' }, valueformat: ".1f" },
+                gauge: {
+                    axis: { range: [0, 150], tickwidth: 1, tickcolor: "#cbd5e1" },
+                    bar: { color: color },
+                    bgcolor: "white",
+                    borderwidth: 1,
+                    bordercolor: "#e2e8f0",
+                    steps: [
+                        { range: [0, 50], color: "rgba(239, 68, 68, 0.05)" },
+                        { range: [50, 80], color: "rgba(234, 179, 8, 0.05)" },
+                        { range: [80, 100], color: "rgba(34, 197, 94, 0.05)" },
+                        { range: [100, 150], color: "rgba(59, 130, 246, 0.05)" }
+                    ],
+                    threshold: {
+                        line: { color: "#1e293b", width: 3 },
+                        thickness: 0.75,
+                        value: 100
+                    }
+                }
+            }
+        ];
+
+        const layout = {
+            width: 280,
+            height: 180,
+            margin: { t: 40, r: 30, l: 30, b: 10 },
+            paper_bgcolor: "transparent",
+            font: { color: "#334155", family: "inherit" }
+        };
+
+        Plotly.newPlot(container, data, layout, { staticPlot: true, responsive: true });
+    }
+
+    function showTooltip(e, record, metrics) {
+        if (!tooltipEl) {
+            tooltipEl = document.createElement('div');
+            tooltipEl.className = 'indicator-tooltip';
+            document.body.appendChild(tooltipEl);
+        }
+        
+        const card = e.currentTarget;
+        const rect = card.getBoundingClientRect();
+        
+        tooltipEl.style.display = 'flex';
+        
+        // Position tooltip
+        let top = rect.top - 230;
+        let left = rect.left + rect.width / 2 - 140;
+        
+        if (top < 0) top = rect.bottom + 10;
+        if (left < 0) left = 10;
+        if (left + 280 > window.innerWidth) left = window.innerWidth - 290;
+
+        tooltipEl.style.top = top + 'px';
+        tooltipEl.style.left = left + 'px';
+
+        tooltipEl.innerHTML = `
+            <div class="tooltip-header">${record.Nome || 'Indicador'}</div>
+            <div id="tooltip-gauge-container" class="tooltip-gauge-container" style="height: 180px;"></div>
+        `;
+        
+        const valueToDisplay = metrics.lastMonthPerformance; // Snapshot performance of the latest month
+        const statusToDisplay = metrics.lastMonthStatus;
+        
+        renderGauge(document.getElementById('tooltip-gauge-container'), valueToDisplay, 'Desempenho Atual', statusToDisplay);
+    }
+
+    function hideTooltip() {
+        if (tooltipEl) tooltipEl.style.display = 'none';
+    }
+    // --- END TOOLTIP HELPERS ---
 
     function getFullTimelineMetrics(record, config) {
         const mapping = config.mapping || config || {};
@@ -843,6 +973,15 @@ export const IndicatorsRenderer = (() => {
             cardContainer.appendChild(card);
         }
 
+        // --- TOOLTIP HOVER EVENTS ---
+        cardContainer.addEventListener('mouseenter', (e) => showTooltip(e, record, metrics));
+        cardContainer.addEventListener('mouseleave', hideTooltip);
+        cardContainer.addEventListener('mousemove', (e) => {
+            if (tooltipEl && tooltipEl.style.display === 'flex') {
+                // Optional: follow mouse slightly or just stay centered
+            }
+        });
+
         const monthsWrapper = document.createElement('div');
         monthsWrapper.className = 'months-wrapper scrollable-area';
         const timeline = document.createElement('div');
@@ -864,10 +1003,12 @@ export const IndicatorsRenderer = (() => {
             
             let chipsHtml = '';
             if (isSum) {
+                const specificMonthlyTarget = metrics.specificMonthlyTargets[i];
+                const cumulativeTarget = targetLine[i]; // FIXED: Use monthly cumulative target instead of yearly
                 chipsHtml = `
                     <div class="dual-chip-container">
-                        ${_renderProgressChip(monthlyVal, metrics.monthlyTargetValue, metrics.direction, tableLens, config.tableId, config)}
-                        ${_renderProgressChip(cumulativeVal, yearlyTarget, metrics.direction, tableLens, config.tableId, config)}
+                        ${_renderProgressChip(monthlyVal, specificMonthlyTarget, metrics.direction, tableLens, config.tableId, config)}
+                        ${_renderProgressChip(cumulativeVal, cumulativeTarget, metrics.direction, tableLens, config.tableId, config)}
                     </div>
                 `;
             } else {

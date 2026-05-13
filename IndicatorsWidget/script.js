@@ -171,6 +171,7 @@ async function initialize() {
         updateGrouperUI(groupFields);
 
         currentRecords = await tableLens.fetchTableRecords(widgetConfig.tableId);
+        await updateCalculatedFields(currentRecords);
         await renderGrid(allConfigs);
         if (debugEl) debugEl.textContent = `Ready (${currentRecords.length} recs)`;
     } catch (e) {
@@ -179,6 +180,66 @@ async function initialize() {
         if (debugEl) debugEl.textContent = "Error: " + e.message;
     } finally {
         isInitializing = false;
+    }
+}
+
+async function updateCalculatedFields(records) {
+    if (!widgetConfig || !widgetConfig.tableId) return;
+    const mapping = widgetConfig.mapping || widgetConfig || {};
+    
+    const consolidatedField = mapping.staticConsolidatedValueField;
+    const performanceField = mapping.staticAchievementField;
+    const statusField = mapping.staticStatusField;
+
+    if (!consolidatedField && !performanceField && !statusField) return;
+
+    const updates = [];
+    const resultsField = mapping.resultsField || widgetConfig.resultsField;
+
+    for (const rec of records) {
+        // Find latest year with data to sync correct "Current Status" to Grist
+        let yearToSync = currentYear;
+        try {
+            const rawResults = rec[resultsField];
+            const resultsJson = (typeof rawResults === 'string' && rawResults.trim().startsWith('{')) ? JSON.parse(rawResults) : (typeof rawResults === 'object' && rawResults !== null ? rawResults : {});
+            
+            // Check if it's the new multi-year format
+            const yearsWithData = Object.keys(resultsJson).filter(y => !isNaN(parseInt(y))).sort().reverse();
+            if (yearsWithData.length > 0) {
+                yearToSync = yearsWithData[0];
+            }
+        } catch (e) { /* fallback to currentYear */ }
+
+        const metrics = IndicatorsRenderer.getIndicatorMetrics(rec, widgetConfig, yearToSync);
+        const fieldsToUpdate = {};
+
+        // Use unified persistence metrics (matches UI chips)
+        const valToSave = metrics.persistValue;
+        const perfToSave = metrics.persistPerformance;
+        const statusToSave = metrics.persistStatus;
+
+        if (consolidatedField && rec[consolidatedField] !== valToSave) {
+            fieldsToUpdate[consolidatedField] = valToSave;
+        }
+        if (performanceField && Math.abs((rec[performanceField] || 0) - perfToSave) > 0.0001) {
+            fieldsToUpdate[performanceField] = perfToSave;
+        }
+        if (statusField && rec[statusField] !== statusToSave) {
+            fieldsToUpdate[statusField] = statusToSave;
+        }
+
+        if (Object.keys(fieldsToUpdate).length > 0) {
+            updates.push({ id: rec.id, fields: fieldsToUpdate });
+        }
+    }
+
+    if (updates.length > 0) {
+        console.log(`Syncing ${updates.length} records with calculated metrics...`);
+        try {
+            await dataWriter.updateRecords(widgetConfig.tableId, updates);
+        } catch (err) {
+            console.warn("GGT: Error syncing calculated fields:", err);
+        }
     }
 }
 
@@ -344,7 +405,12 @@ async function handleSaveMasterData(record, newData) {
     } catch (e) {}
     targetsMaster[currentYear] = newData.targets;
     const updates = [{ id: record.id, fields: { [resultsField]: JSON.stringify(resultsMaster), [targetField]: JSON.stringify(targetsMaster) } }];
-    try { await dataWriter.updateRecords(widgetConfig.tableId, updates); } catch (err) { alert("Erro ao salvar: " + err.message); }
+    try { 
+        await dataWriter.updateRecords(widgetConfig.tableId, updates); 
+        // Force immediate recalculation of summary fields for this record
+        const updatedRecord = await tableLens.fetchRecordById(widgetConfig.tableId, record.id);
+        if (updatedRecord) await updateCalculatedFields([updatedRecord]);
+    } catch (err) { alert("Erro ao salvar: " + err.message); }
 }
 
 window.grist.ready({ requiredAccess: 'full' });
