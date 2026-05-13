@@ -239,6 +239,82 @@ body {
     box-shadow: inset 0 -2px 0 rgba(0,0,0,0.05);
 }
 
+/* New Progress Chip Styles */
+.progress-chip {
+    width: 100%;
+    height: 32px;
+    background-color: #475569; /* Dark Gray / Slate 600 */
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    border: 1px solid #1e293b;
+    margin: 2px 0;
+}
+
+.progress-bar-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    transition: width 0.3s ease;
+    z-index: 1;
+}
+
+.progress-marker-100 {
+    position: absolute;
+    top: 0;
+    width: 2px;
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.6);
+    box-shadow: 0 0 2px rgba(0,0,0,0.5);
+    z-index: 3;
+}
+
+.chip-labels {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    pointer-events: none;
+    line-height: 1.1;
+}
+
+.label-values {
+    font-size: 8px;
+    font-weight: 700;
+    color: #ffffff;
+    text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+    text-transform: uppercase;
+}
+
+.label-percent {
+    font-size: 10px;
+    font-weight: 900;
+    color: #ffffff;
+    text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+}
+
+.month-cell-inner {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    padding: 2px;
+    box-sizing: border-box;
+}
+
+.dual-chip-container {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 100%;
+}
+
 /* Modal and Editor Styles (Same as before but cleaned up) */
 .grf-modal-overlay, .grf-editor-overlay {
     position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;

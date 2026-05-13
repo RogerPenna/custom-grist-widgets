@@ -722,6 +722,41 @@ export const IndicatorsRenderer = (() => {
         return summaries;
     }
 
+    function _renderProgressChip(value, target, direction, tableLens, tableId, config) {
+        if (value === null || value === undefined) return '<div class="progress-chip empty">-</div>';
+        
+        const perf = calculatePerformance(value, target, direction);
+        const status = getStatusEmoji(perf);
+        
+        let color = '#94a3b8'; // Slate 400
+        switch(status) {
+            case '🔵': color = '#3b82f6'; break; // Blue 500
+            case '🔴': color = '#ef4444'; break; // Red 500
+            case '🟠': color = '#f97316'; break; // Orange 500
+            case '🟡': color = '#eab308'; break; // Yellow 500
+            case '🟢': color = '#22c55e'; break; // Green 500
+            case '🟩': color = '#16a34a'; break; // Green 600
+        }
+
+        const fillWidth = Math.min(100, perf * 100);
+        const markerPos = perf > 1 ? (1 / perf) * 100 : 100;
+        
+        const formattedVal = value.toLocaleString('pt-BR', { maximumFractionDigits: 1 });
+        const formattedTarget = target.toLocaleString('pt-BR', { maximumFractionDigits: 1 });
+        const formattedPercent = (perf * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%';
+
+        return `
+            <div class="progress-chip" title="Meta: ${formattedTarget}">
+                <div class="progress-bar-fill" style="width: ${fillWidth}%; background-color: ${color};"></div>
+                ${perf > 1 ? `<div class="progress-marker-100" style="left: ${markerPos}%;"></div>` : ''}
+                <div class="chip-labels">
+                    <span class="label-values">${formattedVal} / ${formattedTarget}</span>
+                    <span class="label-percent">${formattedPercent}</span>
+                </div>
+            </div>
+        `;
+    }
+
     async function renderIndicatorRow(container, record, config, currentYear, styling = {}, receivedConfigs = [], tableLens = null) {
         const yearsCount = styling.yearsCount !== undefined ? styling.yearsCount : 3;
         const previousYears = Array.from({ length: yearsCount }, (_, i) => (parseInt(currentYear) - (i + 1)).toString()).reverse();
@@ -780,33 +815,33 @@ export const IndicatorsRenderer = (() => {
         const timeline = document.createElement('div');
         timeline.className = 'indicator-timeline months-grid';
 
+        // Get targets
+        const targetLine = metrics.targetLine;
+        const yearlyTarget = targetLine[11];
+
         for (let i = 0; i < 12; i++) {
             const m = MONTH_KEYS[i];
-            const val = metrics.results[m];
-            const resultVal = (val && typeof val === 'object') ? val.v : val;
-            const targetVal = metrics.targetLine[i];
-            let color = '#eee', textColor = '#666', statusEmoji = '';
+            const monthlyVal = metrics.monthlyValues[i];
+            const cumulativeVal = metrics.cumulativeResults[i];
             
-            if (resultVal !== null && resultVal !== undefined) {
-                const perf = calculatePerformance(resultVal, targetVal, metrics.direction);
-                const status = getStatusEmoji(perf);
-                statusEmoji = status;
-                textColor = '#fff';
-                switch(status) {
-                    case '🔵': color = '#007bff'; break;
-                    case '🔴': color = '#dc3545'; break;
-                    case '🟠': color = '#fd7e14'; break;
-                    case '🟡': color = '#ffc107'; textColor = '#000'; break;
-                    case '🟢': color = '#28a745'; break;
-                    case '🟩': color = '#198754'; break;
-                }
-            }
-
-            const displayVal = await formatMetricValue(resultVal, tableLens, config.tableId, config);
+            const monthlyTarget = targetLine[i] - (i > 0 ? targetLine[i - 1] : 0);
+            
             const monthCell = document.createElement('div');
             monthCell.className = 'timeline-cell month-cell';
-            monthCell.title = `Meta: ${await formatMetricValue(targetVal, tableLens, config.tableId, config)}`;
-            monthCell.innerHTML = `<div class="status-pill" style="background-color: ${color}; color: ${textColor};" data-status="${statusEmoji}">${displayVal}</div>`;
+            
+            let chipsHtml = '';
+            if (isSum) {
+                chipsHtml = `
+                    <div class="dual-chip-container">
+                        ${_renderProgressChip(monthlyVal, monthlyTarget, metrics.direction, tableLens, config.tableId, config)}
+                        ${_renderProgressChip(cumulativeVal, yearlyTarget, metrics.direction, tableLens, config.tableId, config)}
+                    </div>
+                `;
+            } else {
+                chipsHtml = _renderProgressChip(monthlyVal, monthlyTarget, metrics.direction, tableLens, config.tableId, config);
+            }
+
+            monthCell.innerHTML = `<div class="month-cell-inner">${chipsHtml}</div>`;
             timeline.appendChild(monthCell);
         }
         monthsWrapper.appendChild(timeline);
