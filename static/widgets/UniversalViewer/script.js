@@ -138,14 +138,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (data.drawerConfigId) drawerConfig = await tableLens.fetchConfig(data.drawerConfigId);
         else drawerConfig = currentConfig;
         
-        // Injeta a largura vinda do widget gatilho (data.cardConfig) como override
-        const triggerSize = data.cardConfig?.actions?.sidePanel?.size;
-        if (triggerSize) {
-            drawerConfig = { ...drawerConfig };
-            drawerConfig.actions = { ...(drawerConfig.actions || {}) };
-            drawerConfig.actions.sidePanel = { ...(drawerConfig.actions.sidePanel || {}), size: triggerSize };
-        }
-
         if (window.GristDrawer) {
             await window.GristDrawer.open(data.tableId, data.recordId, { ...drawerConfig, tableLens });
         }
@@ -346,14 +338,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const fetched = await tableLens.fetchConfig(drawerConfigId);
                     if (fetched) drawerOptions = { ...fetched, tableLens };
                 }
-                
-                // Injeta a largura vinda do widget gatilho (currentConfig) como override
-                const triggerSize = currentConfig?.actions?.sidePanel?.size;
-                if (triggerSize) {
-                    drawerOptions.actions = { ...(drawerOptions.actions || {}) };
-                    drawerOptions.actions.sidePanel = { ...(drawerOptions.actions.sidePanel || {}), size: triggerSize };
-                }
-
                 window.GristDrawer.open(tableId, record.id, drawerOptions);
             }
             else if (config.actionType === 'addSubRecord') {

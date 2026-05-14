@@ -1,0 +1,235 @@
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: #EBEFEF;
+}
+
+#widget-header {
+    height: 50px;
+    background: #fff;
+    border-bottom: 1px solid #ddd;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+#widget-title { margin: 0; font-size: 18px; color: #333; }
+
+#main-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+}
+
+.indicators-grid {
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    /* Variable-based widths */
+    --card-area-width: 300px;
+    --years-count: 3;
+    --year-cell-width: 60px;
+    --total-years-width: calc(var(--years-count) * var(--year-cell-width));
+}
+
+/* Common Row Structure for Header and Data Rows */
+.grid-header-row, .indicator-row {
+    display: flex;
+    align-items: stretch;
+    border-bottom: 1px solid #eee;
+    background: #fff;
+    width: 100%;
+}
+
+.grid-header-row {
+    font-size: 11px;
+    font-weight: bold;
+    color: #888;
+    text-transform: uppercase;
+    background: #f8f9fa;
+    border-bottom: 2px solid #ddd;
+    z-index: 10;
+    position: sticky;
+    top: 0;
+}
+
+/* Sticky Columns Logic */
+.sticky-col-left {
+    position: sticky;
+    left: 0;
+    background: inherit;
+    z-index: 5;
+    width: var(--card-area-width);
+    min-width: var(--card-area-width);
+    border-right: 1px solid #eee;
+    padding: 10px;
+    display: flex;
+    align-items: center;
+}
+
+.sticky-col-right {
+    position: sticky;
+    right: 0;
+    background: #f1f3f5; /* Darker background for years */
+    z-index: 5;
+    width: var(--total-years-width);
+    min-width: var(--total-years-width);
+    border-left: 2px solid #ddd;
+    display: flex;
+    align-items: center;
+}
+
+/* Months Area (Scrollable Middle) */
+.months-wrapper {
+    flex: 1;
+    overflow-x: auto;
+    scrollbar-width: none; /* Hide scrollbar but keep functionality */
+}
+.months-wrapper::-webkit-scrollbar { display: none; }
+
+.months-grid {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(40px, 1fr)); /* Allow flattening to 40px */
+    width: 100%;
+    min-width: 600px; /* Minimum width for 12 months */
+    height: 100%;
+}
+
+/* Group Sections */
+.group-header {
+    background: #e9ecef;
+    padding: 8px 15px;
+    font-weight: 600;
+    font-size: 14px;
+    color: #495057;
+    border-left: 5px solid #6c757d;
+    position: sticky;
+    left: 0;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Card Style */
+.indicator-card {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.card-content { flex: 1; display: flex; flex-direction: column; gap: 4px; overflow: hidden; }
+.card-top { display: flex; align-items: center; gap: 8px; }
+.indicator-icon { font-size: 18px; }
+.indicator-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.card-bottom { display: flex; align-items: center; gap: 10px; }
+.indicator-status-emoji { font-size: 16px; }
+.indicator-consolidated { font-size: 12px; font-weight: bold; color: #666; }
+
+.card-actions { display: flex; gap: 5px; margin-left: 10px; }
+
+/* Timeline Cells */
+.timeline-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 4px;
+    border-right: 1px solid #f0f0f0;
+}
+
+.month-label, .year-label {
+    padding: 10px 0;
+    text-align: center;
+    width: 100%;
+}
+
+.year-label {
+    width: var(--year-cell-width);
+    border-right: 1px solid #ddd;
+}
+
+.year-cell {
+    width: var(--year-cell-width);
+    border-right: 1px solid #ddd;
+}
+
+.status-pill {
+    width: 100%;
+    height: 28px;
+    border-radius: 14px; /* More "pill" like */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: bold;
+    box-shadow: inset 0 -2px 0 rgba(0,0,0,0.05);
+}
+
+/* Modal and Editor Styles (Same as before but cleaned up) */
+.grf-modal-overlay, .grf-editor-overlay {
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+    z-index: 10000; display: none; align-items: center; justify-content: center;
+}
+
+.grf-modal-container, .grf-editor-modal {
+    background: #fff; width: 1000px; max-width: 95%; height: 800px; max-height: 90vh;
+    border-radius: 12px; display: flex; flex-direction: column;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.3); overflow: hidden;
+}
+
+.grf-modal-header, .grf-editor-header {
+    padding: 5px 15px; border-bottom: 1px solid #eee;
+    display: flex; justify-content: space-between; align-items: center; background: #f8f9fa;
+}
+
+.grf-modal-header h3, .grf-editor-header h3 {
+    margin: 0;
+    font-size: 16px;
+}
+
+.grf-modal-body, .grf-editor-body { padding: 20px; flex: 1; overflow-y: auto; background: #EBEFEF; }
+
+.action-btn, .icon-btn {
+    background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px;
+    width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 14px; color: #495057; transition: all 0.2s;
+}
+
+.action-btn:hover, .icon-btn:hover { background: #e9ecef; border-color: #adb5bd; color: #333; }
+
+.header-left {
+    display: flex;
+    align-items: center;
+}
+
+.header-select {
+    padding: 4px 8px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 11px;
+    background-color: #f8f9fa;
+    color: #495057;
+    cursor: pointer;
+    min-width: 120px;
+    outline: none;
+    height: 28px;
+}
+
+.header-select:hover { border-color: #adb5bd; background-color: #fff; }
+.header-select:focus { border-color: #80bdff; box-shadow: 0 0 0 2px rgba(0,123,255,0.25); }

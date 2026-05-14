@@ -569,13 +569,17 @@ export const DrawerConfigEditor = (() => {
         if (col.type === 'Text') {
             const widgetCfg = configData.widgetOverrides?.[col.colId] || {};
             const isColorWidget = widgetCfg === 'ColorPicker' || widgetCfg?.widget === 'ColorPicker';
+            const isDynamicUI = widgetCfg?.widget === 'DynamicUI';
             const colorMode = widgetCfg?.options?.mode || 'picker';
             const swatches = widgetCfg?.options?.swatches || '';
             widgetConfigHtml = `
             <div class="field-card-extra-actions"> <button type="button" class="btn btn-secondary btn-sm toggle-widget-config">Configurar Widget</button> </div>
             <div class="widget-config-panel" style="display: none; padding: 10px; background: #f1f5f9; border-radius: 4px; margin-top: 5px;">
-                <h5>Configuração de Cor para "${col.label}"</h5>
+                <h5>Configuração de Widget para "${col.label}"</h5>
+                <div class="drawer-config-section"><label><input type="radio" name="widget-type-${col.colId}" value="" ${!isColorWidget && !isDynamicUI ? 'checked' : ''} class="widget-type-radio"> Padrão</label></div>
                 <div class="drawer-config-section"><label><input type="checkbox" class="is-color-picker-checkbox" ${isColorWidget ? 'checked' : ''}> Habilitar Componente de Cor</label></div>
+                <div class="drawer-config-section"><label><input type="radio" name="widget-type-${col.colId}" value="DynamicUI" ${isDynamicUI ? 'checked' : ''} class="widget-type-radio"> Dynamic UI (JSON)</label></div>
+                <div class="drawer-config-section"><label><input type="radio" name="widget-type-${col.colId}" value="Image" ${widgetCfg?.widget === 'Image' ? 'checked' : ''} class="widget-type-radio"> Imagem (URL/Anexo)</label></div>
                 <div class="color-options-container" style="display: ${isColorWidget ? 'block' : 'none'}; margin-top: 10px; border-top: 1px solid #ddd; padding-top: 10px;">
                     <div class="drawer-config-section">
                         <label>Modo de Exibição:</label>

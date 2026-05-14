@@ -119,6 +119,16 @@ export const TableRenderer = (() => {
                 tempContainer.style.display = 'flex';
                 tempContainer.style.alignItems = 'center';
                 tempContainer.style.height = '100%';
+            } else if (colConfig && colConfig.formatter === 'image') {
+                fieldOptions.widget = 'image';
+                tempContainer.style.display = 'flex';
+                const alignMap = { 'left': 'flex-start', 'right': 'flex-end', 'center': 'center' };
+                tempContainer.style.justifyContent = alignMap[colConfig.align] || 'center';
+            } else if (colConfig && colConfig.formatter === 'money') {
+                fieldOptions.widget = 'money';
+                fieldOptions.widgetOptions = colConfig.formatterParams;
+            } else if (colConfig && colConfig.formatter === 'dynamicui') {
+                fieldOptions.widget = 'dynamicui';
             }
 
             onRendered(async () => {
@@ -128,7 +138,12 @@ export const TableRenderer = (() => {
                     record: record,
                     isEditing: false,
                     tableLens: tableLens,
-                    styling: {},
+                    styling: {
+                        ignoreCellStyle: colConfig?.ignoreCellStyle
+                    },
+                    fieldStyle: {
+                        useGristStyle: !colConfig?.ignoreConditionalFormatting
+                    },
                     fieldOptions: fieldOptions
                 });
             });
@@ -137,20 +152,118 @@ export const TableRenderer = (() => {
         };
 
         const columns = (config.columns || []).map(colConfig => {
+            if (colConfig.colId === '_actions') {
+                return {
+                    title: colConfig.ignoreHeaderStyle ? "Ações" : "⚙️ Ações",
+                    field: "_actions",
+                    headerSort: false,
+                    width: parseInt(colConfig.width, 10) || 80,
+                    hozAlign: colConfig.align || "center",
+                    headerFilter: false,
+                    formatter: (cell) => {
+                        const div = document.createElement('div');
+                        div.style.cssText = 'display:flex; gap:6px; justify-content:center; align-items:center; height:100%;';
+                        
+                        const record = cell.getData();
+
+                        if (colConfig.showView !== false) {
+                            const btn = document.createElement('button');
+                            btn.innerHTML = '👁️';
+                            btn.title = 'Visualizar';
+                            btn.style.cssText = 'border:none; background:none; cursor:pointer; padding:2px; font-size:14px;';
+                            btn.onclick = (e) => { e.stopPropagation(); onRowClick(record, 'view'); };
+                            div.appendChild(btn);
+                        }
+
+                        if (colConfig.showEdit !== false) {
+                            const btn = document.createElement('button');
+                            btn.innerHTML = '✏️';
+                            btn.title = 'Editar';
+                            btn.style.cssText = 'border:none; background:none; cursor:pointer; padding:2px; font-size:14px;';
+                            btn.onclick = (e) => { e.stopPropagation(); onRowClick(record, 'edit'); };
+                            div.appendChild(btn);
+                        }
+
+                        if (colConfig.showDelete) {
+                            const btn = document.createElement('button');
+                            btn.innerHTML = '🗑️';
+                            btn.title = 'Excluir';
+                            btn.style.cssText = 'border:none; background:none; cursor:pointer; padding:2px; font-size:14px; color:#ef4444;';
+                            btn.onclick = async (e) => {
+                                e.stopPropagation();
+                                if (confirm("Tem certeza que deseja excluir este registro?")) {
+                                    try {
+                                        await tableLens.deleteRecord(tableId, record.id);
+                                        cell.getRow().delete();
+                                    } catch (err) {
+                                        alert("Erro ao excluir: " + err.message);
+                                    }
+                                }
+                            };
+                            div.appendChild(btn);
+                        }
+                        
+                        return div;
+                    }
+                };
+            }
+
             const gristCol = schema[colConfig.colId];
             if (!gristCol) return null;
 
             let formatter = gristCellFormatter;
 
             if (gristCol.type.startsWith('RefList:')) {
-                formatter = (cell) => {
-                    const cellValue = cell.getValue();
-                    if (!Array.isArray(cellValue) || cellValue.length <= 1) return '[0 items]';
-                    const button = document.createElement('button');
-                    button.className = 'grist-reflist-button';
-                    button.innerText = `[${cellValue.length - 1} items]`;
-                    return button;
-                };
+                const refListFieldConfig = config.mapping?.refListFieldConfig || config.refListFieldConfig || {};
+                const refConfig = (refListFieldConfig[colConfig.colId]?._refListConfig) || {};
+                
+                if (refConfig.displayAs && refConfig.displayAs !== 'none') {
+                    formatter = (cell) => {
+                        const cellValue = cell.getValue();
+                        if (!Array.isArray(cellValue) || cellValue.length <= 1) return '[0 itens]';
+                        
+                        const button = document.createElement('button');
+                        button.className = 'grist-reflist-button';
+                        button.style.cssText = 'background:#f1f5f9; border:1px solid #cbd5e1; border-radius:4px; padding:2px 8px; font-size:11px; cursor:pointer; font-weight:700; color:#475569;';
+                        button.innerText = `📦 ${cellValue.length - 1} itens`;
+                        
+                        button.onclick = (e) => {
+                            e.stopPropagation();
+                            const row = cell.getRow();
+                            const record = row.getData();
+                            if (row.getElement().classList.contains('row-expanded')) {
+                                row.getElement().classList.remove('row-expanded');
+                                const detail = row.getElement().querySelector('.row-detail-container');
+                                if (detail) detail.remove();
+                            } else {
+                                row.getElement().classList.add('row-expanded');
+                                const detail = document.createElement('div');
+                                detail.className = 'row-detail-container';
+                                detail.style.cssText = 'padding:15px; background:#fff; border-top:1px solid #e2e8f0; border-bottom:2px solid #3b82f6; width:100%; box-sizing:border-box;';
+                                
+                                const innerContainer = document.createElement('div');
+                                detail.appendChild(innerContainer);
+                                row.getElement().appendChild(detail);
+                                
+                                renderField({
+                                    container: innerContainer,
+                                    colSchema: gristCol,
+                                    record: record,
+                                    isEditing: false,
+                                    tableLens: tableLens,
+                                    fieldConfig: refListFieldConfig[colConfig.colId] || {}
+                                });
+                            }
+                        };
+                        return button;
+                    };
+                } else {
+                    formatter = (cell) => {
+                        const cellValue = cell.getValue();
+                        if (!Array.isArray(cellValue) || cellValue.length <= 1) return '';
+                        return `[${cellValue.length - 1} itens]`;
+                    };
+                }
             }
 
             const isEditable = config.editMode === 'excel' && !colConfig.locked;

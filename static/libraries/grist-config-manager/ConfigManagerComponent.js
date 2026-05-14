@@ -7,6 +7,7 @@ import { DrawerConfigEditor } from './editors/config-drawer.js';
 import { CardStyleConfigEditor } from './editors/config-card-style.js';
 import { TableConfigEditor } from './editors/config-table.js';
 import { BscConfigEditor } from './editors/config-bsc.js';
+import { IndicatorsConfigEditor } from './editors/config-indicators.js';
 
 let overlay = null;
 let _grist = null;
@@ -17,6 +18,7 @@ const COMPONENT_TYPE_COLORS = {
     'CardStyle': '#6c757d', // grey
     'Table': '#fd7e14', // orange
     'BSC': '#6f42c1', // purple
+    'Indicators': '#d63384', // pink
     'default': '#6c757d' // grey
 };
 
@@ -171,7 +173,8 @@ export async function renderMainUI(grist, container, initialConfigId, componentT
             'CardStyle': CardStyleConfigEditor, 
             'Table': TableConfigEditor, 
             'BSC': BscConfigEditor, 
-            'StrategicPlanning': BscConfigEditor // Alias for future/safety
+            'StrategicPlanning': BscConfigEditor, // Alias for future/safety
+            'Indicators': IndicatorsConfigEditor
         };
         const configListEl = container.querySelector('#cm-config-list');
         const editorContentEl = container.querySelector('#cm-editor-content');
@@ -370,15 +373,23 @@ export async function renderMainUI(grist, container, initialConfigId, componentT
             }
 
             const recordData = {
-                widgetTitle: formEl.querySelector('#cm-widget-title').value.trim(),
-                configId: formEl.querySelector('#cm-config-id').value.trim(),
-                description: formEl.querySelector('#cm-description').value.trim(),
-                componentType: selectedConfig.componentType,
-                mappingJson: mappingJson,
-                stylingJson: stylingJson,
-                actionsJson: actionsJson,
-                configJson: JSON.stringify(unifiedConfig) // Mantém legado para segurança
+                componentType: selectedConfig.componentType
             };
+
+            const fieldMap = {
+                'widgetTitle': formEl.querySelector('#cm-widget-title').value.trim(),
+                'configId': formEl.querySelector('#cm-config-id').value.trim(),
+                'description': formEl.querySelector('#cm-description').value.trim(),
+                'mappingJson': mappingJson,
+                'stylingJson': stylingJson,
+                'actionsJson': actionsJson,
+                'configJson': JSON.stringify(unifiedConfig)
+            };
+
+            // Somente inclui os campos se as colunas existirem na tabela Grist
+            for (const [col, val] of Object.entries(fieldMap)) {
+                if (tableSchema[col]) recordData[col] = val;
+            }
 
             try {
                 if (selectedConfig.id) {
@@ -413,7 +424,7 @@ export async function renderMainUI(grist, container, initialConfigId, componentT
 export function open(grist, options = {}) {
     if (overlay) return;
     _grist = grist;
-    const { initialConfigId = null, componentTypes = ['Card System', 'Drawer', 'Card Style', 'Table', 'BSC'] } = options;
+    const { initialConfigId = null, componentTypes = ['Card System', 'Drawer', 'Card Style', 'Table', 'BSC', 'Indicators'] } = options;
     overlay = document.createElement('div');
     overlay.className = 'grf-cm-overlay';
     overlay.innerHTML = `<div class="grf-cm-modal"><div class="grf-cm-header"><h1>Gerenciador de Configurações</h1><button class="grf-cm-close">×</button></div><div class="grf-cm-body"><p>Carregando...</p></div></div>`;

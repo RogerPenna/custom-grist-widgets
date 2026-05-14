@@ -1,7 +1,3 @@
-// --- START OF 100% COMPLETE DrawerViewer.js WITH DEBUG LOGS ---
-
-console.log("DrawerViewer.js script started.");
-
 import { GristTableLens } from '../libraries/grist-table-lens/grist-table-lens.js';
 import { open as openConfigManager } from '../libraries/grist-config-manager/ConfigManagerComponent.js';
 import { subscribe } from '../libraries/grist-event-bus/grist-event-bus.js';
@@ -14,7 +10,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function loadIcons() {
         try {
-            const response = await fetch('/libraries/icons/icons.svg');
+            const response = await fetch('../libraries/icons/icons.svg');
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const svgText = await response.text();
             const div = document.createElement('div');
@@ -98,6 +94,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     subscribe('grf-navigation-action-triggered', async (eventData) => {
         console.log("[DrawerViewer] Navigation action triggered.", eventData);
         await handleNavigationAction(eventData.config, eventData.sourceRecord, eventData.tableId);
+    });
+
+    subscribe('grf-update-record', async (data) => {
+        console.log("[DrawerViewer] Evento 'grf-update-record' recebido:", data);
+        try {
+            await tableLens.updateRecord(data.tableId, data.recordId, data.data);
+        } catch (e) {
+            console.error("[DrawerViewer] Erro ao atualizar registro:", e);
+        }
     });
 
     subscribe('grf-card-clicked', (eventData) => {
@@ -209,5 +214,3 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 });
-
-// --- END OF 100% COMPLETE DrawerViewer.js WITH DEBUG LOGS ---

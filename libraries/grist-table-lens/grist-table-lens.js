@@ -10,7 +10,34 @@ export const GristTableLens = function(gristInstance) {
         tables: null,
         columnsAndRules: null,
         tableSchemasCache: {},
-        configCache: {}
+        configCache: {},
+        accessToken: null,
+        baseUrl: null
+    };
+
+    /**
+     * [NOVO] Obtém um token de acesso temporário do Grist para download de anexos.
+     */
+    this.getAccessToken = async function(forceRefresh = false) {
+        if (_metaState.accessToken && !forceRefresh) return _metaState.accessToken;
+        try {
+            const response = await _grist.docApi.getAccessToken({ readOnly: true });
+            _metaState.accessToken = response.token;
+            _metaState.baseUrl = response.baseUrl;
+            return _metaState.accessToken;
+        } catch (e) {
+            console.error("GTL: Erro ao obter accessToken do Grist", e);
+            return null;
+        }
+    };
+
+    /**
+     * [NOVO] Retorna a URL base do documento Grist.
+     */
+    this.getBaseUrl = async function() {
+        if (_metaState.baseUrl) return _metaState.baseUrl;
+        await this.getAccessToken();
+        return _metaState.baseUrl;
     };
 
     async function _loadGristMeta() {
@@ -155,14 +182,47 @@ export const GristTableLens = function(gristInstance) {
     this.getTableSchema = async function(tableId, options = {}) {
         const { mode = 'clean', query = {} } = options;
         const cacheKey = query.name || mode;
-        if (_metaState.tableSchemasCache[tableId]?.[cacheKey]) { return _metaState.tableSchemasCache[tableId][cacheKey]; }
+        
+        const resolvedId = await this.resolveTableId(tableId);
+        
+        if (_metaState.tableSchemasCache[resolvedId]?.[cacheKey]) { return _metaState.tableSchemasCache[resolvedId][cacheKey]; }
         await _loadGristMeta();
-        const numId = _getNumericTableId(tableId);
+        const numId = _getNumericTableId(resolvedId);
         if (!numId) { return {}; }
         const schema = _processColumnsAndRulesForTable(numId, mode, query);
-        if (!_metaState.tableSchemasCache[tableId]) { _metaState.tableSchemasCache[tableId] = {}; }
-        _metaState.tableSchemasCache[tableId][cacheKey] = schema;
+        if (!_metaState.tableSchemasCache[resolvedId]) { _metaState.tableSchemasCache[resolvedId] = {}; }
+        _metaState.tableSchemasCache[resolvedId][cacheKey] = schema;
         return schema;
+    };
+
+    /**
+     * [NOVO] Tenta encontrar o ID interno da tabela a partir de um nome ou do próprio ID.
+     * @param {string} tableIdOrLabel O ID interno ou o Label da tabela.
+     * @returns {Promise<string>} O ID interno resolvido.
+     */
+    this.resolveTableId = async function(tableIdOrLabel) {
+        if (!tableIdOrLabel) return tableIdOrLabel;
+        try {
+            await _loadGristMeta();
+            if (!_metaState.tables?.tableId) return tableIdOrLabel;
+
+            // 1. Tenta por ID exato
+            if (_metaState.tables.tableId.includes(tableIdOrLabel)) return tableIdOrLabel;
+
+            // 2. Tenta por Label exato
+            const labelIdx = _metaState.tables.label.findIndex(l => String(l) === String(tableIdOrLabel));
+            if (labelIdx !== -1) return _metaState.tables.tableId[labelIdx];
+
+            // 3. Tenta por Label (case-insensitive)
+            const labelIdxCI = _metaState.tables.label.findIndex(l => String(l).toLowerCase() === String(tableIdOrLabel).toLowerCase());
+            if (labelIdxCI !== -1) return _metaState.tables.tableId[labelIdxCI];
+
+            // 4. Se não encontrou, retorna o original e deixa o Grist falhar se for o caso
+            return tableIdOrLabel;
+        } catch (e) {
+            console.warn(`GTL: Erro ao tentar resolver tableId para "${tableIdOrLabel}". Usando original.`, e);
+            return tableIdOrLabel;
+        }
     };
 
     /**
@@ -172,9 +232,10 @@ export const GristTableLens = function(gristInstance) {
     this.fetchTableRecords = async function(tableId) {
         if (!tableId) { return []; }
         try {
-            const rawData = await _grist.docApi.fetchTable(tableId);
+            const resolvedId = await this.resolveTableId(tableId);
+            const rawData = await _grist.docApi.fetchTable(resolvedId);
             const records = _colDataToRows(rawData);
-            records.forEach(r => { r.gristHelper_tableId = tableId; });
+            records.forEach(r => { r.gristHelper_tableId = resolvedId; });
             return records;
         } catch (error) {
             console.error(`GTL.fetchTableRecords: Erro ao buscar registros para tabela '${tableId}'. Retornando array vazio.`, error);
@@ -191,13 +252,14 @@ export const GristTableLens = function(gristInstance) {
              throw new Error("GTL.fetchTableRecordsOrThrow: tableId não foi fornecido.");
         }
         try {
-            const rawData = await _grist.docApi.fetchTable(tableId);
+            const resolvedId = await this.resolveTableId(tableId);
+            const rawData = await _grist.docApi.fetchTable(resolvedId);
             const records = _colDataToRows(rawData);
-            records.forEach(r => { r.gristHelper_tableId = tableId; });
+            records.forEach(r => { r.gristHelper_tableId = resolvedId; });
             return records;
         } catch (error) {
             console.error(`GTL.fetchTableRecordsOrThrow: Erro ao buscar registros para tabela '${tableId}'. Lançando o erro.`, error);
-            throw error; // A MUDANÇA CRÍTICA ESTÁ AQUI
+            throw error;
         }
     };
 

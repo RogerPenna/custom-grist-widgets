@@ -428,6 +428,43 @@ export const CardSystem = (() => {
                 actionButton.title = buttonConfig.tooltip || '';
             }
 
+            // --- ENHANCEMENT: Record Count Tooltip ---
+            const shouldShowCount = (buttonConfig.actionType === 'triggerWidget' || buttonConfig.actionType === 'navigate') && 
+                                    buttonConfig.targetTable && tableLens;
+            
+            if (shouldShowCount) {
+                // Initialize tooltip with loading state if it has a label
+                const baseTooltip = buttonConfig.tooltip || '';
+                
+                // Asynchronously fetch count
+                (async () => {
+                    try {
+                        const targetTableId = buttonConfig.targetTable;
+                        const sourceTableId = record.gristHelper_tableId;
+                        
+                        // Find the relationship field in the target table
+                        const relationColId = await tableLens.findRelationField(targetTableId, sourceTableId);
+                        
+                        if (relationColId) {
+                            const allTargetRecords = await tableLens.fetchTableRecords(targetTableId);
+                            const relatedCount = allTargetRecords.filter(r => {
+                                const val = r[relationColId];
+                                if (Array.isArray(val)) return val.includes(record.id);
+                                return val === record.id;
+                            }).length;
+                            
+                            const countText = ` (${relatedCount})`;
+                            actionButton.title = baseTooltip ? `${baseTooltip}${countText}` : `${relatedCount} itens`;
+                            
+                            // Also add a little badge if there are items? 
+                            // For now just tooltip as requested.
+                        }
+                    } catch (err) {
+                        console.error("[CardSystem] Error fetching related count for tooltip:", err);
+                    }
+                })();
+            }
+
             const iconSize = styling.iconSize || 1.0;
             actionButton.style.width = `${32 * iconSize}px`;
             actionButton.style.height = `${32 * iconSize}px`;

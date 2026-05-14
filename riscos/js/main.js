@@ -67,26 +67,29 @@ function handleGristRecords(records, mappings) {
 
 /** Função principal que aplica filtros e chama renderizadores */
 function renderAll() {
-    let recordsToProcess = allRiskRecords; // New variable to hold records before filtering
+    let recordsToProcess = [...allRiskRecords]; 
 
-    // New: Apply external filter
-    if (externalFilter) {
+    // Corrected External Filter Application
+    if (externalFilter && externalFilter.column && externalFilter.value !== undefined && externalFilter.value !== null) {
+        console.log(`[Riscos] Aplicando filtro externo: ${externalFilter.column} = ${externalFilter.value}`);
         recordsToProcess = recordsToProcess.filter(riskRecord => {
-            const filterColumnValue = riskRecord[externalFilter.column];
-            let isMatch = false;
-            if (Array.isArray(externalFilter.value)) {
-                const numericFilterValues = externalFilter.value.map(id => Number(id));
-                isMatch = numericFilterValues.includes(Number(filterColumnValue));
-            } else {
-                isMatch = Number(filterColumnValue) === Number(externalFilter.value);
-            }
-            return isMatch;
+            const rawVal = riskRecord[externalFilter.column];
+            
+            // Handle RefList (Array) in Grist
+            const recordValues = Array.isArray(rawVal) ? (rawVal[0] === 'L' ? rawVal.slice(1) : rawVal) : [rawVal];
+            const filterValues = Array.isArray(externalFilter.value) ? externalFilter.value : [externalFilter.value];
+
+            // Type-agnostic comparison (coercing to Number if possible)
+            return recordValues.some(v => filterValues.some(fv => {
+                if (!isNaN(v) && !isNaN(fv)) return Number(v) === Number(fv);
+                return String(v) === String(fv);
+            }));
         });
     }
 
     // 1. Filtra por Departamento
-    filteredRiskRecords = recordsToProcess.filter(r => { // Changed from allRiskRecords to recordsToProcess
-        if (selectedDepartments.length === 0) return true; // Sem filtro de depto = mostra todos
+    filteredRiskRecords = recordsToProcess.filter(r => {
+        if (selectedDepartments.length === 0) return true;
         let dept = getDeptName(r, RISK_DEPT_COLUMN);
         return selectedDepartments.includes(dept);
     });

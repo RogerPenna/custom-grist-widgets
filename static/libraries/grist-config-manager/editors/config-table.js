@@ -34,6 +34,7 @@ export const TableConfigEditor = (() => {
         _mainContainer = container;
         currentTableId = tableId;
         _allConfigs = allConfigs || [];
+        window.currentLens = lens; // Expose for sub-column rendering
 
         if (!tableId) {
             container.innerHTML = '<p class="editor-placeholder">Selecione uma Tabela de Dados no menu acima para começar a configurar.</p>';
@@ -50,8 +51,14 @@ export const TableConfigEditor = (() => {
         const styling = configData.styling || configData;
         const actions = configData.actions || configData;
 
+        // Store refListFieldConfig in container for createColumnCard to access
+        container._refListFieldConfig = mapping.refListFieldConfig || {};
+
         const allCols = Object.values(currentSchema).filter(c => !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos');
-        const visibleColumns = mapping.columns || allCols.map(c => ({ colId: c.colId, width: null, align: 'left' }));
+        // Add virtual columns
+        allCols.push({ colId: '_actions', label: '⚙️ Ações (Virtual)', type: 'Virtual' });
+
+        const visibleColumns = mapping.columns || allCols.filter(c => c.colId !== '_actions').map(c => ({ colId: c.colId, width: null, align: 'left' }));
         const visibleColIds = new Set(visibleColumns.map(c => c.colId));
 
         // Filter and format Drawer configs for the dropdown
@@ -98,9 +105,9 @@ export const TableConfigEditor = (() => {
                 
                 <div class="config-section-title" style="margin-top: 20px;">Modo de Edição</div>
                 <div class="form-group">
-                    <label><input type="radio" name="editMode" value="excel" ${actions.editMode === 'excel' ? 'checked' : ''}> Excel Style (Edição Inline)</label>
+                    <label><input type="radio" name="editMode" value="excel" ${(actions.editMode || 'excel') === 'excel' ? 'checked' : ''}> Excel Style (Edição Inline)</label>
                     
-                    <div id="excel-options" style="display: ${actions.editMode === 'excel' ? 'block' : 'none'}; margin-left: 25px; border-left: 2px solid #ddd; padding-left: 10px; margin-top: 5px; margin-bottom: 10px;">
+                    <div id="excel-options" style="display: ${(actions.editMode || 'excel') === 'excel' ? 'block' : 'none'}; margin-left: 25px; border-left: 2px solid #ddd; padding-left: 10px; margin-top: 5px; margin-bottom: 10px;">
                         <label class="config-toggle" title="Se marcado, as mudanças só são enviadas ao Grist após clicar em um botão 'Salvar' no topo da tabela.">
                             <input type="checkbox" id="use-save-button-checkbox" ${actions.useSaveButton ? 'checked' : ''}>
                             Usar Botão 'Salvar' (Edição em Lote) <span class="help-tip">?</span>
@@ -135,6 +142,12 @@ export const TableConfigEditor = (() => {
                 </div>
                 <div class="form-group">
                     <label class="config-toggle">
+                        <input type="checkbox" id="responsive-layout-checkbox" ${styling.responsiveLayout ? 'checked' : ''}>
+                        Layout Responsivo (Tabulator)
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label class="config-toggle">
                         <input type="checkbox" id="resizable-columns-checkbox" ${styling.resizableColumns !== false ? 'checked' : ''}>
                         Colunas Redimensionáveis
                     </label>
@@ -144,6 +157,18 @@ export const TableConfigEditor = (() => {
                         <input type="checkbox" id="header-filter-checkbox" ${styling.headerFilter !== false ? 'checked' : ''}>
                         Filtros no Cabeçalho
                     </label>
+                </div>
+
+                <div class="config-section-title" style="margin-top: 20px;">Ordenação Inicial</div>
+                <div class="form-group" style="display:flex; gap:10px;">
+                    <select id="default-sort-column" style="flex:2;">
+                        <option value="">-- Nenhuma --</option>
+                        ${allCols.filter(c => c.colId !== '_actions').map(c => `<option value="${c.colId}" ${styling.defaultSort?.column === c.colId ? 'selected' : ''}>${c.label}</option>`).join('')}
+                    </select>
+                    <select id="default-sort-dir" style="flex:1;">
+                        <option value="asc" ${styling.defaultSort?.direction === 'asc' ? 'selected' : ''}>ASC</option>
+                        <option value="desc" ${styling.defaultSort?.direction === 'desc' ? 'selected' : ''}>DESC</option>
+                    </select>
                 </div>
 
                 <div class="config-section-title" style="margin-top: 20px;">Paginação</div>
@@ -234,6 +259,7 @@ export const TableConfigEditor = (() => {
 
         const columnListEl = container.querySelector('#column-list');
         const visibleItems = Array.from(columnListEl.querySelectorAll('.field-card'));
+        const refListFieldConfig = {};
 
         const fullConfig = {
             tableId: currentTableId,
@@ -244,31 +270,86 @@ export const TableConfigEditor = (() => {
             drawerId: container.querySelector('#drawer-id-select').value || null,
             enableAddNewBtn: container.querySelector('#enable-add-new-btn-checkbox').checked,
             layout: container.querySelector('#layout-mode-select').value,
+            responsiveLayout: container.querySelector('#responsive-layout-checkbox').checked,
             resizableColumns: container.querySelector('#resizable-columns-checkbox').checked,
             headerFilter: container.querySelector('#header-filter-checkbox').checked,
+            defaultSort: {
+                column: container.querySelector('#default-sort-column').value || null,
+                direction: container.querySelector('#default-sort-dir').value || 'asc'
+            },
             pagination: {
                 enabled: container.querySelector('#pagination-mode-select').value === 'false' ? false : container.querySelector('#pagination-mode-select').value,
                 pageSize: parseInt(container.querySelector('#pagination-size-input').value, 10) || 10,
             },
             columns: visibleItems.map(item => {
-                const formatter = item.querySelector('.col-formatter-select').value || null;
-                return {
-                    colId: item.dataset.colId,
+                const colId = item.dataset.colId;
+                const formatter = item.querySelector('.col-formatter-select')?.value || null;
+                const isActions = colId === '_actions';
+                
+                const colBase = {
+                    colId: colId,
                     width: item.querySelector('.col-width-input').value || null,
                     align: item.querySelector('.col-align-select').value,
-                    wrapText: item.querySelector('.wrap-text-checkbox').checked,
-                    maxTextRows: parseInt(item.querySelector('.max-text-rows-input').value, 10) || null,
-                    bottomCalc: item.querySelector('.col-calc-select').value || null,
-                    locked: item.querySelector('.is-locked-checkbox').checked,
-                    required: item.querySelector('.is-required-checkbox').checked,
+                    wrapText: item.querySelector('.wrap-text-checkbox')?.checked ?? false,
+                    maxTextRows: parseInt(item.querySelector('.max-text-rows-input')?.value, 10) || null,
+                    bottomCalc: item.querySelector('.col-calc-select')?.value || null,
+                    locked: item.querySelector('.is-locked-checkbox')?.checked ?? false,
+                    required: item.querySelector('.is-required-checkbox')?.checked ?? false,
                     formatter: formatter,
-                    ignoreConditionalFormatting: item.querySelector('.ignore-conditional-formatting-checkbox').checked,
+                    formatterParams: {},
+                    ignoreConditionalFormatting: item.querySelector('.ignore-conditional-formatting-checkbox')?.checked ?? false,
+                    ignoreHeaderStyle: item.querySelector('.ignore-header-style-checkbox')?.checked ?? false,
+                    ignoreCellStyle: item.querySelector('.ignore-cell-style-checkbox')?.checked ?? false,
                 };
+
+                if (formatter === 'progress') {
+                    colBase.formatterParams = {
+                        min: parseFloat(item.querySelector('.progress-min').value) || 0,
+                        max: parseFloat(item.querySelector('.progress-max').value) || 100,
+                        legend: item.querySelector('.progress-legend').checked
+                    };
+                } else if (formatter === 'money') {
+                    colBase.formatterParams = {
+                        symbol: item.querySelector('.money-symbol').value || 'R$',
+                        decimal: item.querySelector('.money-decimal').value || ',',
+                        thousand: item.querySelector('.money-thousand').value || '.'
+                    };
+                }
+
+                if (isActions) {
+                    colBase.showView = item.querySelector('.action-btn-view-checkbox')?.checked;
+                    colBase.showEdit = item.querySelector('.action-btn-edit-checkbox')?.checked;
+                    colBase.showDelete = item.querySelector('.action-btn-delete-checkbox')?.checked;
+                }
+
+                // Gather RefList Config
+                const reflistPanel = item.querySelector('.reflist-config-panel');
+                if (reflistPanel) {
+                    const refConfig = {
+                        _refListConfig: {
+                            displayAs: reflistPanel.querySelector('.reflist-display-as').value,
+                            collapsible: reflistPanel.querySelector('.reflist-collapsible-checkbox').checked,
+                            zebra: reflistPanel.querySelector('.reflist-zebra-checkbox').checked,
+                            cardConfigId: reflistPanel.querySelector('.reflist-card-config-id')?.value.trim() || null,
+                            showAddButton: reflistPanel.querySelector('.reflist-show-add-checkbox').checked,
+                            addRecordConfigId: reflistPanel.querySelector('.reflist-add-config-id')?.value.trim() || null,
+                            columns: []
+                        }
+                    };
+                    reflistPanel.querySelectorAll('.reflist-config-table tbody tr').forEach(row => {
+                        if (row.querySelector('.ref-col-show-checkbox').checked) {
+                            refConfig._refListConfig.columns.push(row.dataset.refColId);
+                        }
+                    });
+                    refListFieldConfig[colId] = refConfig;
+                }
+
+                return colBase;
             }),
         };
 
         return {
-            mapping: { tableId: fullConfig.tableId, columns: fullConfig.columns },
+            mapping: { tableId: fullConfig.tableId, columns: fullConfig.columns, refListFieldConfig },
             styling: { stripedTable: fullConfig.stripedTable, layout: fullConfig.layout, resizableColumns: fullConfig.resizableColumns, headerFilter: fullConfig.headerFilter, pagination: fullConfig.pagination },
             actions: { enableColumnCalcs: fullConfig.enableColumnCalcs, editMode: fullConfig.editMode, useSaveButton: fullConfig.useSaveButton, drawerId: fullConfig.drawerId, enableAddNewBtn: fullConfig.enableAddNewBtn }
         };
@@ -282,27 +363,110 @@ export const TableConfigEditor = (() => {
 
         const isVisible = !!colConfig;
         const align = colConfig?.align || 'left';
+        const isActions = col.colId === '_actions';
+        const isRefList = col.type && col.type.startsWith('RefList:');
 
-        card.innerHTML = `
-            <span class="field-card-label">${col.label} <span class="field-card-type">(${col.type})</span></span>
-            <div class="field-card-controls">
-                <label class="config-toggle"><input type="checkbox" class="is-visible-checkbox" ${isVisible ? 'checked' : ''}> Visível</label>
-                <button type="button" class="btn btn-secondary btn-sm toggle-col-config">Opções</button>
-            </div>
-            <div class="col-config-panel" style="display: none; padding:15px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; margin-top:8px;">
-                <style>
-                    .col-config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-                    .col-config-section { display: flex; flex-direction: column; gap: 8px; }
-                    .col-config-section.full-width { grid-column: span 2; border-top: 1px solid #e2e8f0; padding-top: 10px; margin-top: 5px; }
-                    .config-label-with-help { display: flex; align-items: center; font-weight: 700; font-size: 11px; color: #475569; text-transform: uppercase; margin-bottom: 2px; }
-                </style>
+        let optionsHtml = '';
+        if (isActions) {
+            optionsHtml = `
+                <div class="col-config-grid">
+                    <div class="col-config-section full-width">
+                        <div class="config-label-with-help">Configurações da Coluna de Ações</div>
+                        <div style="display: flex; gap: 20px; margin-top: 5px;">
+                            <label><input type="checkbox" class="action-btn-view-checkbox" ${colConfig?.showView !== false ? 'checked' : ''}> Visualizar</label>
+                            <label><input type="checkbox" class="action-btn-edit-checkbox" ${colConfig?.showEdit !== false ? 'checked' : ''}> Editar</label>
+                            <label><input type="checkbox" class="action-btn-delete-checkbox" ${colConfig?.showDelete ? 'checked' : ''}> Excluir</label>
+                        </div>
+                    </div>
+                    <div class="col-config-section">
+                        <div class="config-label-with-help">Visual</div>
+                        <div>
+                            <div class="config-label-with-help" title="Largura em pixels (ex: 100).">Largura <span class="help-tip">?</span></div>
+                            <input type="text" class="col-width-input" value="${colConfig?.width || '100'}" placeholder="100" style="width:100%; padding:4px;">
+                        </div>
+                    </div>
+                    <div class="col-config-section">
+                        <div class="config-label-with-help" title="Alinhamento horizontal.">Alinhamento <span class="help-tip">?</span></div>
+                        <select class="col-align-select" style="width:100%; padding:4px;">
+                            <option value="center" ${align === 'center' ? 'selected' : ''}>Centro</option>
+                            <option value="left" ${align === 'left' ? 'selected' : ''}>Esquerda</option>
+                            <option value="right" ${align === 'right' ? 'selected' : ''}>Direita</option>
+                        </select>
+                    </div>
+                    <div style="display:none;">
+                        <input type="checkbox" class="is-locked-checkbox">
+                        <input type="checkbox" class="is-required-checkbox">
+                        <input type="checkbox" class="ignore-conditional-formatting-checkbox">
+                        <input type="checkbox" class="wrap-text-checkbox">
+                        <input type="number" class="max-text-rows-input">
+                        <select class="col-calc-select"><option value=""></option></select>
+                        <select class="col-formatter-select"><option value=""></option></select>
+                    </div>
+                </div>
+            `;
+        } else {
+            let refListConfigHtml = '';
+            if (isRefList) {
+                const refConfig = (_mainContainer._refListFieldConfig?.[col.colId]?._refListConfig) || {};
                 
+                const cardConfigs = _allConfigs.filter(c => (c.componentType || '').replace(/\s+/g, '').toLowerCase() === 'cardsystem');
+                const drawerConfigs = _allConfigs.filter(c => (c.componentType || '').replace(/\s+/g, '').toLowerCase() === 'drawer');
+
+                const cardOptionsHtml = cardConfigs.map(c => `<option value="${c.configId}" ${refConfig.cardConfigId === c.configId ? 'selected' : ''}>${c.widgetTitle} [${c.configId}]</option>`).join('');
+                const drawerOptionsHtml = drawerConfigs.map(c => `<option value="${c.configId}" ${refConfig.addRecordConfigId === c.configId ? 'selected' : ''}>${c.widgetTitle} [${c.configId}]</option>`).join('');
+
+                refListConfigHtml = `
+                    <div class="reflist-config-panel" style="border-top: 1px solid #e2e8f0; padding-top: 10px; margin-top: 10px;">
+                        <div class="config-label-with-help">Configuração de Sub-Tabela (RefList)</div>
+                        <div class="col-config-grid" style="margin-top:8px;">
+                            <div>
+                                <label style="font-size:11px;">Exibir como:</label>
+                                <select class="reflist-display-as" style="width:100%; padding:4px;">
+                                    <option value="none" ${refConfig.displayAs === 'none' ? 'selected' : ''}>Texto (Padrão)</option>
+                                    <option value="table" ${refConfig.displayAs === 'table' ? 'selected' : ''}>Tabela Simples</option>
+                                    <option value="tabulator" ${refConfig.displayAs === 'tabulator' ? 'selected' : ''}>Tabulator</option>
+                                    <option value="cards" ${refConfig.displayAs === 'cards' ? 'selected' : ''}>Cards</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="font-size:11px;">Comportamento:</label>
+                                <div style="display:flex; flex-direction:column; gap:4px;">
+                                    <label><input type="checkbox" class="reflist-collapsible-checkbox" ${refConfig.collapsible ? 'checked' : ''}> Retrátil</label>
+                                    <label><input type="checkbox" class="reflist-zebra-checkbox" ${refConfig.zebra ? 'checked' : ''}> Zebrada</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="reflist-card-options" style="display: ${refConfig.displayAs === 'cards' ? 'block' : 'none'}; margin-top: 8px;">
+                            <label style="font-size:11px;">Config de Card:</label>
+                            <select class="reflist-card-config-id" style="width:100%; padding:4px;">
+                                <option value="">-- Selecione um Card --</option>
+                                ${cardOptionsHtml}
+                            </select>
+                        </div>
+                        <div style="margin-top:8px;">
+                            <label style="font-size:11px;"><input type="checkbox" class="reflist-show-add-checkbox" ${refConfig.showAddButton !== false ? 'checked' : ''}> Mostrar Botão "Adicionar"</label>
+                            <select class="reflist-add-config-id" style="width:100%; padding:4px; font-size:11px; margin-top:4px;">
+                                <option value="">-- Drawer para Adição --</option>
+                                ${drawerOptionsHtml}
+                            </select>
+                        </div>
+                        <button type="button" class="btn btn-secondary btn-sm toggle-reflist-columns" style="margin-top:8px; width:100%;">Configurar Colunas da Sub-Tabela</button>
+                        <div class="reflist-column-config" style="display:none; margin-top:8px; max-height:200px; overflow:auto; background:#fff; border:1px solid #ddd; padding:8px; border-radius:4px;">
+                            <p style="font-size:11px; color:#666;">Carregando colunas...</p>
+                        </div>
+                    </div>
+                `;
+            }
+
+            optionsHtml = `
                 <div class="col-config-grid">
                     <div class="col-config-section">
                         <div class="config-label-with-help">Regras</div>
                         <label title="Impede a edição deste campo na tabela."><input type="checkbox" class="is-locked-checkbox" ${colConfig?.locked ? 'checked' : ''}> Travado <span class="help-tip">?</span></label>
                         <label title="Exige que o campo seja preenchido no modo de edição inline."><input type="checkbox" class="is-required-checkbox" ${colConfig?.required ? 'checked' : ''}> Obrigatório <span class="help-tip">?</span></label>
                         <label title="Ignora as regras de cores de formatação condicional que vêm do Grist."><input type="checkbox" class="ignore-conditional-formatting-checkbox" ${colConfig?.ignoreConditionalFormatting ? 'checked' : ''}> S/ Format. Condic. <span class="help-tip">?</span></label>
+                        <label title="Ignora o estilo de cabeçalho do Grist."><input type="checkbox" class="ignore-header-style-checkbox" ${colConfig?.ignoreHeaderStyle ? 'checked' : ''}> S/ Estilo Cabecalho <span class="help-tip">?</span></label>
+                        <label title="Ignora o estilo de célula do Grist."><input type="checkbox" class="ignore-cell-style-checkbox" ${colConfig?.ignoreCellStyle ? 'checked' : ''}> S/ Estilo Celula <span class="help-tip">?</span></label>
                     </div>
 
                     <div class="col-config-section">
@@ -345,11 +509,65 @@ export const TableConfigEditor = (() => {
                                     <option value="">Padrão</option>
                                     <option value="money" ${colConfig?.formatter === 'money' ? 'selected' : ''}>Moeda</option>
                                     <option value="progress" ${colConfig?.formatter === 'progress' ? 'selected' : ''}>Progresso</option>
+                                    <option value="dynamicui" ${colConfig?.formatter === 'dynamicui' ? 'selected' : ''}>Dynamic UI (JSON)</option>
+                                    <option value="image" ${colConfig?.formatter === 'image' ? 'selected' : ''}>Imagem (URL/Anexo)</option>
                                 </select>
                             </div>
                         </div>
+                        
+                        <!-- Formatter Params (Progress) -->
+                        <div class="formatter-params progress-params" style="display: ${colConfig?.formatter === 'progress' ? 'grid' : 'none'}; grid-template-columns: 1fr 1fr 1fr; gap: 5px; margin-top: 5px; border: 1px dashed #cbd5e1; padding: 5px; border-radius: 4px;">
+                            <div>
+                                <label style="font-size:9px;">Min</label>
+                                <input type="number" class="progress-min" value="${colConfig?.formatterParams?.min ?? 0}" style="width:100%; font-size:10px;">
+                            </div>
+                            <div>
+                                <label style="font-size:9px;">Max</label>
+                                <input type="number" class="progress-max" value="${colConfig?.formatterParams?.max ?? 100}" style="width:100%; font-size:10px;">
+                            </div>
+                            <div style="display:flex; align-items:flex-end;">
+                                <label style="font-size:9px; display:flex; align-items:center; gap:2px;"><input type="checkbox" class="progress-legend" ${colConfig?.formatterParams?.legend ? 'checked' : ''}> Legenda</label>
+                            </div>
+                        </div>
+
+                        <!-- Formatter Params (Money) -->
+                        <div class="formatter-params money-params" style="display: ${colConfig?.formatter === 'money' ? 'grid' : 'none'}; grid-template-columns: 1fr 1fr 1fr; gap: 5px; margin-top: 5px; border: 1px dashed #cbd5e1; padding: 5px; border-radius: 4px;">
+                            <div>
+                                <label style="font-size:9px;">Símbolo</label>
+                                <input type="text" class="money-symbol" value="${colConfig?.formatterParams?.symbol ?? 'R$'}" style="width:100%; font-size:10px;">
+                            </div>
+                            <div>
+                                <label style="font-size:9px;">Decimal</label>
+                                <input type="text" class="money-decimal" value="${colConfig?.formatterParams?.decimal ?? ','}" style="width:100%; font-size:10px;">
+                            </div>
+                            <div>
+                                <label style="font-size:9px;">Milhar</label>
+                                <input type="text" class="money-thousand" value="${colConfig?.formatterParams?.thousand ?? '.'}" style="width:100%; font-size:10px;">
+                            </div>
+                        </div>
                     </div>
+                    ${refListConfigHtml}
                 </div>
+            `;
+        }
+
+        card.innerHTML = `
+            <span class="field-card-label">${col.label} <span class="field-card-type">(${col.type})</span></span>
+            <div class="field-card-controls">
+                <label class="config-toggle"><input type="checkbox" class="is-visible-checkbox" ${isVisible ? 'checked' : ''}> Visível</label>
+                <button type="button" class="btn btn-secondary btn-sm toggle-col-config">Opções</button>
+            </div>
+            <div class="col-config-panel" style="display: none; padding:15px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; margin-top:8px;">
+                <style>
+                    .col-config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+                    .col-config-section { display: flex; flex-direction: column; gap: 8px; }
+                    .col-config-section.full-width { grid-column: span 2; border-top: 1px solid #e2e8f0; padding-top: 10px; margin-top: 5px; }
+                    .config-label-with-help { display: flex; align-items: center; font-weight: 700; font-size: 11px; color: #475569; text-transform: uppercase; margin-bottom: 2px; }
+                    .reflist-config-table { width: 100%; border-collapse: collapse; font-size: 10px; }
+                    .reflist-config-table th, .reflist-config-table td { padding: 4px; border: 1px solid #eee; text-align: center; }
+                    .reflist-config-table th { background: #f1f5f9; }
+                </style>
+                ${optionsHtml}
             </div>
         `;
 
@@ -359,10 +577,64 @@ export const TableConfigEditor = (() => {
         };
 
         card.querySelector('.is-visible-checkbox').onchange = (e) => {
-            const targetList = e.target.checked ? _mainContainer.querySelector('#column-list') : _mainContainer.querySelector('#available-column-list');
+            const targetList = _mainContainer.querySelector(e.target.checked ? '#column-list' : '#available-column-list');
             targetList.appendChild(card);
             updateDebugJson();
         };
+
+        const formatterSelect = card.querySelector('.col-formatter-select');
+        if (formatterSelect) {
+            formatterSelect.onchange = () => {
+                const val = formatterSelect.value;
+                const pParams = card.querySelector('.progress-params');
+                const mParams = card.querySelector('.money-params');
+                if (pParams) pParams.style.display = (val === 'progress') ? 'grid' : 'none';
+                if (mParams) mParams.style.display = (val === 'money') ? 'grid' : 'none';
+                updateDebugJson();
+            };
+        }
+
+        if (isRefList) {
+            const displaySelect = card.querySelector('.reflist-display-as');
+            if (displaySelect) {
+                displaySelect.onchange = () => {
+                    card.querySelector('.reflist-card-options').style.display = displaySelect.value === 'cards' ? 'block' : 'none';
+                    updateDebugJson();
+                };
+            }
+
+            const toggleColsBtn = card.querySelector('.toggle-reflist-columns');
+            if (toggleColsBtn) {
+                toggleColsBtn.onclick = async () => {
+                    const panel = card.querySelector('.reflist-column-config');
+                    if (panel.style.display === 'none') {
+                        const referencedTableId = col.type.split(':')[1];
+                        const referencedSchema = await window.currentLens.getTableSchema(referencedTableId);
+                        const fieldConfig = (_mainContainer._refListFieldConfig?.[col.colId]) || {};
+                        const configCols = fieldConfig._refListConfig?.columns || [];
+                        
+                        if (referencedSchema) {
+                            panel.innerHTML = `
+                                <table class="reflist-config-table">
+                                    <thead><tr><th>Campo</th><th>Exibir</th></tr></thead>
+                                    <tbody>
+                                        ${Object.values(referencedSchema).filter(c => !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos').map(refCol => {
+                                            const isShow = configCols.length === 0 || configCols.includes(refCol.colId);
+                                            return `<tr data-ref-col-id="${refCol.colId}">
+                                                <td style="text-align:left;">${refCol.label}</td>
+                                                <td><input type="checkbox" class="ref-col-show-checkbox" ${isShow ? 'checked' : ''}></td>
+                                            </tr>`;
+                                        }).join('')}
+                                    </tbody>
+                                </table>`;
+                        }
+                        panel.style.display = 'block';
+                    } else {
+                        panel.style.display = 'none';
+                    }
+                };
+            }
+        }
 
         return card;
     }
@@ -377,7 +649,10 @@ export const TableConfigEditor = (() => {
                 const afterElement = getDragAfterElement(list, e.clientY);
                 if (afterElement == null) list.appendChild(draggedItem);
                 else list.insertBefore(draggedItem, afterElement);
-                if (draggedItem) draggedItem.querySelector('.is-visible-checkbox').checked = (list.id === 'column-list');
+                if (draggedItem) {
+                    const cb = draggedItem.querySelector('.is-visible-checkbox');
+                    if (cb) cb.checked = (list.id === 'column-list');
+                }
             });
         });
     }

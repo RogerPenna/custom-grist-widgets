@@ -10,6 +10,9 @@ import { renderColorPicker } from './renderers/render-color-picker.js';
 import { renderProgressBar } from './renderers/render-progress-bar.js';
 import { renderToggle } from './renderers/render-toggle.js';
 import { renderIndicatorJson } from './renderers/render-indicator-json.js';
+import { renderDynamicUI } from './renderers/render-dynamic-ui.js';
+import { renderImage } from './renderers/render-image.js';
+import { renderMoney } from './renderers/render-money.js';
 
 (function () {
   if (document.getElementById('grf-styles')) return;
@@ -183,7 +186,7 @@ export async function renderField(options) {
   container.classList.toggle('is-disabled', isDisabled);
 
   // 3. Aplicação de Estilos Visuais
-  if (!isEditing) {
+  if (!isEditing && !styling?.ignoreCellStyle) {
     // Primeiro aplicamos o estilo condicional do Grist
     _applyStyles(container, gristMetadataStyle);
     
@@ -236,6 +239,24 @@ export async function renderField(options) {
   if (widgetType === 'indicatorjson') {
     console.log(`[renderField] Triggering renderIndicatorJson for ${colSchema.colId}`);
     renderIndicatorJson(callOptions);
+    return;
+  }
+
+  if (widgetType === 'dynamicui' || widgetType === 'jsonuiprotocol') {
+    console.log(`[renderField] Triggering renderDynamicUI for ${colSchema.colId}`);
+    renderDynamicUI(callOptions);
+    return;
+  }
+
+  if (widgetType === 'image') {
+    console.log(`[renderField] Triggering renderImage for ${colSchema.colId}`);
+    renderImage(callOptions);
+    return;
+  }
+
+  if (widgetType === 'money') {
+    console.log(`[renderField] Triggering renderMoney for ${colSchema.colId}`);
+    renderMoney(callOptions);
     return;
   }
 

@@ -1054,3 +1054,4 @@ export const IndicatorsRenderer = (() => {
     return { renderIndicatorDetails, renderIndicatorRow, getIndicatorMetrics, calculateProgressiveTargets, PERIODICITY_CONFIG };
 
 })();
+window.IndicatorsRenderer = IndicatorsRenderer;

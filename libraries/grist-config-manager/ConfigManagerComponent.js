@@ -159,22 +159,12 @@ export async function renderMainUI(grist, container, initialConfigId, componentT
                             <label for="cm-filter-type-selector">Filtro:</label>
                             <select id="cm-filter-type-selector">
                                 <option value="">-- Todos --</option>
-                                <option value="Card System">Card System</option>
-                                <option value="Table">Table</option>
-                                <option value="Drawer">Drawer</option>
-                                <option value="BSC">BSC</option>
-                                <option value="Indicators">Indicators</option>
-                                <option value="Card Style">Style</option>
+                                ${filterOptions}
                             </select>
                         </div>
                         <div class="grf-cm-new-controls">
                             <select id="cm-new-type-selector">
-                                <option value="Card System">Card System</option>
-                                <option value="Table">Table</option>
-                                <option value="Drawer">Drawer</option>
-                                <option value="BSC">BSC</option>
-                                <option value="Indicators">Indicators</option>
-                                <option value="Card Style">Style</option>
+                                ${typeOptions}
                             </select>
                             <button id="cm-new-btn" class="btn btn-primary" title="Criar Nova Configuração">+</button>
                         </div>

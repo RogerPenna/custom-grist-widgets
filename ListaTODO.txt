@@ -181,10 +181,8 @@
 
 ### Próximas Tarefas
 
-- [PENDING] **Implementar "Receiving Field" (JSON UI Protocol):**
-  - Criar um Widget/Renderer "Dynamic Components" que aceita um JSON string de uma coluna.
-  - O JSON define elementos de UI genéricos (pills, lists, progress bars) e ações.
-  - Isso permitirá criar dashboards complexos e links de navegação (como no BSC) usando fórmulas do Grist, sem hardcoding no CardViewer.
+- [DONE] **Navegação Dinâmica entre Widgets (Drill-down):** Implementado suporte para carregar novos widgets in-place no `CardViewer.js` e `UniversalViewer/script.js`. Inclui pilha de navegação (histórico), botão "Voltar" e preservação de filtros entre visualizações.
+- [DONE] **Implementar "Receiving Field" (JSON UI Protocol):** Criado o renderer `renderDynamicUI` que processa JSON para exibir pills, progress bars, stats, ícones e textos formatados. Suportado em Cards, Drawer e Tabela. Isso permite criar dashboards complexos e links de navegação usando fórmulas do Grist.
 
 - [DONE] **Filter module not updating correctly:** When using the filter bar, deleting characters or changing the search term after an initial filter does not correctly update the displayed cards. The filter seems to be applied to an already filtered set of records, instead of always filtering the original, complete dataset.
 
@@ -198,7 +196,7 @@
 
 - [DONE] **Filter not applied in "Riscos" widget:** Even when the `grf-trigger-widget` event is eventually fired, the "Riscos" widget is not filtering the records correctly based on the `externalFilter`. This needs further investigation into the filtering logic in `riscos/js/main.js`, specifically how `externalFilter` is being used to filter `allRiskRecords`.
 
-- [ENHANCEMENT] **Tooltip for action buttons:** The tooltip for action buttons should display the number of related records, not just the action name. This will require fetching the count of related records for the specific `sourceRecord` and `targetTable` and updating the tooltip dynamically. This can be addressed after the core `triggerWidget` functionality and filtering are resolved.
+- [DONE] **Tooltip for action buttons:** Tooltips dos botões de ação agora exibem a contagem de registros relacionados em tempo real (ex: "Meus Objetivos (5)"). Implementado no `CardSystem.js` com busca dinâmica via `tableLens`.
 
 ### Progresso Atual no Table Widget
 
@@ -216,17 +214,7 @@
 - [DONE] **Todos os scripts de editor (`config-cards.js`, `config-drawer.js`, `config-card-style.js`, `config-table.js`) convertidos para módulos e importados diretamente em `ConfigManagerComponent.js`.**
 - [DONE] **Tags de script do editor removidas de `table-widget/index.html` e `widgets/CardViewer.html`.**
 - [DONE] **Criado `config-table.js` placeholder.**
-
-### Erro Atual
-
-- [BUG] **`ReferenceError: componentTypes is not defined` no `ConfigManagerComponent.js`:** Ocorre em `renderMainUI` (linha 77:29) porque a função `open` não está passando o parâmetro `componentTypes` para `renderMainUI` corretamente. Isso impede a correta inicialização do Gerenciador de Configurações e a exibição das opções de tipo de componente.
-
-### Table Configurator UI Improvements
-
-- [DONE] **`configId` do Table Widget persiste após navegação:**
-  - **Problema:** O `configId` para o Table Widget não estava persistindo após a navegação, recarregando como `null`.
-  - **Resolução:** Modificado `table-widget/script.js` para explicitamente recuperar o `configId` usando `grist.getOptions()` no início do `DOMContentLoaded`, garantindo a inicialização correta.
-
+### Progresso Atual no Table Widget
 - [DONE] **Botões "Selecionar Todos" e "Desmarcar Todos" causavam submissão inesperada do formulário e perda de dados:**
   - **Problema:** Clicar nos botões "Selecionar Todos" ou "Desmarcar Todos" no Table Configurator causava a submissão do formulário, fechando o configurador e potencialmente salvando uma configuração incompleta.
   - **Resolução:** Adicionado `type="button"` aos botões em `ConfigManager/editors/config-table.js` para evitar submissão de formulário indesejada.
@@ -269,7 +257,8 @@
 - [DONE] **Formatação de Células (por coluna):**
   - Dropdown para formatadores embutidos do Tabulator (Moeda, Link, Data/Hora, Tick/Cruz, Imagem, Progresso) com `formatterParams` dinâmicos.
 - [DONE] **Grist Styling Overrides (por coluna):**
-  - Checkboxes para `ignoreConditionalFormatting`, `ignoreHeaderStyle`, `ignoreCellStyle` como flags para implementação futura.
+  - Checkboxes para `ignoreConditionalFormatting`, `ignoreHeaderStyle` e `ignoreCellStyle` totalmente implementados no Table Widget.
+
 - [FIXED] **Bug no carregamento da configuração:** Resolvido `TypeError: Cannot read properties of undefined (reading 'enabled')` ao acessar `currentConfig.pagination` e `currentConfig.defaultSort` com encadeamento opcional.
 
 - [DONE] **Drawer Não Abre ao Clicar na Linha:**
@@ -289,19 +278,18 @@
   - The logic for displaying the supplier classification seal has been corrected.
   - It now uses the latest classification record based on `Data_Classificacao`, falling back to the highest `Ano`.
   - An orange icon is now displayed if the latest classification is more than 12 months old.
-
 ### Correções Recentes (Table Widget)
 
 - [DONE] **Tabela Zebrada Lógica Invertida:** Corrigido o problema onde a opção de "Zebra" funcionava ao contrário.
 - [DONE] **Formatação de Células Grist na Tabela:** A tabela agora reflete as cores das colunas do tipo "Choice" (pílulas coloridas) vindas do Grist.
+- [DONE] **"Modo de Edição" Falta "Estilo Excel":** Corrigido o estado padrão do botão de rádio no configurador de tabelas (selecionado por padrão).
+- [DONE] **"ID do Drawer" como Dropdown:** Implementado; o configurador agora lista as configurações de Drawer disponíveis.
+- [DONE] **Coluna Virtual "Ações":** Adicionada coluna especial `_actions` com botões configuráveis de Visualizar, Editar e Excluir.
+- [DONE] **ReferenceError: componentTypes is not defined:** Corrigido na inicialização do configurador.
 
-### Bugs Atuais / Funcionalidades Pendentes (Table Widget)
-
-- [BUG] **"Modo de Edição" Falta "Estilo Excel":** O botão de rádio para ativar o "Excel Style" (edição inline) sumiu da interface de configuração.
-- [PENDING] **"ID do Drawer" como Dropdown:** Atualmente é necessário digitar o ID manualmente; a ideia é transformar em um dropdown com as opções disponíveis.
+### Supplier Performance Dashboard
 
 ### Funcionalidades Ainda Não Implementadas (da "Instructions for TABULATOR options.txt")
 
-- **RefList / Exibição de Tabela Aninhada**
-- **Coluna Virtual "Ações"**
-- **Detalhes de Implementação CRUD (Atualizar/Excluir para Estilo Excel, Visualizar/Editar/Excluir para Estilo Drawer)**
+- [DONE] **RefList / Exibição de Tabela Aninhada:** Implementada expansão de linha no Table Widget para exibir RefLists como sub-tabelas, cards ou instâncias do Tabulator. Configurável via painel de colunas.
+- [DONE] **Detalhes de Implementação CRUD:** Full CRUD (Create, Read, Update, Delete) implementado no Table Widget, suportando tanto edição inline (Excel Style) quanto via formulário (Drawer Style). Adicionado suporte a salvamento em lote (Batch Save).

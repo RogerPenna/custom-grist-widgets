@@ -24,6 +24,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentTheme = 'light';
     let isInitialized = false;
 
+    // --- NAVIGATION STATE ---
+    const navigationStack = [];
+    let currentFilter = null;
+
     // --- 0. REGISTRO DE SUBSCRIPÇÕES (Prioridade Máxima) ---
     console.log("[CardViewer] Registrando subscrições no EventBus...");
     
@@ -37,25 +41,72 @@ document.addEventListener('DOMContentLoaded', async () => {
     subscribe('grf-trigger-widget', async (data) => {
         console.log("[CardViewer] Evento 'grf-trigger-widget' recebido:", data);
         try {
-            if (data.componentType === 'CardSystem' || data.componentType === 'Card System' || !data.componentType) {
-                if (window.GristDrawer) {
-                    const drawerConfig = await tableLens.fetchConfig(data.configId);
-                    if (!drawerConfig) {
-                        console.error(`Configuração ${data.configId} não encontrada.`);
-                        return;
-                    }
-                    const drawerOptions = {
-                        ...drawerConfig,
-                        tableLens: tableLens,
-                        filterValue: data.filterValue,
-                        filterTargetColumn: data.filterTargetColumn,
-                        isRefList: true
-                    };
-                    await window.GristDrawer.open(data.sourceRecord.gristHelper_tableId || currentConfig.tableId, data.sourceRecord.id, drawerOptions);
-                }
+            if (!data.configId) {
+                console.warn("[CardViewer] triggerWidget ignorado: configId ausente.");
+                return;
+            }
+
+            const targetType = (data.componentType || '').replace(/\s+/g, '').toLowerCase();
+            
+            // No CardViewer, ele só processa se o alvo for um tipo suportado para drill-down no mesmo local
+            // Se o targetType for vazio, assumimos que é compatível (legado ou default)
+            const isCompatible = !targetType || ['cardsystem', 'table', 'bsc', 'indicators'].includes(targetType);
+
+            if (isCompatible) {
+                console.log("[CardViewer] Executando drill-down para:", data.configId);
+                await loadDynamicWidget(data.configId, {
+                    value: data.filterValue,
+                    column: data.filterTargetColumn,
+                    sourceLabel: data.sourceRecord?.Label || data.sourceRecord?.label || data.sourceRecord?.id || 'Filtrado'
+                });
+            } else {
+                console.log("[CardViewer] Tipo de componente não compatível para drill-down inline:", targetType);
             }
         } catch (e) { console.error("[CardViewer] Erro ao processar triggerWidget:", e); }
     });
+
+    subscribe('grf-update-record', async (data) => {
+        console.log("[CardViewer] Evento 'grf-update-record' recebido:", data);
+        try {
+            await tableLens.updateRecord(data.tableId, data.recordId, data.data);
+            // O Grist deve notificar a mudança e o initializeAndUpdate será chamado via onRecords
+        } catch (e) {
+            console.error("[CardViewer] Erro ao atualizar registro:", e);
+        }
+    });
+
+    async function loadDynamicWidget(configId, filterData = null) {
+        // Salva estado atual na pilha se já houver uma configuração carregada
+        if (currentConfigId) {
+            navigationStack.push({
+                configId: currentConfigId,
+                filter: currentFilter,
+                title: currentConfig?.widgetTitle || "Início"
+            });
+        }
+
+        currentConfigId = configId;
+        currentFilter = filterData;
+        await initializeAndUpdate();
+    }
+
+    async function goBack() {
+        if (navigationStack.length > 0) {
+            const prevState = navigationStack.pop();
+            currentConfigId = prevState.configId;
+            currentFilter = prevState.filter;
+            await initializeAndUpdate();
+        }
+    }
+
+    // Configura o botão de voltar
+    const backButton = document.getElementById('back-button');
+    if (backButton) {
+        backButton.onclick = (e) => {
+            e.stopPropagation();
+            goBack();
+        };
+    }
 
     subscribe('grf-card-clicked', async (data) => {
         try {
@@ -147,6 +198,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.body.classList.remove('night-theme', 'light-theme');
         document.body.classList.add(`${currentTheme}-theme`);
 
+        // Gerenciamento da Barra de Navegação
+        const navBar = document.getElementById('nav-bar-container');
+        const breadcrumbArea = document.getElementById('breadcrumb-area');
+        
+        if (navigationStack.length > 0) {
+            navBar.style.display = 'flex';
+            const breadcrumbs = navigationStack.map(s => s.title).join(' > ');
+            breadcrumbArea.innerText = breadcrumbs + ' > ' + (currentFilter?.sourceLabel || 'Filtrado');
+        } else {
+            navBar.style.display = 'none';
+        }
+
         if (!urlConfigId) addSettingsGear();
 
         if (!currentConfigId) {
@@ -165,11 +228,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const tableId = currentConfig.tableId;
 
-            const [records, cleanSchema, rawSchema] = await Promise.all([
+            let [records, cleanSchema, rawSchema] = await Promise.all([
                 tableLens.fetchTableRecords(tableId),
                 tableLens.getTableSchema(tableId),
                 tableLens.getTableSchema(tableId, { mode: 'raw' })
             ]);
+
+            // Aplicar Filtro Externo (Drill-down)
+            if (currentFilter && currentFilter.column && currentFilter.value) {
+                console.log(`[CardViewer] Aplicando filtro drill-down: ${currentFilter.column} = ${currentFilter.value}`);
+                records = records.filter(r => {
+                    const val = r[currentFilter.column];
+                    if (Array.isArray(val)) return val.includes(currentFilter.value);
+                    return val == currentFilter.value;
+                });
+            }
 
             Object.keys(cleanSchema).forEach(colId => {
                 if (rawSchema[colId] && rawSchema[colId].description) {

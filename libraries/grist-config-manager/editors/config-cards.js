@@ -1,4 +1,3 @@
-
 export const CardConfigEditor = (() => {
     let state = {};
     let _mainContainer = null;
@@ -323,7 +322,7 @@ export const CardConfigEditor = (() => {
     }
 
     const DEFAULT_FIELD_STYLE = { useGristStyle: true, labelVisible: true, labelPosition: 'above', labelFont: 'inherit', labelFontSize: 'inherit', labelColor: 'inherit', labelAllCaps: false, labelOutline: false, labelOutlineColor: '#ffffff', dataJustify: 'left', dataAllCaps: false, heightLimited: false, maxHeightRows: 1, isTitleField: false };
-    const DEFAULT_STYLING = { iconSize: 1.0, internalCardPadding: '10px', fieldBox: { borderEnabled: false, borderColor: '#cccccc', borderWidth: 1, borderRadius: 4, backgroundColor: '#ffffff', effect: 'none' }, labelStyle: { bold: false, allCaps: false, color: '#333333', font: 'Calibri', size: '12px' }, simpleTextColor: '#000000', simpleTextFont: 'Calibri', simpleTextSize: '14px', fieldBackground: { enabled: false, lightenPercentage: 15 }, iconGroups: [], groupBoxes: [], widgetBackgroundMode: "solid", widgetBackgroundSolidColor: "#f9f9f9", widgetBackgroundGradientType: "linear-gradient(to right, {c1}, {c2})", widgetBackgroundGradientColor1: "#f9f9f9", widgetBackgroundGradientColor2: "#e9e9e9", cardsColorMode: "solid", cardsColorSolidColor: "#ffffff", cardsColorGradientType: "linear-gradient(to right, {c1}, {c2})", cardsColorGradientColor1: "#ffffff", cardsColorGradientColor2: "#f0f0f0", cardsColorApplyText: false, cardsColorTextField: null, cardsColorFontField: null, cardsColorOverlayEffect: 'darken', cardsColorOverlayOpacity: 10, cardBorderThickness: 0, cardBorderMode: "solid", cardBorderSolidColor: "#cccccc", cardTitleFontColor: "#000000", cardTitleFontStyle: "Calibri", cardTitleFontSize: "20px", cardTitleAllCaps: false, cardTitleTopBarEnabled: false, cardTitleTopBarMode: "solid", cardTitleTopBarSolidColor: "#dddddd", cardTitleTopBarGradientType: "linear-gradient(to right, {c1}, {c2})", cardTitleTopBarGradientColor1: "#dddddd", cardTitleTopBarGradientColor2: "#cccccc", cardTitleTopBarLabelFontColor: "#000000", cardTitleTopBarLabelFontStyle: "Calibri", cardTitleTopBarLabelFontSize: "16px", cardTitleTopBarLabelAllCaps: false, cardTitleTopBarDataFontColor: "#333333", cardTitleTopBarDataFontStyle: "Calibri", cardTitleTopBarDataFontSize: "16px", cardTitleTopBarDataAllCaps: false, handleAreaWidth: "8px", handleAreaMode: "solid", handleAreaSolidColor: "#40E0D0", widgetPadding: "10px", cardsSpacing: "15px", selectedCard: { enabled: false, scale: 1.05, colorEffect: "none" }, showDebugInfo: false, cardsColumnLimit: 1, cardsColumnMode: 'fixed' };
+    const DEFAULT_STYLING = { iconSize: 1.0, internalCardPadding: '10px', fieldBox: { borderEnabled: false, borderColor: '#cccccc', borderWidth: 1, borderRadius: 4, backgroundColor: '#ffffff', effect: 'none' }, labelStyle: { bold: false, allCaps: false, color: '#333333', font: 'Calibri', size: '12px' }, simpleTextColor: '#000000', simpleTextFont: 'Calibri', simpleTextSize: '14px', fieldBackground: { enabled: false, lightenPercentage: 15 }, iconGroups: [], groupBoxes: [], widgetBackgroundMode: "solid", widgetBackgroundSolidColor: "#f9f9f9", widgetBackgroundGradientType: "linear-gradient(to right, {c1}, {c2})", widgetBackgroundGradientColor1: "#f9f9f9", widgetBackgroundGradientColor2: "#e9e9e9", cardsColorMode: "solid", cardsColorSolidColor: "#ffffff", cardsColorGradientType: "linear-gradient(to right, {c1}, {c2})", cardsColorGradientColor1: "#ffffff", cardsColorGradientColor2: "#f0f0f0", cardsColorApplyText: false, cardsColorTextField: null, cardsColorFontField: null, cardsColorOverlayEffect: 'darken', cardsColorOverlayOpacity: 10, cardBorderThickness: 0, cardBorderMode: "solid", cardBorderSolidColor: "#cccccc", cardTitleFontColor: "#000000", cardTitleFontStyle: "Calibri", cardTitleFontSize: "20px", cardTitleAllCaps: false, cardTitleTopBarEnabled: false, cardTitleTopBarMode: "solid", cardTitleTopBarSolidColor: "#dddddd", cardTitleTopBarGradientType: "linear-gradient(to right, {c1}, {c2})", cardTitleTopBarGradientColor1: "#dddddd", cardTitleTopBarGradientColor2: "#cccccc", cardTitleTopBarLabelFontColor: "#000000", cardTitleTopBarLabelFontStyle: "Calibri", cardTitleTopBarLabelFontSize: "16px", cardTitleTopBarLabelAllCaps: false, cardTitleTopBarDataFontColor: "#333333", cardTitleTopBarDataFontStyle: "Calibri", cardTitleTopBarDataFontSize: "16px", cardTitleTopBarDataAllCaps: false, handleAreaWidth: "8px", handleAreaMode: "solid", handleAreaSolidColor: "#40E0D0", widgetPadding: "10px", cardsSpacing: "15px", selectedCard: { enabled: false, scale: 1.05, colorEffect: "none" } };
     const DEFAULT_NUM_ROWS = 1; const NUM_COLS = 10; const CONFIG_WIDTH = 700; const COL_WIDTH = CONFIG_WIDTH / NUM_COLS;
 
     function createTabButton(label, tabId, container) { const btn = document.createElement("button"); btn.type = "button"; btn.textContent = label; btn.className = 'config-tab-button'; btn.addEventListener("click", () => switchTab(tabId, container)); btn.dataset.tabId = tabId; return btn; }
@@ -976,7 +975,7 @@ export const CardConfigEditor = (() => {
             style.textContent = `.actions-layout { display: flex; height: 500px; border: 1px solid #ddd; border-radius: 4px; background: #fff; } .col-groups { width: 200px; border-right: 1px solid #eee; display: flex; flex-direction: column; background: #f9f9f9; } .col-buttons { width: 150px; border-right: 1px solid #eee; display: flex; flex-direction: column; background: #fff; } .col-details { flex-grow: 1; padding: 15px; overflow-y: auto; background: #fff; } .list-header { padding: 10px; font-weight: bold; border-bottom: 1px solid #eee; background: #f0f0f0; color: #555; font-size: 12px; text-transform: uppercase; } .list-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #f5f5f5; display: flex; align-items: center; justify-content: space-between; transition: background 0.2s; } .list-item:hover { background-color: #f0f0f0; } .list-item.active { background-color: #e6f7ff; border-left: 3px solid #1890ff; } .group-actions { display: flex; gap: 5px; opacity: 0.5; } .list-item:hover .group-actions { opacity: 1; } .group-action-btn { border: none; background: none; cursor: pointer; padding: 2px; color: #888; } .group-action-btn:hover { color: #333; } .add-btn-row { padding: 10px; text-align: center; border-top: 1px solid #eee; margin-top: auto; } .add-btn-icon { font-size: 24px; color: #28a745; cursor: pointer; background: none; border: none; transition: transform 0.2s; } .add-btn-icon:hover { transform: scale(1.2); } .button-preview-item { display: flex; align-items: center; gap: 10px; } .btn-icon-preview { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border: 1px solid #ccc; border-radius: 4px; font-size: 12px; } .btn-icon-preview.circle { border-radius: 50%; } .empty-state { padding: 20px; text-align: center; color: #999; font-style: italic; }`;
             document.head.appendChild(style);
         }
-        tabEl.innerHTML = `<h3>Card Actions & Navigation</h3><div class="form-group" style="background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px;"><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;"><div><label style="display:block; font-size:11px; font-weight:800; color:#94a3b8; text-transform:uppercase; margin-bottom:10px;">General Card Interaction</label><div style="display:flex; gap:10px; align-items:center;"><label for="cs-sp-drawer-config">Details Drawer:</label><select id="cs-sp-drawer-config" style="flex:1;"><option value="">-- None --</option></select></div><div style="display:flex; gap:10px; align-items:center; margin-top:10px;"><label for="cs-sp-size">Drawer Size:</label><select id="cs-sp-size" style="flex:1;"><option value="">-- Use Drawer Config --</option><option value="25%">25%</option><option value="35%">35%</option><option value="50%">50%</option><option value="75%">75%</option></select></div></div><div><label style="display:block; font-size:11px; font-weight:800; color:#94a3b8; text-transform:uppercase; margin-bottom:10px;">Global "Add New" Buttons</label><div style="display:flex; flex-direction:column; gap:8px;"><label><input type="checkbox" id="cs-add-btn-top"> Show "+" Button at Top</label><label><input type="checkbox" id="cs-add-btn-bottom"> Show "+" Button at Bottom</label><div style="display:flex; gap:10px; align-items:center; margin-top:5px;"><label style="white-space:nowrap;">Creation Config:</label><select id="cs-add-btn-config" style="flex:1;"><option value="">-- Use Default --</option></select></div></div></div></div><hr style="margin: 15px 0; border:none; border-top: 1px solid #ddd;"><div style="display:flex; gap:20px; align-items:center;"><label for="cs-icon-size">Global Icon Size:</label><select id="cs-icon-size" style="width: auto;"><option value="0.8">80%</option><option value="0.9">90%</option><option value="1.0" selected>100% (Default)</option><option value="1.1">110%</option><option value="1.2">120%</option></select></div></div><div class="actions-layout" id="actions-master-detail"></div>`;
+        tabEl.innerHTML = `<h3>Card Actions & Navigation</h3><div class="form-group" style="background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px;"><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;"><div><label style="display:block; font-size:11px; font-weight:800; color:#94a3b8; text-transform:uppercase; margin-bottom:10px;">General Card Interaction</label><div style="display:flex; gap:10px; align-items:center;"><label for="cs-sp-drawer-config">Details Drawer:</label><select id="cs-sp-drawer-config" style="flex:1;"><option value="">-- None --</option></select></div><div style="display:flex; gap:10px; align-items:center; margin-top:10px;"><label for="cs-sp-size">Drawer Size:</label><select id="cs-sp-size" style="flex:1;"><option value="">-- Use Drawer Config --</option><option value="25%">25%</option><option value="35%">35%</option><option value="50%">50%</option><option value="75%">75%</option></select></div></div><div><label style="display:block; font-size:11px; font-weight:800; color:#94a3b8; text-transform:uppercase; margin-bottom:10px;">Global "Add New" Buttons</label><div style="display:flex; flex-direction:column; gap:8px;"><label><input type="checkbox" id="cs-add-btn-top"> Show "+" Button at Top</label><label><input type="checkbox" id="cs-add-btn-bottom"> Show "+" Button at Bottom</label><div style="display:flex; gap:10px; align-items:center; margin-top:5px;"><label style="white-space:nowrap;">Creation Config:</label><select id="cs-add-btn-config" style="flex:1;"><option value="">-- Use Default --</option></select></div></div></div></div><hr style="margin: 15px 0; border:none; border-top: 1px solid #ddd;"><div style="display:flex; gap:20px; align-items:center;"><label for="cs-icon-size">Global Icon Size:</label><select id="cs-icon-size" style="width: auto;"><option value="0.8">80%</option><option value="0.9">90%</option><option value="1.0" selected>100% (Default)</option><option value="1.1" selected>110%</option><option value="1.2" selected>120%</option></select></div><div id="actions-master-detail" class="actions-layout"></div>`;
         contentArea.appendChild(tabEl);
         const drawerSelect = tabEl.querySelector("#cs-sp-drawer-config"); const addBtnConfigSelect = tabEl.querySelector("#cs-add-btn-config");
         if (allConfigs && Array.isArray(allConfigs)) { allConfigs.filter(c => c.componentType === 'Drawer').forEach(c => { const option = document.createElement('option'); option.value = c.configId; option.textContent = c.configId; drawerSelect.appendChild(option); const option2 = document.createElement('option'); option2.value = c.configId; option2.textContent = c.configId; addBtnConfigSelect.appendChild(option2); }); }
@@ -1031,16 +1030,16 @@ export const CardConfigEditor = (() => {
     }
 
     function renderButtonConfig(container, btn, group) {
-        container.innerHTML = `<h4>Button Config</h4><div class="form-group"><label>Content Type:</label><label><input type="radio" name="btn-style" value="icon" ${btn.buttonStyle !== 'text' ? 'checked' : ''}> Icon</label><label><input type="radio" name="btn-style" value="text" ${btn.buttonStyle === 'text' ? 'checked' : ''}> Text</label></div><div id="btn-content-icon" style="display: ${btn.buttonStyle !== 'text' ? 'block' : 'none'}"><div class="form-group"><label>Select Icon:</label><div class="icon-picker-display" style="cursor:pointer; padding: 5px; border: 1px solid #ccc; display: inline-flex; align-items:center; gap: 8px; border-radius: 4px; background: #fff;"><span class="current-icon" style="display:flex; color: #333;"><svg class="icon" style="width:20px; height:20px; fill:currentColor; stroke:currentColor; stroke-width:0.5px;"><use href="#${btn.icon || 'icon-star'}"></use></svg></span> <span style="font-weight:bold; color: #555;">Change</span></div></div></div><div id="btn-content-text" style="display: ${btn.buttonStyle === 'text' ? 'block' : 'none'}"><div class="form-group"><label>Text (1-3 chars):</label><input type="text" id="btn-text-val" value="${btn.text || ''}" maxlength="3" style="width: 60px;"></div></div><hr><div class="form-group"><label>Tooltip:</label><input type="text" id="btn-tooltip" value="${btn.tooltip || ''}" class="form-control"></div><div class="form-group"><label>Action Type:</label><select id="btn-actionType" class="form-control"><option value="navigateToGristPage" ${btn.actionType === 'navigateToGristPage' ? 'selected' : ''}>Navigate to Page</option><option value="openUrlFromColumn" ${btn.actionType === 'openUrlFromColumn' ? 'selected' : ''}>Open URL</option><option value="updateRecord" ${btn.actionType === 'updateRecord' ? 'selected' : ''}>Update Record</option><option value="triggerWidget" ${btn.actionType === 'triggerWidget' ? 'selected' : ''}>Trigger Widget</option><option value="editRecord" ${btn.actionType === 'editRecord' ? 'selected' : ''}>Edit Card</option><option value="deleteRecord" ${btn.actionType === 'deleteRecord' ? 'selected' : ''}>Delete Record</option><option value="addSubRecord" ${btn.actionType === 'addSubRecord' ? 'selected' : ''}>Add Sub-record</option><option value="showTooltipField" ${btn.actionType === 'showTooltipField' ? 'selected' : ''}>Display Field as Tooltip</option><option value="SHOW_INDICATOR_CHART" ${btn.actionType === 'SHOW_INDICATOR_CHART' ? 'selected' : ''}>Show Indicator Chart</option><option value="EDIT_INDICATOR_DATA" ${btn.actionType === 'EDIT_INDICATOR_DATA' ? 'selected' : ''}>Edit Indicator Data</option><option value="moveRecord" ${btn.actionType === 'moveRecord' ? 'selected' : ''}>Move Card</option></select><div id="btn-action-help-container">${renderActionHelp(btn.actionType)}</div></div><div id="btn-action-specific"></div>`;
+        container.innerHTML = `<h4>Button Config</h4><div class="form-group"><label>Content Type:</label><label><input type="radio" name="btn-style" value="icon" ${btn.buttonStyle !== 'text' ? 'checked' : ''}> Icon</label><label><input type="radio" name="btn-style" value="text" ${btn.buttonStyle === 'text' ? 'checked' : ''}> Text</label></div><div id="btn-content-icon" style="display: ${btn.buttonStyle !== 'text' ? 'block' : 'none'}"><div class="form-group"><label>Select Icon:</label><div class="icon-picker-display" style="cursor:pointer; padding: 5px; border: 1px solid #ccc; display: inline-flex; align-items:center; gap: 8px; border-radius: 4px; background: #fff;"><span class="current-icon" style="display:flex; color: #333;"><svg class="icon" style="width:20px; height:20px; fill:currentColor; stroke:currentColor; stroke-width:0.5px;"><use href="#${btn.icon || 'icon-star'}"></use></svg></span> <span style="font-weight:bold; color: #555;">Change</span></div></div></div><div id="btn-content-text" style="display: ${btn.buttonStyle === 'text' ? 'block' : 'none'}"><div class="form-group"><label>Text (1-3 chars):</label><input type="text" id="btn-text-val" value="${btn.text || ''}" maxlength="3" style="width: 60px;"></div></div><hr><div class="form-group"><label>Tooltip:</label><input type="text" id="btn-tooltip" value="${btn.tooltip || ''}" class="form-control"></div><div class="form-group"><label>Action Type:</label><select id="btn-actionType" class="form-control"><option value="navigateToGristPage" ${btn.actionType === 'navigateToGristPage' ? 'selected' : ''}>Navigate to Page</option><option value="openUrlFromColumn" ${btn.actionType === 'openUrlFromColumn' ? 'selected' : ''}>Open URL</option><option value="updateRecord" ${btn.actionType === 'updateRecord' ? 'selected' : ''}>Update Record</option><option value="triggerWidget" ${btn.actionType === 'triggerWidget' ? 'selected' : ''}>Trigger Widget</option><option value="editRecord" ${btn.actionType === 'editRecord' ? 'selected' : ''}>Open Drawer</option><option value="deleteRecord" ${btn.actionType === 'deleteRecord' ? 'selected' : ''}>Delete Record</option><option value="addSubRecord" ${btn.actionType === 'addSubRecord' ? 'selected' : ''}>Add Sub-Record</option><option value="showTooltipField" ${btn.actionType === 'showTooltipField' ? 'selected' : ''}>Tooltip Field</option><option value="moveRecord" ${btn.actionType === 'moveRecord' ? 'selected' : ''}>Move Alça</option><option value="SHOW_INDICATOR_CHART" ${btn.actionType === 'SHOW_INDICATOR_CHART' ? 'selected' : ''}>Show Indicator Chart</option><option value="EDIT_INDICATOR_DATA" ${btn.actionType === 'EDIT_INDICATOR_DATA' ? 'selected' : ''}>Edit Indicator Data</option></select><div id="btn-action-help-container">${renderActionHelp(btn.actionType)}</div></div><div id="btn-action-specific" style="margin-top: 10px;"></div><hr><h4>Individual Overrides</h4><div class="form-group"><label>Icon/Text Color:</label><input type="color" id="btn-fg" value="${btn.iconColor||group.iconColor||'#000000'}"> <label><input type="checkbox" id="btn-fg-default" ${!btn.iconColor?'checked':''}> Default</label></div><div class="form-group"><label>Background Mode:</label><select id="btn-bgmode"><option value="default" ${!btn.bgMode?'selected':''}>Follow Group</option><option value="solid" ${btn.bgMode==='solid'?'selected':''}>Solid Color</option><option value="transparent" ${btn.bgMode==='transparent'?'selected':''}>Transparent</option><option value="overlay" ${btn.bgMode==='overlay'?'selected':''}>Adaptive Overlay</option></select></div><div id="btn-solid-opts" style="display:none;"><div class="form-group"><label>Background Color:</label><input type="color" id="btn-bg" value="${btn.backgroundColor||'#f0f0f0'}"></div></div>`;
+        const actionTypeSelect = container.querySelector('#btn-actionType'); const actionSpecContainer = container.querySelector('#btn-action-specific'); const actionHelpContainer = container.querySelector('#btn-action-help-container');
+        renderActionSpecificConfig(actionSpecContainer, btn, 0);
+        actionTypeSelect.addEventListener('change', (e) => { btn.actionType = e.target.value; actionHelpContainer.innerHTML = renderActionHelp(btn.actionType); renderActionSpecificConfig(actionSpecContainer, btn, 0); update(); });
+        actionSpecContainer.addEventListener('change', (e) => { const prop = e.target.dataset.prop; if (prop) { btn[prop] = e.target.value; update(); } });
         const update = () => { renderActionsLayout(_mainContainer.querySelector('#actions-master-detail')); updateDebugJson(); };
         container.querySelectorAll('input[name="btn-style"]').forEach(r => r.addEventListener('change', (e) => { btn.buttonStyle = e.target.value; container.querySelector('#btn-content-icon').style.display = btn.buttonStyle === 'icon' ? 'block' : 'none'; container.querySelector('#btn-content-text').style.display = btn.buttonStyle === 'text' ? 'block' : 'none'; update(); }));
         container.querySelector('.icon-picker-display').onclick = (e) => { const display = e.currentTarget.querySelector('.current-icon'); const dummyInput = { value: btn.icon }; openIconPicker(dummyInput, display, btn); };
         container.querySelector('#btn-text-val').addEventListener('input', (e) => { btn.text = e.target.value; update(); });
         container.querySelector('#btn-tooltip').addEventListener('input', (e) => { btn.tooltip = e.target.value; });
-        const actionTypeSelect = container.querySelector('#btn-actionType'); const actionSpecContainer = container.querySelector('#btn-action-specific'); const actionHelpContainer = container.querySelector('#btn-action-help-container');
-        renderActionSpecificConfig(actionSpecContainer, btn, 0);
-        actionTypeSelect.addEventListener('change', (e) => { btn.actionType = e.target.value; actionHelpContainer.innerHTML = renderActionHelp(btn.actionType); renderActionSpecificConfig(actionSpecContainer, btn, 0); update(); });
-        actionSpecContainer.addEventListener('change', (e) => { const prop = e.target.dataset.prop; if (prop) { btn[prop] = e.target.value; update(); } });
     }
 
     function openGroupSettingsPopup(group) {
@@ -1050,7 +1049,7 @@ export const CardConfigEditor = (() => {
         const backdrop = document.createElement('div'); backdrop.className = 'popup-backdrop'; backdrop.style.cssText = `position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 1050;`;
         _mainContainer.appendChild(backdrop);
         _fieldStylePopup = document.createElement("div"); _fieldStylePopup.className = 'field-style-popup'; _fieldStylePopup.style.cssText = `position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1060; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); width: 320px; max-height: 90vh; overflow-y: auto;`;
-        _fieldStylePopup.innerHTML = `<h3>Edit Group</h3><div class="form-group"><label>Name:</label><input type="text" id="popup-g-name" value="${group.name}"></div><div class="form-group"><label>Align:</label><select id="popup-g-align"><option value="left" ${group.alignment==='left'?'selected':''}>Left</option><option value="center" ${group.alignment==='center'?'selected':''}>Center</option><option value="right" ${group.alignment==='right'?'selected':''}>Right</option></select></div><div class="form-group"><label>Vertical Offset (px):</label><input type="number" id="popup-g-v-offset" value="${group.verticalOffset || 0}" style="width: 60px;"></div><div class="form-group"><label>Visibility:</label><select id="popup-g-visibility"><option value="always" ${group.visibilityMode!=='hover'?'selected':''}>Always Visible</option><option value="hover" ${group.visibilityMode==='hover'?'selected':''}>Show on Hover</option></select></div><hr><h4>Default Button Style</h4><div class="form-group"><label>Shape:</label><select id="popup-g-shape"><option value="square" ${group.shape!=='circle'?'selected':''}>Square</option><option value="circle" ${group.shape==='circle'?'selected':''}>Circle</option></select></div><div class="form-group"><label>Icon/Text Color:</label><input type="color" id="popup-g-fg" value="${group.iconColor||'#000000'}"></div><div class="form-group"><label>Background Mode:</label><select id="popup-g-bgmode"><option value="solid" ${group.bgMode==='solid'?'selected':''}>Solid Color</option><option value="transparent" ${group.bgMode==='transparent'?'selected':''}>Transparent</option><option value="overlay" ${group.bgMode==='overlay'?'selected':''}>Adaptive Overlay</option><option value="match-card" ${group.bgMode==='match-card'?'selected':''}>Match Card Color</option></select></div><div id="popup-g-solid-opts" class="form-group" style="display:none;"><label>Background Color:</label><input type="color" id="popup-g-bg" value="${group.backgroundColor||'#f0f0f0'}"></div><div id="popup-g-overlay-opts" class="form-group" style="display:none; background: #f8f9fa; padding: 8px; border-radius: 4px;"><label>Effect:</label><select id="popup-g-overlay-effect"><option value="lighten" ${group.overlayEffect==='lighten'?'selected':''}>Lighten (White)</option><option value="darken" ${group.overlayEffect==='darken'?'selected':''}>Darken (Black)</option></select><div style="margin-top:5px;"><label>Opacity: <input type="number" id="popup-g-overlay-opacity" min="0" max="100" value="${group.overlayOpacity}" style="width:50px;">%</label></div></div><div class="form-group" style="display:flex; gap: 10px;"><div><label>Border Color:</label><br><input type="color" id="popup-g-border" value="${group.borderColor||'#cccccc'}"></div><div><label>Width (px):</label><br><input type="number" id="popup-g-border-width" min="0" value="${group.borderWidth||1}" style="width: 50px;"></div></div><div class="popup-actions"><button id="popup-close" class="btn btn-primary">Done</button></div>`;
+        _fieldStylePopup.innerHTML = `<h3>Edit Group</h3><div class="form-group"><label>Name:</label><input type="text" id="popup-g-name" value="${group.name}"></div><div class="form-group"><label>Align:</label><select id="popup-g-align"><option value="left" ${group.alignment==='left'?'selected':''}>Left</option><option value="center" ${group.alignment==='center'?'selected':''}>Center</option><option value="right" ${group.alignment==='right'?'selected':''}>Right</option></select></div><div class="form-group"><label>Vertical Offset (px):</label><input type="number" id="popup-g-v-offset" value="${group.verticalOffset || 0}" style="width: 60px;"></div><div class="form-group"><label>Visibility:</label><select id="popup-g-visibility"><option value="always" ${group.visibilityMode!=='hover'?'selected':''}>Always Visible</option><option value="hover" ${group.visibilityMode==='hover'?'selected':''}>Show on Hover</option></select></div><hr><h4>Default Button Style</h4><div class="form-group"><label>Shape:</label><select id="popup-g-shape"><option value="square" ${group.shape!=='circle'?'selected':''}>Square</option><option value="circle" ${group.shape==='circle'?'selected':''}>Circle</option></select></div><div class="form-group"><label>Icon/Text Color:</label><input type="color" id="popup-g-fg" value="${group.iconColor||'#000000'}"></div><div class="form-group"><label>Background Mode:</label><select id="popup-g-bgmode"><option value="solid" ${group.bgMode==='solid'?'selected':''}>Solid Color</option><option value="transparent" ${group.bgMode==='transparent'?'selected':''}>Transparent</option><option value="overlay" ${group.bgMode==='overlay'?'selected':''}>Adaptive Overlay</option><option value="match-card" ${group.bgMode==='match-card'?'selected':''}>Match Card Color</option></select></div><div id="popup-g-solid-opts" class="form-group" style="display:none;"><label>Background Color:</label><input type="color" id="popup-g-bg" value="${group.backgroundColor||'#f0f0f0'}"></div><div id="popup-g-overlay-opts" class="form-group" style="display:none;"><label>Effect:</label><select id="popup-g-overlay-effect"><option value="lighten" ${group.overlayEffect==='lighten'?'selected':''}>Lighten</option><option value="darken" ${group.overlayEffect==='darken'?'selected':''}>Darken</option></select><br><label>Opacity (%):</label><input type="number" id="popup-g-overlay-opacity" value="${group.overlayOpacity}" style="width:60px;"></div><div class="form-group"><label>Border Color:</label><input type="color" id="popup-g-border" value="${group.borderColor||'#cccccc'}"></div><div class="form-group"><label>Border Width (px):</label><input type="number" id="popup-g-border-width" value="${group.borderWidth||0}" style="width:60px;"></div><div class="popup-actions"><button id="popup-close" type="button" class="btn btn-primary">Close</button></div>`;
         _mainContainer.appendChild(_fieldStylePopup);
         const toggleOpts = () => { const mode = _fieldStylePopup.querySelector('#popup-g-bgmode').value; _fieldStylePopup.querySelector('#popup-g-solid-opts').style.display = mode === 'solid' ? 'block' : 'none'; _fieldStylePopup.querySelector('#popup-g-overlay-opts').style.display = (mode === 'overlay' || mode === 'match-card') ? 'block' : 'none'; };
         _fieldStylePopup.querySelector('#popup-g-bgmode').addEventListener('change', toggleOpts); toggleOpts();
@@ -1089,7 +1088,118 @@ export const CardConfigEditor = (() => {
             const currentRefListConfig = fieldDef.style.refListConfig || {};
             refListOptionsHtml = `<hr><h4>RefList Options</h4><div class="form-group"><label>Display As:</label><select id="fs-reflist-display-as"><option value="table" ${currentRefListConfig.displayAs === 'table' ? 'selected' : ''}>Table</option><option value="cards" ${currentRefListConfig.displayAs === 'cards' ? 'selected' : ''}>Cards</option><option value="tabulator" ${currentRefListConfig.displayAs === 'tabulator' ? 'selected' : ''}>Complex Table</option></select></div><div class="form-group" id="fs-reflist-card-config-group" style="display: ${currentRefListConfig.displayAs === 'cards' ? 'block' : 'none'};"><label>Card Config ID:</label><select id="fs-reflist-card-config-id" class="form-control"><option value="">-- Select --</option>${allConfigs.filter(c => c.componentType === 'Card System').map(c => `<option value="${c.configId}" ${currentRefListConfig.cardConfigId === c.configId ? 'selected' : ''}>${c.widgetTitle} (${c.configId})</option>`).join('')}</select></div><div class="form-group" id="fs-reflist-tabulator-config-group" style="display: ${currentRefListConfig.displayAs === 'tabulator' ? 'block' : 'none'};"><label>Tabulator Config ID:</label><select id="fs-reflist-tabulator-config-id" class="form-control"><option value="">-- Select --</option>${allConfigs.filter(c => c.componentType === 'Table').map(c => `<option value="${c.configId}" ${currentRefListConfig.tabulatorConfigId === c.configId ? 'selected' : ''}>${c.widgetTitle} (${c.configId})</option>`).join('')}</select></div>`;
         }
-        _fieldStylePopup.innerHTML = `<div class="field-style-popup-content"><h3 style="margin-top:0;">Style: ${fieldDef.colId}</h3><div><label><input type="checkbox" id="fs-use-grist-style"> Use Grist Style</label></div><hr><h4>Widget</h4><div class="form-group"><label>Type:</label><select id="fs-widget-type"><option value="">Default</option><option value="Toggle Switch">Toggle Switch</option><option value="Progress Bar">Progress Bar</option><option value="Color Picker">Color Picker</option></select></div><div id="fs-widget-options-container" style="display: none;"></div><hr><h4>Font</h4><div class="form-group"><label>Size:</label><input type="number" id="fs-data-size" min="8" style="width: 60px;"></div><div class="form-group"><label>Color:</label><input type="color" id="fs-data-color"> <label><input type="checkbox" id="fs-data-color-default" checked> Default</label></div><hr><div><label>Rows: <input type="number" id="fs-card-rows" min="1" style="width:50px;"></label></div><div><label><input type="checkbox" id="fs-lv"> Label Visible</label></div>${refListOptionsHtml}<div class="popup-actions"><button id="fs-cancel" type="button" class="btn btn-secondary">Cancel</button><button id="fs-save" type="button" class="btn btn-primary">Save</button></div></div>`;
+
+        // Generate widget options based on field type
+        const fieldType = fieldSchema ? fieldSchema.type : 'Text';
+        console.log(`[CardConfigEditor] Opening style popup for ${fieldDef.colId}. Type: ${fieldType}`);
+
+        const isNumeric = ['Int', 'Float', 'Numeric', 'Any'].some(t => fieldType.startsWith(t));
+        const isBoolean = fieldType === 'Bool';
+        const isChoice = fieldType.includes('Choice');
+        const isTextLike = !isBoolean; // Quase tudo pode ser texto ou renderizado como tal
+
+        let widgetOptionsHtml = '<option value="">Default (Auto)</option>';
+        
+        // Toggles: Para campos lógicos ou de escolha
+        if (isBoolean || isChoice || fieldType === 'Any') {
+            widgetOptionsHtml += '<option value="Toggle Switch">Toggle Switch</option>';
+        }
+        
+        // Progress & Money: Para campos numéricos ou genéricos
+        if (isNumeric || fieldType === 'Any') {
+            widgetOptionsHtml += '<option value="Progress Bar">Progress Bar</option>';
+            widgetOptionsHtml += '<option value="Money">Moeda (BRL R$)</option>';
+        }
+        
+        // Color Picker: Quase qualquer campo pode conter um HEX
+        if (!isBoolean) {
+             widgetOptionsHtml += '<option value="Color Picker">Color Picker</option>';
+        }
+        
+        // Widgets de Texto / Imagem / Protocolos
+        if (isTextLike) {
+             widgetOptionsHtml += '<option value="Dynamic UI">Dynamic UI (JSON)</option>';
+             widgetOptionsHtml += '<option value="Image">Imagem (URL/Anexo)</option>';
+             widgetOptionsHtml += '<option value="Indicator JSON">Indicadores (Performance JSON)</option>';
+        }
+
+        _fieldStylePopup.innerHTML = `
+            <style>
+                .col-manager-card { display: flex; align-items: center; background: #f4f4f4; border: 1px solid #ddd; border-radius: 4px; padding: 5px; margin-bottom: 5px; cursor: grab; }
+                .col-manager-card.dragging { opacity: 0.5; }
+                .col-manager-handle { margin-right: 8px; cursor: grab; }
+                .col-manager-label { flex-grow: 1; }
+                .col-manager-sort { margin-left: 8px; cursor: pointer; width: 20px; text-align: center; }
+                .col-manager-sort.asc::after { content: '▲'; color: green; }
+                .col-manager-sort.desc::after { content: '▼'; color: red; }
+            </style>
+            <div class="field-style-popup-content">
+                <h3 style="margin-top:0;">Style: ${fieldDef.colId}</h3>
+                <div><label><input type="checkbox" id="fs-use-grist-style"> Use Grist Field Style</label></div>
+                <p class="help-text">If unchecked, the field will be rendered as simple text.</p>
+                
+                <hr>
+                <h4>Widget</h4>
+                <div class="form-group">
+                    <label>Widget Type:</label>
+                    <select id="fs-widget-type">
+                        ${widgetOptionsHtml}
+                    </select>
+                </div>
+                <div id="fs-widget-options-container" style="display: none; border: 1px solid #eee; padding: 10px; border-radius: 4px; margin-bottom: 10px;">
+                    <!-- Widget specific options will be rendered here -->
+                </div>
+
+                <hr>
+                <h4>Data Font Style</h4>
+                <div class="form-group">
+                    <label>Font Family:</label>
+                    <select id="fs-data-font">
+                        <option value="">Inherit (Default)</option>
+                        <option value="Arial">Arial</option>
+                        <option value="Calibri">Calibri</option>
+                        <option value="Inter">Inter</option>
+                        <option value="Roboto">Roboto</option>
+                        <option value="Open Sans">Open Sans</option>
+                        <option value="Times New Roman">Times New Roman</option>
+                        <option value="Courier New">Courier New</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Font Size (px):</label>
+                    <input type="number" id="fs-data-size" min="8" style="width: 60px;" placeholder="Default">
+                </div>
+                <div class="form-group">
+                    <label>Font Color:</label>
+                    <input type="color" id="fs-data-color" value="#000000"> 
+                    <label><input type="checkbox" id="fs-data-color-default" checked> Use Default</label>
+                </div>
+                <div class="form-group">
+                    <label><input type="checkbox" id="fs-data-bold"> Bold</label>
+                    <label><input type="checkbox" id="fs-data-italic" style="margin-left: 15px;"> Italic</label>
+                    <label><input type="checkbox" id="fs-data-allcaps" style="margin-left: 15px;"> All Caps</label>
+                </div>
+
+                <hr>
+                <div><label>Card Rows: <input type="number" id="fs-card-rows" min="1" style="width:50px;"></label></div>
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <label><input type="checkbox" id="fs-lv"> Show Label</label>
+                    <label><input type="checkbox" id="fs-label-allcaps"> Label All Caps</label>
+                </div>
+                <div>Label Position: <label><input type="radio" name="fs-lp" value="above"> Above</label> <label><input type="radio" name="fs-lp" value="left"> Left</label> </div>
+                <div>Data Justification: <select id="fs-dj"><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select> </div>
+                <div><label><input type="checkbox" id="fs-hl"> Limit Height</label></div>
+                <div id="fs-hl-rows" style="display:none;"><label>Max Rows: <input type="number" id="fs-hr" min="1" style="width:50px;"></label></div>
+                <hr>
+                <div><label><input type="checkbox" id="fs-itf"> Is a Title Field</label></div>
+                <p class="help-text">Title Fields appear in the Top Bar if it's enabled.</p>
+                ${refListOptionsHtml}
+                <div class="popup-actions">
+                    <button id="fs-cancel" type="button" class="btn btn-secondary">Cancel</button>
+                    <button id="fs-save" type="button" class="btn btn-primary">Save</button>
+                </div>
+            </div>
+        `;
         _mainContainer.appendChild(_fieldStylePopup);
         
         const s = { ...DEFAULT_FIELD_STYLE, ...fieldDef.style };
@@ -1122,6 +1232,40 @@ export const CardConfigEditor = (() => {
                 const thickSelect = widgetOptionsContainer.querySelector('#fs-pb-thick');
                 thickSelect.value = tempWidgetOptions.thickness || "100%";
                 thickSelect.onchange = e => tempWidgetOptions.thickness = e.target.value;
+            } else if (widgetType === 'Image') {
+                const sizes = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 150, 200, 250, 500];
+                const sizeOptions = sizes.map(s => `<option value="${s}" ${tempWidgetOptions.imageSize === String(s) ? 'selected' : ''}>${s}px</option>`).join('');
+                
+                widgetOptionsContainer.innerHTML = `
+                    <div class="form-group">
+                        <label>Limit Dimension By:</label>
+                        <select id="fs-img-dim" style="width:100%">
+                            <option value="width" ${tempWidgetOptions.imageConstraint === 'width' ? 'selected' : ''}>Width</option>
+                            <option value="height" ${tempWidgetOptions.imageConstraint === 'height' ? 'selected' : ''}>Height</option>
+                            <option value="both" ${tempWidgetOptions.imageConstraint === 'both' ? 'selected' : ''}>Both (Width & Height)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Max Size (Pixels):</label>
+                        <select id="fs-img-size" style="width:100%">
+                            <option value="">-- Use Default (100%) --</option>
+                            ${sizeOptions}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Object Fit:</label>
+                        <select id="fs-img-fit" style="width:100%">
+                            <option value="cover" ${tempWidgetOptions.objectFit === 'cover' ? 'selected' : ''}>Cover (Fill nicely)</option>
+                            <option value="contain" ${tempWidgetOptions.objectFit === 'contain' ? 'selected' : ''}>Contain (Show whole image)</option>
+                            <option value="scale-down" ${tempWidgetOptions.objectFit === 'scale-down' ? 'selected' : ''}>Scale Down</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>Border Radius:</label><input type="text" id="fs-img-br" value="${tempWidgetOptions.borderRadius || '4px'}" placeholder="ex: 4px, 50%"></div>
+                `;
+                widgetOptionsContainer.querySelector('#fs-img-dim').onchange = e => tempWidgetOptions.imageConstraint = e.target.value;
+                widgetOptionsContainer.querySelector('#fs-img-size').onchange = e => tempWidgetOptions.imageSize = e.target.value;
+                widgetOptionsContainer.querySelector('#fs-img-fit').onchange = e => tempWidgetOptions.objectFit = e.target.value;
+                widgetOptionsContainer.querySelector('#fs-img-br').oninput = e => tempWidgetOptions.borderRadius = e.target.value;
             }
         };
 
@@ -1131,15 +1275,52 @@ export const CardConfigEditor = (() => {
 
         _fieldStylePopup.querySelector('#fs-card-rows').value = fieldDef.rowSpan || 1;
         _fieldStylePopup.querySelector('#fs-use-grist-style').checked = s.useGristStyle;
+        _fieldStylePopup.querySelector('#fs-data-font').value = s.dataStyle?.font || "";
         _fieldStylePopup.querySelector('#fs-data-size').value = s.dataStyle?.size ? parseInt(s.dataStyle.size, 10) : "";
+        _fieldStylePopup.querySelector('#fs-data-bold').checked = s.dataStyle?.bold;
+        _fieldStylePopup.querySelector('#fs-data-italic').checked = s.dataStyle?.italic;
+        _fieldStylePopup.querySelector('#fs-data-allcaps').checked = s.dataStyle?.allCaps;
         _fieldStylePopup.querySelector('#fs-lv').checked = s.labelVisible;
+        _fieldStylePopup.querySelector('#fs-label-allcaps').checked = s.labelAllCaps;
+        const lpRadio = _fieldStylePopup.querySelector(`input[name="fs-lp"][value="${s.labelPosition || 'above'}"]`);
+        if (lpRadio) lpRadio.checked = true;
+        _fieldStylePopup.querySelector('#fs-dj').value = s.dataJustify || 'left';
+        _fieldStylePopup.querySelector('#fs-hl').checked = s.heightLimited;
+        _fieldStylePopup.querySelector('#fs-hr').value = s.maxHeightRows || 1;
+        _fieldStylePopup.querySelector('#fs-itf').checked = s.isTitleField;
+
+        const hlCheckbox = _fieldStylePopup.querySelector('#fs-hl');
+        const hlRowsDiv = _fieldStylePopup.querySelector('#fs-hl-rows');
+        hlCheckbox.onchange = () => hlRowsDiv.style.display = hlCheckbox.checked ? 'block' : 'none';
+        hlCheckbox.onchange();
+
         const colorInput = _fieldStylePopup.querySelector('#fs-data-color'); const colorDefault = _fieldStylePopup.querySelector('#fs-data-color-default');
         if (s.dataStyle?.color) { colorInput.value = s.dataStyle.color; colorDefault.checked = false; } else { colorDefault.checked = true; colorInput.disabled = true; }
         colorDefault.onchange = () => colorInput.disabled = colorDefault.checked;
         _fieldStylePopup.querySelector('#fs-cancel').onclick = () => { backdrop.remove(); _fieldStylePopup.remove(); };
         _fieldStylePopup.querySelector('#fs-save').onclick = () => {
             fieldDef.rowSpan = parseInt(_fieldStylePopup.querySelector('#fs-card-rows').value, 10) || 1;
-            fieldDef.style = { ...s, widget: widgetSelect.value, widgetOptions: tempWidgetOptions, useGristStyle: _fieldStylePopup.querySelector('#fs-use-grist-style').checked, labelVisible: _fieldStylePopup.querySelector('#fs-lv').checked, dataStyle: { size: _fieldStylePopup.querySelector('#fs-data-size').value ? `${_fieldStylePopup.querySelector('#fs-data-size').value}px` : null, color: colorDefault.checked ? null : colorInput.value } };
+            fieldDef.style = { 
+                ...s, 
+                widget: widgetSelect.value, 
+                widgetOptions: tempWidgetOptions, 
+                useGristStyle: _fieldStylePopup.querySelector('#fs-use-grist-style').checked, 
+                labelVisible: _fieldStylePopup.querySelector('#fs-lv').checked,
+                labelAllCaps: _fieldStylePopup.querySelector('#fs-label-allcaps').checked,
+                labelPosition: _fieldStylePopup.querySelector('input[name="fs-lp"]:checked').value,
+                dataJustify: _fieldStylePopup.querySelector('#fs-dj').value,
+                heightLimited: _fieldStylePopup.querySelector('#fs-hl').checked,
+                maxHeightRows: parseInt(_fieldStylePopup.querySelector('#fs-hr').value, 10) || 1,
+                isTitleField: _fieldStylePopup.querySelector('#fs-itf').checked,
+                dataStyle: { 
+                    font: _fieldStylePopup.querySelector('#fs-data-font').value || null,
+                    size: _fieldStylePopup.querySelector('#fs-data-size').value ? `${_fieldStylePopup.querySelector('#fs-data-size').value}px` : null, 
+                    color: colorDefault.checked ? null : colorInput.value,
+                    bold: _fieldStylePopup.querySelector('#fs-data-bold').checked,
+                    italic: _fieldStylePopup.querySelector('#fs-data-italic').checked,
+                    allCaps: _fieldStylePopup.querySelector('#fs-data-allcaps').checked
+                } 
+            };
             if (isRefList) { fieldDef.style.refListConfig = { displayAs: _fieldStylePopup.querySelector('#fs-reflist-display-as').value, cardConfigId: _fieldStylePopup.querySelector('#fs-reflist-card-config-id')?.value, tabulatorConfigId: _fieldStylePopup.querySelector('#fs-reflist-tabulator-config-id')?.value }; }
             backdrop.remove(); _fieldStylePopup.remove(); buildGridUI(gridEl, tabEl); updateDebugJson();
         };
