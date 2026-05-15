@@ -988,13 +988,13 @@ export const CardConfigEditor = (() => {
 
     function renderActionsLayout(container) {
         container.innerHTML = '';
-        const colGroups = document.createElement('div'); colGroups.className = 'col-groups'; colGroups.innerHTML = '<div class="list-header">Icon Groups</div><div class="groups-list-content" style="flex-grow:1; overflow-y:auto;"></div><div class="add-btn-row"><button class="add-btn-icon" title="Add Icon Group">+</button></div>';
+        const colGroups = document.createElement('div'); colGroups.className = 'col-groups'; colGroups.innerHTML = '<div class="list-header">Icon Groups</div><div class="groups-list-content" style="flex-grow:1; overflow-y:auto;"></div><div class="add-btn-row"><button type="button" class="add-btn-icon" title="Add Icon Group">+</button></div>';
         renderGroupsList(colGroups.querySelector('.groups-list-content'));
-        colGroups.querySelector('.add-btn-icon').onclick = () => { state.iconGroups = state.iconGroups || []; const newGroup = { id: `icon-group-${Date.now()}`, name: `Group ${state.iconGroups.length + 1}`, alignment: 'center', buttons: [] }; state.iconGroups.push(newGroup); activeGroupId = newGroup.id; activeButtonIndex = -1; renderActionsLayout(container); buildAvailableFieldsList(_mainContainer.querySelector("#cs-layout-fields")); updateDebugJson(); };
+        colGroups.querySelector('.add-btn-icon').onclick = (e) => { e.preventDefault(); e.stopPropagation(); state.iconGroups = state.iconGroups || []; const newGroup = { id: `icon-group-${Date.now()}`, name: `Group ${state.iconGroups.length + 1}`, alignment: 'center', buttons: [] }; state.iconGroups.push(newGroup); activeGroupId = newGroup.id; activeButtonIndex = -1; renderActionsLayout(container); buildAvailableFieldsList(_mainContainer.querySelector("#cs-layout-fields")); updateDebugJson(); };
         container.appendChild(colGroups);
-        const colButtons = document.createElement('div'); colButtons.className = 'col-buttons'; colButtons.innerHTML = '<div class="list-header">Buttons</div><div class="buttons-list-content" style="flex-grow:1; overflow-y:auto;"></div><div class="add-btn-row"><button class="add-btn-icon" title="Add Action Button">+</button></div>';
+        const colButtons = document.createElement('div'); colButtons.className = 'col-buttons'; colButtons.innerHTML = '<div class="list-header">Buttons</div><div class="buttons-list-content" style="flex-grow:1; overflow-y:auto;"></div><div class="add-btn-row"><button type="button" class="add-btn-icon" title="Add Action Button">+</button></div>';
         const activeGroup = (state.iconGroups || []).find(g => g.id === activeGroupId);
-        if (activeGroup) { renderButtonsList(colButtons.querySelector('.buttons-list-content'), activeGroup); colButtons.querySelector('.add-btn-icon').onclick = () => { activeGroup.buttons = activeGroup.buttons || []; activeGroup.buttons.push({ id: `btn-${Date.now()}`, icon: 'icon-star', tooltip: 'New Action', actionType: 'navigateToGristPage', buttonStyle: 'icon', shape: 'square', iconColor: '#000000', backgroundColor: '#f0f0f0', transparentBackground: false }); activeButtonIndex = activeGroup.buttons.length - 1; renderActionsLayout(container); updateDebugJson(); }; } 
+        if (activeGroup) { renderButtonsList(colButtons.querySelector('.buttons-list-content'), activeGroup); colButtons.querySelector('.add-btn-icon').onclick = (e) => { e.preventDefault(); e.stopPropagation(); activeGroup.buttons = activeGroup.buttons || []; activeGroup.buttons.push({ id: `btn-${Date.now()}`, icon: 'icon-star', tooltip: 'New Action', actionType: 'navigateToGristPage', buttonStyle: 'icon', shape: 'square', iconColor: '#000000', backgroundColor: '#f0f0f0', transparentBackground: false }); activeButtonIndex = activeGroup.buttons.length - 1; renderActionsLayout(container); updateDebugJson(); }; } 
         else { colButtons.innerHTML = '<div class="empty-state">Select a Group</div>'; }
         container.appendChild(colButtons);
         const colDetails = document.createElement('div'); colDetails.className = 'col-details';
@@ -1223,15 +1223,103 @@ export const CardConfigEditor = (() => {
                 widgetOptionsContainer.querySelector('#fs-toggle-labels').onchange = e => tempWidgetOptions.showLabels = e.target.checked;
             } else if (widgetType === 'Progress Bar') {
                 widgetOptionsContainer.innerHTML = `
-                    <div class="form-group"><label>Main Color:</label><input type="color" id="fs-pb-color" value="${tempWidgetOptions.mainColor || '#4caf50'}"></div>
-                    <div class="form-group"><label><input type="checkbox" id="fs-pb-striped" ${tempWidgetOptions.striped ? 'checked' : ''}> Striped</label></div>
-                    <div class="form-group"><label>Thickness:</label><select id="fs-pb-thick" style="width:100%"><option value="100%">Default</option><option value="150%">Thick</option><option value="200%">Extra Thick</option></select></div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div class="form-group"><label>Bar Color:</label><input type="color" id="fs-pb-color" value="${tempWidgetOptions.mainColor || '#4caf50'}"></div>
+                        <div class="form-group"><label>Bg Color:</label><input type="color" id="fs-pb-bgcolor" value="${tempWidgetOptions.bgColor || '#e0e0e0'}"></div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div class="form-group"><label>Border Radius (px):</label><input type="number" id="fs-pb-radius" value="${tempWidgetOptions.borderRadius ?? 4}" min="0" style="width:100%"></div>
+                        <div class="form-group"><label>Thickness:</label><select id="fs-pb-thick" style="width:100%"><option value="100">Default</option><option value="150">Thick</option><option value="200">Extra Thick</option></select></div>
+                    </div>
+                    <div class="form-group" style="display: flex; gap: 15px;">
+                        <label><input type="checkbox" id="fs-pb-striped" ${tempWidgetOptions.striped ? 'checked' : ''}> Striped</label>
+                        <label><input type="checkbox" id="fs-pb-animated" ${tempWidgetOptions.animated ? 'checked' : ''}> Animated</label>
+                    </div>
+                    
+                    <hr style="margin: 10px 0; border: none; border-top: 1px solid #ddd;">
+                    
+                    <div class="form-group">
+                        <label>Color Mode:</label>
+                        <select id="fs-pb-mode" style="width:100%">
+                            <option value="solid" ${tempWidgetOptions.colorMode === 'solid' ? 'selected' : ''}>Solid</option>
+                            <option value="dynamic-gradient" ${tempWidgetOptions.colorMode === 'dynamic-gradient' || tempWidgetOptions.colorMode === 'gradient' ? 'selected' : ''}>Dynamic Gradient (Interpolated)</option>
+                            <option value="static-gradient" ${tempWidgetOptions.colorMode === 'static-gradient' ? 'selected' : ''}>Static Gradient (Full Bar)</option>
+                            <option value="steps" ${tempWidgetOptions.colorMode === 'steps' ? 'selected' : ''}>Steps (Thresholds)</option>
+                        </select>
+                    </div>
+                    
+                    <div id="fs-pb-stops-container" style="display: ${tempWidgetOptions.colorMode === 'solid' ? 'none' : 'block'}; margin-top: 10px;">
+                        <label style="font-size: 11px; font-weight: bold; margin-bottom: 5px; display: block;">Color Stops (0-100):</label>
+                        <div id="fs-pb-stops-list"></div>
+                        <button id="fs-pb-add-stop" class="btn btn-secondary btn-sm" style="width: 100%; margin-top: 5px; padding: 4px; font-size: 11px;">+ Add Stop</button>
+                    </div>
                 `;
+                
                 widgetOptionsContainer.querySelector('#fs-pb-color').onchange = e => tempWidgetOptions.mainColor = e.target.value;
+                widgetOptionsContainer.querySelector('#fs-pb-bgcolor').onchange = e => tempWidgetOptions.bgColor = e.target.value;
+                widgetOptionsContainer.querySelector('#fs-pb-radius').onchange = e => tempWidgetOptions.borderRadius = parseInt(e.target.value, 10);
                 widgetOptionsContainer.querySelector('#fs-pb-striped').onchange = e => tempWidgetOptions.striped = e.target.checked;
+                widgetOptionsContainer.querySelector('#fs-pb-animated').onchange = e => tempWidgetOptions.animated = e.target.checked;
+                
                 const thickSelect = widgetOptionsContainer.querySelector('#fs-pb-thick');
                 thickSelect.value = tempWidgetOptions.thickness || "100%";
                 thickSelect.onchange = e => tempWidgetOptions.thickness = e.target.value;
+
+                const modeSelect = widgetOptionsContainer.querySelector('#fs-pb-mode');
+                const stopsContainer = widgetOptionsContainer.querySelector('#fs-pb-stops-container');
+                const stopsList = widgetOptionsContainer.querySelector('#fs-pb-stops-list');
+
+                const renderStops = () => {
+                    stopsList.innerHTML = '';
+                    if (!tempWidgetOptions.colorStops) {
+                        tempWidgetOptions.colorStops = [
+                            { value: 0, color: '#ff4d4d' },
+                            { value: 100, color: '#4caf50' }
+                        ];
+                    }
+                    
+                    tempWidgetOptions.colorStops.sort((a,b) => a.value - b.value).forEach((stop, index) => {
+                        const row = document.createElement('div');
+                        row.style.cssText = 'display: flex; align-items: center; gap: 5px; margin-bottom: 5px;';
+                        row.innerHTML = `
+                            <input type="number" value="${stop.value}" min="0" max="100" style="width: 50px; font-size: 11px;">
+                            <input type="color" value="${stop.color}" style="flex-grow: 1; height: 24px;">
+                            <button type="button" class="btn-remove" style="border: none; background: none; cursor: pointer; color: red;">&times;</button>
+                        `;
+                        const [valInput, colorInput, removeBtn] = row.querySelectorAll('input, button');
+                        
+                        valInput.onchange = (e) => {
+                            stop.value = parseInt(e.target.value, 10);
+                            renderStops();
+                        };
+                        colorInput.onchange = (e) => stop.color = e.target.value;
+                        removeBtn.onclick = (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            tempWidgetOptions.colorStops.splice(index, 1);
+                            renderStops();
+                        };
+                        stopsList.appendChild(row);
+                    });
+                };
+
+                modeSelect.onchange = (e) => {
+                    tempWidgetOptions.colorMode = e.target.value;
+                    stopsContainer.style.display = (tempWidgetOptions.colorMode === 'solid') ? 'none' : 'block';
+                    if (tempWidgetOptions.colorMode !== 'solid') renderStops();
+                };
+
+                widgetOptionsContainer.querySelector('#fs-pb-add-stop').onclick = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (!tempWidgetOptions.colorStops) tempWidgetOptions.colorStops = [];
+                    tempWidgetOptions.colorStops.push({ value: 50, color: '#ffcc00' });
+                    renderStops();
+                };
+
+                if (tempWidgetOptions.colorMode && tempWidgetOptions.colorMode !== 'solid') {
+                    renderStops();
+                }
             } else if (widgetType === 'Image') {
                 const sizes = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 150, 200, 250, 500];
                 const sizeOptions = sizes.map(s => `<option value="${s}" ${tempWidgetOptions.imageSize === String(s) ? 'selected' : ''}>${s}px</option>`).join('');

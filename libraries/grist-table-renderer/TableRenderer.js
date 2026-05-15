@@ -121,10 +121,12 @@ export const TableRenderer = (() => {
                 tempContainer.style.height = '100%';
             } else if (colConfig && colConfig.formatter === 'image') {
                 fieldOptions.widget = 'image';
+                fieldOptions.widgetOptions = colConfig.formatterParams;
                 tempContainer.style.display = 'flex';
                 const alignMap = { 'left': 'flex-start', 'right': 'flex-end', 'center': 'center' };
                 tempContainer.style.justifyContent = alignMap[colConfig.align] || 'center';
-            } else if (colConfig && colConfig.formatter === 'money') {
+            }
+ else if (colConfig && colConfig.formatter === 'money') {
                 fieldOptions.widget = 'money';
                 fieldOptions.widgetOptions = colConfig.formatterParams;
             } else if (colConfig && colConfig.formatter === 'dynamicui') {

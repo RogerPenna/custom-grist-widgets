@@ -235,12 +235,26 @@ input:checked+.grf-slider:before {
     display: flex;
     align-items: center;
     justify-content: center;
+    /* transition: width 0.3s ease, background-color 0.3s ease; Removed transition to avoid issues with dynamic gradients, can be added back if needed */
+    border-radius: inherit;
+}
+
+.grf-progress-bar-label-centered {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
     color: white;
     font-size: 11px;
     font-weight: bold;
     white-space: nowrap;
-    transition: width 0.3s ease;
-    text-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+    text-shadow: -1px -1px 0 #333, 1px -1px 0 #333, -1px 1px 0 #333, 1px 1px 0 #333;
+    z-index: 2;
 }
 
 .grf-progress-label {
@@ -251,8 +265,26 @@ input:checked+.grf-slider:before {
 }
 
 .grf-progress-bar-striped {
-    background-image: linear-gradient(45deg, rgba(255, 255, 255, 0.15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.15) 75%, transparent 75%, transparent);
+    background-image: linear-gradient(
+        45deg, 
+        rgba(255, 255, 255, 0.25) 25%, 
+        transparent 25%, 
+        transparent 50%, 
+        rgba(255, 255, 255, 0.25) 50%, 
+        rgba(255, 255, 255, 0.25) 75%, 
+        transparent 75%, 
+        transparent
+    );
     background-size: 1rem 1rem;
+}
+
+.grf-progress-bar-animated {
+    animation: grf-progress-bar-stripes 1s linear infinite;
+}
+
+@keyframes grf-progress-bar-stripes {
+    0% { background-position: 1rem 0; }
+    100% { background-position: 0 0; }
 }
 
 /* --- Toggle Switch Styles --- */

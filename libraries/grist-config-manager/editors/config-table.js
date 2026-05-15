@@ -306,13 +306,25 @@ export const TableConfigEditor = (() => {
                     colBase.formatterParams = {
                         min: parseFloat(item.querySelector('.progress-min').value) || 0,
                         max: parseFloat(item.querySelector('.progress-max').value) || 100,
-                        legend: item.querySelector('.progress-legend').checked
+                        legend: item.querySelector('.progress-legend')?.checked || false,
+                        mainColor: item.querySelector('.progress-color').value,
+                        bgColor: item.querySelector('.progress-bgcolor').value,
+                        borderRadius: parseInt(item.querySelector('.progress-radius').value, 10),
+                        striped: item.querySelector('.progress-striped').checked,
+                        animated: item.querySelector('.progress-animated').checked,
+                        colorMode: item.querySelector('.progress-mode').value
                     };
                 } else if (formatter === 'money') {
                     colBase.formatterParams = {
                         symbol: item.querySelector('.money-symbol').value || 'R$',
                         decimal: item.querySelector('.money-decimal').value || ',',
                         thousand: item.querySelector('.money-thousand').value || '.'
+                    };
+                } else if (formatter === 'image') {
+                    colBase.formatterParams = {
+                        imageSize: parseInt(item.querySelector('.image-size').value, 10) || 50,
+                        objectFit: item.querySelector('.image-fit').value,
+                        borderRadius: item.querySelector('.image-radius').value || '4px'
                     };
                 }
 
@@ -525,8 +537,30 @@ export const TableConfigEditor = (() => {
                                 <label style="font-size:9px;">Max</label>
                                 <input type="number" class="progress-max" value="${colConfig?.formatterParams?.max ?? 100}" style="width:100%; font-size:10px;">
                             </div>
-                            <div style="display:flex; align-items:flex-end;">
-                                <label style="font-size:9px; display:flex; align-items:center; gap:2px;"><input type="checkbox" class="progress-legend" ${colConfig?.formatterParams?.legend ? 'checked' : ''}> Legenda</label>
+                            <div>
+                                <label style="font-size:9px;">Cor Barra</label>
+                                <input type="color" class="progress-color" value="${colConfig?.formatterParams?.mainColor ?? '#4caf50'}" style="width:100%; height:20px; padding:0;">
+                            </div>
+                            <div>
+                                <label style="font-size:9px;">Cor Fundo</label>
+                                <input type="color" class="progress-bgcolor" value="${colConfig?.formatterParams?.bgColor ?? '#e0e0e0'}" style="width:100%; height:20px; padding:0;">
+                            </div>
+                            <div>
+                                <label style="font-size:9px;">Raio (px)</label>
+                                <input type="number" class="progress-radius" value="${colConfig?.formatterParams?.borderRadius ?? 4}" style="width:100%; font-size:10px;">
+                            </div>
+                            <div>
+                                <label style="font-size:9px;">Modo Cor</label>
+                                <select class="progress-mode" style="width:100%; font-size:10px;">
+                                    <option value="solid" ${colConfig?.formatterParams?.colorMode === 'solid' ? 'selected' : ''}>Sólido</option>
+                                    <option value="dynamic-gradient" ${colConfig?.formatterParams?.colorMode === 'dynamic-gradient' || colConfig?.formatterParams?.colorMode === 'gradient' ? 'selected' : ''}>Gradiente Dinâmico</option>
+                                    <option value="static-gradient" ${colConfig?.formatterParams?.colorMode === 'static-gradient' ? 'selected' : ''}>Gradiente Estático</option>
+                                    <option value="steps" ${colConfig?.formatterParams?.colorMode === 'steps' ? 'selected' : ''}>Degraus</option>
+                                </select>
+                            </div>
+                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px; align-items:flex-end; grid-column: span 3;">
+                                <label style="font-size:9px; display:flex; align-items:center; gap:2px;"><input type="checkbox" class="progress-striped" ${colConfig?.formatterParams?.striped ? 'checked' : ''}> Zebrado</label>
+                                <label style="font-size:9px; display:flex; align-items:center; gap:2px;"><input type="checkbox" class="progress-animated" ${colConfig?.formatterParams?.animated ? 'checked' : ''}> Animado</label>
                             </div>
                         </div>
 
@@ -543,6 +577,25 @@ export const TableConfigEditor = (() => {
                             <div>
                                 <label style="font-size:9px;">Milhar</label>
                                 <input type="text" class="money-thousand" value="${colConfig?.formatterParams?.thousand ?? '.'}" style="width:100%; font-size:10px;">
+                            </div>
+                        </div>
+
+                        <!-- Formatter Params (Image) -->
+                        <div class="formatter-params image-params" style="display: ${colConfig?.formatter === 'image' ? 'grid' : 'none'}; grid-template-columns: 1fr 1fr 1fr; gap: 5px; margin-top: 5px; border: 1px dashed #cbd5e1; padding: 5px; border-radius: 4px;">
+                            <div>
+                                <label style="font-size:9px;">Tamanho (px)</label>
+                                <input type="number" class="image-size" value="${colConfig?.formatterParams?.imageSize ?? 50}" style="width:100%; font-size:10px;">
+                            </div>
+                            <div>
+                                <label style="font-size:9px;">Fit</label>
+                                <select class="image-fit" style="width:100%; font-size:10px;">
+                                    <option value="cover" ${colConfig?.formatterParams?.objectFit === 'cover' ? 'selected' : ''}>Cover</option>
+                                    <option value="contain" ${colConfig?.formatterParams?.objectFit === 'contain' ? 'selected' : ''}>Contain</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="font-size:9px;">Raio</label>
+                                <input type="text" class="image-radius" value="${colConfig?.formatterParams?.borderRadius ?? '4px'}" style="width:100%; font-size:10px;">
                             </div>
                         </div>
                     </div>
@@ -588,8 +641,10 @@ export const TableConfigEditor = (() => {
                 const val = formatterSelect.value;
                 const pParams = card.querySelector('.progress-params');
                 const mParams = card.querySelector('.money-params');
+                const iParams = card.querySelector('.image-params');
                 if (pParams) pParams.style.display = (val === 'progress') ? 'grid' : 'none';
                 if (mParams) mParams.style.display = (val === 'money') ? 'grid' : 'none';
+                if (iParams) iParams.style.display = (val === 'image') ? 'grid' : 'none';
                 updateDebugJson();
             };
         }

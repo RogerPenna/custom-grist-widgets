@@ -1,7 +1,7 @@
 export function renderProgressBar(options) {
     const { container, cellValue, colSchema, isEditing, isLocked, fieldOptions, tableLens } = options;
     const value = Number(cellValue) || 0;
-    const widgetOptions = fieldOptions?.widgetOptions || {};
+    const widgetOptions = fieldOptions || {};
 
     // Formatação do label seguindo o padrão centralizado
     let formattedLabel = '';
@@ -39,29 +39,115 @@ export function renderProgressBar(options) {
     } else {
         const progressWrapper = document.createElement('div');
         progressWrapper.className = 'grf-progress-wrapper';
+        
+        // Min/Max support
+        const min = widgetOptions.min !== undefined ? Number(widgetOptions.min) : 0;
+        const max = widgetOptions.max !== undefined ? Number(widgetOptions.max) : 100;
+        const range = max - min;
+        const normalizedValue = range === 0 ? 0 : ((value - min) / range) * 100;
+
+        // Background color for the wrapper
+        if (widgetOptions.bgColor) {
+            progressWrapper.style.backgroundColor = widgetOptions.bgColor;
+        }
+
+        // Border radius
+        if (widgetOptions.borderRadius !== undefined) {
+            const br = typeof widgetOptions.borderRadius === 'number' ? `${widgetOptions.borderRadius}px` : widgetOptions.borderRadius;
+            progressWrapper.style.borderRadius = br;
+        }
 
         const progressBar = document.createElement('div');
         progressBar.className = 'grf-progress-bar';
-        progressBar.style.width = `${value}%`;
-        progressBar.textContent = formattedLabel;
-        progressBar.style.color = 'white';
-        progressBar.style.textShadow = '-1px -1px 0 #333, 1px -1px 0 #333, -1px 1px 0 #333, 1px 1px 0 #333';
+        progressBar.style.width = `${Math.min(100, Math.max(0, normalizedValue))}%`;
 
-        // Apply Stripes
-        if (widgetOptions.striped) {
+        const progressLabel = document.createElement('div');
+        progressLabel.className = 'grf-progress-bar-label-centered';
+        progressLabel.textContent = formattedLabel;
+
+        // Color Logic
+        const colorMode = widgetOptions.colorMode || 'solid';
+        let barColor = widgetOptions.mainColor || '#4caf50';
+
+        if (colorMode === 'gradient' || colorMode === 'dynamic-gradient' || colorMode === 'static-gradient' || colorMode === 'steps') {
+            const stops = widgetOptions.colorStops || [
+                { value: 0, color: '#ff4d4d' },
+                { value: 100, color: '#4caf50' }
+            ];
+            
+            // Sort stops by value
+            const sortedStops = [...stops].sort((a, b) => a.value - b.value);
+
+            if (colorMode === 'gradient' || colorMode === 'dynamic-gradient') {
+                // Find the two stops between which the normalizedValue falls
+                let lower = sortedStops[0];
+                let upper = sortedStops[sortedStops.length - 1];
+
+                for (let i = 0; i < sortedStops.length - 1; i++) {
+                    if (normalizedValue >= sortedStops[i].value) {
+                        lower = sortedStops[i];
+                        upper = sortedStops[i+1];
+                    }
+                    if (normalizedValue <= sortedStops[i+1].value) {
+                        break;
+                    }
+                }
+
+                if (lower === upper) {
+                    barColor = lower.color;
+                } else {
+                    const range = upper.value - lower.value;
+                    const factor = range === 0 ? 0 : (normalizedValue - lower.value) / range;
+                    barColor = interpolateColor(lower.color, upper.color, factor);
+                }
+                progressBar.style.backgroundColor = barColor;
+            } else if (colorMode === 'static-gradient') {
+                // Apply a linear gradient background to the bar
+                const gradientString = sortedStops.map(s => `${s.color} ${s.value}%`).join(', ');
+                
+                // For static gradient, we want the gradient to span the full bar (100%) 
+                // but only be visible in the completed area. 
+                // We achieve this by setting background-size proportional to the fill width.
+                const effectiveValue = Math.min(100, Math.max(0.1, normalizedValue));
+                const bgSize = (100 / effectiveValue) * 100;
+
+                progressBar.style.backgroundImage = `linear-gradient(to right, ${gradientString})`;
+                progressBar.style.backgroundSize = `${bgSize}% 100%`;
+                progressBar.style.backgroundRepeat = 'no-repeat';
+
+                // When using backgroundImage for the gradient, we should also apply the stripe gradient on top if needed
+                if (widgetOptions.striped) {
+                    const stripeGradient = `linear-gradient(45deg, rgba(255, 255, 255, 0.25) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.25) 50%, rgba(255, 255, 255, 0.25) 75%, transparent 75%, transparent)`;
+                    progressBar.style.backgroundImage = `${stripeGradient}, linear-gradient(to right, ${gradientString})`;
+                    progressBar.style.backgroundSize = `1rem 1rem, ${bgSize}% 100%`;
+                    progressBar.style.backgroundRepeat = 'repeat, no-repeat';
+                }
+            } else if (colorMode === 'steps') {
+                // Find the first stop where normalizedValue <= stop.value
+                const matchingStop = sortedStops.find(stop => normalizedValue <= stop.value) || sortedStops[sortedStops.length - 1];
+                barColor = matchingStop.color;
+                progressBar.style.backgroundColor = barColor;
+            }
+        } else {
+            // Solid or legacy colorRules support
+            if (widgetOptions.colorRules && Array.isArray(widgetOptions.colorRules) && widgetOptions.colorRules.length > 0) {
+                const sortedRules = [...widgetOptions.colorRules].sort((a, b) => a.threshold - b.threshold);
+                const matchingRule = sortedRules.find(rule => value <= rule.threshold);
+                if (matchingRule) {
+                    barColor = matchingRule.color;
+                }
+            }
+            progressBar.style.backgroundColor = barColor;
+        }
+
+        // Apply Stripes class (for animated stripes or static pattern)
+        if (widgetOptions.striped && colorMode !== 'static-gradient') {
             progressBar.classList.add('grf-progress-bar-striped');
         }
 
-        // Apply Main Color as a base
-        progressBar.style.backgroundColor = widgetOptions.mainColor || '#4caf50'; // Default to green if no main color
-
-        // Apply Dynamic Coloring, overriding the main color if a rule matches
-        if (widgetOptions.colorRules && Array.isArray(widgetOptions.colorRules) && widgetOptions.colorRules.length > 0) {
-            const sortedRules = [...widgetOptions.colorRules].sort((a, b) => a.threshold - b.threshold);
-            const matchingRule = sortedRules.find(rule => value <= rule.threshold);
-            if (matchingRule) {
-                progressBar.style.backgroundColor = matchingRule.color;
-            }
+        // Apply Animation
+        if (widgetOptions.animated) {
+            progressBar.classList.add('grf-progress-bar-animated');
         }
 
         // Apply Thickness
@@ -75,10 +161,38 @@ export function renderProgressBar(options) {
         }
 
         progressWrapper.appendChild(progressBar);
+        progressWrapper.appendChild(progressLabel);
         container.appendChild(progressWrapper);
 
         if (isLocked) {
             container.closest('.drawer-field-value')?.classList.add('is-locked-style');
         }
     }
+}
+
+/**
+ * Interpolates between two hex colors.
+ */
+function interpolateColor(color1, color2, factor) {
+    const c1 = hexToRgb(color1);
+    const c2 = hexToRgb(color2);
+    
+    const r = Math.round(c1.r + (c2.r - c1.r) * factor);
+    const g = Math.round(c1.g + (c2.g - c1.g) * factor);
+    const b = Math.round(c1.b + (c2.b - c1.b) * factor);
+    
+    return `rgb(${r}, ${g}, ${b})`;
+}
+
+function hexToRgb(hex) {
+    hex = hex.replace('#', '');
+    if (hex.length === 3) {
+        hex = hex.split('').map(char => char + char).join('');
+    }
+    const bigint = parseInt(hex, 16);
+    return {
+        r: (bigint >> 16) & 255,
+        g: (bigint >> 8) & 255,
+        b: bigint & 255
+    };
 }

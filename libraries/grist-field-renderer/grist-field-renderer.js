@@ -146,8 +146,6 @@ function renderSimpleText(options) {
 export async function renderField(options) {
   const { container, colSchema, record, isEditing = false, labelElement, styleOverride, styling, tableLens, isChild = false } = options;
 
-  console.log(`[renderField] Rendering field: ${colSchema?.colId}`, { isEditing, hasRecord: !!record });
-
   if (isChild && colSchema.type.startsWith('RefList')) {
     container.innerHTML = '<span class="error-msg">[Nested RefList not supported]</span>';
     return;
@@ -156,8 +154,6 @@ export async function renderField(options) {
   // 1. Configurações customizadas do nosso widget (Card/Drawer)
   const customFieldStyle = options.fieldStyle || options.styleOverride || {};
   const useGristStyle = customFieldStyle.useGristStyle !== false;
-
-  console.log(`[renderField] customFieldStyle for ${colSchema?.colId}:`, customFieldStyle);
 
   // 2. Metadados do Grist (Formatação Condicional, cores da coluna, etc)
   let tableSchema = null;
@@ -173,7 +169,6 @@ export async function renderField(options) {
 
   // Se o usuário desabilitou explicitamente o estilo do Grist para este campo
   if (!useGristStyle) {
-    console.log(`[renderField] useGristStyle is false for ${colSchema.colId}, rendering simple text.`);
     renderSimpleText({ container, colSchema, record, styling });
     return;
   }
@@ -205,8 +200,6 @@ export async function renderField(options) {
   const type = colSchema.type || '';
   const widgetType = (customFieldStyle.widget || '').toLowerCase().replace(/\s+/g, '');
   
-  console.log(`[renderField] type: ${type}, widgetType: ${widgetType}`);
-
   const callOptions = { 
     ...options, 
     container, 
@@ -219,13 +212,12 @@ export async function renderField(options) {
 
   // WIDGETS ESPECIAIS (Prioridade Máxima)
   if (customFieldStyle.widgetOptions?.colorPicker || widgetType === 'colorpicker') {
-    console.log(`[renderField] Triggering renderColorPicker for ${colSchema.colId}`);
     renderColorPicker(callOptions);
     return;
   }
 
-  if ((customFieldStyle.widgetOptions?.progressBar || widgetType === 'progressbar') && (type === 'Numeric' || type === 'Int')) {
-    console.log(`[renderField] Triggering renderProgressBar for ${colSchema.colId}`);
+  const isNumeric = ['Int', 'Float', 'Numeric', 'Any'].some(t => type.startsWith(t));
+  if ((customFieldStyle.widgetOptions?.progressBar || widgetType === 'progressbar') && isNumeric) {
     renderProgressBar(callOptions);
     return;
   }

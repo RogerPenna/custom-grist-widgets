@@ -189,6 +189,9 @@ export async function renderMainUI(grist, container, initialConfigId, componentT
                 </div>
             </div>`;
 
+        const formEl = container.querySelector('#cm-config-form');
+        formEl.onsubmit = (e) => e.preventDefault();
+
         const editorMap = { 
             'CardSystem': CardConfigEditor, 
             'Drawer': DrawerConfigEditor, 
@@ -200,7 +203,6 @@ export async function renderMainUI(grist, container, initialConfigId, componentT
         };
         const configListEl = container.querySelector('#cm-config-list');
         const editorContentEl = container.querySelector('#cm-editor-content');
-        const formEl = container.querySelector('#cm-config-form');
         const editorActionsEl = container.querySelector('#cm-editor-actions');
         const newTypeSelectorEl = container.querySelector('#cm-new-type-selector');
         const filterTypeSelectorEl = container.querySelector('#cm-filter-type-selector');
@@ -467,4 +469,4 @@ export function open(grist, options = {}) {
     overlay.querySelector('.grf-cm-close').onclick = close;
     overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
     renderMainUI(grist, overlay.querySelector('.grf-cm-body'), initialConfigId, componentTypes);
-}
+    }
