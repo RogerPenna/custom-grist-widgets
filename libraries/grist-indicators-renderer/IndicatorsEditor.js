@@ -102,10 +102,11 @@ export const IndicatorsEditor = (() => {
         _table = new Tabulator("#tabulator-editor", {
             data: tableData,
             layout: "fitColumns",
-            clipboard: true,
-            clipboardPasteAction: "replace",
+            clipboard: "paste",
+            clipboardPasteAction: "update",
+            clipboardPasteParser: "table",
             columns: [
-                { title: "Mês", field: "month", width: 100, headerSort: false },
+                { title: "Mês", field: "month", width: 100, headerSort: false, clipboard: false },
                 { 
                     title: "Meta", 
                     field: "target", 
@@ -121,16 +122,67 @@ export const IndicatorsEditor = (() => {
                     },
                     cellEdited: (cell) => {
                         cell.getRow().update({ isManualTarget: true });
-                        // Trigger a preview of the new interpolation if needed? 
-                        // For now, simple manual marking is enough as Save handles the rest.
                     }
                 },
                 { title: "Resultado", field: "result", editor: "number", headerSort: false, cellEdited: (cell) => {
                     const row = cell.getRow();
                     row.update({ updatedAt: new Date().toISOString().split('T')[0] });
                 }},
-                { title: "Última Atualização", field: "updatedAt", width: 150, headerSort: false, cssClass: "readonly-col" }
+                { title: "Última Atualização", field: "updatedAt", width: 150, headerSort: false, cssClass: "readonly-col", clipboard: false }
             ],
+        });
+
+        // Intercept paste to support multi-cell pasting from Excel even when an editor is active
+        _table.on("tableBuilt", () => {
+            _table.element.addEventListener("paste", (e) => {
+                // If we're in an input (editor), browser default paste will put everything in one cell.
+                // We intercept if it's multi-line/multi-column data.
+                if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") {
+                    const data = (e.clipboardData || window.clipboardData).getData("text/plain");
+                    if (data && (data.includes("\t") || data.includes("\n"))) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        const input = e.target;
+                        const cellEl = input.closest(".tabulator-cell");
+                        if (!cellEl) return;
+                        
+                        const field = cellEl.getAttribute("tabulator-field");
+                        const rowEl = input.closest(".tabulator-row");
+                        if (!rowEl) return;
+                        
+                        // Parse Excel data
+                        const lines = data.split(/\r?\n/).filter(line => line.length > 0);
+                        let currentRowEl = rowEl;
+                        
+                        lines.forEach(line => {
+                            if (!currentRowEl) return;
+                            const row = _table.getRow(currentRowEl);
+                            const values = line.split("\t");
+                            
+                            // Map values to fields starting from the current field
+                            // For simplicity in this specific editor, we just handle the target or result columns
+                            if (field === "target") {
+                                row.update({ target: values[0], isManualTarget: true });
+                                if (values.length > 1) {
+                                    row.update({ result: values[1], updatedAt: new Date().toISOString().split('T')[0] });
+                                }
+                            } else if (field === "result") {
+                                row.update({ result: values[0], updatedAt: new Date().toISOString().split('T')[0] });
+                            }
+                            
+                            currentRowEl = currentRowEl.nextElementSibling;
+                            // Ensure it's still a row element
+                            if (currentRowEl && !currentRowEl.classList.contains("tabulator-row")) {
+                                currentRowEl = null;
+                            }
+                        });
+                        
+                        // Blur to close editor and see results
+                        input.blur();
+                    }
+                }
+            }, true);
         });
     }
 
