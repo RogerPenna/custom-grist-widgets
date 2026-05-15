@@ -430,6 +430,7 @@ export const DrawerConfigEditor = (() => {
                         drawerConfig.widgetOverrides[colId] = {
                             widget: 'ColorPicker',
                             options: {
+                                colorPaletteId: widgetConfigPanel.querySelector('.color-palette-id-select').value,
                                 mode: widgetConfigPanel.querySelector('.color-mode-select').value,
                                 swatches: widgetConfigPanel.querySelector('.color-swatches-input').value.trim()
                             }
@@ -582,10 +583,19 @@ export const DrawerConfigEditor = (() => {
                 <div class="drawer-config-section"><label><input type="radio" name="widget-type-${col.colId}" value="Image" ${widgetCfg?.widget === 'Image' ? 'checked' : ''} class="widget-type-radio"> Imagem (URL/Anexo)</label></div>
                 <div class="color-options-container" style="display: ${isColorWidget ? 'block' : 'none'}; margin-top: 10px; border-top: 1px solid #ddd; padding-top: 10px;">
                     <div class="drawer-config-section">
-                        <label>Modo de Exibição:</label>
-                        <select class="color-mode-select"><option value="picker" ${colorMode === 'picker' ? 'selected' : ''}>Apenas Seletor</option><option value="swatches" ${colorMode === 'swatches' ? 'selected' : ''}>Apenas Sugestões</option><option value="both" ${colorMode === 'both' ? 'selected' : ''}>Ambos</option></select>
+                        <label style="font-size: 11px; font-weight: bold; color: #0056b3;">Vincular Paleta Global:</label>
+                        <select class="color-palette-id-select" style="width:100%; font-size: 11px; border-color: #0056b3;">
+                            <option value="">-- Manual --</option>
+                            ${_allConfigs.filter(c => c.componentType === 'Color Options').map(c => `<option value="${c.configId}" ${widgetCfg?.options?.colorPaletteId === c.configId ? 'selected' : ''}>${c.widgetTitle}</option>`).join('')}
+                        </select>
                     </div>
-                    <div class="drawer-config-section"><label>Sugestões (Hex):</label><input type="text" class="color-swatches-input" value="${swatches}" placeholder="#ffffff, #000000"></div>
+                    <div class="color-manual-swatches" style="display: ${widgetCfg?.options?.colorPaletteId ? 'none' : 'block'}">
+                        <div class="drawer-config-section">
+                            <label>Modo de Exibição:</label>
+                            <select class="color-mode-select"><option value="picker" ${colorMode === 'picker' ? 'selected' : ''}>Apenas Seletor</option><option value="swatches" ${colorMode === 'swatches' ? 'selected' : ''}>Apenas Sugestões</option><option value="both" ${colorMode === 'both' ? 'selected' : ''}>Ambos</option></select>
+                        </div>
+                        <div class="drawer-config-section"><label>Sugestões (Hex):</label><input type="text" class="color-swatches-input" value="${swatches}" placeholder="#ffffff, #000000"></div>
+                    </div>
                 </div>
             </div>`;
         } else if (col.type === 'Numeric' || col.type === 'Int') {
@@ -658,6 +668,15 @@ export const DrawerConfigEditor = (() => {
         card.querySelector('.toggle-style-config').onclick = () => { const p = card.querySelector('.style-config-panel'); p.style.display = p.style.display === 'none' ? 'block' : 'none'; };
         if (card.querySelector('.toggle-widget-config')) card.querySelector('.toggle-widget-config').onclick = () => { const p = card.querySelector('.widget-config-panel'); p.style.display = p.style.display === 'none' ? 'block' : 'none'; };
         
+        const colorPaletteSelect = card.querySelector('.color-palette-id-select');
+        if (colorPaletteSelect) {
+            colorPaletteSelect.onchange = () => {
+                const manualContainer = card.querySelector('.color-manual-swatches');
+                if (manualContainer) manualContainer.style.display = colorPaletteSelect.value ? 'none' : 'block';
+                updateDebugJson();
+            };
+        }
+
         if (card.querySelector('.reflist-display-as')) {
             const select = card.querySelector('.reflist-display-as');
             select.onchange = () => {

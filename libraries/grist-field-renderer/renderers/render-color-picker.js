@@ -1,12 +1,28 @@
 // libraries/grist-field-renderer/renderers/render-color-picker.js
 export function renderColorPicker(options) {
-    const { container, cellValue, isEditing, isLocked, fieldOptions } = options;
+    const { container, cellValue, isEditing, isLocked, fieldOptions, receivedConfigs } = options;
     
     // Suporte para ambos os formatos de configuração (Legado e Configurator Novo)
     const colorMode = fieldOptions?.mode || fieldOptions?.colorPickerOptions?.mode || 'picker';
-    const swatchesRaw = fieldOptions?.swatches || fieldOptions?.colorPickerOptions?.swatches || '';
+    let swatchesRaw = fieldOptions?.swatches || fieldOptions?.colorPickerOptions?.swatches || '';
+    const colorPaletteId = fieldOptions?.colorPaletteId || fieldOptions?.colorPickerOptions?.colorPaletteId;
+
+    // --- DYNAMIC COLOR PALETTE RESOLUTION ---
+    if (colorPaletteId && receivedConfigs) {
+        const paletteRecord = receivedConfigs.find(c => c.configId === colorPaletteId);
+        if (paletteRecord) {
+            try {
+                const paletteData = JSON.parse(paletteRecord.stylingJson || paletteRecord.configJson || '{}');
+                const paletteColors = paletteData.colors || [];
+                if (paletteColors.length > 0) {
+                    swatchesRaw = paletteColors.map(c => c.hex).join(', ');
+                }
+            } catch(e) { console.warn("Error resolving dynamic color palette for picker:", e); }
+        }
+    }
+    // --- END PALETTE RESOLUTION ---
     
-    console.log(`[renderColorPicker] mode: ${colorMode}, swatches: ${swatchesRaw}`);
+    console.log(`[renderColorPicker] mode: ${colorMode}, palette: ${colorPaletteId}, swatches: ${swatchesRaw}`);
     
     // Converte a string de swatches em array, limpando espaços e garantindo o #
     const swatchList = swatchesRaw.split(',')
