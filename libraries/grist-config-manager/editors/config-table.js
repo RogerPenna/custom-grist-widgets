@@ -304,6 +304,7 @@ export const TableConfigEditor = (() => {
 
                 if (formatter === 'progress') {
                     colBase.formatterParams = {
+                        progressBarPreset: item.querySelector('.progress-preset').value || '',
                         min: parseFloat(item.querySelector('.progress-min').value) || 0,
                         max: parseFloat(item.querySelector('.progress-max').value) || 100,
                         legend: item.querySelector('.progress-legend')?.checked || false,
@@ -528,39 +529,48 @@ export const TableConfigEditor = (() => {
                         </div>
                         
                         <!-- Formatter Params (Progress) -->
-                        <div class="formatter-params progress-params" style="display: ${colConfig?.formatter === 'progress' ? 'grid' : 'none'}; grid-template-columns: 1fr 1fr 1fr; gap: 5px; margin-top: 5px; border: 1px dashed #cbd5e1; padding: 5px; border-radius: 4px;">
-                            <div>
-                                <label style="font-size:9px;">Min</label>
-                                <input type="number" class="progress-min" value="${colConfig?.formatterParams?.min ?? 0}" style="width:100%; font-size:10px;">
-                            </div>
-                            <div>
-                                <label style="font-size:9px;">Max</label>
-                                <input type="number" class="progress-max" value="${colConfig?.formatterParams?.max ?? 100}" style="width:100%; font-size:10px;">
-                            </div>
-                            <div>
-                                <label style="font-size:9px;">Cor Barra</label>
-                                <input type="color" class="progress-color" value="${colConfig?.formatterParams?.mainColor ?? '#4caf50'}" style="width:100%; height:20px; padding:0;">
-                            </div>
-                            <div>
-                                <label style="font-size:9px;">Cor Fundo</label>
-                                <input type="color" class="progress-bgcolor" value="${colConfig?.formatterParams?.bgColor ?? '#e0e0e0'}" style="width:100%; height:20px; padding:0;">
-                            </div>
-                            <div>
-                                <label style="font-size:9px;">Raio (px)</label>
-                                <input type="number" class="progress-radius" value="${colConfig?.formatterParams?.borderRadius ?? 4}" style="width:100%; font-size:10px;">
-                            </div>
-                            <div>
-                                <label style="font-size:9px;">Modo Cor</label>
-                                <select class="progress-mode" style="width:100%; font-size:10px;">
-                                    <option value="solid" ${colConfig?.formatterParams?.colorMode === 'solid' ? 'selected' : ''}>Sólido</option>
-                                    <option value="dynamic-gradient" ${colConfig?.formatterParams?.colorMode === 'dynamic-gradient' || colConfig?.formatterParams?.colorMode === 'gradient' ? 'selected' : ''}>Gradiente Dinâmico</option>
-                                    <option value="static-gradient" ${colConfig?.formatterParams?.colorMode === 'static-gradient' ? 'selected' : ''}>Gradiente Estático</option>
-                                    <option value="steps" ${colConfig?.formatterParams?.colorMode === 'steps' ? 'selected' : ''}>Degraus</option>
+                        <div class="formatter-params progress-params" style="display: ${colConfig?.formatter === 'progress' ? 'block' : 'none'}; margin-top: 5px; border: 1px dashed #cbd5e1; padding: 5px; border-radius: 4px;">
+                            <div class="form-group" style="margin-bottom: 5px;">
+                                <label style="font-size:10px;">Preset Global:</label>
+                                <select class="progress-preset" style="width:100%; font-size:10px;">
+                                    <option value="">-- Manual --</option>
+                                    ${_allConfigs.filter(c => c.componentType === 'Progress Bar').map(c => `<option value="${c.configId}" ${colConfig?.formatterParams?.progressBarPreset === c.configId ? 'selected' : ''}>${c.widgetTitle}</option>`).join('')}
                                 </select>
                             </div>
-                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px; align-items:flex-end; grid-column: span 3;">
-                                <label style="font-size:9px; display:flex; align-items:center; gap:2px;"><input type="checkbox" class="progress-striped" ${colConfig?.formatterParams?.striped ? 'checked' : ''}> Zebrado</label>
-                                <label style="font-size:9px; display:flex; align-items:center; gap:2px;"><input type="checkbox" class="progress-animated" ${colConfig?.formatterParams?.animated ? 'checked' : ''}> Animado</label>
+                            <div class="progress-manual-options" style="display: ${colConfig?.formatterParams?.progressBarPreset ? 'none' : 'grid'}; grid-template-columns: 1fr 1fr 1fr; gap: 5px;">
+                                <div>
+                                    <label style="font-size:9px;">Min</label>
+                                    <input type="number" class="progress-min" value="${colConfig?.formatterParams?.min ?? 0}" style="width:100%; font-size:10px;">
+                                </div>
+                                <div>
+                                    <label style="font-size:9px;">Max</label>
+                                    <input type="number" class="progress-max" value="${colConfig?.formatterParams?.max ?? 100}" style="width:100%; font-size:10px;">
+                                </div>
+                                <div>
+                                    <label style="font-size:9px;">Cor Barra</label>
+                                    <input type="color" class="progress-color" value="${colConfig?.formatterParams?.mainColor ?? '#4caf50'}" style="width:100%; height:20px; padding:0;">
+                                </div>
+                                <div>
+                                    <label style="font-size:9px;">Cor Fundo</label>
+                                    <input type="color" class="progress-bgcolor" value="${colConfig?.formatterParams?.bgColor ?? '#e0e0e0'}" style="width:100%; height:20px; padding:0;">
+                                </div>
+                                <div>
+                                    <label style="font-size:9px;">Raio (px)</label>
+                                    <input type="number" class="progress-radius" value="${colConfig?.formatterParams?.borderRadius ?? 4}" style="width:100%; font-size:10px;">
+                                </div>
+                                <div>
+                                    <label style="font-size:9px;">Modo Cor</label>
+                                    <select class="progress-mode" style="width:100%; font-size:10px;">
+                                        <option value="solid" ${colConfig?.formatterParams?.colorMode === 'solid' ? 'selected' : ''}>Sólido</option>
+                                        <option value="dynamic-gradient" ${colConfig?.formatterParams?.colorMode === 'dynamic-gradient' || colConfig?.formatterParams?.colorMode === 'gradient' ? 'selected' : ''}>Gradiente Dinâmico</option>
+                                        <option value="static-gradient" ${colConfig?.formatterParams?.colorMode === 'static-gradient' ? 'selected' : ''}>Gradiente Estático</option>
+                                        <option value="steps" ${colConfig?.formatterParams?.colorMode === 'steps' ? 'selected' : ''}>Degraus</option>
+                                    </select>
+                                </div>
+                                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px; align-items:flex-end; grid-column: span 3;">
+                                    <label style="font-size:9px; display:flex; align-items:center; gap:2px;"><input type="checkbox" class="progress-striped" ${colConfig?.formatterParams?.striped ? 'checked' : ''}> Zebrado</label>
+                                    <label style="font-size:9px; display:flex; align-items:center; gap:2px;"><input type="checkbox" class="progress-animated" ${colConfig?.formatterParams?.animated ? 'checked' : ''}> Animado</label>
+                                </div>
                             </div>
                         </div>
 
@@ -645,6 +655,15 @@ export const TableConfigEditor = (() => {
                 if (pParams) pParams.style.display = (val === 'progress') ? 'grid' : 'none';
                 if (mParams) mParams.style.display = (val === 'money') ? 'grid' : 'none';
                 if (iParams) iParams.style.display = (val === 'image') ? 'grid' : 'none';
+                updateDebugJson();
+            };
+        }
+
+        const presetSelect = card.querySelector('.progress-preset');
+        if (presetSelect) {
+            presetSelect.onchange = () => {
+                const manualOptions = card.querySelector('.progress-manual-options');
+                if (manualOptions) manualOptions.style.display = presetSelect.value ? 'none' : 'grid';
                 updateDebugJson();
             };
         }

@@ -888,17 +888,34 @@ export const IndicatorsRenderer = (() => {
     function _renderProgressChip(value, target, direction, tableLens, tableId, config) {
         if (value === null || value === undefined) return '<div class="progress-chip empty">-</div>';
         
+        // --- PRESET INHERITANCE ---
+        const styling = config.styling || config || {};
+        let finalStyling = { ...styling };
+        
+        // If a global preset is selected, merge it (global < local)
+        if (styling.progressBarPreset && config.receivedConfigs) {
+            const presetRecord = config.receivedConfigs.find(c => c.configId === styling.progressBarPreset);
+            if (presetRecord) {
+                try {
+                    const presetData = JSON.parse(presetRecord.stylingJson || presetRecord.configJson || '{}');
+                    // Local styling overrides global preset
+                    finalStyling = { ...presetData, ...styling };
+                } catch(e) { console.warn("Error parsing global preset:", e); }
+            }
+        }
+        // --- END PRESET INHERITANCE ---
+
         const perf = calculatePerformance(value, target, direction);
         const status = getStatusEmoji(perf);
         
         let color = '#94a3b8'; // Slate 400
         switch(status) {
-            case '🔵': color = '#3b82f6'; break; // Blue 500
-            case '🔴': color = '#ef4444'; break; // Red 500
-            case '🟠': color = '#f97316'; break; // Orange 500
-            case '🟡': color = '#eab308'; break; // Yellow 500
-            case '🟢': color = '#22c55e'; break; // Green 500
-            case '🟩': color = '#16a34a'; break; // Green 600
+            case '🔵': color = finalStyling.colorBlue || '#3b82f6'; break;
+            case '🔴': color = finalStyling.colorRed || '#ef4444'; break;
+            case '🟠': color = finalStyling.colorOrange || '#f97316'; break;
+            case '🟡': color = finalStyling.colorYellow || '#eab308'; break;
+            case '🟢': color = finalStyling.colorGreen || '#22c55e'; break;
+            case '🟩': color = finalStyling.colorGreenDark || '#16a34a'; break;
         }
 
         const fillWidth = Math.min(100, perf * 100);
@@ -908,9 +925,12 @@ export const IndicatorsRenderer = (() => {
         const formattedTarget = target.toLocaleString('pt-BR', { maximumFractionDigits: 1 });
         const formattedPercent = (perf * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%';
 
+        const barHeight = finalStyling.barHeight || '100%';
+        const borderRadius = finalStyling.borderRadius || '4px';
+
         return `
-            <div class="progress-chip" title="Meta: ${formattedTarget}">
-                <div class="progress-bar-fill" style="width: ${fillWidth}%; background-color: ${color};"></div>
+            <div class="progress-chip" title="Meta: ${formattedTarget}" style="height: ${barHeight}; border-radius: ${borderRadius}">
+                <div class="progress-bar-fill" style="width: ${fillWidth}%; background-color: ${color}; border-radius: ${borderRadius}"></div>
                 ${perf > 1 ? `<div class="progress-marker-100" style="left: ${markerPos}%;"></div>` : ''}
                 <div class="chip-labels">
                     <span class="label-values">${formattedVal} / ${formattedTarget}</span>

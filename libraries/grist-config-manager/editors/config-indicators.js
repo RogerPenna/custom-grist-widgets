@@ -46,6 +46,7 @@ export const IndicatorsConfigEditor = (() => {
             cardType: styling.cardType || 'STANDARD',
             cardConfigId: styling.cardConfigId || '',
             yearsCount: styling.yearsCount !== undefined ? styling.yearsCount : 3,
+            progressBarPreset: styling.progressBarPreset || '',
 
             // Actions
             drawerConfigId: actions.drawerConfigId || null,

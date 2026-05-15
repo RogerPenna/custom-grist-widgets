@@ -1223,39 +1223,120 @@ export const CardConfigEditor = (() => {
                 widgetOptionsContainer.querySelector('#fs-toggle-labels').onchange = e => tempWidgetOptions.showLabels = e.target.checked;
             } else if (widgetType === 'Progress Bar') {
                 widgetOptionsContainer.innerHTML = `
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                        <div class="form-group"><label>Bar Color:</label><input type="color" id="fs-pb-color" value="${tempWidgetOptions.mainColor || '#4caf50'}"></div>
-                        <div class="form-group"><label>Bg Color:</label><input type="color" id="fs-pb-bgcolor" value="${tempWidgetOptions.bgColor || '#e0e0e0'}"></div>
-                    </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                        <div class="form-group"><label>Border Radius (px):</label><input type="number" id="fs-pb-radius" value="${tempWidgetOptions.borderRadius ?? 4}" min="0" style="width:100%"></div>
-                        <div class="form-group"><label>Thickness:</label><select id="fs-pb-thick" style="width:100%"><option value="100">Default</option><option value="150">Thick</option><option value="200">Extra Thick</option></select></div>
-                    </div>
-                    <div class="form-group" style="display: flex; gap: 15px;">
-                        <label><input type="checkbox" id="fs-pb-striped" ${tempWidgetOptions.striped ? 'checked' : ''}> Striped</label>
-                        <label><input type="checkbox" id="fs-pb-animated" ${tempWidgetOptions.animated ? 'checked' : ''}> Animated</label>
-                    </div>
-                    
-                    <hr style="margin: 10px 0; border: none; border-top: 1px solid #ddd;">
-                    
-                    <div class="form-group">
-                        <label>Color Mode:</label>
-                        <select id="fs-pb-mode" style="width:100%">
-                            <option value="solid" ${tempWidgetOptions.colorMode === 'solid' ? 'selected' : ''}>Solid</option>
-                            <option value="dynamic-gradient" ${tempWidgetOptions.colorMode === 'dynamic-gradient' || tempWidgetOptions.colorMode === 'gradient' ? 'selected' : ''}>Dynamic Gradient (Interpolated)</option>
-                            <option value="static-gradient" ${tempWidgetOptions.colorMode === 'static-gradient' ? 'selected' : ''}>Static Gradient (Full Bar)</option>
-                            <option value="steps" ${tempWidgetOptions.colorMode === 'steps' ? 'selected' : ''}>Steps (Thresholds)</option>
+                    <div class="form-group" style="background: #f0f7ff; padding: 10px; border-radius: 6px; border: 1px solid #cce3ff; margin-bottom: 15px;">
+                        <label style="font-weight: bold; color: #0056b3;">Preset Global (Design System):</label>
+                        <select id="fs-pb-preset" style="width:100%; border-color: #0056b3;">
+                            <option value="">-- Personalizado (Sem Preset) --</option>
+                            ${allConfigs.filter(c => c.componentType === 'Progress Bar').map(c => `<option value="${c.configId}" ${tempWidgetOptions.progressBarPreset === c.configId ? 'selected' : ''}>${c.widgetTitle}</option>`).join('')}
                         </select>
+                        <p style="font-size: 10px; color: #666; margin-top: 5px;">Ao selecionar um preset, as configurações abaixo serão preenchidas automaticamente.</p>
                     </div>
                     
-                    <div id="fs-pb-stops-container" style="display: ${tempWidgetOptions.colorMode === 'solid' ? 'none' : 'block'}; margin-top: 10px;">
-                        <label style="font-size: 11px; font-weight: bold; margin-bottom: 5px; display: block;">Color Stops (0-100):</label>
-                        <div id="fs-pb-stops-list"></div>
-                        <button id="fs-pb-add-stop" class="btn btn-secondary btn-sm" style="width: 100%; margin-top: 5px; padding: 4px; font-size: 11px;">+ Add Stop</button>
+                    <div id="fs-pb-manual-options">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                            <div class="form-group"><label>Bar Color:</label><input type="color" id="fs-pb-color" value="${tempWidgetOptions.mainColor || '#4caf50'}"></div>
+                            <div class="form-group"><label>Bg Color:</label><input type="color" id="fs-pb-bgcolor" value="${tempWidgetOptions.bgColor || '#e0e0e0'}"></div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                            <div class="form-group"><label>Border Radius (px):</label><input type="number" id="fs-pb-radius" value="${tempWidgetOptions.borderRadius ?? 4}" min="0" style="width:100%"></div>
+                            <div class="form-group"><label>Thickness:</label>
+                                <select id="fs-pb-thick" style="width:100%">
+                                    <option value="50">Muito Fina (50%)</option>
+                                    <option value="75">Fina (75%)</option>
+                                    <option value="100">Padrão (100%)</option>
+                                    <option value="150">Grossa (150%)</option>
+                                    <option value="200">Extra Grossa (200%)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group" style="display: flex; gap: 15px;">
+                            <label><input type="checkbox" id="fs-pb-striped" ${tempWidgetOptions.striped ? 'checked' : ''}> Striped</label>
+                            <label><input type="checkbox" id="fs-pb-animated" ${tempWidgetOptions.animated ? 'checked' : ''}> Animated</label>
+                        </div>
+                        
+                        <hr style="margin: 10px 0; border: none; border-top: 1px solid #ddd;">
+                        
+                        <div class="form-group">
+                            <label>Color Mode:</label>
+                            <select id="fs-pb-mode" style="width:100%">
+                                <option value="solid" ${tempWidgetOptions.colorMode === 'solid' ? 'selected' : ''}>Solid</option>
+                                <option value="dynamic-gradient" ${tempWidgetOptions.colorMode === 'dynamic-gradient' || tempWidgetOptions.colorMode === 'gradient' ? 'selected' : ''}>Dynamic Gradient (Interpolated)</option>
+                                <option value="static-gradient" ${tempWidgetOptions.colorMode === 'static-gradient' ? 'selected' : ''}>Static Gradient (Full Bar)</option>
+                                <option value="steps" ${tempWidgetOptions.colorMode === 'steps' ? 'selected' : ''}>Steps (Thresholds)</option>
+                            </select>
+                        </div>
+                        
+                        <div id="fs-pb-stops-container" style="display: ${tempWidgetOptions.colorMode === 'solid' ? 'none' : 'block'}; margin-top: 10px;">
+                            <label style="font-size: 11px; font-weight: bold; margin-bottom: 5px; display: block;">Color Stops (0-100):</label>
+                            <div id="fs-pb-stops-list"></div>
+                            <button id="fs-pb-add-stop" class="btn btn-secondary btn-sm" style="width: 100%; margin-top: 5px; padding: 4px; font-size: 11px;">+ Add Stop</button>
+                        </div>
                     </div>
                 `;
                 
-                widgetOptionsContainer.querySelector('#fs-pb-color').onchange = e => tempWidgetOptions.mainColor = e.target.value;
+                const presetSelect = widgetOptionsContainer.querySelector('#fs-pb-preset');
+                const manualOptions = widgetOptionsContainer.querySelector('#fs-pb-manual-options');
+                
+                const applyPresetValues = (presetId, isUserAction = false) => {
+                    if (!presetId) {
+                        manualOptions.style.opacity = '1';
+                        manualOptions.style.pointerEvents = 'auto';
+                        return;
+                    }
+                    const preset = allConfigs.find(c => c.configId === presetId);
+                    if (preset) {
+                        try {
+                            const data = JSON.parse(preset.stylingJson || preset.configJson || '{}');
+                            
+                            // SYNC DATA: Update both UI and the local config object
+                            const colorInput = widgetOptionsContainer.querySelector('#fs-pb-color');
+                            const bgColorInput = widgetOptionsContainer.querySelector('#fs-pb-bgcolor');
+                            const radiusInput = widgetOptionsContainer.querySelector('#fs-pb-radius');
+                            const stripedInput = widgetOptionsContainer.querySelector('#fs-pb-striped');
+                            const animatedInput = widgetOptionsContainer.querySelector('#fs-pb-animated');
+                            const modeSelect = widgetOptionsContainer.querySelector('#fs-pb-mode');
+                            const thickSelect = widgetOptionsContainer.querySelector('#fs-pb-thick');
+
+                            colorInput.value = data.mainColor || '#4caf50';
+                            bgColorInput.value = data.bgColor || '#e0e0e0';
+                            radiusInput.value = data.borderRadius ?? 4;
+                            stripedInput.checked = !!data.striped;
+                            animatedInput.checked = !!data.animated;
+                            modeSelect.value = data.colorMode || 'solid';
+                            thickSelect.value = data.thickness || "100";
+
+                            // If this was triggered by selecting a preset in the UI, 
+                            // we update the temporary options used for saving.
+                            if (isUserAction) {
+                                tempWidgetOptions.mainColor = colorInput.value;
+                                tempWidgetOptions.bgColor = bgColorInput.value;
+                                tempWidgetOptions.borderRadius = parseInt(radiusInput.value, 10);
+                                tempWidgetOptions.striped = stripedInput.checked;
+                                tempWidgetOptions.animated = animatedInput.checked;
+                                tempWidgetOptions.colorMode = modeSelect.value;
+                                tempWidgetOptions.thickness = thickSelect.value;
+                                if (data.colorStops) tempWidgetOptions.colorStops = JSON.parse(JSON.stringify(data.colorStops));
+                            }
+                            
+                            // Visual feedback: dim inherited fields
+                            manualOptions.style.opacity = '0.7';
+                            manualOptions.style.pointerEvents = 'none'; // Lock while preset active
+                            
+                            if (tempWidgetOptions.colorMode !== 'solid') renderStops();
+                        } catch(e) { console.error("Error applying preset:", e); }
+                    }
+                };
+
+                presetSelect.onchange = e => {
+                    tempWidgetOptions.progressBarPreset = e.target.value;
+                    applyPresetValues(e.target.value, true);
+                    updateDebugJson();
+                };
+                
+                // Initial apply (without overriding tempWidgetOptions unless empty)
+                if (tempWidgetOptions.progressBarPreset) applyPresetValues(tempWidgetOptions.progressBarPreset, false);
+
+                widgetOptionsContainer.querySelector('#fs-pb-color').onchange = e => { tempWidgetOptions.mainColor = e.target.value; updateDebugJson(); };
                 widgetOptionsContainer.querySelector('#fs-pb-bgcolor').onchange = e => tempWidgetOptions.bgColor = e.target.value;
                 widgetOptionsContainer.querySelector('#fs-pb-radius').onchange = e => tempWidgetOptions.borderRadius = parseInt(e.target.value, 10);
                 widgetOptionsContainer.querySelector('#fs-pb-striped').onchange = e => tempWidgetOptions.striped = e.target.checked;

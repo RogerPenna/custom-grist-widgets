@@ -144,9 +144,11 @@ export const TableRenderer = (() => {
                         ignoreCellStyle: colConfig?.ignoreCellStyle
                     },
                     fieldStyle: {
-                        useGristStyle: !colConfig?.ignoreConditionalFormatting
+                        useGristStyle: !colConfig?.ignoreConditionalFormatting,
+                        widgetOptions: colConfig?.formatterParams // Explicitly pass progress bar params
                     },
-                    fieldOptions: fieldOptions
+                    fieldOptions: colConfig?.formatterParams, // Added for direct access
+                    receivedConfigs: config.receivedConfigs // Added for global presets support
                 });
             });
 

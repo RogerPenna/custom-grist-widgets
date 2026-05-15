@@ -1,7 +1,50 @@
 export function renderProgressBar(options) {
-    const { container, cellValue, colSchema, isEditing, isLocked, fieldOptions, tableLens } = options;
+    const { container, cellValue, colSchema, isEditing, isLocked, fieldOptions, tableLens, receivedConfigs } = options;
     const value = Number(cellValue) || 0;
-    const widgetOptions = fieldOptions || {};
+    
+    // --- PRESET INHERITANCE ---
+    let widgetOptions = { ...fieldOptions };
+    if (widgetOptions.progressBarPreset && receivedConfigs) {
+        const presetRecord = receivedConfigs.find(c => c.configId === widgetOptions.progressBarPreset);
+        if (presetRecord) {
+            try {
+                const presetData = JSON.parse(presetRecord.stylingJson || presetRecord.configJson || '{}');
+                // CLEAN MERGE: Only local options that are NOT default/empty should override the preset.
+                // For progress bars, we treat the preset as the base and apply local overrides.
+                widgetOptions = { ...presetData, ...fieldOptions };
+                
+                // Special handling for booleans: if local is undefined, use preset.
+                if (fieldOptions.striped === undefined) widgetOptions.striped = presetData.striped;
+                if (fieldOptions.animated === undefined) widgetOptions.animated = presetData.animated;
+            } catch(e) { console.warn("Error parsing global progress bar preset:", e); }
+        }
+    }
+    // --- END PRESET INHERITANCE ---
+
+    // --- DYNAMIC COLOR PALETTE RESOLUTION ---
+    // If the progress bar (or its preset) is linked to a global Color Palette, we fetch the colors now.
+    if (widgetOptions.colorPaletteId && receivedConfigs) {
+        const paletteRecord = receivedConfigs.find(c => c.configId === widgetOptions.colorPaletteId);
+        if (paletteRecord) {
+            try {
+                const paletteData = JSON.parse(paletteRecord.stylingJson || paletteRecord.configJson || '{}');
+                const paletteColors = paletteData.colors || [];
+                if (paletteColors.length > 0) {
+                    const dynamicStops = [];
+                    const count = paletteColors.length;
+                    paletteColors.forEach((c, i) => {
+                        let val = 0;
+                        if (count > 1) {
+                            val = (i / (count - 1)) * 100; // Exact distribution
+                        }
+                        dynamicStops.push({ value: val, color: c.hex });
+                    });
+                    widgetOptions.colorStops = dynamicStops;
+                }
+            } catch(e) { console.warn("Error resolving dynamic color palette:", e); }
+        }
+    }
+    // --- END PALETTE RESOLUTION ---
 
     // Formatação do label seguindo o padrão centralizado
     let formattedLabel = '';

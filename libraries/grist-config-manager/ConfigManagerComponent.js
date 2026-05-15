@@ -8,6 +8,8 @@ import { CardStyleConfigEditor } from './editors/config-card-style.js?v=1.0.2';
 import { TableConfigEditor } from './editors/config-table.js?v=1.0.2';
 import { BscConfigEditor } from './editors/config-bsc.js?v=1.0.2';
 import { IndicatorsConfigEditor } from './editors/config-indicators.js?v=1.0.2';
+import { ProgressBarConfigEditor } from './editors/config-progress-bar.js?v=1.0.2';
+import { ColorOptionsConfigEditor } from './editors/config-color-options.js?v=1.0.2';
 
 let overlay = null;
 let _grist = null;
@@ -19,6 +21,9 @@ const COMPONENT_TYPE_COLORS = {
     'Table': '#fd7e14', // orange
     'BSC': '#6f42c1', // purple
     'Indicators': '#d63384', // pink
+    'ProgressBar': '#20c997', // teal
+    'ColorOptions': '#adb5bd', // secondary
+    'StatusIcons': '#ffc107', // warning
     'default': '#6c757d' // grey
 };
 
@@ -81,6 +86,10 @@ export async function renderMainUI(grist, container, initialConfigId, componentT
             return;
         }
 
+        // --- MASTER LISTS ---
+        const MASTER_WIDGET_TYPES = ['Card System', 'Drawer', 'Table', 'BSC', 'Indicators'];
+        const MASTER_COMPONENT_TYPES = ['Progress Bar', 'Color Options', 'Card Style', 'Status Icons'];
+
         // --- NOVA VERIFICAÇÃO DE COLUNAS (TRIPARTIÇÃO) ---
         const tableSchema = await tableLens.getTableSchema(CONFIG_TABLE, { mode: 'raw' });
         const requiredColumns = ['mappingJson', 'stylingJson', 'actionsJson'];
@@ -131,6 +140,21 @@ export async function renderMainUI(grist, container, initialConfigId, componentT
         });
 
         let allConfigs = await tableLens.fetchTableRecords(CONFIG_TABLE);
+        let activeTab = 'instances'; // 'instances' or 'components'
+
+        const colorizeDropdown = (selectEl) => {
+            if (!selectEl) return;
+            const selectedType = selectEl.value;
+            if (!selectedType || selectedType === '') {
+                selectEl.style.backgroundColor = '';
+                selectEl.style.color = '';
+            } else {
+                const color = COMPONENT_TYPE_COLORS[selectedType.replace(/\s+/g, '')] || COMPONENT_TYPE_COLORS['default'];
+                selectEl.style.backgroundColor = color;
+                const brightness = (parseInt(color.replace('#', ''), 16) > 0xffffff / 2) ? 'black' : 'white';
+                selectEl.style.color = brightness;
+            }
+        };
 
         const createTypeOption = (type) => {
             const color = COMPONENT_TYPE_COLORS[type.replace(/\s+/g, '')] || COMPONENT_TYPE_COLORS['default'];
@@ -138,10 +162,35 @@ export async function renderMainUI(grist, container, initialConfigId, componentT
             return `<option value="${type}" style="background-color: ${color}; color: ${brightness};">${type}</option>`;
         };
 
-        const typeOptions = componentTypes.map(createTypeOption).join('');
-        const filterOptions = componentTypes.map(createTypeOption).join('');
+        const updateSelectors = () => {
+            const types = activeTab === 'instances' ? MASTER_WIDGET_TYPES : MASTER_COMPONENT_TYPES;
+            const optionsHtml = types.map(createTypeOption).join('');
+            
+            const filterSelector = container.querySelector('#cm-filter-type-selector');
+            const newSelector = container.querySelector('#cm-new-type-selector');
+            
+            if (filterSelector && newSelector) {
+                const currentFilter = filterSelector.value;
+                filterSelector.innerHTML = `<option value="">-- Todos --</option>` + optionsHtml;
+                newSelector.innerHTML = optionsHtml;
+                
+                // Try to keep filter if valid for new tab
+                if (types.includes(currentFilter)) {
+                    filterSelector.value = currentFilter;
+                } else {
+                    filterSelector.value = "";
+                }
+                
+                colorizeDropdown(filterSelector);
+                colorizeDropdown(newSelector);
+            }
+        };
 
         container.innerHTML = `
+            <div class="grf-cm-tabs">
+                <button class="grf-cm-tab-btn active" data-tab="instances">Instâncias de Widgets</button>
+                <button class="grf-cm-tab-btn" data-tab="components">Componentes Globais (Design System)</button>
+            </div>
             <div class="grf-cm-main-container">
                 <div class="grf-cm-sidebar">
                     <div class="cm-sidebar-header" style="padding: 10px 15px; border-bottom: 1px solid #eee;">
@@ -159,17 +208,14 @@ export async function renderMainUI(grist, container, initialConfigId, componentT
                             <label for="cm-filter-type-selector">Filtro:</label>
                             <select id="cm-filter-type-selector">
                                 <option value="">-- Todos --</option>
-                                ${filterOptions}
                             </select>
                         </div>
                         <div class="grf-cm-new-controls">
-                            <select id="cm-new-type-selector">
-                                ${typeOptions}
-                            </select>
+                            <select id="cm-new-type-selector"></select>
                             <button id="cm-new-btn" class="btn btn-primary" title="Criar Nova Configuração">+</button>
                         </div>
                     </div>
-                    <div id="cm-config-list-container">
+                    <div id="cm-config-list-container" style="flex: 1; overflow-y: auto; padding: 0 15px;">
                         <ul id="cm-config-list"></ul>
                     </div>
                 </div>
@@ -180,8 +226,8 @@ export async function renderMainUI(grist, container, initialConfigId, componentT
                             <button type="button" id="cm-duplicate-btn" class="btn btn-secondary">Duplicar</button>
                             <button type="button" id="cm-delete-btn" class="btn btn-danger">Excluir</button>
                         </div>
-                        <div class="form-group"><label for="cm-widget-title">Título do Widget (Nome na lista)</label><input type="text" id="cm-widget-title" required></div>
-                        <div class="form-group"><label for="cm-config-id">ID da Configuração (Identificador único)</label><input type="text" id="cm-config-id" required></div>
+                        <div class="form-group"><label for="cm-widget-title">Título (Ex: Nome do Preset)</label><input type="text" id="cm-widget-title" required></div>
+                        <div class="form-group"><label for="cm-config-id">ID Único (Prefixado com @GLOBAL para padrões)</label><input type="text" id="cm-config-id" required></div>
                         <div class="form-group"><label for="cm-description">Descrição</label><input type="text" id="cm-description"></div>
                         <div id="cm-editor-content"><p class="editor-placeholder">Selecione uma config ou crie uma nova.</p></div>
                         <div class="form-actions"><button type="button" id="cm-save-btn" class="btn btn-success">Salvar e Fechar</button></div>
@@ -199,7 +245,11 @@ export async function renderMainUI(grist, container, initialConfigId, componentT
             'Table': TableConfigEditor, 
             'BSC': BscConfigEditor, 
             'StrategicPlanning': BscConfigEditor,
-            'Indicators': IndicatorsConfigEditor
+            'Indicators': IndicatorsConfigEditor,
+            // Design System Components
+            'ProgressBar': ProgressBarConfigEditor,
+            'ColorOptions': ColorOptionsConfigEditor,
+            'StatusIcons': IndicatorsConfigEditor
         };
         const configListEl = container.querySelector('#cm-config-list');
         const editorContentEl = container.querySelector('#cm-editor-content');
@@ -208,21 +258,23 @@ export async function renderMainUI(grist, container, initialConfigId, componentT
         const filterTypeSelectorEl = container.querySelector('#cm-filter-type-selector');
         const groupModeEl = container.querySelector('#cm-group-mode');
 
+        // Initial selector setup
+        updateSelectors();
+
+        // Tab logic
+        container.querySelectorAll('.grf-cm-tab-btn').forEach(btn => {
+            btn.onclick = () => {
+                container.querySelectorAll('.grf-cm-tab-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                activeTab = btn.dataset.tab;
+                updateSelectors();
+                clearForm();
+                loadList(filterTypeSelectorEl.value);
+            };
+        });
+
         let selectedConfig = null;
         let currentEditorModule = null;
-
-        const colorizeDropdown = (selectEl) => {
-            const selectedType = selectEl.value;
-            if (!selectedType || selectedType === '') {
-                selectEl.style.backgroundColor = '';
-                selectEl.style.color = '';
-            } else {
-                const color = COMPONENT_TYPE_COLORS[selectedType.replace(/\s+/g, '')] || COMPONENT_TYPE_COLORS['default'];
-                selectEl.style.backgroundColor = color;
-                const brightness = (parseInt(color.replace('#', ''), 16) > 0xffffff / 2) ? 'black' : 'white';
-                selectEl.style.color = brightness;
-            }
-        };
 
         const clearForm = () => {
             selectedConfig = null;
@@ -262,7 +314,20 @@ export async function renderMainUI(grist, container, initialConfigId, componentT
         };
 
         const loadList = (filterType = '') => {
-            const configsToDisplay = filterType ? allConfigs.filter(c => c.componentType === filterType) : allConfigs;
+            let configsToDisplay = allConfigs;
+            
+            // Apply tab filtering
+            if (activeTab === 'instances') {
+                configsToDisplay = configsToDisplay.filter(c => !c.configId.startsWith('@GLOBAL:'));
+            } else {
+                configsToDisplay = configsToDisplay.filter(c => c.configId.startsWith('@GLOBAL:'));
+            }
+
+            // Apply type filter
+            if (filterType) {
+                configsToDisplay = configsToDisplay.filter(c => c.componentType === filterType);
+            }
+
             configListEl.innerHTML = '';
             const groupMode = groupModeEl.value;
 
@@ -339,6 +404,7 @@ export async function renderMainUI(grist, container, initialConfigId, componentT
         const displayConfig = async (config) => {
             // Unifica a configuração (Tripartição) antes de passar para o editor
             const unifiedConfig = tableLens.parseConfigRecord(config);
+            const isGlobal = (config.configId || '').startsWith('@GLOBAL:');
             
             selectedConfig = { ...config, ...unifiedConfig }; // Mantém IDs e campos extras
             formEl.querySelector('#cm-record-id').value = config.id || '';
@@ -352,28 +418,47 @@ export async function renderMainUI(grist, container, initialConfigId, componentT
                 editorContentEl.innerHTML = `<p class="editor-error">Editor para "${config.componentType}" não encontrado.</p>`;
                 return;
             }
-            const tables = await tableLens.listAllTables();
+
+            const tables = isGlobal ? [] : await tableLens.listAllTables();
             const targetTableId = unifiedConfig.tableId || '';
+            
             editorContentEl.innerHTML = `
-                <div class="form-group" id="cm-table-selector-container">
-                    <label for="cm-table-selector">Tabela de Dados Alvo:</label>
-                    <select id="cm-table-selector"><option value="">-- Selecione --</option>${tables.map(t => `<option value="${t.id}" ${t.id === targetTableId ? 'selected' : ''}>${t.id}</option>`).join('')}</select>
-                </div>
+                ${isGlobal ? '' : `
+                    <div class="form-group" id="cm-table-selector-container">
+                        <label for="cm-table-selector">Tabela de Dados Alvo:</label>
+                        <select id="cm-table-selector"><option value="">-- Selecione --</option>${tables.map(t => `<option value="${t.id}" ${t.id === targetTableId ? 'selected' : ''}>${t.id}</option>`).join('')}</select>
+                    </div>
+                `}
                 <div id="cm-specialized-editor"></div>`;
+            
             const tableSelector = editorContentEl.querySelector('#cm-table-selector');
             const specializedEditorContainer = editorContentEl.querySelector('#cm-specialized-editor');
+            
             const renderSpecializedEditor = (tableId, configsToPass) => {
-                if (tableId) { currentEditorModule.render(specializedEditorContainer, unifiedConfig, tableLens, tableId, configsToPass); }
-                else { specializedEditorContainer.innerHTML = ''; }
+                if (isGlobal || tableId) { 
+                    currentEditorModule.render(specializedEditorContainer, unifiedConfig, tableLens, tableId, configsToPass); 
+                } else { 
+                    specializedEditorContainer.innerHTML = ''; 
+                }
             };
-            tableSelector.onchange = () => { renderSpecializedEditor(tableSelector.value, allConfigs); };
-            if (targetTableId) { renderSpecializedEditor(targetTableId, allConfigs); }
+
+            if (tableSelector) {
+                tableSelector.onchange = () => { renderSpecializedEditor(tableSelector.value, allConfigs); };
+            }
+            
+            if (isGlobal || targetTableId) { 
+                renderSpecializedEditor(targetTableId, allConfigs); 
+            }
         };
 
         container.querySelector('#cm-new-btn').onclick = () => {
             const type = newTypeSelectorEl.value;
+            let configId = `nova_${type.replace(/\s+/g, '').toLowerCase()}_${Date.now()}`;
+            if (activeTab === 'components') {
+                configId = `@GLOBAL:${type.replace(/\s+/g, '').toUpperCase()}:${Date.now()}`;
+            }
             clearForm();
-            displayConfig({ id: null, componentType: type, widgetTitle: `Nova Config - ${type}`, configId: `nova_${type.replace(/\s+/g, '').toLowerCase()}_${Date.now()}`, configJson: '{}' });
+            displayConfig({ id: null, componentType: type, widgetTitle: `Nova Config - ${type}`, configId: configId, configJson: '{}' });
         };
 
         container.querySelector('#cm-duplicate-btn').onclick = () => { if (selectedConfig) { duplicateConfig(selectedConfig); } };

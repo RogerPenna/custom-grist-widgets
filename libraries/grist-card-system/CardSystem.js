@@ -718,7 +718,8 @@ export const CardSystem = (() => {
             fieldStyle: fieldStyle,
             fieldConfig: currentOptions.fieldConfig?.[f.colId] || fieldStyle, // Pass specific field overrides
             styling: styling,
-            fieldOptions: fieldOptions
+            fieldOptions: fieldOptions,
+            receivedConfigs: currentOptions.receivedConfigs // Added for global presets support
           });
 
           cardEl.appendChild(fieldBox);

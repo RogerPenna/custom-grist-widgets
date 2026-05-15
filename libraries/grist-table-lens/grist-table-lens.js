@@ -436,6 +436,7 @@ export const GristTableLens = function(gristInstance) {
             }
             
             const parsedConfig = this.parseConfigRecord(targetConfig);
+            parsedConfig.receivedConfigs = configs; // Anexa todas as configs para suporte a presets globais
             _metaState.configCache[configId] = parsedConfig;
             return parsedConfig;
         } catch (error) {
