@@ -447,11 +447,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
             }
             else if (config.actionType === 'addSubRecord') {
-                if (window.GristDrawer && config.subRecordRefField) {
+                const targetRefField = config.subRecordRefField || config.tooltipField; // Fallback para configs antigas
+                if (window.GristDrawer && (targetRefField || config.subRecordTableId)) {
                     console.log(`[CardViewer] Adicionando sub-registro vinculado ao record ${record.id}`);
-                    const subTableId = await tableLens.getReferencedTableId(config.subRecordRefField);
+                    const subTableId = config.subRecordTableId || await tableLens.getReferencedTableId(targetRefField, tableId);
                     if (!subTableId) {
-                        console.error(`[CardViewer] Não foi possível determinar a tabela vinculada ao campo ${config.subRecordRefField}`);
+                        console.error(`[CardViewer] Não foi possível determinar a tabela vinculada ao campo ${targetRefField} na tabela ${tableId}`);
                         alert("Erro de configuração: Tabela do sub-registro não encontrada.");
                         return;
                     }
@@ -459,17 +460,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (config.subRecordConfigId) {
                         addConfig = await tableLens.fetchConfig(config.subRecordConfigId);
                     }
-                    const initialData = { [config.subRecordRefField]: record.id };
-                    window.GristDrawer.open(subTableId, 'new', { 
+                    const initialData = {};
+                    if (targetRefField) {
+                        initialData[targetRefField] = record.id;
+                    }
+                    window.GristDrawer.open(subTableId, 'new', {
                         ...(addConfig || {}),
                         tableLens: tableLens,
                         initialData: initialData
                     });
                 } else {
-                    console.error("[CardViewer] GristDrawer ou subRecordRefField ausente para addSubRecord", config);
+                    console.error("[CardViewer] GristDrawer ou subRecordRefField/subRecordTableId ausente para addSubRecord", config);
                 }
-            }
-        } catch (e) {
+            }        } catch (e) {
             console.error("[CardViewer] Erro ao executar handleNavigationAction:", e);
         }
     }

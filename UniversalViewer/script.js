@@ -55,6 +55,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         tableLens = new GristTableLens(window.grist);
     }
 
+    // Expor openDrawer globalmente
+    window.GristDrawer = { open: openDrawer };
+
     // --- 1. SUBSCRIPÇÕES GLOBAIS ---
     subscribe('data-changed', async () => {
         console.log("[UniversalViewer] Dados alterados, atualizando...");
@@ -357,12 +360,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                 window.GristDrawer.open(tableId, record.id, drawerOptions);
             }
             else if (config.actionType === 'addSubRecord') {
-                if (window.GristDrawer && config.subRecordRefField) {
-                    const subTableId = await tableLens.getReferencedTableId(config.subRecordRefField);
+                const targetRefField = config.subRecordRefField || config.tooltipField; // Fallback para configs antigas
+                if (window.GristDrawer && (targetRefField || config.subRecordTableId)) {
+                    const subTableId = config.subRecordTableId || await tableLens.getReferencedTableId(targetRefField, tableId);
                     if (!subTableId) return;
                     let addConfig = {};
                     if (config.subRecordConfigId) addConfig = await tableLens.fetchConfig(config.subRecordConfigId);
-                    const initialData = { [config.subRecordRefField]: record.id };
+                    const initialData = {};
+                    if (targetRefField) {
+                        initialData[targetRefField] = record.id;
+                    }
                     window.GristDrawer.open(subTableId, 'new', { ...(addConfig || {}), tableLens, initialData });
                 }
             }

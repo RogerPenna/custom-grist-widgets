@@ -214,7 +214,98 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (isInitialized) debouncedUpdate();
     });
 
+    /**
+     * Executa ações de navegação ou atualização de dados.
+     */
+    async function handleNavigationAction(config, record, tableId) {
+        console.log("[BSC Widget] handleNavigationAction disparado:", { actionType: config.actionType, recordId: record.id, tableId });
+        try {
+            if (config.actionType === 'navigateToGristPage') {
+                const rowId = record[config.sourceValueColumn] || record.id;
+                console.log(`[BSC Widget] Navegando para página ${config.targetPageId}, rowId: ${rowId}`);
+                await window.grist.setCursorPos({ sectionId: parseInt(config.targetPageId), rowId: rowId });
+            } 
+            else if (config.actionType === 'openUrlFromColumn') {
+                const url = record[config.urlColumn];
+                if (url) {
+                    console.log(`[BSC Widget] Abrindo URL: ${url}`);
+                    window.open(url, '_blank');
+                } else {
+                    console.warn(`[BSC Widget] Coluna de URL '${config.urlColumn}' está vazia.`);
+                }
+            } 
+            else if (config.actionType === 'updateRecord') {
+                const data = { [config.updateField]: config.updateValue };
+                console.log(`[BSC Widget] Atualizando record ${record.id} na tabela ${tableId}:`, data);
+                await window.grist.docApi.applyUserActions([
+                    ['UpdateRecord', tableId, record.id, data]
+                ]);
+            }
+            else if (config.actionType === 'deleteRecord') {
+                const msg = config.confirmationMessage || 'Are you sure you want to delete this record?';
+                if (confirm(msg)) {
+                    console.log(`[BSC Widget] Deletando record ${record.id} na tabela ${tableId}`);
+                    await window.grist.docApi.applyUserActions([
+                        ['RemoveRecord', tableId, record.id]
+                    ]);
+                }
+            }
+            else if (config.actionType === 'editRecord') {
+                console.log(`[BSC Widget] Edit Record (Drawer) acionado para record ${record.id}`);
+                const drawerConfigId = widgetConfig?.actions?.sidePanel?.drawerConfigId || widgetConfig?.sidePanel?.drawerConfigId;
+                let drawerOptions = { ...widgetConfig, tableLens: tableLens };
+                if (drawerConfigId) {
+                    const fetched = await tableLens.fetchConfig(drawerConfigId);
+                    if (fetched) drawerOptions = { ...fetched, tableLens: tableLens };
+                }
+                const triggerSize = widgetConfig?.actions?.sidePanel?.size;
+                if (triggerSize) {
+                    drawerOptions.actions = { ...(drawerOptions.actions || {}) };
+                    drawerOptions.actions.sidePanel = { ...(drawerOptions.actions.sidePanel || {}), size: triggerSize };
+                }
+                window.GristDrawer.open(tableId, record.id, drawerOptions);
+            }
+            else if (config.actionType === 'addSubRecord') {
+                const targetRefField = config.subRecordRefField || config.tooltipField; // Fallback para configs antigas
+                if (targetRefField || config.subRecordTableId) {
+                    console.log(`[BSC Widget] Adicionando sub-registro vinculado ao record ${record.id}`);
+                    const subTableId = config.subRecordTableId || await tableLens.getReferencedTableId(targetRefField, tableId);
+                    if (!subTableId) {
+                        console.error(`[BSC Widget] Não foi possível determinar a tabela vinculada ao campo ${targetRefField} na tabela ${tableId}`);
+                        alert("Erro de configuração: Tabela do sub-registro não encontrada.");
+                        return;
+                    }
+                    let addConfig = {};
+                    if (config.subRecordConfigId) {
+                        addConfig = await tableLens.fetchConfig(config.subRecordConfigId);
+                    }
+                    const initialData = {};
+                    if (targetRefField) {
+                        initialData[targetRefField] = record.id;
+                    }
+                    window.GristDrawer.open(subTableId, 'new', { 
+                        ...(addConfig || {}),
+                        tableLens: tableLens,
+                        initialData: initialData
+                    });
+                } else {
+                    console.error("[BSC Widget] subRecordRefField ou subRecordTableId ausente para addSubRecord", config);
+                }
+            }
+        } catch (e) {
+            console.error("[BSC Widget] Erro ao executar handleNavigationAction:", e);
+        }
+    }
+
+    // Expor openDrawer globalmente
+    window.GristDrawer = { open: openDrawer };
+
     // Subscrições globais do framework
+    subscribe('grf-navigation-action-triggered', async (eventData) => {
+        console.log("[BSC Widget] Evento 'grf-navigation-action-triggered' recebido:", eventData);
+        await handleNavigationAction(eventData.config, eventData.sourceRecord, eventData.tableId);
+    });
+
     subscribe('grf-card-clicked', async (data) => {
         const drawerConfigId = data.drawerConfigId || widgetConfig?.actions?.sidePanel?.drawerConfigId;
         let drawerOptions = { ...widgetConfig, tableLens };

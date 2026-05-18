@@ -111,12 +111,35 @@ export async function renderRefList(options) {
             if (configured.length > 0) columnsToDisplay = configured;
         }
 
-        if (options.isEditing && displayMode !== 'cards') {
+        if (options.isEditing || rawRefConfig.showAddButton === true || fieldConfig.showAddButton === true) {
             const addBtn = document.createElement('button');
-            addBtn.innerHTML = "➕ Adicionar Registro";
-            addBtn.className = "btn btn-sm btn-primary";
-            addBtn.style.cssText = "margin-bottom: 12px; font-weight: 600; border-radius: 6px; padding: 4px 12px;";
-            addBtn.onclick = () => handleAdd({ tableId: referencedTableId, onUpdate: renderContent, dataWriter, tableLens, parentRecId: record.id, parentTableId: record.gristHelper_tableId, parentRefListColId: colSchema.colId, parentRecord: record, fieldConfig });
+            addBtn.className = "grf-inline-add-btn";
+            addBtn.title = "Adicionar Registro";
+            addBtn.innerHTML = `<svg viewBox="0 0 24 24" style="width:16px; height:16px;"><path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2.5" fill="none"/></svg>`;
+            addBtn.style.cssText = `
+                display: flex; align-items: center; justify-content: center;
+                width: 28px; height: 28px; border-radius: 50%;
+                border: 1px solid #cbd5e1; background: #ffffff; color: #475569;
+                cursor: pointer; margin-bottom: 12px; transition: all 0.2s;
+                box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            `;
+            addBtn.onmouseover = () => { addBtn.style.background = '#f8fafc'; addBtn.style.borderColor = '#94a3b8'; addBtn.style.color = '#1e293b'; };
+            addBtn.onmouseout = () => { addBtn.style.background = '#ffffff'; addBtn.style.borderColor = '#cbd5e1'; addBtn.style.color = '#475569'; };
+            
+            addBtn.onclick = (e) => {
+                e.stopPropagation();
+                handleAdd({ 
+                    tableId: referencedTableId, 
+                    onUpdate: renderContent, 
+                    dataWriter, 
+                    tableLens, 
+                    parentRecId: record.id, 
+                    parentTableId: record.gristHelper_tableId, 
+                    parentRefListColId: colSchema.colId, 
+                    parentRecord: record, 
+                    fieldConfig 
+                });
+            };
             container.appendChild(addBtn);
         }
 

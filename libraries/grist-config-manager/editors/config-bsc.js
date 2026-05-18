@@ -570,6 +570,14 @@ export const BscConfigEditor = (() => {
         const palettes = state.receivedConfigs.filter(c => c.componentType === 'Color Options');
         const paletteOptions = palettes.map(p => `<option value="${p.configId}" ${p.configId === currentPaletteId ? 'selected' : ''}>${p.widgetTitle}</option>`).join('');
         
+        // Ensure hex for <input type="color">
+        const ensureHex = (val) => {
+            if (!val || typeof val !== 'string') return '#000000';
+            if (val.startsWith('#')) return val;
+            // Fallback for rgba or other formats that the color input doesn't like
+            return '#000000'; 
+        };
+
         return `
             <div class="palette-linked-picker" data-id-prefix="${idPrefix}">
                 <label style="font-weight: bold; font-size: 11px; color: #64748b; text-transform: uppercase;">${label}</label>
@@ -583,7 +591,7 @@ export const BscConfigEditor = (() => {
                     </div>
                     <div style="width: 60px;">
                         <label style="font-size: 10px;">Cor:</label>
-                        <input type="color" id="bsc-cfg-${idPrefix}" class="form-control color-manual-input" value="${currentValue}">
+                        <input type="color" id="bsc-cfg-${idPrefix}" class="form-control color-manual-input" value="${ensureHex(currentValue)}">
                     </div>
                 </div>
                 <div id="${idPrefix}-palette-container" class="palette-picker-container" style="display: ${currentPaletteId ? 'block' : 'none'};">

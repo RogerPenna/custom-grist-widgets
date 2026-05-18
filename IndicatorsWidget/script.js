@@ -194,14 +194,106 @@ async function start() {
         }
     });
 
+    /**
+     * Executa ações de navegação ou atualização de dados.
+     */
+    async function handleNavigationAction(config, record, tableId) {
+        console.log("[IndicatorsWidget] handleNavigationAction disparado:", { actionType: config.actionType, recordId: record.id, tableId });
+        try {
+            if (config.actionType === 'navigateToGristPage') {
+                const rowId = record[config.sourceValueColumn] || record.id;
+                console.log(`[IndicatorsWidget] Navegando para página ${config.targetPageId}, rowId: ${rowId}`);
+                await window.grist.setCursorPos({ sectionId: parseInt(config.targetPageId), rowId: rowId });
+            } 
+            else if (config.actionType === 'openUrlFromColumn') {
+                const url = record[config.urlColumn];
+                if (url) {
+                    console.log(`[IndicatorsWidget] Abrindo URL: ${url}`);
+                    window.open(url, '_blank');
+                } else {
+                    console.warn(`[IndicatorsWidget] Coluna de URL '${config.urlColumn}' está vazia.`);
+                }
+            } 
+            else if (config.actionType === 'updateRecord') {
+                const data = { [config.updateField]: config.updateValue };
+                console.log(`[IndicatorsWidget] Atualizando record ${record.id} na tabela ${tableId}:`, data);
+                await window.grist.docApi.applyUserActions([
+                    ['UpdateRecord', tableId, record.id, data]
+                ]);
+            }
+            else if (config.actionType === 'deleteRecord') {
+                const msg = config.confirmationMessage || 'Are you sure you want to delete this record?';
+                if (confirm(msg)) {
+                    console.log(`[IndicatorsWidget] Deletando record ${record.id} na tabela ${tableId}`);
+                    await window.grist.docApi.applyUserActions([
+                        ['RemoveRecord', tableId, record.id]
+                    ]);
+                }
+            }
+            else if (config.actionType === 'editRecord') {
+                console.log(`[IndicatorsWidget] Edit Record (Drawer) acionado para record ${record.id}`);
+                const drawerConfigId = config.drawerConfigId || widgetConfig?.actions?.drawerConfigId;
+                
+                let drawerOptions = { ...widgetConfig, tableLens: tableLens };
+                if (drawerConfigId) {
+                    const fetched = await tableLens.fetchConfig(drawerConfigId);
+                    if (fetched) drawerOptions = { ...fetched, tableLens: tableLens };
+                }
+                
+                // Injeta a largura vinda do widget gatilho (widgetConfig) como override
+                const triggerSize = widgetConfig?.actions?.sidePanel?.size;
+                if (triggerSize) {
+                    drawerOptions.actions = { ...(drawerOptions.actions || {}) };
+                    drawerOptions.actions.sidePanel = { ...(drawerOptions.actions.sidePanel || {}), size: triggerSize };
+                }
+
+                window.GristDrawer.open(tableId, record.id, drawerOptions);
+            }
+            else if (config.actionType === 'addSubRecord') {
+                const targetRefField = config.subRecordRefField || config.tooltipField; // Fallback para configs antigas
+                if (targetRefField || config.subRecordTableId) {
+                    console.log(`[IndicatorsWidget] Adicionando sub-registro vinculado ao record ${record.id}`);
+                    const subTableId = config.subRecordTableId || await tableLens.getReferencedTableId(targetRefField, tableId);
+                    if (!subTableId) {
+                        console.error(`[IndicatorsWidget] Não foi possível determinar a tabela vinculada ao campo ${targetRefField} na tabela ${tableId}`);
+                        alert("Erro de configuração: Tabela do sub-registro não encontrada.");
+                        return;
+                    }
+                    let addConfig = {};
+                    if (config.subRecordConfigId) {
+                        addConfig = await tableLens.fetchConfig(config.subRecordConfigId);
+                    }
+                    const initialData = {};
+                    if (targetRefField) {
+                        initialData[targetRefField] = record.id;
+                    }
+                    window.GristDrawer.open(subTableId, 'new', { 
+                        ...(addConfig || {}),
+                        tableLens: tableLens,
+                        initialData: initialData
+                    });
+                } else {
+                    console.error("[IndicatorsWidget] subRecordRefField ou subRecordTableId ausente para addSubRecord", config);
+                }
+            }
+            else if (config.actionType === 'SHOW_INDICATOR_CHART') {
+                openIndicatorChart(record);
+            } 
+            else if (config.actionType === 'EDIT_INDICATOR_DATA') {
+                openIndicatorEditor(record);
+            }
+        } catch (e) {
+            console.error("[IndicatorsWidget] Erro ao executar handleNavigationAction:", e);
+        }
+    }
+
+    // Expor openDrawer globalmente
+    window.GristDrawer = { open: openDrawer };
+
     subscribe('grf-navigation-action-triggered', async (data) => {
         const record = currentRecords.find(r => Number(r.id) === Number(data.sourceRecord?.id || data.recordId));
         if (!record) return;
-        if (data.config?.actionType === 'SHOW_INDICATOR_CHART') {
-            openIndicatorChart(record);
-        } else if (data.config?.actionType === 'EDIT_INDICATOR_DATA') {
-            openIndicatorEditor(record);
-        }
+        await handleNavigationAction(data.config, record, data.tableId);
     });
     window.grist.onOptions(async (options) => { if (options.configId && options.configId !== currentConfigId) debouncedInitialize(); });
     window.grist.onRecords(async () => { if (currentConfigId) debouncedInitialize(); });

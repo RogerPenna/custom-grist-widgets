@@ -1074,7 +1074,44 @@ export const CardConfigEditor = (() => {
         else if (buttonConfig.actionType === 'updateRecord') { container.innerHTML = `<div class="form-group"><label>Field:</label><select class="action-update-field" data-prop="updateField"><option value="">-- Select --</option>${allGristColumns.map(col => `<option value="${col}" ${buttonConfig.updateField === col ? 'selected' : ''}>${col}</option>`).join('')}</select></div><div class="form-group"><label>Value:</label><input type="text" class="action-update-value" data-prop="updateValue" value="${buttonConfig.updateValue || ''}"></div>`; } 
         else if (buttonConfig.actionType === 'triggerWidget') { container.innerHTML = `<div class="form-group"><label>Target ID:</label><select class="action-target-config-id" data-prop="targetConfigId"><option value="">-- Select --</option>${allConfigs.map(c => `<option value="${c.configId}" ${buttonConfig.targetConfigId === c.configId ? 'selected' : ''}>${c.configId}</option>`).join('')}</select></div>`; } 
         else if (buttonConfig.actionType === 'deleteRecord') { container.innerHTML = `<div class="form-group"><label>Confirmation:</label><input type="text" class="action-confirm-msg" data-prop="confirmationMessage" value="${buttonConfig.confirmationMessage || 'Delete record?'}"></div>`; } 
-        else if (buttonConfig.actionType === 'addSubRecord') { container.innerHTML = `<div class="form-group"><label>Table:</label><select class="action-sub-table-id" data-prop="subRecordTableId"><option value="">-- Select --</option>${allGristPages.map(p => `<option value="${p.id}" ${buttonConfig.subRecordTableId === p.id ? 'selected' : ''}>${p.id}</option>`).join('')}</select></div>`; } 
+        else if (buttonConfig.actionType === 'addSubRecord') { 
+            const drawerConfigs = allConfigs.filter(c => c.componentType === 'Drawer');
+            container.innerHTML = `
+                <div class="form-group">
+                    <label>Target Table:</label>
+                    <select class="action-sub-table-id" data-prop="subRecordTableId">
+                        <option value="">-- Auto-detect --</option>
+                        ${allGristPages.map(p => `<option value="${p.id}" ${buttonConfig.subRecordTableId === p.id ? 'selected' : ''}>${p.id}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Relationship Field (in sub-table):</label>
+                    <input type="text" class="action-sub-record-ref-field" data-prop="subRecordRefField" value="${buttonConfig.subRecordRefField || ''}" placeholder="ex: ref_parent">
+                </div>
+                <div class="form-group">
+                    <label>Drawer Configuration:</label>
+                    <select class="action-sub-record-config-id" data-prop="subRecordConfigId">
+                        <option value="">-- Default / All Fields --</option>
+                        ${drawerConfigs.map(c => `<option value="${c.configId}" ${buttonConfig.subRecordConfigId === c.configId ? 'selected' : ''}>${c.widgetTitle} (${c.configId})</option>`).join('')}
+                    </select>
+                </div>
+            `; 
+        } 
+        else if (buttonConfig.actionType === 'moveRecord') {
+            if (!state.enableOrder || !state.orderColumn) {
+                container.innerHTML = `
+                    <div class="alert alert-warning" style="font-size: 0.85em; padding: 10px; border-radius: 6px; background: #fffbeb; border: 1px solid #fcd34d; color: #92400e;">
+                        <strong>⚠️ Requisito:</strong> Esta ação exige que a ordenação esteja habilitada na aba <b>Fields & Layout</b> e que uma coluna numérica de ordem seja selecionada.
+                    </div>
+                `;
+            } else {
+                container.innerHTML = `
+                    <div class="alert alert-success" style="font-size: 0.85em; padding: 10px; border-radius: 6px; background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534;">
+                        ✅ Alça de arraste configurada (usando coluna: <b>${state.orderColumn}</b>).
+                    </div>
+                `;
+            }
+        }
         else if (buttonConfig.actionType === 'showTooltipField') { container.innerHTML = `<div class="form-group"><label>Field:</label><select class="action-tooltip-field" data-prop="tooltipField"><option value="">-- Select --</option>${allGristColumns.map(col => `<option value="${col}" ${buttonConfig.tooltipField === col ? 'selected' : ''}>${col}</option>`).join('')}</select></div>`; }
     }
 

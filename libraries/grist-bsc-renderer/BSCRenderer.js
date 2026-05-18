@@ -86,13 +86,50 @@ export const BSCRenderer = (() => {
                     const cardsContainer = document.createElement('div');
                     cardsContainer.className = 'bsc-perspectives-grid';
                     
+                    // --- HELPER: BOTÃO ADICIONAR (ESTILO DISCRETO +) ---
+                    const createAddBtn = (position) => {
+                        const btn = document.createElement('button');
+                        // Usa as classes pos-static-top/bottom da biblioteca para garantir que rolem com o conteúdo
+                        btn.className = `grf-global-add-btn pos-static-${position}`;
+                        btn.title = "Adicionar Perspectiva";
+                        btn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M12 5V19M5 12H19" stroke="currentColor"/></svg>`;
+                        btn.onclick = async (e) => {
+                            e.stopPropagation();
+                            const refModelCol = mapping.refModelCol || await tableLens.findRelationField(perspectivesTable, 'Modelos') || 'ref_model';
+                            let addConfig = {};
+                            if (actions.addPerspectiveConfigId || cardConfig.addRecordConfigId) {
+                                addConfig = await tableLens.fetchConfig(actions.addPerspectiveConfigId || cardConfig.addRecordConfigId);
+                            }
+                            window.GristDrawer.open(perspectivesTable, 'new', { 
+                                ...(addConfig || {}),
+                                tableLens: tableLens,
+                                initialData: { [refModelCol]: bscData.id }
+                            });
+                        };
+                        return btn;
+                    };
+
+                    // --- BOTÃO ADICIONAR PERSPECTIVA (TOP) ---
+                    const showAddPersp = actions.showAddPerspective || cardConfig.showAddButtonTop;
+                    if (showAddPersp) {
+                        container.appendChild(createAddBtn('top'));
+                    }
+
                     // Pass overrides if needed
                     const fieldConfigOverrides = {};
                     if (actions.showAddObjective !== undefined) {
-                        fieldConfigOverrides[objectivesTable] = {
-                            showAddButton: actions.showAddObjective,
-                            addRecordConfigId: actions.addObjectiveConfigId
-                        };
+                        // Tenta encontrar a coluna RefList na Perspectiva que aponta para Objetivos
+                        const relField = Object.values(perspectiveSchema).find(c => 
+                            c.type === `RefList:${objectivesTable}` || c.type === `Ref:${objectivesTable}`
+                        );
+                        
+                        if (relField) {
+                            console.log(`[BSC Renderer] Aplicando override showAddButton na coluna: ${relField.colId}`);
+                            fieldConfigOverrides[relField.colId] = {
+                                showAddButton: actions.showAddObjective,
+                                addRecordConfigId: actions.addObjectiveConfigId
+                            };
+                        }
                     }
 
                     await CardSystem.renderCards(cardsContainer, bscData.perspectives, { 
@@ -102,6 +139,11 @@ export const BSCRenderer = (() => {
                     }, perspectiveSchema);
                     
                     container.appendChild(cardsContainer);
+
+                    // --- BOTÃO ADICIONAR PERSPECTIVA (BOTTOM) ---
+                    if (cardConfig.showAddButtonBottom) {
+                        container.appendChild(createAddBtn('bottom'));
+                    }
                     if (showRelationships) {
                         const styling = config.styling || {};
                         const receivedConfigs = config.receivedConfigs || []; // Ensure we have configs
