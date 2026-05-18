@@ -47,6 +47,15 @@ export const BscConfigEditor = (() => {
         state.typeConfigMap = current.mapping.typeConfigMap;
 
         state.useColoris = current.styling.useColoris;
+        state.showSwotTab = current.styling.showSwotTab;
+        state.showPestalTab = current.styling.showPestalTab;
+        state.arrowColor = current.styling.arrowColor;
+        state.arrowColorPaletteId = current.styling.arrowColorPaletteId;
+        state.arrowThickness = current.styling.arrowThickness;
+        state.showArrowOutline = current.styling.showArrowOutline;
+        state.arrowOutlineColor = current.styling.arrowOutlineColor;
+        state.arrowOutlineColorPaletteId = current.styling.arrowOutlineColorPaletteId;
+        state.arrowOutlineThickness = current.styling.arrowOutlineThickness;
 
         state.drawerConfigId = current.actions.drawerConfigId;
         state.showAddPerspective = current.actions.showAddPerspective;
@@ -63,6 +72,7 @@ export const BscConfigEditor = (() => {
         contentArea.innerHTML = "";
         buildGeneralTab(contentArea);
         buildColumnsTab(contentArea);
+        buildStyleTab(contentArea);
         buildActionsTab(contentArea);
         
         switchTab(activeTab, _mainContainer);
@@ -77,9 +87,20 @@ export const BscConfigEditor = (() => {
         
         // Se vier de um widget unificado (GTL.fetchConfig), as ações estarão na raiz ou dentro de .actions
         const actions = options.actions || options;
+        const styling = options.styling || options;
 
         state = {
-            useColoris: options.useColoris || (options.styling?.useColoris) || false,
+            useColoris: styling.useColoris || false,
+            showSwotTab: styling.showSwotTab !== undefined ? styling.showSwotTab : true,
+            showPestalTab: styling.showPestalTab !== undefined ? styling.showPestalTab : true,
+            arrowColor: styling.arrowColor || 'rgba(0, 86, 168, 0.8)',
+            arrowColorPaletteId: styling.arrowColorPaletteId || '',
+            arrowThickness: styling.arrowThickness || 4,
+            showArrowOutline: styling.showArrowOutline !== undefined ? styling.showArrowOutline : true,
+            arrowOutlineColor: styling.arrowOutlineColor || 'rgba(255, 255, 255, 0.5)',
+            arrowOutlineColorPaletteId: styling.arrowOutlineColorPaletteId || '',
+            arrowOutlineThickness: styling.arrowOutlineThickness || 0.2,
+
             drawerConfigId: actions.drawerConfigId || null,
             showAddPerspective: actions.showAddPerspective || false,
             addPerspectiveConfigId: actions.addPerspectiveConfigId || null,
@@ -115,6 +136,35 @@ export const BscConfigEditor = (() => {
                 .debug-label.styling { color: #198754; }
                 .debug-label.actions { color: #fd7e14; }
                 .config-debugger pre { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 4px; max-height: 200px; overflow: auto; }
+                
+                .palette-picker-container {
+                    background: #f1f5f9;
+                    padding: 10px;
+                    border-radius: 4px;
+                    border: 1px solid #cbd5e1;
+                    margin-top: 5px;
+                }
+                .palette-color-grid {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 5px;
+                    margin-top: 10px;
+                }
+                .palette-color-swatch {
+                    width: 24px;
+                    height: 24px;
+                    border-radius: 4px;
+                    border: 1px solid #94a3b8;
+                    cursor: pointer;
+                    transition: transform 0.1s;
+                }
+                .palette-color-swatch:hover {
+                    transform: scale(1.1);
+                }
+                .palette-color-swatch.active {
+                    border: 2px solid #000;
+                    box-shadow: 0 0 0 2px #fff inset;
+                }
             </style>
         `;
 
@@ -123,7 +173,8 @@ export const BscConfigEditor = (() => {
         tabsRow.className = 'config-tabs';
         [
             createTabButton("General", "gen", container),
-            createTabButton("Display", "cols", container), // Renamed from Columns
+            createTabButton("Cards", "cols", container),
+            createTabButton("Style", "style", container),
             createTabButton("Actions", "act", container)
         ].forEach(t => tabsRow.appendChild(t));
         container.appendChild(tabsRow);
@@ -145,6 +196,7 @@ export const BscConfigEditor = (() => {
         // Build Tabs
         buildGeneralTab(contentArea);
         buildColumnsTab(contentArea);
+        buildStyleTab(contentArea);
         buildActionsTab(contentArea);
 
         // Initialize
@@ -158,6 +210,7 @@ export const BscConfigEditor = (() => {
     function read(container) {
         const genTab = container.querySelector("[data-tab-section='gen']");
         const colsTab = container.querySelector("[data-tab-section='cols']");
+        const styleTab = container.querySelector("[data-tab-section='style']");
         const actTab = container.querySelector("[data-tab-section='act']");
 
         const typeConfigMap = {};
@@ -170,7 +223,21 @@ export const BscConfigEditor = (() => {
         }
 
         const fullConfig = {
-            useColoris: genTab ? genTab.querySelector('#bsc-cfg-use-coloris').checked : state.useColoris,
+            useColoris: styleTab ? styleTab.querySelector('#bsc-cfg-use-coloris').checked : state.useColoris,
+            showSwotTab: styleTab ? styleTab.querySelector('#bsc-cfg-show-swot').checked : state.showSwotTab,
+            showPestalTab: styleTab ? styleTab.querySelector('#bsc-cfg-show-pestal').checked : state.showPestalTab,
+            
+            arrowColor: styleTab ? styleTab.querySelector('#bsc-cfg-arrow-color').value : state.arrowColor,
+            arrowColorPaletteId: styleTab ? styleTab.querySelector('#bsc-cfg-arrow-color-palette-id').value : state.arrowColorPaletteId,
+            
+            arrowThickness: styleTab ? parseFloat(styleTab.querySelector('#bsc-cfg-arrow-thickness').value) : state.arrowThickness,
+            showArrowOutline: styleTab ? styleTab.querySelector('#bsc-cfg-show-arrow-outline').checked : state.showArrowOutline,
+            
+            arrowOutlineColor: styleTab ? styleTab.querySelector('#bsc-cfg-arrow-outline-color').value : state.arrowOutlineColor,
+            arrowOutlineColorPaletteId: styleTab ? styleTab.querySelector('#bsc-cfg-arrow-outline-color-palette-id').value : state.arrowOutlineColorPaletteId,
+            
+            arrowOutlineThickness: styleTab ? parseFloat(styleTab.querySelector('#bsc-cfg-arrow-outline-thickness').value) : state.arrowOutlineThickness,
+
             modelsTable: genTab ? genTab.querySelector('#bsc-cfg-models-table').value : state.modelsTable,
             perspectivesTable: genTab ? genTab.querySelector('#bsc-cfg-perspectives-table').value : state.perspectivesTable,
             objectivesTable: genTab ? genTab.querySelector('#bsc-cfg-objectives-table').value : state.objectivesTable,
@@ -204,7 +271,16 @@ export const BscConfigEditor = (() => {
         };
 
         const styling = {
-            useColoris: fullConfig.useColoris
+            useColoris: fullConfig.useColoris,
+            showSwotTab: fullConfig.showSwotTab,
+            showPestalTab: fullConfig.showPestalTab,
+            arrowColor: fullConfig.arrowColor,
+            arrowColorPaletteId: fullConfig.arrowColorPaletteId,
+            arrowThickness: fullConfig.arrowThickness,
+            showArrowOutline: fullConfig.showArrowOutline,
+            arrowOutlineColor: fullConfig.arrowOutlineColor,
+            arrowOutlineColorPaletteId: fullConfig.arrowOutlineColorPaletteId,
+            arrowOutlineThickness: fullConfig.arrowOutlineThickness
         };
 
         const actions = {
@@ -313,14 +389,6 @@ export const BscConfigEditor = (() => {
                     <p class="help-text">Nome da coluna na tabela de <b>Objetivos</b> que aponta para o objetivo de origem da seta.</p>
                 </div>
             </fieldset>
-
-            <h3>Outras Configurações</h3>
-            <div class="form-group">
-                <label>
-                    <input type="checkbox" id="bsc-cfg-use-coloris" ${state.useColoris ? 'checked' : ''}>
-                    Use Coloris library (Legacy)
-                </label>
-            </div>
         `;
         container.appendChild(tabEl);
 
@@ -427,6 +495,144 @@ export const BscConfigEditor = (() => {
                 rebuildAll();
             });
         }
+    }
+
+    function buildStyleTab(container) {
+        const tabEl = document.createElement("div");
+        tabEl.dataset.tabSection = "style";
+        tabEl.style.display = "none";
+
+        tabEl.innerHTML = `
+            <h3>Visual Style & Tabs</h3>
+            
+            <fieldset>
+                <legend><b>Abas Adicionais</b></legend>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="bsc-cfg-show-swot" ${state.showSwotTab ? 'checked' : ''}>
+                        Mostrar Aba SWOT
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="bsc-cfg-show-pestal" ${state.showPestalTab ? 'checked' : ''}>
+                        Mostrar Aba PESTAL
+                    </label>
+                </div>
+            </fieldset>
+
+            <fieldset>
+                <legend><b>Estilo das Setas (Relacionamentos)</b></legend>
+                
+                ${renderPaletteColorPicker('arrow-color', 'Cor Interna', state.arrowColor, state.arrowColorPaletteId)}
+
+                <div class="form-group" style="margin-top:10px;">
+                    <label for="bsc-cfg-arrow-thickness">Espessura (px):</label>
+                    <input type="number" id="bsc-cfg-arrow-thickness" class="form-control" value="${state.arrowThickness}" step="0.5" min="1">
+                </div>
+                
+                <div class="form-group" style="margin-top:15px;">
+                    <label>
+                        <input type="checkbox" id="bsc-cfg-show-arrow-outline" ${state.showArrowOutline ? 'checked' : ''}>
+                        Habilitar Outline (Contorno)
+                    </label>
+                </div>
+                
+                <div id="arrow-outline-settings" style="display: ${state.showArrowOutline ? 'block' : 'none'}; margin-left: 20px;">
+                    ${renderPaletteColorPicker('arrow-outline-color', 'Cor do Contorno', state.arrowOutlineColor, state.arrowOutlineColorPaletteId)}
+                    <div class="form-group" style="margin-top:10px;">
+                        <label for="bsc-cfg-arrow-outline-thickness">Espessura do Contorno (proporcional):</label>
+                        <input type="number" id="bsc-cfg-arrow-outline-thickness" class="form-control" value="${state.arrowOutlineThickness}" step="0.1" min="0">
+                    </div>
+                </div>
+            </fieldset>
+
+            <h3>Outras Configurações</h3>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="bsc-cfg-use-coloris" ${state.useColoris ? 'checked' : ''}>
+                    Use Coloris library (Legacy)
+                </label>
+            </div>
+        `;
+        container.appendChild(tabEl);
+
+        tabEl.querySelector('#bsc-cfg-show-arrow-outline').addEventListener('change', (e) => {
+            tabEl.querySelector('#arrow-outline-settings').style.display = e.target.checked ? 'block' : 'none';
+        });
+
+        // Initialize Palette Listeners
+        setupPaletteListeners(tabEl, 'arrow-color');
+        setupPaletteListeners(tabEl, 'arrow-outline-color');
+    }
+
+    function renderPaletteColorPicker(idPrefix, label, currentValue, currentPaletteId) {
+        const palettes = state.receivedConfigs.filter(c => c.componentType === 'Color Options');
+        const paletteOptions = palettes.map(p => `<option value="${p.configId}" ${p.configId === currentPaletteId ? 'selected' : ''}>${p.widgetTitle}</option>`).join('');
+        
+        return `
+            <div class="palette-linked-picker" data-id-prefix="${idPrefix}">
+                <label style="font-weight: bold; font-size: 11px; color: #64748b; text-transform: uppercase;">${label}</label>
+                <div style="display: flex; gap: 10px; align-items: flex-end;">
+                    <div style="flex: 1;">
+                        <label style="font-size: 10px;">Vincular Paleta:</label>
+                        <select id="bsc-cfg-${idPrefix}-palette-id" class="form-control palette-id-select">
+                            <option value="">-- Manual (Hex) --</option>
+                            ${paletteOptions}
+                        </select>
+                    </div>
+                    <div style="width: 60px;">
+                        <label style="font-size: 10px;">Cor:</label>
+                        <input type="color" id="bsc-cfg-${idPrefix}" class="form-control color-manual-input" value="${currentValue}">
+                    </div>
+                </div>
+                <div id="${idPrefix}-palette-container" class="palette-picker-container" style="display: ${currentPaletteId ? 'block' : 'none'};">
+                    <div class="palette-color-grid"></div>
+                </div>
+            </div>
+        `;
+    }
+
+    function setupPaletteListeners(tabEl, idPrefix) {
+        const paletteSelect = tabEl.querySelector(`#bsc-cfg-${idPrefix}-palette-id`);
+        const manualInput = tabEl.querySelector(`#bsc-cfg-${idPrefix}`);
+        const paletteContainer = tabEl.querySelector(`#${idPrefix}-palette-container`);
+        const grid = paletteContainer.querySelector('.palette-color-grid');
+
+        const updateGrid = () => {
+            const paletteId = paletteSelect.value;
+            if (!paletteId) {
+                paletteContainer.style.display = 'none';
+                return;
+            }
+            paletteContainer.style.display = 'block';
+            grid.innerHTML = '';
+            
+            const palette = state.receivedConfigs.find(c => c.configId === paletteId);
+            if (palette) {
+                try {
+                    const data = JSON.parse(palette.stylingJson || palette.configJson || '{}');
+                    const colors = data.colors || [];
+                    colors.forEach(c => {
+                        const swatch = document.createElement('div');
+                        swatch.className = 'palette-color-swatch' + (c.hex.toUpperCase() === manualInput.value.toUpperCase() ? ' active' : '');
+                        swatch.style.backgroundColor = c.hex;
+                        swatch.title = c.label || c.hex;
+                        swatch.onclick = () => {
+                            manualInput.value = c.hex;
+                            grid.querySelectorAll('.palette-color-swatch').forEach(s => s.classList.remove('active'));
+                            swatch.classList.add('active');
+                            // Trigger manual input change to update debug/state
+                            manualInput.dispatchEvent(new Event('change', { bubbles: true }));
+                        };
+                        grid.appendChild(swatch);
+                    });
+                } catch(e) { console.error("Error parsing palette JSON:", e); }
+            }
+        };
+
+        paletteSelect.addEventListener('change', updateGrid);
+        updateGrid();
     }
 
     function buildActionsTab(container) {

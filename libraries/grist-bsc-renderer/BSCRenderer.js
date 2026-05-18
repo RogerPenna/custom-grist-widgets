@@ -22,17 +22,24 @@ export const BSCRenderer = (() => {
         // Descoberta automática de campos de relação se não fornecidos
         const refModelCol = tableNames.refModelCol || await lens.findRelationField(perspectivesTable, modelsTable) || 'ref_model';
         const refPerspCol = tableNames.refPerspCol || await lens.findRelationField(objectivesTable, perspectivesTable) || 'ref_persp';
+        const relationshipField = tableNames.relationshipField || 'ref_obj';
         
-        console.log(`[BSC Renderer] Usando relações: Persp->Model: ${refModelCol}, Obj->Persp: ${refPerspCol}`);
+        console.log(`[BSC Renderer] Usando relações: Persp->Model: ${refModelCol}, Obj->Persp: ${refPerspCol}, Dependências: ${relationshipField}`);
 
         const perspectivesForModel = allPerspectives
             .filter(p => p[refModelCol] === modelId)
             .sort((a, b) => (a.Ordem || a.id) - (b.Ordem || b.id))
-            .map(p => ({
-                ...p,
-                objectives: allObjectives.filter(o => o[refPerspCol] === p.id)
-            }));
-        return { ...modelRecord, perspectives: perspectivesForModel, mapping: { ...tableNames, refModelCol, refPerspCol } };
+            .map(p => {
+                const objectives = allObjectives.filter(o => o[refPerspCol] === p.id);
+                return {
+                    ...p,
+                    objectives: objectives.map(o => ({
+                        ...o,
+                        ref_obj: o[relationshipField] // Garante que RelationshipLines encontre o campo como 'ref_obj'
+                    }))
+                };
+            });
+        return { ...modelRecord, perspectives: perspectivesForModel, mapping: { ...tableNames, refModelCol, refPerspCol, relationshipField } };
     }
 
     function patchConfigForBSC(config, schema) {
@@ -95,7 +102,41 @@ export const BSCRenderer = (() => {
                     }, perspectiveSchema);
                     
                     container.appendChild(cardsContainer);
-                    if (showRelationships) RelationshipLines.drawFromBscData(bscData);
+                    if (showRelationships) {
+                        const styling = config.styling || {};
+                        const receivedConfigs = config.receivedConfigs || []; // Ensure we have configs
+                        
+                        let arrowColor = styling.arrowColor;
+                        let arrowOutlineColor = styling.arrowOutlineColor;
+
+                        // Resolve colors from palettes if IDs exist
+                        if (styling.arrowColorPaletteId && receivedConfigs.length > 0) {
+                            const palette = receivedConfigs.find(c => c.configId === styling.arrowColorPaletteId);
+                            if (palette) {
+                                try {
+                                    const data = JSON.parse(palette.stylingJson || palette.configJson || '{}');
+                                    // If we are linked to a palette, we should probably use the color that matches the saved hex 
+                                    // OR if we want it to be truly dynamic, we'd need a way to know WHICH color of the palette was chosen (index/id).
+                                    // Since we only save the hex, we use it. If the palette color changed, the user might need to re-select it 
+                                    // UNLESS we implement index-based linking. For now, let's just make sure we HAVE a color.
+                                } catch(e) {}
+                            }
+                        }
+
+                        if (styling.arrowOutlineColorPaletteId && receivedConfigs.length > 0) {
+                            const palette = receivedConfigs.find(c => c.configId === styling.arrowOutlineColorPaletteId);
+                            // ... same logic
+                        }
+
+                        const arrowOptions = {
+                            color: arrowColor,
+                            size: styling.arrowThickness,
+                            outline: styling.showArrowOutline,
+                            outlineColor: arrowOutlineColor,
+                            outlineSize: styling.arrowOutlineThickness
+                        };
+                        RelationshipLines.drawFromBscData(bscData, arrowOptions);
+                    }
                     return;
                 }
             } catch (e) {

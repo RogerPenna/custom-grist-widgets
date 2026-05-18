@@ -31,7 +31,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Inicializa o sistema de linhas no container de scroll
     RelationshipLines.init(mainContainer);
 
+    // Setup Tab Switching logic
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    tabButtons.forEach(btn => {
+        btn.onclick = () => {
+            const tabId = btn.dataset.tab;
+            
+            // Update buttons
+            tabButtons.forEach(b => b.classList.toggle('active', b === btn));
+            
+            // Update contents
+            tabContents.forEach(content => {
+                content.classList.toggle('active', content.id === `tab-content-${tabId}`);
+            });
+
+            // Reposition arrows if switching back to BSC tab
+            if (tabId === 'bsc') {
+                setTimeout(() => RelationshipLines.reposition(), 10);
+            }
+        };
+    });
+
     if (toggleArrowsBtn) {
+        toggleArrowsBtn.textContent = showRelationships ? 'Ocultar Relacionamentos' : 'Mostrar Relacionamentos';
         toggleArrowsBtn.onclick = () => {
             showRelationships = !showRelationships;
             toggleArrowsBtn.textContent = showRelationships ? 'Ocultar Relacionamentos' : 'Mostrar Relacionamentos';
@@ -83,6 +107,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             
             widgetConfig = tableLens.parseConfigRecord(configRecord);
+            const styling = widgetConfig.styling || {};
+
+            // Handle Tab Visibility
+            const swotBtn = document.querySelector('.tab-btn[data-tab="swot"]');
+            const pestalBtn = document.querySelector('.tab-btn[data-tab="pestal"]');
+            if (swotBtn) swotBtn.style.display = (styling.showSwotTab !== false) ? 'block' : 'none';
+            if (pestalBtn) pestalBtn.style.display = (styling.showPestalTab !== false) ? 'block' : 'none';
+
+            // If active tab was hidden, switch to bsc
+            const activeTabBtn = document.querySelector('.tab-btn.active');
+            if (activeTabBtn && activeTabBtn.style.display === 'none') {
+                const bscBtn = document.querySelector('.tab-btn[data-tab="bsc"]');
+                if (bscBtn) bscBtn.click();
+            }
 
             const mapping = widgetConfig.mapping || widgetConfig || {};
             const tableNames = {
