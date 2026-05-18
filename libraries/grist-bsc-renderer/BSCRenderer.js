@@ -33,10 +33,21 @@ export const BSCRenderer = (() => {
                 const objectives = allObjectives.filter(o => o[refPerspCol] === p.id);
                 return {
                     ...p,
-                    objectives: objectives.map(o => ({
-                        ...o,
-                        ref_obj: o[relationshipField] // Garante que RelationshipLines encontre o campo como 'ref_obj'
-                    }))
+                    objectives: objectives.map(o => {
+                        let relVal = o[relationshipField];
+                        // Normalize RefList: ['L', id1, id2] -> [id1, id2]
+                        let targetIds = [];
+                        if (Array.isArray(relVal)) {
+                            targetIds = relVal[0] === 'L' ? relVal.slice(1) : relVal;
+                        } else if (relVal && typeof relVal === 'number') {
+                            targetIds = [relVal];
+                        }
+                        
+                        return {
+                            ...o,
+                            ref_objs: targetIds // Use plural to indicate multiple targets
+                        };
+                    })
                 };
             });
         return { ...modelRecord, perspectives: perspectivesForModel, mapping: { ...tableNames, refModelCol, refPerspCol, relationshipField } };
@@ -135,6 +146,7 @@ export const BSCRenderer = (() => {
                     await CardSystem.renderCards(cardsContainer, bscData.perspectives, { 
                         ...cardConfig, 
                         tableLens,
+                        tableId: perspectivesTable,
                         fieldConfig: { ...(cardConfig.fieldConfig || {}), ...fieldConfigOverrides }
                     }, perspectiveSchema);
                     

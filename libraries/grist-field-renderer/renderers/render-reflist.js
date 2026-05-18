@@ -174,7 +174,7 @@ export async function renderRefList(options) {
             const cardConfig = await tableLens.fetchConfig(rawRefConfig.cardConfigId);
             const cardWrap = document.createElement('div');
             container.appendChild(cardWrap);
-            if (CardSystem) CardSystem.renderCards(cardWrap, relatedRecords, { ...cardConfig, isRefList: true }, relatedSchema, tableLens);
+            if (CardSystem) await CardSystem.renderCards(cardWrap, relatedRecords, { ...cardConfig, tableId: referencedTableId, isRefList: true }, relatedSchema, tableLens);
         }
         // --- RENDERIZAR TABELA SIMPLES ---
         else {

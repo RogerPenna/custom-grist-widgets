@@ -126,6 +126,10 @@ export const RelationshipLines = (() => {
     marker.setAttribute('id', id);
     marker.setAttribute('markerWidth',  size);
     marker.setAttribute('markerHeight', size);
+    
+    // refX is the point that touches the end of the line.
+    // By setting it to size - 1, we ensure the tip of the triangle (at X=size) 
+    // is exactly at the end of the path.
     marker.setAttribute('refX', size - 1);
     marker.setAttribute('refY', size / 2);
     marker.setAttribute('orient', 'auto');
@@ -135,6 +139,7 @@ export const RelationshipLines = (() => {
     const tip = size;
     const base = 0;
     const half = size / 2;
+    // Draw triangle: base top, tip, base bottom
     poly.setAttribute('points', `${base},${0} ${tip},${half} ${base},${size}`);
     poly.setAttribute('fill', color);
     marker.appendChild(poly);
@@ -143,24 +148,27 @@ export const RelationshipLines = (() => {
 
   /**
    * Get the position of an element's edge relative to the scroll container's
-   * top-left corner (i.e., in the container's scroll coordinate space).
-   *
-   * We use getBoundingClientRect() for both the element and the container,
-   * then add scrollTop/scrollLeft to convert from viewport-relative to
-   * scroll-relative coordinates.
+   * scroll coordinate space (0,0 is the very top-left of the scrollable content).
    */
   function _getRelativeRect(element) {
+    if (!element || !_container) return { top: 0, left: 0, bottom: 0, right: 0, width: 0, height: 0 };
+
     const containerRect = _container.getBoundingClientRect();
     const elemRect      = element.getBoundingClientRect();
 
+    // The element's position relative to the container's top-left in the viewport
+    const relativeTop  = elemRect.top  - containerRect.top;
+    const relativeLeft = elemRect.left - containerRect.left;
+
+    // Convert viewport-relative to scroll-relative by adding current scroll position
     const scrollLeft = _container.scrollLeft;
     const scrollTop  = _container.scrollTop;
 
     return {
-      top   : elemRect.top    - containerRect.top  + scrollTop,
-      left  : elemRect.left   - containerRect.left + scrollLeft,
-      bottom: elemRect.bottom - containerRect.top  + scrollTop,
-      right : elemRect.right  - containerRect.left + scrollLeft,
+      top   : relativeTop  + scrollTop,
+      left  : relativeLeft + scrollLeft,
+      bottom: relativeTop  + scrollTop  + elemRect.height,
+      right : relativeLeft + scrollLeft + elemRect.width,
       width : elemRect.width,
       height: elemRect.height,
     };
@@ -176,19 +184,38 @@ export const RelationshipLines = (() => {
     const from = _getRelativeRect(startEl);
     const to   = _getRelativeRect(endEl);
 
-    // Connect bottom-center → top-center
+    // If either element is not visible or has no size, skip
+    if (from.width === 0 || from.height === 0 || to.width === 0 || to.height === 0) {
+        return null;
+    }
+
+    // --- STRATEGY: Always Source-Bottom to Target-Top ---
+    // This matches the user's expectation of "A affects B" (A -> B).
+    
+    // Start: Bottom center of source
     const x1 = from.left + from.width  / 2;
     const y1 = from.bottom;
+    
+    // End: Top center of target
     const x2 = to.left   + to.width    / 2;
     const y2 = to.top;
 
-    // Cubic Bézier control points — vertical bias creates a smooth "S" or "C" curve
-    const dy = Math.abs(y2 - y1);
-    const cp = dy * opts.curvature;
+    // --- CURVE CALCULATION ---
+    // We use a cubic Bézier. The "fluidity" comes from the vertical offset of control points.
+    const dy = y2 - y1;
+    const dx = x2 - x1;
+    
+    // Minimum vertical distance for control points to ensure a nice curve even if cards are close
+    const minCpDist = 20;
+    const cpDist = Math.max(Math.abs(dy) * opts.curvature, minCpDist);
+    
+    // Control point 1: strictly below start
     const cx1 = x1;
-    const cy1 = y1 + cp;
+    const cy1 = y1 + cpDist;
+    
+    // Control point 2: strictly above end
     const cx2 = x2;
-    const cy2 = y2 - cp;
+    const cy2 = y2 - cpDist;
 
     const d = `M ${x1} ${y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${x2} ${y2}`;
 
@@ -245,15 +272,20 @@ export const RelationshipLines = (() => {
     _buildDefs(svg, finalOpts);
 
     let count = 0;
+    const objTable = bscData.mapping?.objectivesTable || 'Objetivos';
+
     bscData.perspectives.forEach(p => {
       p.objectives.forEach(o => {
-        if (o.ref_obj && o.ref_obj > 0) {
-          const startEl = document.getElementById(`record-${o.ref_obj}`);
-          const endEl   = document.getElementById(`record-${o.id}`);
-          if (_drawArrow(svg, startEl, endEl, finalOpts)) {
-            count++;
+        const targets = o.ref_objs || [];
+        targets.forEach(targetId => {
+          if (targetId && targetId > 0) {
+            const startEl = document.getElementById(`record-${objTable}-${o.id}`);
+            const endEl   = document.getElementById(`record-${objTable}-${targetId}`);
+            if (_drawArrow(svg, startEl, endEl, finalOpts)) {
+              count++;
+            }
           }
-        }
+        });
       });
     });
 

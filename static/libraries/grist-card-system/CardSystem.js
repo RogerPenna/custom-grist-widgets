@@ -143,11 +143,16 @@ export const CardSystem = (() => {
     container.style.gap = styling.cardsSpacing;
     // ---------------------------------------------------
 
-    processedRecords.forEach((record) => {
+    // We use for...of to allow awaiting renderField calls properly
+    for (const record of processedRecords) {
       const cardEl = document.createElement("div");
       cardEl.className = "cs-card";
-      cardEl.id = `record-${record.id}`; // ID for linking
+      
+      const idPrefix = currentOptions.tableId ? `${currentOptions.tableId}-` : '';
+      cardEl.id = `record-${idPrefix}${record.id}`; // ID for linking (e.g., record-Objetivos-1)
+      
       cardEl.dataset.recordId = record.id; // Data attribute for finding
+      cardEl.dataset.tableId = currentOptions.tableId || '';
       cardEl.style.display = "grid";
       cardEl.style.gridTemplateRows = `repeat(${numRows}, auto)`;
       
@@ -295,7 +300,7 @@ export const CardSystem = (() => {
         topBarEl.style.borderTopRightRadius = "8px";
         cardEl.appendChild(topBarEl);
 
-        titleFields.forEach(f => {
+        for (const f of titleFields) {
           const fieldStyle = { ...DEFAULT_FIELD_STYLE, ...f.style };
           const tContainer = document.createElement("div");
           tContainer.style.display = "flex";
@@ -318,7 +323,7 @@ export const CardSystem = (() => {
           dataEl.style.color = styling.cardTitleTopBarDataFontColor;
           if (styling.cardTitleTopBarDataAllCaps) dataEl.style.textTransform = "uppercase";
           
-          renderField({
+          await renderField({
             container: dataEl,
             colSchema: schema ? schema[f.colId] : null,
             record: record,
@@ -330,16 +335,16 @@ export const CardSystem = (() => {
 
           tContainer.appendChild(dataEl);
           topBarEl.appendChild(tContainer);
-        });
+        }
       }
 
 
 
-      layout.forEach(f => {
+      for (const f of layout) {
         if (f.isIconGroup) {
           const actions = currentOptions.actions || {};
           const groupConfig = (currentOptions.iconGroups || actions.iconGroups || styling.iconGroups || []).find(g => g.id === f.colId);
-          if (!groupConfig || !groupConfig.buttons || groupConfig.buttons.length === 0) return;
+          if (!groupConfig || !groupConfig.buttons || groupConfig.buttons.length === 0) continue;
 
           const groupContainer = document.createElement("div");
           groupContainer.style.gridRow = `${f.row + 1} / span ${f.rowSpan || 1}`;
@@ -570,12 +575,12 @@ export const CardSystem = (() => {
           });
 
           cardEl.appendChild(groupContainer);
-          return;
+          continue;
         }
 
         const fieldStyle = { ...DEFAULT_FIELD_STYLE, ...f.style };
-        if (!record.hasOwnProperty(f.colId)) return;
-        if (styling.cardTitleTopBarEnabled && fieldStyle.isTitleField) return;
+        if (!record.hasOwnProperty(f.colId)) continue;
+        if (styling.cardTitleTopBarEnabled && fieldStyle.isTitleField) continue;
 
         if (f.row >= 0) {
           const fieldBox = document.createElement("div");
@@ -709,7 +714,7 @@ export const CardSystem = (() => {
             }
           }
 
-          renderField({
+          await renderField({
             container: containerForField,
             colSchema: fieldSchema,
             record: record,
@@ -718,14 +723,15 @@ export const CardSystem = (() => {
             fieldStyle: fieldStyle,
             fieldConfig: currentOptions.fieldConfig?.[f.colId] || fieldStyle, // Pass specific field overrides
             styling: styling,
-            fieldOptions: fieldOptions
+            fieldOptions: fieldOptions,
+            receivedConfigs: currentOptions.receivedConfigs // Added for global presets support
           });
 
           cardEl.appendChild(fieldBox);
         }
-      });
+      }
       container.appendChild(cardEl);
-    });
+    }
 
     // --- DRAG & DROP ---
     if (enableOrder && orderColumn) {
