@@ -1128,6 +1128,7 @@ export const CardConfigEditor = (() => {
 
         // Generate widget options based on field type
         const fieldType = fieldSchema ? fieldSchema.type : 'Text';
+        const allGristColumns = (state.fields || []).map(f => f.colId);
         console.log(`[CardConfigEditor] Opening style popup for ${fieldDef.colId}. Type: ${fieldType}`);
 
         const isNumeric = ['Int', 'Float', 'Numeric', 'Any'].some(t => fieldType.startsWith(t));
@@ -1259,185 +1260,403 @@ export const CardConfigEditor = (() => {
                 widgetOptionsContainer.querySelector('#fs-toggle-off-color').onchange = e => tempWidgetOptions.offColor = e.target.value;
                 widgetOptionsContainer.querySelector('#fs-toggle-labels').onchange = e => tempWidgetOptions.showLabels = e.target.checked;
             } else if (widgetType === 'Progress Bar') {
-                widgetOptionsContainer.innerHTML = `
-                    <div class="form-group" style="background: #f0f7ff; padding: 10px; border-radius: 6px; border: 1px solid #cce3ff; margin-bottom: 15px;">
-                        <label style="font-weight: bold; color: #0056b3;">Preset Global (Design System):</label>
-                        <select id="fs-pb-preset" style="width:100%; border-color: #0056b3;">
-                            <option value="">-- Personalizado (Sem Preset) --</option>
-                            ${allConfigs.filter(c => c.componentType === 'Progress Bar').map(c => `<option value="${c.configId}" ${tempWidgetOptions.progressBarPreset === c.configId ? 'selected' : ''}>${c.widgetTitle}</option>`).join('')}
-                        </select>
-                        <p style="font-size: 10px; color: #666; margin-top: 5px;">Ao selecionar um preset, as configurações abaixo serão preenchidas automaticamente.</p>
-                    </div>
-                    
-                    <div id="fs-pb-manual-options">
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                            <div class="form-group"><label>Bar Color:</label><input type="color" id="fs-pb-color" value="${tempWidgetOptions.mainColor || '#4caf50'}"></div>
-                            <div class="form-group"><label>Bg Color:</label><input type="color" id="fs-pb-bgcolor" value="${tempWidgetOptions.bgColor || '#e0e0e0'}"></div>
-                        </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                            <div class="form-group"><label>Border Radius (px):</label><input type="number" id="fs-pb-radius" value="${tempWidgetOptions.borderRadius ?? 4}" min="0" style="width:100%"></div>
-                            <div class="form-group"><label>Thickness:</label>
-                                <select id="fs-pb-thick" style="width:100%">
-                                    <option value="50">Muito Fina (50%)</option>
-                                    <option value="75">Fina (75%)</option>
-                                    <option value="100">Padrão (100%)</option>
-                                    <option value="150">Grossa (150%)</option>
-                                    <option value="200">Extra Grossa (200%)</option>
+                const isCircular = tempWidgetOptions.progressType === 'circular';
+                const showInternal = tempWidgetOptions.showInternalBar;
+
+                const getFilteredPresets = (type) => {
+                    return allConfigs.filter(c => {
+                        if (c.componentType !== 'Progress Bar') return false;
+                        try {
+                            const data = JSON.parse(c.stylingJson || c.configJson || '{}');
+                            return (data.progressType || 'linear') === type;
+                        } catch(e) { return type === 'linear'; }
+                    });
+                };
+
+                const extPresets = getFilteredPresets(isCircular ? 'circular' : 'linear');
+                const intPresets = getFilteredPresets('circular');
+
+                const renderBarStylingBlock = (prefix, isInternal = false) => {
+                    const presetId = isInternal ? tempWidgetOptions.internalBarPreset : tempWidgetOptions.progressBarPreset;
+                    const colorPresetId = isInternal ? (tempWidgetOptions.internalColorPaletteId || tempWidgetOptions.internalColorPalette) : (tempWidgetOptions.colorPaletteId || tempWidgetOptions.colorPalette);
+                    const hasPreset = !!(presetId && presetId !== "" && presetId !== "undefined");
+                    const presets = isInternal ? intPresets : extPresets;
+                    const labelPos = isInternal ? tempWidgetOptions.internalLabelPosition : tempWidgetOptions.labelPosition;
+
+                    const curMainColor = isInternal ? tempWidgetOptions.internalMainColor : tempWidgetOptions.mainColor;
+                    const curBgColor = isInternal ? tempWidgetOptions.internalBgColor : tempWidgetOptions.bgColor;
+                    const curShowBg = (isInternal ? tempWidgetOptions.internalShowBgColor : tempWidgetOptions.showBgColor) !== false;
+                    const curRadius = (isInternal ? tempWidgetOptions.internalBorderRadius : tempWidgetOptions.borderRadius) ?? 4;
+                    const curThick = (isInternal ? tempWidgetOptions.internalThickness : tempWidgetOptions.thickness) || "100";
+                    const curMode = (isInternal ? tempWidgetOptions.internalColorMode : tempWidgetOptions.colorMode) || 'solid';
+
+                    return `
+                        <div style="background: #f1f5f9; padding: 10px; border-radius: 6px; margin-bottom: 15px; border: 1px solid #cbd5e1;">
+                            <div class="form-group">
+                                <label style="font-weight: bold; color: #475569;">PRESET:</label>
+                                <select id="${prefix}-preset" style="width:100%;">
+                                    <option value="">-- Personalizado --</option>
+                                    ${presets.map(c => `<option value="${c.configId}" ${presetId === c.configId ? 'selected' : ''}>${c.widgetTitle}</option>`).join('')}
                                 </select>
                             </div>
+                            <div class="form-group">
+                                <label style="font-size: 11px;">COLOR PRESET:</label>
+                                <select id="${prefix}-color-palette" style="width: 100%; font-size: 11px;">
+                                    <option value="">-- Custom --</option>
+                                    ${allConfigs.filter(c => c.componentType === 'Color Options').map(c => `<option value="${c.configId}" ${colorPresetId === c.configId ? 'selected' : ''}>${c.widgetTitle}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label style="font-size: 11px;">POS VALOR:</label>
+                                <select id="${prefix}-label-pos" style="width:100%; font-size: 11px;">
+                                    <option value="middle" ${labelPos === 'middle' ? 'selected' : ''}>Centro</option>
+                                    <option value="right" ${labelPos === 'right' ? 'selected' : ''}>Direita</option>
+                                    <option value="left" ${labelPos === 'left' ? 'selected' : ''}>Esquerda</option>
+                                    <option value="above" ${labelPos === 'above' ? 'selected' : ''}>Acima</option>
+                                    <option value="below" ${labelPos === 'below' ? 'selected' : ''}>Abaixo</option>
+                                </select>
+                            </div>
+
+                            <div id="${prefix}-manual-styling" style="opacity: ${hasPreset ? '0.6' : '1'}; pointer-events: ${hasPreset ? 'none' : 'auto'}; border-top: 1px dashed #cbd5e1; padding-top: 10px; margin-top: 10px;">
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                                    <div class="form-group"><label style="font-size: 10px;">Bar Color:</label><input type="color" id="${prefix}-color" value="${curMainColor || '#4caf50'}"></div>
+                                    <div class="form-group">
+                                        <label style="font-size: 10px;">Track Bg:</label>
+                                        <div style="display: flex; gap: 3px; align-items: center;">
+                                            <input type="color" id="${prefix}-bgcolor" value="${curBgColor || '#e0e0e0'}" ${curShowBg ? '' : 'disabled'}>
+                                            <input type="checkbox" id="${prefix}-show-bg" ${curShowBg ? 'checked' : ''}>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                                    <div class="form-group"><label style="font-size: 10px;">Radius:</label><input type="number" id="${prefix}-radius" value="${curRadius}" min="0" style="width:100%; font-size: 11px;"></div>
+                                    <div class="form-group"><label style="font-size: 10px;">Thickness:</label>
+                                        <select id="${prefix}-thick" style="width:100%; font-size: 11px;">
+                                            <option value="50">50%</option>
+                                            <option value="75">75%</option>
+                                            <option value="100">100%</option>
+                                            <option value="150">150%</option>
+                                            <option value="200">200%</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="form-group" style="margin-top: 8px;">
+                                    <label style="font-size: 10px;">Color Mode:</label>
+                                    <select id="${prefix}-mode" style="width:100%; font-size: 11px;">
+                                        <option value="solid" ${curMode === 'solid' ? 'selected' : ''}>Solid</option>
+                                        <option value="dynamic-gradient" ${curMode === 'dynamic-gradient' ? 'selected' : ''}>Dynamic Gradient</option>
+                                        <option value="static-gradient" ${curMode === 'static-gradient' ? 'selected' : ''}>Static Gradient (Full Bar)</option>
+                                        <option value="steps" ${curMode === 'steps' ? 'selected' : ''}>Steps (Thresholds)</option>
+                                    </select>
+                                </div>
+
+                                <div id="${prefix}-stops-container" style="display: ${curMode === 'solid' ? 'none' : 'block'}; margin-top: 8px; border: 1px solid #e2e8f0; padding: 5px; border-radius: 4px; background: #fff;">
+                                    <label style="font-size: 10px; font-weight: bold;">Color Stops:</label>
+                                    <div id="${prefix}-stops-list"></div>
+                                    <button id="${prefix}-add-stop" type="button" class="btn btn-sm btn-secondary" style="width: 100%; font-size: 9px; padding: 2px; margin-top: 5px;">+ Add Stop</button>
+                                </div>
+                                </div>
+                                ${!isCircular && !isInternal ? `
+                                <div class="form-group" style="display: flex; gap: 10px; margin-top: 5px;">
+                                    <label style="font-size: 10px;"><input type="checkbox" id="${prefix}-striped" ${tempWidgetOptions.striped ? 'checked' : ''}> Striped</label>
+                                    <label style="font-size: 10px;"><input type="checkbox" id="${prefix}-animated" ${tempWidgetOptions.animated ? 'checked' : ''}> Animated</label>
+                                </div>` : ''}
+                            </div>
                         </div>
-                        <div class="form-group" style="display: flex; gap: 15px;">
-                            <label><input type="checkbox" id="fs-pb-striped" ${tempWidgetOptions.striped ? 'checked' : ''}> Striped</label>
-                            <label><input type="checkbox" id="fs-pb-animated" ${tempWidgetOptions.animated ? 'checked' : ''}> Animated</label>
-                        </div>
-                        
-                        <hr style="margin: 10px 0; border: none; border-top: 1px solid #ddd;">
-                        
-                        <div class="form-group">
-                            <label>Color Mode:</label>
-                            <select id="fs-pb-mode" style="width:100%">
-                                <option value="solid" ${tempWidgetOptions.colorMode === 'solid' ? 'selected' : ''}>Solid</option>
-                                <option value="dynamic-gradient" ${tempWidgetOptions.colorMode === 'dynamic-gradient' || tempWidgetOptions.colorMode === 'gradient' ? 'selected' : ''}>Dynamic Gradient (Interpolated)</option>
-                                <option value="static-gradient" ${tempWidgetOptions.colorMode === 'static-gradient' ? 'selected' : ''}>Static Gradient (Full Bar)</option>
-                                <option value="steps" ${tempWidgetOptions.colorMode === 'steps' ? 'selected' : ''}>Steps (Thresholds)</option>
+                    `;
+                };
+
+                widgetOptionsContainer.innerHTML = `
+                    <div style="display: flex; gap: 10px; align-items: flex-end; margin-bottom: 15px; background: #fff; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                        <div class="form-group" style="flex: 2; margin-bottom: 0;">
+                            <label style="font-weight: bold;">Tipo:</label>
+                            <select id="fs-pb-type" style="width:100%">
+                                <option value="linear" ${!isCircular ? 'selected' : ''}>Linear</option>
+                                <option value="circular" ${isCircular ? 'selected' : ''}>Circular</option>
                             </select>
                         </div>
-                        
-                        <div id="fs-pb-stops-container" style="display: ${tempWidgetOptions.colorMode === 'solid' ? 'none' : 'block'}; margin-top: 10px;">
-                            <label style="font-size: 11px; font-weight: bold; margin-bottom: 5px; display: block;">Color Stops (0-100):</label>
-                            <div id="fs-pb-stops-list"></div>
-                            <button id="fs-pb-add-stop" class="btn btn-secondary btn-sm" style="width: 100%; margin-top: 5px; padding: 4px; font-size: 11px;">+ Add Stop</button>
+                        <div style="flex: 1; padding-bottom: 5px;">
+                            <label style="font-size: 11px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" id="fs-pb-show-internal" ${showInternal ? 'checked' : ''}> Barra Interna
+                            </label>
                         </div>
                     </div>
+
+                    <div id="fs-pb-circular-layout" style="display: ${isCircular ? 'block' : 'none'}; border: 1px solid #e2e8f0; padding: 10px; border-radius: 8px; background: #f8fafc; margin-bottom: 15px;">
+                        <h5 style="margin-top:0; font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Layout (Circular Only)</h5>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px;">
+                            <div class="form-group"><label style="font-size: 11px;">Size (px):</label><input type="number" id="fs-pb-size" value="${tempWidgetOptions.size ?? 80}" min="20" max="400" style="width:100%; font-size: 11px;"></div>
+                            <div class="form-group">
+                                <label style="font-size: 11px;">Field Bg:</label>
+                                <div style="display: flex; gap: 3px; align-items: center;">
+                                    <input type="color" id="fs-pb-field-bg" value="${tempWidgetOptions.fieldBgColor || '#ffffff'}" ${tempWidgetOptions.useFieldBg ? '' : 'disabled'} style="width: 30px; height: 20px;">
+                                    <input type="checkbox" id="fs-pb-use-field-bg" ${tempWidgetOptions.useFieldBg ? 'checked' : ''}>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                            <div class="form-group"><label style="font-size: 11px;">Border:</label><div style="display: flex; gap: 3px; align-items: center;"><input type="color" id="fs-pb-field-border-color" value="${tempWidgetOptions.fieldBorderColor || '#cbd5e1'}" style="width: 25px; height: 18px;"><input type="number" id="fs-pb-field-border-width" value="${tempWidgetOptions.fieldBorderWidth ?? 0}" min="0" max="10" style="width: 35px; font-size: 11px;"></div></div>
+                            <div class="form-group">
+                                <label style="font-size: 11px;">Opacity & Shadow:</label>
+                                <div style="display: flex; align-items: center; gap: 4px;">
+                                    <input type="range" id="fs-pb-field-opacity" min="0" max="100" value="${(tempWidgetOptions.fieldOpacity ?? 1) * 100}" style="width: 40px;"><span id="fs-pb-field-opacity-val" style="font-size: 9px;">${Math.round((tempWidgetOptions.fieldOpacity ?? 1) * 100)}%</span>
+                                    <input type="checkbox" id="fs-pb-field-shadow" ${tempWidgetOptions.fieldShadow ? 'checked' : ''}>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    ${showInternal ? `
+                        <div style="margin-bottom: 15px; padding: 8px; background: #fff5f5; border: 1px solid #feb2b2; border-radius: 6px;">
+                            <label style="font-size: 11px; font-weight: bold; color: #c53030;">COLUNA INTERNA:</label>
+                            <select id="fs-pb-internal-col" style="width: 100%; font-size: 11px;">
+                                <option value="">-- Selecione Coluna --</option>
+                                ${allGristColumns.map(f => `<option value="${f}" ${tempWidgetOptions.internalBarColId === f ? 'selected' : ''}>${f}</option>`).join('')}
+                            </select>
+                        </div>
+                        <h4 style="font-size: 11px; font-weight: bold; color: #2563eb; margin: 15px 0 5px 0; text-transform: uppercase;">BARRA EXTERNA</h4>
+                        ${renderBarStylingBlock('fs-pb-ext', false)}
+                        <h4 style="font-size: 11px; font-weight: bold; color: #059669; margin: 15px 0 5px 0; text-transform: uppercase;">BARRA INTERNA</h4>
+                        ${renderBarStylingBlock('fs-pb-int', true)}
+                    ` : `
+                        ${renderBarStylingBlock('fs-pb-ext', false)}
+                    `}
                 `;
-                
-                const presetSelect = widgetOptionsContainer.querySelector('#fs-pb-preset');
-                const manualOptions = widgetOptionsContainer.querySelector('#fs-pb-manual-options');
-                
-                const applyPresetValues = (presetId, isUserAction = false) => {
-                    if (!presetId) {
-                        manualOptions.style.opacity = '1';
-                        manualOptions.style.pointerEvents = 'auto';
-                        return;
-                    }
-                    const preset = allConfigs.find(c => c.configId === presetId);
-                    if (preset) {
-                        try {
-                            const data = JSON.parse(preset.stylingJson || preset.configJson || '{}');
-                            
-                            // SYNC DATA: Update both UI and the local config object
-                            const colorInput = widgetOptionsContainer.querySelector('#fs-pb-color');
-                            const bgColorInput = widgetOptionsContainer.querySelector('#fs-pb-bgcolor');
-                            const radiusInput = widgetOptionsContainer.querySelector('#fs-pb-radius');
-                            const stripedInput = widgetOptionsContainer.querySelector('#fs-pb-striped');
-                            const animatedInput = widgetOptionsContainer.querySelector('#fs-pb-animated');
-                            const modeSelect = widgetOptionsContainer.querySelector('#fs-pb-mode');
-                            const thickSelect = widgetOptionsContainer.querySelector('#fs-pb-thick');
 
-                            colorInput.value = data.mainColor || '#4caf50';
-                            bgColorInput.value = data.bgColor || '#e0e0e0';
-                            radiusInput.value = data.borderRadius ?? 4;
-                            stripedInput.checked = !!data.striped;
-                            animatedInput.checked = !!data.animated;
-                            modeSelect.value = data.colorMode || 'solid';
-                            thickSelect.value = data.thickness || "100";
+                const setThick = (prefix, val) => { const el = widgetOptionsContainer.querySelector(`#${prefix}-thick`); if (el) el.value = val || "100"; };
+                setThick('fs-pb-ext', tempWidgetOptions.thickness);
+                if (showInternal) setThick('fs-pb-int', tempWidgetOptions.internalThickness);
 
-                            // If this was triggered by selecting a preset in the UI, 
-                            // we update the temporary options used for saving.
-                            if (isUserAction) {
-                                tempWidgetOptions.mainColor = colorInput.value;
-                                tempWidgetOptions.bgColor = bgColorInput.value;
-                                tempWidgetOptions.borderRadius = parseInt(radiusInput.value, 10);
-                                tempWidgetOptions.striped = stripedInput.checked;
-                                tempWidgetOptions.animated = animatedInput.checked;
-                                tempWidgetOptions.colorMode = modeSelect.value;
-                                tempWidgetOptions.thickness = thickSelect.value;
-                                if (data.colorStops) tempWidgetOptions.colorStops = JSON.parse(JSON.stringify(data.colorStops));
-                            }
-                            
-                            // Visual feedback: dim inherited fields
-                            manualOptions.style.opacity = '0.7';
-                            manualOptions.style.pointerEvents = 'none'; // Lock while preset active
-                            
-                            if (tempWidgetOptions.colorMode !== 'solid') renderStops();
-                        } catch(e) { console.error("Error applying preset:", e); }
-                    }
-                };
-
-                presetSelect.onchange = e => {
-                    tempWidgetOptions.progressBarPreset = e.target.value;
-                    applyPresetValues(e.target.value, true);
-                    updateDebugJson();
-                };
-                
-                // Initial apply (without overriding tempWidgetOptions unless empty)
-                if (tempWidgetOptions.progressBarPreset) applyPresetValues(tempWidgetOptions.progressBarPreset, false);
-
-                widgetOptionsContainer.querySelector('#fs-pb-color').onchange = e => { tempWidgetOptions.mainColor = e.target.value; updateDebugJson(); };
-                widgetOptionsContainer.querySelector('#fs-pb-bgcolor').onchange = e => tempWidgetOptions.bgColor = e.target.value;
-                widgetOptionsContainer.querySelector('#fs-pb-radius').onchange = e => tempWidgetOptions.borderRadius = parseInt(e.target.value, 10);
-                widgetOptionsContainer.querySelector('#fs-pb-striped').onchange = e => tempWidgetOptions.striped = e.target.checked;
-                widgetOptionsContainer.querySelector('#fs-pb-animated').onchange = e => tempWidgetOptions.animated = e.target.checked;
-                
-                const thickSelect = widgetOptionsContainer.querySelector('#fs-pb-thick');
-                thickSelect.value = tempWidgetOptions.thickness || "100%";
-                thickSelect.onchange = e => tempWidgetOptions.thickness = e.target.value;
-
-                const modeSelect = widgetOptionsContainer.querySelector('#fs-pb-mode');
-                const stopsContainer = widgetOptionsContainer.querySelector('#fs-pb-stops-container');
-                const stopsList = widgetOptionsContainer.querySelector('#fs-pb-stops-list');
-
-                const renderStops = () => {
-                    stopsList.innerHTML = '';
-                    if (!tempWidgetOptions.colorStops) {
-                        tempWidgetOptions.colorStops = [
-                            { value: 0, color: '#ff4d4d' },
-                            { value: 100, color: '#4caf50' }
-                        ];
-                    }
+                const renderStopsGeneric = (container, stopsArray, onUpdate) => {
+                    container.innerHTML = '';
+                    if (!stopsArray) return;
                     
-                    tempWidgetOptions.colorStops.sort((a,b) => a.value - b.value).forEach((stop, index) => {
+                    [...stopsArray].sort((a,b) => a.value - b.value).forEach((stop, index) => {
                         const row = document.createElement('div');
                         row.style.cssText = 'display: flex; align-items: center; gap: 5px; margin-bottom: 5px;';
                         row.innerHTML = `
-                            <input type="number" value="${stop.value}" min="0" max="100" style="width: 50px; font-size: 11px;">
-                            <input type="color" value="${stop.color}" style="flex-grow: 1; height: 24px;">
-                            <button type="button" class="btn-remove" style="border: none; background: none; cursor: pointer; color: red;">&times;</button>
+                            <input type="number" value="${stop.value}" min="0" max="100" style="width: 45px; font-size: 10px;">
+                            <input type="color" value="${stop.color}" style="flex-grow: 1; height: 20px;">
+                            <button type="button" class="btn-remove" style="border: none; background: none; cursor: pointer; color: red; font-size: 14px;">&times;</button>
                         `;
                         const [valInput, colorInput, removeBtn] = row.querySelectorAll('input, button');
                         
                         valInput.onchange = (e) => {
                             stop.value = parseInt(e.target.value, 10);
-                            renderStops();
+                            onUpdate();
                         };
-                        colorInput.onchange = (e) => stop.color = e.target.value;
+                        colorInput.onchange = (e) => {
+                            stop.color = e.target.value;
+                            updateDebugJson();
+                        };
                         removeBtn.onclick = (e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            tempWidgetOptions.colorStops.splice(index, 1);
-                            renderStops();
+                            const actualIdx = stopsArray.indexOf(stop);
+                            if (actualIdx > -1) stopsArray.splice(actualIdx, 1);
+                            onUpdate();
                         };
-                        stopsList.appendChild(row);
+                        container.appendChild(row);
                     });
                 };
 
-                modeSelect.onchange = (e) => {
-                    tempWidgetOptions.colorMode = e.target.value;
-                    stopsContainer.style.display = (tempWidgetOptions.colorMode === 'solid') ? 'none' : 'block';
-                    if (tempWidgetOptions.colorMode !== 'solid') renderStops();
+                const setupStylingListeners = (prefix, isInternal) => {
+                    const find = id => widgetOptionsContainer.querySelector(`#${prefix}-${id}`);
+                    
+                    const renderCurrentStops = () => {
+                        const list = find('stops-list');
+                        const stops = isInternal ? (tempWidgetOptions.internalColorStops || []) : (tempWidgetOptions.colorStops || []);
+                        renderStopsGeneric(list, stops, () => {
+                            renderCurrentStops();
+                            updateDebugJson();
+                        });
+                    };
+
+                    find('preset').onchange = e => {
+                        const val = e.target.value;
+                        if (isInternal) tempWidgetOptions.internalBarPreset = val;
+                        else tempWidgetOptions.progressBarPreset = val;
+                        
+                        if (val) {
+                            const preset = allConfigs.find(c => c.configId === val);
+                            if (preset) {
+                                try {
+                                    const data = JSON.parse(preset.stylingJson || preset.configJson || '{}');
+                                    if (isInternal) {
+                                        tempWidgetOptions.internalMainColor = data.mainColor;
+                                        tempWidgetOptions.internalBgColor = data.bgColor;
+                                        tempWidgetOptions.internalBorderRadius = data.borderRadius;
+                                        tempWidgetOptions.internalThickness = data.thickness;
+                                        tempWidgetOptions.internalShowBgColor = data.showBgColor !== false;
+                                        tempWidgetOptions.internalColorMode = data.colorMode || 'solid';
+                                        tempWidgetOptions.internalColorStops = data.colorStops ? JSON.parse(JSON.stringify(data.colorStops)) : null;
+                                    } else {
+                                        tempWidgetOptions.mainColor = data.mainColor;
+                                        tempWidgetOptions.bgColor = data.bgColor;
+                                        tempWidgetOptions.borderRadius = data.borderRadius;
+                                        tempWidgetOptions.thickness = data.thickness;
+                                        tempWidgetOptions.showBgColor = data.showBgColor !== false;
+                                        tempWidgetOptions.striped = data.striped;
+                                        tempWidgetOptions.animated = data.animated;
+                                        tempWidgetOptions.colorMode = data.colorMode || 'solid';
+                                        tempWidgetOptions.colorStops = data.colorStops ? JSON.parse(JSON.stringify(data.colorStops)) : null;
+                                    }
+                                } catch(err) {}
+                            }
+                        }
+                        renderWidgetOptions();
+                        updateDebugJson();
+                    };
+
+                    find('color-palette').onchange = e => {
+                        const val = e.target.value;
+                        if (isInternal) tempWidgetOptions.internalColorPaletteId = val;
+                        else tempWidgetOptions.colorPaletteId = val;
+                        
+                        if (val) {
+                            const palette = allConfigs.find(c => c.configId === val);
+                            if (palette) {
+                                try {
+                                    const data = JSON.parse(palette.stylingJson || palette.configJson || '{}');
+                                    const paletteColors = data.colors || [];
+                                    if (paletteColors.length > 0) {
+                                        const newStops = paletteColors.map((c, i) => ({
+                                            value: paletteColors.length > 1 ? Math.round((i / (paletteColors.length - 1)) * 100) : 0,
+                                            color: c.hex
+                                        }));
+                                        if (isInternal) tempWidgetOptions.internalColorStops = newStops;
+                                        else tempWidgetOptions.colorStops = newStops;
+                                        
+                                        // Ensure mode is dynamic-gradient to show the stops
+                                        if (isInternal) tempWidgetOptions.internalColorMode = 'dynamic-gradient';
+                                        else tempWidgetOptions.colorMode = 'dynamic-gradient';
+                                        
+                                        renderWidgetOptions(); // Full refresh to update dropdowns and stops list
+                                    }
+                                } catch(err) {}
+                            }
+                        }
+                        updateDebugJson();
+                    };
+
+                    find('label-pos').onchange = e => {
+                        if (isInternal) tempWidgetOptions.internalLabelPosition = e.target.value;
+                        else tempWidgetOptions.labelPosition = e.target.value;
+                        updateDebugJson();
+                    };
+
+                    find('color').onchange = e => {
+                        if (isInternal) tempWidgetOptions.internalMainColor = e.target.value;
+                        else tempWidgetOptions.mainColor = e.target.value;
+                        updateDebugJson();
+                    };
+
+                    find('show-bg').onchange = e => {
+                        if (isInternal) tempWidgetOptions.internalShowBgColor = e.target.checked;
+                        else tempWidgetOptions.showBgColor = e.target.checked;
+                        find('bgcolor').disabled = !e.target.checked;
+                        updateDebugJson();
+                    };
+
+                    find('bgcolor').onchange = e => {
+                        if (isInternal) tempWidgetOptions.internalBgColor = e.target.value;
+                        else tempWidgetOptions.bgColor = e.target.value;
+                        updateDebugJson();
+                    };
+
+                    find('radius').oninput = e => {
+                        const v = parseInt(e.target.value, 10);
+                        if (isInternal) tempWidgetOptions.internalBorderRadius = v;
+                        else tempWidgetOptions.borderRadius = v;
+                        updateDebugJson();
+                    };
+
+                    find('thick').onchange = e => {
+                        if (isInternal) tempWidgetOptions.internalThickness = e.target.value;
+                        else tempWidgetOptions.thickness = e.target.value;
+                        updateDebugJson();
+                    };
+
+                    find('mode').onchange = e => {
+                        const mode = e.target.value;
+                        if (isInternal) tempWidgetOptions.internalColorMode = mode;
+                        else tempWidgetOptions.colorMode = mode;
+                        
+                        find('stops-container').style.display = mode === 'solid' ? 'none' : 'block';
+                        if (mode !== 'solid') {
+                            const stops = isInternal ? tempWidgetOptions.internalColorStops : tempWidgetOptions.colorStops;
+                            if (!stops || stops.length === 0) {
+                                const initialStops = [{value: 0, color: '#ff4d4d'}, {value: 100, color: '#4caf50'}];
+                                if (isInternal) tempWidgetOptions.internalColorStops = initialStops;
+                                else tempWidgetOptions.colorStops = initialStops;
+                            }
+                            renderCurrentStops();
+                        }
+                        updateDebugJson();
+                    };
+
+                    find('add-stop').onclick = (e) => {
+                        e.preventDefault(); e.stopPropagation();
+                        let stops = isInternal ? tempWidgetOptions.internalColorStops : tempWidgetOptions.colorStops;
+                        if (!stops) {
+                            stops = [];
+                            if (isInternal) tempWidgetOptions.internalColorStops = stops;
+                            else tempWidgetOptions.colorStops = stops;
+                        }
+                        stops.push({ value: 50, color: '#ffcc00' });
+                        renderCurrentStops();
+                        updateDebugJson();
+                    };
+
+                    const striped = find('striped');
+                    if (striped) striped.onchange = e => { tempWidgetOptions.striped = e.target.checked; updateDebugJson(); };
+                    const animated = find('animated');
+                    if (animated) animated.onchange = e => { tempWidgetOptions.animated = e.target.checked; updateDebugJson(); };
+
+                    // Initial render of stops
+                    const mode = isInternal ? (tempWidgetOptions.internalColorMode || 'solid') : (tempWidgetOptions.colorMode || 'solid');
+                    if (mode !== 'solid') renderCurrentStops();
                 };
 
-                widgetOptionsContainer.querySelector('#fs-pb-add-stop').onclick = (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (!tempWidgetOptions.colorStops) tempWidgetOptions.colorStops = [];
-                    tempWidgetOptions.colorStops.push({ value: 50, color: '#ffcc00' });
-                    renderStops();
-                };
+                widgetOptionsContainer.querySelector('#fs-pb-type').onchange = e => { tempWidgetOptions.progressType = e.target.value; renderWidgetOptions(); updateDebugJson(); };
+                widgetOptionsContainer.querySelector('#fs-pb-show-internal').onchange = e => { tempWidgetOptions.showInternalBar = e.target.checked; renderWidgetOptions(); updateDebugJson(); };
+                
+                const intCol = widgetOptionsContainer.querySelector('#fs-pb-internal-col');
+                if (intCol) intCol.onchange = e => { tempWidgetOptions.internalBarColId = e.target.value; updateDebugJson(); };
 
-                if (tempWidgetOptions.colorMode && tempWidgetOptions.colorMode !== 'solid') {
-                    renderStops();
+                const sz = widgetOptionsContainer.querySelector('#fs-pb-size');
+                if (sz) sz.oninput = e => { tempWidgetOptions.size = parseInt(e.target.value, 10); updateDebugJson(); };
+                
+                const fbg = widgetOptionsContainer.querySelector('#fs-pb-field-bg');
+                const ufbg = widgetOptionsContainer.querySelector('#fs-pb-use-field-bg');
+                if (ufbg) {
+                    ufbg.onchange = e => {
+                        tempWidgetOptions.useFieldBg = e.target.checked;
+                        fbg.disabled = !e.target.checked;
+                        if (e.target.checked && !tempWidgetOptions.fieldBgColor) tempWidgetOptions.fieldBgColor = '#ffffff';
+                        updateDebugJson();
+                    };
+                    fbg.onchange = e => { tempWidgetOptions.fieldBgColor = e.target.value; updateDebugJson(); };
                 }
+
+                const fbcol = widgetOptionsContainer.querySelector('#fs-pb-field-border-color');
+                const fbw = widgetOptionsContainer.querySelector('#fs-pb-field-border-width');
+                if (fbcol) fbcol.onchange = e => { tempWidgetOptions.fieldBorderColor = e.target.value; updateDebugJson(); };
+                if (fbw) fbw.oninput = e => { tempWidgetOptions.fieldBorderWidth = parseInt(e.target.value, 10); updateDebugJson(); };
+                
+                const fop = widgetOptionsContainer.querySelector('#fs-pb-field-opacity');
+                if (fop) fop.oninput = e => {
+                    tempWidgetOptions.fieldOpacity = parseInt(e.target.value, 10) / 100;
+                    widgetOptionsContainer.querySelector('#fs-pb-field-opacity-val').textContent = `${e.target.value}%`;
+                    updateDebugJson();
+                };
+                const fsh = widgetOptionsContainer.querySelector('#fs-pb-field-shadow');
+                if (fsh) fsh.onchange = e => { tempWidgetOptions.fieldShadow = e.target.checked; updateDebugJson(); };
+
+                setupStylingListeners('fs-pb-ext', false);
+                if (showInternal) setupStylingListeners('fs-pb-int', true);
+
             } else if (widgetType === 'Image') {
                 const sizes = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 150, 200, 250, 500];
                 const sizeOptions = sizes.map(s => `<option value="${s}" ${tempWidgetOptions.imageSize === String(s) ? 'selected' : ''}>${s}px</option>`).join('');
