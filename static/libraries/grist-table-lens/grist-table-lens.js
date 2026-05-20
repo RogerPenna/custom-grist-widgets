@@ -571,4 +571,19 @@ export const GristTableLens = function(gristInstance) {
         // Fallback para outros tipos (Data, Texto, etc.)
         return String(value);
     };
+
+    /**
+     * [NOVO] Encaminha ações de escrita para o Grist.
+     */
+    this.updateRecord = async function(tableId, recordId, changes) {
+        return _grist.docApi.applyUserActions([['UpdateRecord', tableId, recordId, changes]]);
+    };
+
+    this.addRecord = async function(tableId, newRecord) {
+        return _grist.docApi.applyUserActions([['AddRecord', tableId, null, newRecord]]);
+    };
+
+    this.deleteRecords = async function(tableId, recordIds) {
+        return _grist.docApi.applyUserActions([['BulkRemoveRecord', tableId, recordIds]]);
+    };
 };
