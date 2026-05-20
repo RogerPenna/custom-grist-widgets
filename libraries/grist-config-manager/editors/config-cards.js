@@ -232,9 +232,21 @@ export const CardConfigEditor = (() => {
                 s.handleAreaSolidColor = tabEl.querySelector("#cs-st-handle-color").value;
             } else if (handleMode === 'conditional') {
                 s.handleAreaField = tabEl.querySelector("#cs-st-handle-field").value || null;
+            } else if (handleMode === 'text-value') {
+                s.handleAreaField = tabEl.querySelector("#cs-st-handle-field-value").value || null;
+            } else if (handleMode === 'overlay') {
+                s.handleAreaOverlayEffect = tabEl.querySelector("#cs-st-handle-overlay-effect").value;
+                s.handleAreaOverlayOpacity = parseInt(tabEl.querySelector("#cs-st-handle-overlay-opacity").value, 10) || 0;
             }
             const handleVal = parseInt(tabEl.querySelector("#cs-st-handle-width").value, 10);
             s.handleAreaWidth = `${isNaN(handleVal) ? 8 : handleVal}px`;
+        }
+
+        if (tabEl.querySelector("#cs-st-handle-title-field")) {
+            s.handleAreaTitleField = tabEl.querySelector("#cs-st-handle-title-field").value || null;
+            s.handleAreaTitleColor = tabEl.querySelector("#cs-st-handle-title-color").value;
+            s.handleAreaTitleFontSize = `${parseInt(tabEl.querySelector("#cs-st-handle-title-size").value, 10) || 10}px`;
+            s.handleAreaTitleAllCaps = tabEl.querySelector("#cs-st-handle-title-allcaps").checked;
         }
 
         if (tabEl.querySelector("#cs-st-col-limit")) {
@@ -322,7 +334,7 @@ export const CardConfigEditor = (() => {
     }
 
     const DEFAULT_FIELD_STYLE = { useGristStyle: true, labelVisible: true, labelPosition: 'above', labelFont: 'inherit', labelFontSize: 'inherit', labelColor: 'inherit', labelAllCaps: false, labelOutline: false, labelOutlineColor: '#ffffff', dataJustify: 'left', dataAllCaps: false, heightLimited: false, maxHeightRows: 1, isTitleField: false };
-    const DEFAULT_STYLING = { iconSize: 1.0, internalCardPadding: '10px', fieldBox: { borderEnabled: false, borderColor: '#cccccc', borderWidth: 1, borderRadius: 4, backgroundColor: '#ffffff', effect: 'none' }, labelStyle: { bold: false, allCaps: false, color: '#333333', font: 'Calibri', size: '12px' }, simpleTextColor: '#000000', simpleTextFont: 'Calibri', simpleTextSize: '14px', fieldBackground: { enabled: false, lightenPercentage: 15 }, iconGroups: [], groupBoxes: [], widgetBackgroundMode: "solid", widgetBackgroundSolidColor: "#f9f9f9", widgetBackgroundGradientType: "linear-gradient(to right, {c1}, {c2})", widgetBackgroundGradientColor1: "#f9f9f9", widgetBackgroundGradientColor2: "#e9e9e9", cardsColorMode: "solid", cardsColorSolidColor: "#ffffff", cardsColorGradientType: "linear-gradient(to right, {c1}, {c2})", cardsColorGradientColor1: "#ffffff", cardsColorGradientColor2: "#f0f0f0", cardsColorApplyText: false, cardsColorTextField: null, cardsColorFontField: null, cardsColorOverlayEffect: 'darken', cardsColorOverlayOpacity: 10, cardBorderThickness: 0, cardBorderMode: "solid", cardBorderSolidColor: "#cccccc", cardTitleFontColor: "#000000", cardTitleFontStyle: "Calibri", cardTitleFontSize: "20px", cardTitleAllCaps: false, cardTitleTopBarEnabled: false, cardTitleTopBarMode: "solid", cardTitleTopBarSolidColor: "#dddddd", cardTitleTopBarGradientType: "linear-gradient(to right, {c1}, {c2})", cardTitleTopBarGradientColor1: "#dddddd", cardTitleTopBarGradientColor2: "#cccccc", cardTitleTopBarLabelFontColor: "#000000", cardTitleTopBarLabelFontStyle: "Calibri", cardTitleTopBarLabelFontSize: "16px", cardTitleTopBarLabelAllCaps: false, cardTitleTopBarDataFontColor: "#333333", cardTitleTopBarDataFontStyle: "Calibri", cardTitleTopBarDataFontSize: "16px", cardTitleTopBarDataAllCaps: false, handleAreaWidth: "8px", handleAreaMode: "solid", handleAreaSolidColor: "#40E0D0", widgetPadding: "10px", cardsSpacing: "15px", selectedCard: { enabled: false, scale: 1.05, colorEffect: "none" } };
+    const DEFAULT_STYLING = { iconSize: 1.0, internalCardPadding: '10px', fieldBox: { borderEnabled: false, borderColor: '#cccccc', borderWidth: 1, borderRadius: 4, backgroundColor: '#ffffff', effect: 'none' }, labelStyle: { bold: false, allCaps: false, color: '#333333', font: 'Calibri', size: '12px' }, simpleTextColor: '#000000', simpleTextFont: 'Calibri', simpleTextSize: '14px', fieldBackground: { enabled: false, lightenPercentage: 15 }, iconGroups: [], groupBoxes: [], widgetBackgroundMode: "solid", widgetBackgroundSolidColor: "#f9f9f9", widgetBackgroundGradientType: "linear-gradient(to right, {c1}, {c2})", widgetBackgroundGradientColor1: "#f9f9f9", widgetBackgroundGradientColor2: "#e9e9e9", cardsColorMode: "solid", cardsColorSolidColor: "#ffffff", cardsColorGradientType: "linear-gradient(to right, {c1}, {c2})", cardsColorGradientColor1: "#ffffff", cardsColorGradientColor2: "#f0f0f0", cardsColorApplyText: false, cardsColorTextField: null, cardsColorFontField: null, cardsColorOverlayEffect: 'darken', cardsColorOverlayOpacity: 10, cardBorderThickness: 0, cardBorderMode: "solid", cardBorderSolidColor: "#cccccc", cardTitleFontColor: "#000000", cardTitleFontStyle: "Calibri", cardTitleFontSize: "20px", cardTitleAllCaps: false, cardTitleTopBarEnabled: false, cardTitleTopBarMode: "solid", cardTitleTopBarSolidColor: "#dddddd", cardTitleTopBarGradientType: "linear-gradient(to right, {c1}, {c2})", cardTitleTopBarGradientColor1: "#dddddd", cardTitleTopBarGradientColor2: "#cccccc", cardTitleTopBarLabelFontColor: "#000000", cardTitleTopBarLabelFontStyle: "Calibri", cardTitleTopBarLabelFontSize: "16px", cardTitleTopBarLabelAllCaps: false, cardTitleTopBarDataFontColor: "#333333", cardTitleTopBarDataFontStyle: "Calibri", cardTitleTopBarDataFontSize: "16px", cardTitleTopBarDataAllCaps: false, handleAreaWidth: "8px", handleAreaMode: "solid", handleAreaSolidColor: "#40E0D0", handleAreaOverlayEffect: "darken", handleAreaOverlayOpacity: 10, handleAreaField: null, handleAreaTitleField: null, handleAreaTitleColor: "#ffffff", handleAreaTitleFontSize: "10px", handleAreaTitleAllCaps: false, widgetPadding: "10px", cardsSpacing: "15px", selectedCard: { enabled: false, scale: 1.05, colorEffect: "none" } };
     const DEFAULT_NUM_ROWS = 1; const NUM_COLS = 10; const CONFIG_WIDTH = 700; const COL_WIDTH = CONFIG_WIDTH / NUM_COLS;
 
     function createTabButton(label, tabId, container) { const btn = document.createElement("button"); btn.type = "button"; btn.textContent = label; btn.className = 'config-tab-button'; btn.addEventListener("click", () => switchTab(tabId, container)); btn.dataset.tabId = tabId; return btn; }
@@ -390,7 +402,7 @@ export const CardConfigEditor = (() => {
                 </fieldset>
                 <fieldset><legend><b>Card Border</b></legend>Thickness (px): <input type="number" id="cs-st-border-thickness" min="0" style="width:60px"> <br><label><input type="radio" name="bordermode" value="solid"> Solid</label> <label><input type="radio" name="bordermode" value="conditional"> By Field</label><div class="style-control-group" data-mode="solid"><input type="color" id="cs-st-border-color"></div><div class="style-control-group" data-mode="conditional" style="display:none;"><select id="cs-st-border-field"><option value="">-- field --</option></select></div></fieldset>
                 <fieldset class="title-control-group" data-title-mode="no-bar"><legend><b>Card Title (when Top Bar is OFF)</b></legend>Color: <input type="color" id="cs-st-titlecolor"> Font: <select id="cs-st-titlefont"><option>Calibri</option><option>Arial</option><option>Inter</option><option>Roboto</option><option>Open Sans</option><option>Times New Roman</option></select> Size: <input type="number" id="cs-st-titlesize" min="8" style="width:60px">px <label><input type="checkbox" id="cs-st-title-allcaps"> All Caps</label></fieldset>
-                <fieldset><legend><b>Handle Area</b></legend>Width (px): <input type="number" id="cs-st-handle-width" min="0" style="width:60px"> <br><label><input type="radio" name="handlemode" value="solid"> Solid</label> <label><input type="radio" name="handlemode" value="conditional"> By Field</label><div class="style-control-group" data-mode="solid"><input type="color" id="cs-st-handle-color"></div><div class="style-control-group" data-mode="conditional" style="display:none;"><select id="cs-st-handle-field"><option value="">-- field --</option></select></div></fieldset>
+                <fieldset><legend><b>Handle Area</b></legend><div style="margin-bottom: 8px;">Width (px): <input type="number" id="cs-st-handle-width" min="0" style="width:60px"></div><div style="margin-bottom: 8px;"><label><input type="radio" name="handlemode" value="solid"> Solid</label> <label><input type="radio" name="handlemode" value="conditional"> By Choice Options</label> <label><input type="radio" name="handlemode" value="text-value"> By Field Value</label> <label><input type="radio" name="handlemode" value="overlay"> Transparent Overlay</label></div><div class="style-control-group" data-mode="solid"><input type="color" id="cs-st-handle-color"></div><div class="style-control-group" data-mode="conditional" style="display:none;"><select id="cs-st-handle-field"><option value="">-- select field --</option></select></div><div class="style-control-group" data-mode="text-value" style="display:none;"><select id="cs-st-handle-field-value"><option value="">-- select field --</option></select></div><div class="style-control-group" data-mode="overlay" style="display:none;"><select id="cs-st-handle-overlay-effect" style="width: 100%; margin-bottom: 5px;"><option value="darken">Darken (Black Overlay)</option><option value="lighten">Lighten (White Overlay)</option></select><label>Opacity: <input type="number" id="cs-st-handle-overlay-opacity" min="0" max="100" style="width:50px">%</label></div><hr style="margin: 10px 0; border: 0; border-top: 1px solid #eee;"><div style="margin-top: 8px;"><b style="font-size: 0.9em; display: block; margin-bottom: 4px;">Handle Title</b><div style="margin-bottom: 4px;">Field: <select id="cs-st-handle-title-field"><option value="">-- none --</option></select></div><div style="display: flex; gap: 10px; align-items: center;"><label>Color: <input type="color" id="cs-st-handle-title-color" value="#ffffff"></label><label>Size: <input type="number" id="cs-st-handle-title-size" min="5" style="width:50px">px</label><label><input type="checkbox" id="cs-st-handle-title-allcaps"> All Caps</label></div></div></fieldset>
                 <fieldset>
                     <legend><b>Grid Columns</b></legend>
                     <label>Max Columns: <input type="number" id="cs-st-col-limit" min="1" max="20" style="width:50px;"></label>
@@ -548,6 +560,8 @@ export const CardConfigEditor = (() => {
         populateFieldSelect(tabEl.querySelector("#cs-st-border-field"), allFields);
         populateFieldSelect(tabEl.querySelector("#cs-st-topbar-field"), allFields);
         populateFieldSelect(tabEl.querySelector("#cs-st-handle-field"), allFields);
+        populateFieldSelect(tabEl.querySelector("#cs-st-handle-field-value"), allFields);
+        populateFieldSelect(tabEl.querySelector("#cs-st-handle-title-field"), allFields);
 
         populateStylingTab(tabEl);
 
@@ -686,6 +700,13 @@ export const CardConfigEditor = (() => {
         tabEl.querySelector(`input[name='handlemode'][value='${s.handleAreaMode}']`).checked = true; 
         tabEl.querySelector("#cs-st-handle-color").value = s.handleAreaSolidColor; 
         tabEl.querySelector("#cs-st-handle-field").value = s.handleAreaField || ""; 
+        tabEl.querySelector("#cs-st-handle-field-value").value = s.handleAreaField || ""; 
+        tabEl.querySelector("#cs-st-handle-overlay-effect").value = s.handleAreaOverlayEffect || "darken";
+        tabEl.querySelector("#cs-st-handle-overlay-opacity").value = s.handleAreaOverlayOpacity !== undefined ? s.handleAreaOverlayOpacity : 10;
+        tabEl.querySelector("#cs-st-handle-title-field").value = s.handleAreaTitleField || "";
+        tabEl.querySelector("#cs-st-handle-title-color").value = s.handleAreaTitleColor || "#ffffff";
+        tabEl.querySelector("#cs-st-handle-title-size").value = parseInt(s.handleAreaTitleFontSize, 10) || 10;
+        tabEl.querySelector("#cs-st-handle-title-allcaps").checked = s.handleAreaTitleAllCaps === true; 
         tabEl.querySelector("#cs-st-padding").value = parseInt(s.widgetPadding, 10); 
         tabEl.querySelector("#cs-st-spacing").value = parseInt(s.cardsSpacing, 10);
         tabEl.querySelector("#cs-st-col-limit").value = s.cardsColumnLimit || 1;
@@ -1034,7 +1055,17 @@ export const CardConfigEditor = (() => {
         const actionTypeSelect = container.querySelector('#btn-actionType'); const actionSpecContainer = container.querySelector('#btn-action-specific'); const actionHelpContainer = container.querySelector('#btn-action-help-container');
         renderActionSpecificConfig(actionSpecContainer, btn, 0);
         actionTypeSelect.addEventListener('change', (e) => { btn.actionType = e.target.value; actionHelpContainer.innerHTML = renderActionHelp(btn.actionType); renderActionSpecificConfig(actionSpecContainer, btn, 0); update(); });
-        actionSpecContainer.addEventListener('change', (e) => { const prop = e.target.dataset.prop; if (prop) { btn[prop] = e.target.value; update(); } });
+        actionSpecContainer.addEventListener('change', (e) => {
+            const prop = e.target.dataset.prop;
+            if (prop) {
+                if (e.target.type === 'checkbox') {
+                    btn[prop] = e.target.checked;
+                } else {
+                    btn[prop] = e.target.value;
+                }
+                update();
+            }
+        });
         const update = () => { renderActionsLayout(_mainContainer.querySelector('#actions-master-detail')); updateDebugJson(); };
         container.querySelectorAll('input[name="btn-style"]').forEach(r => r.addEventListener('change', (e) => { btn.buttonStyle = e.target.value; container.querySelector('#btn-content-icon').style.display = btn.buttonStyle === 'icon' ? 'block' : 'none'; container.querySelector('#btn-content-text').style.display = btn.buttonStyle === 'text' ? 'block' : 'none'; update(); }));
         container.querySelector('.icon-picker-display').onclick = (e) => { const display = e.currentTarget.querySelector('.current-icon'); const dummyInput = { value: btn.icon }; openIconPicker(dummyInput, display, btn); };
@@ -1072,7 +1103,33 @@ export const CardConfigEditor = (() => {
         if (buttonConfig.actionType === 'navigateToGristPage') { container.innerHTML = `<div class="form-group"><label>Target Page:</label><select class="action-target-page" data-prop="targetPageId"><option value="">-- Select --</option>${allGristPages.map(p => `<option value="${p.id}" ${buttonConfig.targetPageId === p.id ? 'selected' : ''}>${p.name}</option>`).join('')}</select></div><div class="form-group"><label>Filter Column:</label><input type="text" class="action-target-filter-column" data-prop="targetFilterColumn" value="${buttonConfig.targetFilterColumn || ''}"></div><div class="form-group"><label>Filter Value:</label><select class="action-source-value-column" data-prop="sourceValueColumn"><option value="">-- Select --</option>${allGristColumns.map(col => `<option value="${col}" ${buttonConfig.sourceValueColumn === col ? 'selected' : ''}>${col}</option>`).join('')}</select></div>`; } 
         else if (buttonConfig.actionType === 'openUrlFromColumn') { container.innerHTML = `<div class="form-group"><label>URL Column:</label><select class="action-url-column" data-prop="urlColumn"><option value="">-- Select --</option>${allGristColumns.map(col => `<option value="${col}" ${buttonConfig.urlColumn === col ? 'selected' : ''}>${col}</option>`).join('')}</select></div>`; } 
         else if (buttonConfig.actionType === 'updateRecord') { container.innerHTML = `<div class="form-group"><label>Field:</label><select class="action-update-field" data-prop="updateField"><option value="">-- Select --</option>${allGristColumns.map(col => `<option value="${col}" ${buttonConfig.updateField === col ? 'selected' : ''}>${col}</option>`).join('')}</select></div><div class="form-group"><label>Value:</label><input type="text" class="action-update-value" data-prop="updateValue" value="${buttonConfig.updateValue || ''}"></div>`; } 
-        else if (buttonConfig.actionType === 'triggerWidget') { container.innerHTML = `<div class="form-group"><label>Target ID:</label><select class="action-target-config-id" data-prop="targetConfigId"><option value="">-- Select --</option>${allConfigs.map(c => `<option value="${c.configId}" ${buttonConfig.targetConfigId === c.configId ? 'selected' : ''}>${c.configId}</option>`).join('')}</select></div>`; } 
+        else if (buttonConfig.actionType === 'triggerWidget') {
+            container.innerHTML = `
+                <div class="form-group">
+                    <label>Target ID:</label>
+                    <select class="action-target-config-id" data-prop="targetConfigId">
+                        <option value="">-- Select --</option>
+                        ${allConfigs.map(c => `<option value="${c.configId}" ${buttonConfig.targetConfigId === c.configId ? 'selected' : ''} data-type="${c.componentType || ''}">${c.configId}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Filter Target Column:</label>
+                    <input type="text" class="action-filter-target-column" data-prop="filterTargetColumn" value="${buttonConfig.filterTargetColumn || ''}" placeholder="e.g. ref_parent">
+                </div>
+                <div class="form-group" style="margin-top: 8px;">
+                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: normal;">
+                        <input type="checkbox" class="action-disable-filtering" data-prop="disableFiltering" ${buttonConfig.disableFiltering ? 'checked' : ''}>
+                        Sem filtrar pelo registro atual (chamar limpo)
+                    </label>
+                </div>
+            `;
+            const selectEl = container.querySelector('.action-target-config-id');
+            selectEl.addEventListener('change', (e) => {
+                const selectedOpt = e.target.options[e.target.selectedIndex];
+                const compType = selectedOpt ? (selectedOpt.dataset.type || '') : '';
+                buttonConfig.targetComponentType = compType;
+            });
+        }
         else if (buttonConfig.actionType === 'deleteRecord') { container.innerHTML = `<div class="form-group"><label>Confirmation:</label><input type="text" class="action-confirm-msg" data-prop="confirmationMessage" value="${buttonConfig.confirmationMessage || 'Delete record?'}"></div>`; } 
         else if (buttonConfig.actionType === 'addSubRecord') { 
             const drawerConfigs = allConfigs.filter(c => c.componentType === 'Drawer');
@@ -1279,8 +1336,8 @@ export const CardConfigEditor = (() => {
                 const renderBarStylingBlock = (prefix, isInternal = false) => {
                     const presetId = isInternal ? tempWidgetOptions.internalBarPreset : tempWidgetOptions.progressBarPreset;
                     const colorPresetId = isInternal ? (tempWidgetOptions.internalColorPaletteId || tempWidgetOptions.internalColorPalette) : (tempWidgetOptions.colorPaletteId || tempWidgetOptions.colorPalette);
-                    const hasPreset = !!(presetId && presetId !== "" && presetId !== "undefined");
                     const presets = isInternal ? intPresets : extPresets;
+                    const hasPreset = !!(presetId && presets.some(p => p.configId === presetId));
                     const labelPos = isInternal ? tempWidgetOptions.internalLabelPosition : tempWidgetOptions.labelPosition;
 
                     const curMainColor = isInternal ? tempWidgetOptions.internalMainColor : tempWidgetOptions.mainColor;
@@ -1309,11 +1366,15 @@ export const CardConfigEditor = (() => {
                             <div class="form-group">
                                 <label style="font-size: 11px;">POS VALOR:</label>
                                 <select id="${prefix}-label-pos" style="width:100%; font-size: 11px;">
-                                    <option value="middle" ${labelPos === 'middle' ? 'selected' : ''}>Centro</option>
-                                    <option value="right" ${labelPos === 'right' ? 'selected' : ''}>Direita</option>
-                                    <option value="left" ${labelPos === 'left' ? 'selected' : ''}>Esquerda</option>
-                                    <option value="above" ${labelPos === 'above' ? 'selected' : ''}>Acima</option>
-                                    <option value="below" ${labelPos === 'below' ? 'selected' : ''}>Abaixo</option>
+                                    <option value="middle" ${labelPos === 'middle' ? 'selected' : ''}>Centro (Centro)</option>
+                                    <option value="above-in" ${labelPos === 'above-in' ? 'selected' : ''}>Centro (Acima)</option>
+                                    <option value="below-in" ${labelPos === 'below-in' ? 'selected' : ''}>Centro (Abaixo)</option>
+                                    <option value="left-in" ${labelPos === 'left-in' ? 'selected' : ''}>Centro (Esquerda)</option>
+                                    <option value="right-in" ${labelPos === 'right-in' ? 'selected' : ''}>Centro (Direita)</option>
+                                    <option value="above" ${labelPos === 'above' ? 'selected' : ''}>Fora (Acima)</option>
+                                    <option value="below" ${labelPos === 'below' ? 'selected' : ''}>Fora (Abaixo)</option>
+                                    <option value="left" ${labelPos === 'left' ? 'selected' : ''}>Fora (Esquerda)</option>
+                                    <option value="right" ${labelPos === 'right' ? 'selected' : ''}>Fora (Direita)</option>
                                 </select>
                             </div>
 
@@ -1395,7 +1456,7 @@ export const CardConfigEditor = (() => {
                                 </div>
                             </div>
                         </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px;">
                             <div class="form-group"><label style="font-size: 11px;">Border:</label><div style="display: flex; gap: 3px; align-items: center;"><input type="color" id="fs-pb-field-border-color" value="${tempWidgetOptions.fieldBorderColor || '#cbd5e1'}" style="width: 25px; height: 18px;"><input type="number" id="fs-pb-field-border-width" value="${tempWidgetOptions.fieldBorderWidth ?? 0}" min="0" max="10" style="width: 35px; font-size: 11px;"></div></div>
                             <div class="form-group">
                                 <label style="font-size: 11px;">Opacity & Shadow:</label>
@@ -1403,6 +1464,23 @@ export const CardConfigEditor = (() => {
                                     <input type="range" id="fs-pb-field-opacity" min="0" max="100" value="${(tempWidgetOptions.fieldOpacity ?? 1) * 100}" style="width: 40px;"><span id="fs-pb-field-opacity-val" style="font-size: 9px;">${Math.round((tempWidgetOptions.fieldOpacity ?? 1) * 100)}%</span>
                                     <input type="checkbox" id="fs-pb-field-shadow" ${tempWidgetOptions.fieldShadow ? 'checked' : ''}>
                                 </div>
+                            </div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                            <div class="form-group">
+                                <label style="font-size: 11px;">Bg Shape:</label>
+                                <select id="fs-pb-circular-bg-mode" style="width:100%; font-size: 11px;">
+                                    <option value="circle" ${tempWidgetOptions.circularBgMode !== 'box' ? 'selected' : ''}>Circle</option>
+                                    <option value="box" ${tempWidgetOptions.circularBgMode === 'box' ? 'selected' : ''}>Box (Quadrado)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label style="font-size: 11px;">Contorno (Contrast):</label>
+                                <select id="fs-pb-circular-outline" style="width:100%; font-size: 11px;">
+                                    <option value="none" ${tempWidgetOptions.circularOutline === 'none' || !tempWidgetOptions.circularOutline ? 'selected' : ''}>Nenhum</option>
+                                    <option value="black" ${tempWidgetOptions.circularOutline === 'black' ? 'selected' : ''}>Preto</option>
+                                    <option value="white" ${tempWidgetOptions.circularOutline === 'white' ? 'selected' : ''}>Branco</option>
+                                </select>
                             </div>
                         </div>
                     </div>
@@ -1653,6 +1731,12 @@ export const CardConfigEditor = (() => {
                 };
                 const fsh = widgetOptionsContainer.querySelector('#fs-pb-field-shadow');
                 if (fsh) fsh.onchange = e => { tempWidgetOptions.fieldShadow = e.target.checked; updateDebugJson(); };
+
+                const bgm = widgetOptionsContainer.querySelector('#fs-pb-circular-bg-mode');
+                if (bgm) bgm.onchange = e => { tempWidgetOptions.circularBgMode = e.target.value; updateDebugJson(); };
+                
+                const outl = widgetOptionsContainer.querySelector('#fs-pb-circular-outline');
+                if (outl) outl.onchange = e => { tempWidgetOptions.circularOutline = e.target.value; updateDebugJson(); };
 
                 setupStylingListeners('fs-pb-ext', false);
                 if (showInternal) setupStylingListeners('fs-pb-int', true);

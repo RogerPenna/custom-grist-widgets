@@ -36,6 +36,9 @@ export const CardSystem = (() => {
     cardTitleFontColor: "#000000", cardTitleFontStyle: "Calibri", cardTitleFontSize: "20px", cardTitleAllCaps: false,
     cardTitleTopBarEnabled: false, cardTitleTopBarMode: "solid", cardTitleTopBarSolidColor: "#dddddd", cardTitleTopBarGradientType: "linear-gradient(to right, {c1}, {c2})", cardTitleTopBarGradientColor1: "#dddddd", cardTitleTopBarGradientColor2: "#cccccc", cardTitleTopBarLabelFontColor: "#000000", cardTitleTopBarLabelFontStyle: "Calibri", cardTitleTopBarLabelFontSize: "16px", cardTitleTopBarLabelAllCaps: false, cardTitleTopBarDataFontColor: "#333333", cardTitleTopBarDataFontStyle: "Calibri", cardTitleTopBarDataFontSize: "16px", cardTitleTopBarDataAllCaps: false,
     handleAreaWidth: "8px", handleAreaMode: "solid", handleAreaSolidColor: "#40E0D0",
+    handleAreaOverlayEffect: "darken", handleAreaOverlayOpacity: 10,
+    handleAreaField: null,
+    handleAreaTitleField: null, handleAreaTitleColor: "#ffffff", handleAreaTitleFontSize: "10px", handleAreaTitleAllCaps: false,
     widgetPadding: "10px", cardsSpacing: "15px",
     cardTitleTopBarApplyText: false,
     selectedCard: { enabled: false, scale: 1.05, colorEffect: "none" }
@@ -241,9 +244,49 @@ export const CardSystem = (() => {
       handleEl.style.top = "0";
       handleEl.style.bottom = "0";
       handleEl.style.width = styling.handleAreaWidth;
-      handleEl.style.background = resolveStyle(record, schema, styling.handleAreaMode, styling.handleAreaSolidColor, null, styling.handleAreaField);
+      
+      let handleBg;
+      if (styling.handleAreaMode === 'overlay') {
+          const opacity = (parseInt(styling.handleAreaOverlayOpacity, 10) || 0) / 100;
+          const isDarken = styling.handleAreaOverlayEffect === 'darken';
+          const rgb = isDarken ? '0, 0, 0' : '255, 255, 255';
+          handleBg = `rgba(${rgb}, ${opacity})`;
+      } else {
+          handleBg = resolveStyle(record, schema, styling.handleAreaMode, styling.handleAreaSolidColor, null, styling.handleAreaField);
+      }
+      handleEl.style.background = handleBg;
       handleEl.style.borderTopLeftRadius = "8px";
       handleEl.style.borderBottomLeftRadius = "8px";
+
+      // Render Handle Title
+      if (styling.handleAreaTitleField && record[styling.handleAreaTitleField] !== undefined && record[styling.handleAreaTitleField] !== null) {
+          const titleText = String(record[styling.handleAreaTitleField]);
+          if (titleText.trim() !== "") {
+              const titleEl = document.createElement("div");
+              titleEl.className = "cs-handle-title";
+              titleEl.textContent = styling.handleAreaTitleAllCaps ? titleText.toUpperCase() : titleText;
+              titleEl.style.position = "absolute";
+              titleEl.style.left = "0";
+              titleEl.style.top = "0";
+              titleEl.style.width = "100%";
+              titleEl.style.height = "100%";
+              titleEl.style.display = "flex";
+              titleEl.style.alignItems = "center";
+              titleEl.style.justifyContent = "center";
+              titleEl.style.writingMode = "vertical-rl";
+              titleEl.style.transform = "rotate(180deg)";
+              titleEl.style.whiteSpace = "normal";
+              titleEl.style.wordBreak = "break-word";
+              titleEl.style.textAlign = "center";
+              titleEl.style.padding = "2px";
+              titleEl.style.boxSizing = "border-box";
+              titleEl.style.color = styling.handleAreaTitleColor || "#ffffff";
+              titleEl.style.fontSize = styling.handleAreaTitleFontSize || "10px";
+              titleEl.style.fontWeight = "bold";
+              titleEl.style.pointerEvents = "none";
+              handleEl.appendChild(titleEl);          }
+      }
+
       cardEl.appendChild(handleEl);
       
       if (handleWidth === 0) { // If width is 0, hide the handle completely
@@ -561,7 +604,8 @@ export const CardSystem = (() => {
                   rowIds: rowIdsToPublish, // Pass the array of row IDs
                   filterValue: filterValueToPublish, // Pass either single ID or array of IDs
                   componentType: buttonConfig.targetComponentType,
-                  filterTargetColumn: buttonConfig.filterTargetColumn
+                  filterTargetColumn: buttonConfig.filterTargetColumn,
+                  disableFiltering: buttonConfig.disableFiltering
                 });
               } else {
                 publish('grf-navigation-action-triggered', {
@@ -724,7 +768,8 @@ export const CardSystem = (() => {
             fieldConfig: currentOptions.fieldConfig?.[f.colId] || fieldStyle, // Pass specific field overrides
             styling: styling,
             fieldOptions: fieldOptions,
-            receivedConfigs: currentOptions.receivedConfigs // Added for global presets support
+            receivedConfigs: currentOptions.receivedConfigs, // Added for global presets support
+            tableSchema: schema
           });
 
           cardEl.appendChild(fieldBox);
