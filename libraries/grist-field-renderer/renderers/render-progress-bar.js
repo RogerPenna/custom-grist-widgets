@@ -1,5 +1,5 @@
 export function renderProgressBar(options) {
-    const { container, cellValue, colSchema, record, isEditing, isLocked, fieldOptions, tableLens, receivedConfigs } = options;
+    const { container, cellValue, colSchema, record, isEditing, isLocked, fieldOptions, tableLens, receivedConfigs, tableSchema } = options;
     const value = Number(cellValue) || 0;
     
     // Helper to apply presets
@@ -62,35 +62,48 @@ export function renderProgressBar(options) {
     }
 
     // Label Formatting
-    const format = (val) => {
-        if (tableLens && colSchema) {
-            let label = tableLens.formatValue(val, colSchema);
-            return label.includes('%') ? label : `${label}%`;
+    const format = (val, customSchema = null) => {
+        if (val === undefined || val === null || val === '') return '';
+        const schemaToUse = customSchema || colSchema;
+        if (tableLens && schemaToUse) {
+            try {
+                let label = tableLens.formatValue(val, schemaToUse);
+                if (label !== undefined && label !== null) {
+                    return label.includes('%') ? label : `${label}%`;
+                }
+            } catch(e) {
+                console.warn("Format error for column:", schemaToUse.colId, e);
+            }
         }
-        return `${Number(val).toFixed(1)}%`;
+        const numVal = Number(val);
+        return isNaN(numVal) ? String(val) : `${numVal.toFixed(1)}%`;
     };
 
-    const extLabel = format(cellValue);
+    const extLabel = format(cellValue, colSchema);
     let intLabel = '';
     if (intOpts && fieldOptions.internalBarColId && record) {
-        intLabel = format(record[fieldOptions.internalBarColId]);
+        const intColSchema = (tableSchema && tableSchema[fieldOptions.internalBarColId]) || colSchema;
+        intLabel = format(record[fieldOptions.internalBarColId], intColSchema);
     }
+
+    const isCircular = fieldOptions.progressType === 'circular';
+    const useCircleBg = isCircular && fieldOptions.useFieldBg && (fieldOptions.circularBgMode !== 'box');
 
     const outerContainer = document.createElement('div');
     outerContainer.className = 'grf-progress-field-container';
     
-    if (fieldOptions.useFieldBg && fieldOptions.fieldBgColor) {
+    if (fieldOptions.useFieldBg && fieldOptions.fieldBgColor && !useCircleBg) {
         const rgb = hexToRgb(fieldOptions.fieldBgColor);
         const opacity = fieldOptions.fieldOpacity ?? 1;
         outerContainer.style.setProperty('background-color', `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity})`, 'important');
     }
 
-    if (fieldOptions.fieldBorderWidth > 0) {
+    if (fieldOptions.fieldBorderWidth > 0 && !useCircleBg) {
         outerContainer.style.border = `${fieldOptions.fieldBorderWidth}px solid ${fieldOptions.fieldBorderColor || '#cbd5e1'}`;
         outerContainer.style.borderRadius = '4px';
     }
 
-    if (fieldOptions.fieldShadow) {
+    if (fieldOptions.fieldShadow && !useCircleBg) {
         outerContainer.classList.add('grf-field-shadow');
         outerContainer.style.margin = '4px';
         outerContainer.style.width = 'calc(100% - 8px)';
@@ -127,7 +140,22 @@ function renderLinearProgress(container, value, extLabel, extOpts, intLabel, int
         const bar = document.createElement('div');
         bar.className = 'grf-progress-bar';
         bar.style.width = `${norm}%`;
-        bar.style.backgroundColor = getBarColor(norm, opts);
+        
+        // Map old colorMode to new renderMode for backward compatibility
+        let mode = opts.colorMode || 'solid-fixed';
+        if (mode === 'solid') mode = 'solid-fixed';
+        if (mode === 'dynamic' || mode === 'dynamic-gradient') mode = 'solid-dynamic';
+        if (mode === 'smooth' || mode === 'static-gradient' || mode === 'gradient') mode = 'gradient-smooth';
+        if (mode === 'stepped' || mode === 'steps') mode = 'gradient-steps';
+
+        const colors = (opts.colorStops || []).map(s => s.color);
+        const style = getProgressBarStyles(colors, norm, mode, opts.mainColor, false);
+        
+        if (style.isGradient) {
+            bar.style.backgroundImage = style.background;
+        } else {
+            bar.style.backgroundColor = style.background;
+        }
         
         if (opts.striped) bar.classList.add('grf-progress-bar-striped');
         if (opts.animated) bar.classList.add('grf-progress-bar-animated');
@@ -140,8 +168,6 @@ function renderLinearProgress(container, value, extLabel, extOpts, intLabel, int
         const labelDiv = document.createElement('div');
         labelDiv.className = 'grf-progress-bar-label-centered';
         labelDiv.textContent = label;
-        // Apply position logic if needed, but linear usually centers. 
-        // We'll respect pos valor for label color/shadow though.
         labelDiv.style.color = 'white';
         labelDiv.style.textShadow = '1px 1px 2px rgba(0,0,0,0.8)';
 
@@ -167,6 +193,12 @@ function renderCircularProgress(container, value, extLabel, extOpts, intLabel, i
     outerWrapper.style.justifyContent = 'center';
     outerWrapper.style.alignItems = 'center';
 
+    const useCircleBg = options.fieldOptions.useFieldBg && (options.fieldOptions.circularBgMode !== 'box');
+
+    if (useCircleBg && options.fieldOptions.fieldShadow) {
+        outerWrapper.style.filter = 'drop-shadow(0px 2px 4px rgba(0, 0, 0, 0.15))';
+    }
+
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svg.setAttribute("viewBox", "0 0 100 100");
     svg.setAttribute("class", "grf-circular-svg");
@@ -176,37 +208,128 @@ function renderCircularProgress(container, value, extLabel, extOpts, intLabel, i
     const getStrokeWidth = (thickVal) => (8 * parseInt(thickVal || '100', 10)) / 100;
     const center = 50;
     const radius = 40;
+    const strokeWidth1 = getStrokeWidth(extOpts.thickness);
+
+    // 0. Filled Background Circle
+    const bgRadius = radius + (strokeWidth1 / 2) + 2;
+    if (useCircleBg && options.fieldOptions.fieldBgColor) {
+        const rgb = hexToRgb(options.fieldOptions.fieldBgColor);
+        const opacity = options.fieldOpacity ?? 1;
+        const bgCircle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        bgCircle.setAttribute("cx", center);
+        bgCircle.setAttribute("cy", center);
+        bgCircle.setAttribute("r", bgRadius);
+        bgCircle.setAttribute("fill", `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity})`);
+        svg.appendChild(bgCircle);
+    }
+
+    // 0.1. Circular Border
+    if (useCircleBg && options.fieldOptions.fieldBorderWidth > 0) {
+        const borderWidth = Number(options.fieldOptions.fieldBorderWidth);
+        const borderSvgWidth = borderWidth * (100 / size);
+        const borderCircle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        borderCircle.setAttribute("cx", center);
+        borderCircle.setAttribute("cy", center);
+        borderCircle.setAttribute("r", bgRadius);
+        borderCircle.setAttribute("fill", "transparent");
+        borderCircle.setAttribute("stroke", options.fieldOptions.fieldBorderColor || '#cbd5e1');
+        borderCircle.setAttribute("stroke-width", borderSvgWidth);
+        svg.appendChild(borderCircle);
+    }
+
+    const renderBar = (val, opts, r, sw, isInternal) => {
+        const norm = calculateNormalizedValue(val, opts.min || 0, opts.max || 100);
+        
+        // Background track
+        if (opts.showBgColor !== false) {
+            svg.appendChild(createCircle(center, r, sw, opts.bgColor || '#e0e0e0'));
+        }
+
+        // Map old colorMode to new renderMode for backward compatibility
+        let mode = opts.colorMode || 'solid-fixed';
+        if (mode === 'solid') mode = 'solid-fixed';
+        if (mode === 'dynamic' || mode === 'dynamic-gradient') mode = 'solid-dynamic';
+        if (mode === 'smooth' || mode === 'static-gradient' || mode === 'gradient') mode = 'gradient-smooth';
+        if (mode === 'stepped' || mode === 'steps') mode = 'gradient-steps';
+
+        const colors = (opts.colorStops || []).map(s => s.color);
+        const style = getProgressBarStyles(colors, norm, mode, opts.mainColor, true);
+        
+        if (!style.isGradient) {
+            const circle = createCircle(center, r, sw, style.background, norm);
+            if (opts.animated) circle.setAttribute('class', 'grf-circular-animated');
+            svg.appendChild(circle);
+        } else {
+            // Gradient Mode (Smooth or Stepped)
+            const maskId = 'mask-' + Math.random().toString(36).substr(2, 9);
+            const svgMask = document.createElementNS("http://www.w3.org/2000/svg", "mask");
+            svgMask.setAttribute("id", maskId);
+            
+            // Mask must have a solid white circle of exactly the progress length
+            const maskCircle = createCircle(center, r, sw, "white", norm);
+            maskCircle.setAttribute("stroke-linecap", "butt"); // BUTT for masks to avoid artifacts
+            maskCircle.style.transition = "none";
+            svgMask.appendChild(maskCircle);
+            svg.appendChild(svgMask);
+
+            const foGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+            foGroup.setAttribute("mask", `url(#${maskId})`);
+            
+            const fo = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
+            fo.setAttribute("x", "0"); fo.setAttribute("y", "0");
+            fo.setAttribute("width", "100"); fo.setAttribute("height", "100");
+            
+            const div = document.createElement('div');
+            div.style.width = '100%'; div.style.height = '100%';
+            div.style.borderRadius = '50%';
+            div.style.background = style.background;
+            // Removed rotate(-90deg) to align with conic-gradient(from 0deg) starting at 12 o'clock
+            
+            fo.appendChild(div);
+            foGroup.appendChild(fo);
+            svg.appendChild(foGroup);
+        }
+    };
 
     // 1. External Bar
-    const strokeWidth1 = getStrokeWidth(extOpts.thickness);
-    if (extOpts.showBgColor !== false) {
-        svg.appendChild(createCircle(center, radius, strokeWidth1, extOpts.bgColor || '#e0e0e0'));
-    }
-    const norm1 = calculateNormalizedValue(value, extOpts.min || 0, extOpts.max || 100);
-    const circle1 = createCircle(center, radius, strokeWidth1, getBarColor(norm1, extOpts), norm1);
-    if (extOpts.animated) circle1.setAttribute('class', 'grf-circular-animated');
-    svg.appendChild(circle1);
+    renderBar(value, extOpts, radius, strokeWidth1, false);
 
     // 2. Internal Bar
+    let innerRadius = radius; // For contrast outlines
     if (intOpts) {
         const val2 = Number(record[options.fieldOptions.internalBarColId]) || 0;
-        const norm2 = calculateNormalizedValue(val2, intOpts.min || 0, intOpts.max || 100);
         const strokeWidth2 = getStrokeWidth(intOpts.thickness);
-        const innerRadius = radius - (strokeWidth1/2) - (strokeWidth2/2) - 2;
-        
-        if (intOpts.showBgColor !== false) {
-            svg.appendChild(createCircle(center, innerRadius, strokeWidth2, intOpts.bgColor || '#e0e0e0'));
+        innerRadius = radius - (strokeWidth1/2) - (strokeWidth2/2) - 2;
+        renderBar(val2, intOpts, innerRadius, strokeWidth2, true);
+    }
+
+    // 2.5. Contrast Outlines
+    const outlineColor = options.fieldOptions.circularOutline;
+    if (outlineColor === 'black' || outlineColor === 'white') {
+        const color = outlineColor === 'black' ? '#000000' : '#ffffff';
+        svg.appendChild(createCircle(center, radius + strokeWidth1 / 2, 0.6, color));
+        svg.appendChild(createCircle(center, radius - strokeWidth1 / 2, 0.6, color));
+        if (intOpts) {
+            const strokeWidth2 = getStrokeWidth(intOpts.thickness);
+            svg.appendChild(createCircle(center, innerRadius + strokeWidth2 / 2, 0.6, color));
+            svg.appendChild(createCircle(center, innerRadius - strokeWidth2 / 2, 0.6, color));
         }
-        const circle2 = createCircle(center, innerRadius, strokeWidth2, getBarColor(norm2, intOpts), norm2);
-        if (intOpts.animated) circle2.setAttribute('class', 'grf-circular-animated');
-        svg.appendChild(circle2);
     }
 
     outerWrapper.appendChild(svg);
 
     // 3. Labels
+    let extPos = extOpts.labelPosition || 'middle';
+    let intPos = intOpts ? (intOpts.labelPosition || 'middle') : 'middle';
+
+    // Automatic adjustment if both are middle to prevent overlapping
+    if (intOpts && extPos === 'middle' && intPos === 'middle') {
+        extPos = 'middle-upper';
+        intPos = 'middle-lower';
+    }
+
     const createLabel = (text, pos, isInt = false) => {
-        if (!text) return null;
+        if (!text || pos === 'none') return null;
         const lbl = document.createElement('div');
         lbl.className = `grf-circular-label label-${pos}`;
         lbl.textContent = text;
@@ -223,9 +346,23 @@ function renderCircularProgress(container, value, extLabel, extOpts, intLabel, i
         
         if (pos === 'middle') {
              lbl.style.top = '50%'; lbl.style.left = '50%'; lbl.style.transform = 'translate(-50%, -50%)';
+        } else if (pos === 'middle-upper') {
+             lbl.style.top = '40%'; lbl.style.left = '50%'; lbl.style.transform = 'translate(-50%, -50%)';
+             lbl.style.fontSize = '9px';
+        } else if (pos === 'middle-lower') {
+             lbl.style.top = '60%'; lbl.style.left = '50%'; lbl.style.transform = 'translate(-50%, -50%)';
+             lbl.style.fontSize = '9px';
+        } else if (pos === 'above-in') {
+             lbl.style.top = '33%'; lbl.style.left = '50%'; lbl.style.transform = 'translate(-50%, -50%)';
+        } else if (pos === 'below-in') {
+             lbl.style.top = '67%'; lbl.style.left = '50%'; lbl.style.transform = 'translate(-50%, -50%)';
+        } else if (pos === 'left-in') {
+             lbl.style.top = '50%'; lbl.style.left = '33%'; lbl.style.transform = 'translate(-50%, -50%)';
+        } else if (pos === 'right-in') {
+             lbl.style.top = '50%'; lbl.style.left = '67%'; lbl.style.transform = 'translate(-50%, -50%)';
         } else if (pos === 'above') {
              lbl.style.bottom = '100%'; lbl.style.left = '50%'; lbl.style.transform = 'translateX(-50%)'; lbl.style.marginBottom = '2px';
-        } else if (pos === 'below' || pos === 'below') { // Supporting both 'below' and 'below' (typo fallback)
+        } else if (pos === 'below') {
              lbl.style.top = '100%'; lbl.style.left = '50%'; lbl.style.transform = 'translateX(-50%)'; lbl.style.marginTop = '2px';
         } else if (pos === 'left') {
              lbl.style.right = '100%'; lbl.style.top = '50%'; lbl.style.transform = 'translateY(-50%)'; lbl.style.marginRight = '5px';
@@ -235,11 +372,11 @@ function renderCircularProgress(container, value, extLabel, extOpts, intLabel, i
         return lbl;
     };
 
-    const extLabelEl = createLabel(extLabel, extOpts.labelPosition || 'middle');
+    const extLabelEl = createLabel(extLabel, extPos);
     if (extLabelEl) outerWrapper.appendChild(extLabelEl);
 
     if (intOpts && intLabel) {
-        const intLabelEl = createLabel(intLabel, intOpts.labelPosition || 'above', true);
+        const intLabelEl = createLabel(intLabel, intPos, true);
         if (intLabelEl) outerWrapper.appendChild(intLabelEl);
     }
 
@@ -270,62 +407,78 @@ function createCircle(center, radius, strokeWidth, color, percent = null) {
     return circle;
 }
 
+function getProgressBarStyles(colors, progressValue, renderMode, defaultSolidColor = '#3498db', isCircular = false) {
+    const numColors = colors.length;
+    if (numColors === 0) return { background: defaultSolidColor, isGradient: false };
+    if (numColors === 1) return { background: colors[0], isGradient: false };
+
+    function interpolateColor(colors, percent) {
+        if (percent <= 0) return colors[0];
+        if (percent >= 100) return colors[numColors - 1];
+        let factor = percent / 100;
+        let i = Math.floor(factor * (numColors - 1));
+        let subFactor = (factor * (numColors - 1)) - i;
+        const c1 = hexToRgb(colors[i]);
+        const c2 = hexToRgb(colors[i + 1]);
+        const r = Math.round(c1.r + (c2.r - c1.r) * subFactor);
+        const g = Math.round(c1.g + (c2.g - c1.g) * subFactor);
+        const b = Math.round(c1.b + (c2.b - c1.b) * subFactor);
+        return `rgb(${r}, ${g}, ${b})`;
+    }
+
+    switch(renderMode) {
+        case 'solid-fixed':
+            return { background: defaultSolidColor, isGradient: false };
+            
+        case 'solid-dynamic':
+            return { background: interpolateColor(colors, progressValue), isGradient: false };
+            
+        case 'solid-thresholds':
+            let sliceSize = 100 / numColors;
+            let colorIndex = Math.min(Math.floor(progressValue / sliceSize), numColors - 1);
+            return { background: colors[colorIndex], isGradient: false };
+            
+        case 'gradient-smooth':
+            if (isCircular) {
+                let smoothParts = colors.map((color, index) => {
+                    let pos = index * (360 / (numColors - 1));
+                    return `${color} ${pos.toFixed(1)}deg`;
+                });
+                return { background: `conic-gradient(from 0deg, ${smoothParts.join(', ')})`, isGradient: true };
+            } else {
+                let smoothParts = colors.map((color, index) => {
+                    let pos = index * (100 / (numColors - 1));
+                    return `${color} ${pos.toFixed(1)}%`;
+                });
+                return { background: `linear-gradient(90deg, ${smoothParts.join(', ')})`, isGradient: true };
+            }
+            
+        case 'gradient-steps':
+            if (isCircular) {
+                let stepSlice = 360 / numColors;
+                let stepParts = [];
+                colors.forEach((color, index) => {
+                    stepParts.push(`${color} ${(index * stepSlice).toFixed(1)}deg`, `${color} ${((index + 1) * stepSlice).toFixed(1)}deg`);
+                });
+                return { background: `conic-gradient(from 0deg, ${stepParts.join(', ')})`, isGradient: true };
+            } else {
+                let stepSlice = 100 / numColors;
+                let stepParts = [];
+                colors.forEach((color, index) => {
+                    stepParts.push(`${color} ${(index * stepSlice).toFixed(1)}%`, `${color} ${((index + 1) * stepSlice).toFixed(1)}%`);
+                });
+                return { background: `linear-gradient(90deg, ${stepParts.join(', ')})`, isGradient: true };
+            }
+            
+        default:
+            return { background: defaultSolidColor, isGradient: false };
+    }
+}
+
 function calculateNormalizedValue(value, min, max) {
     const range = max - min;
     const norm = range === 0 ? 0 : ((value - min) / range) * 100;
     return Math.min(100, Math.max(0, norm));
-}
-
-function getBarColor(normalizedValue, options) {
-    const colorMode = options.colorMode || 'solid';
-    const mainColor = options.mainColor || '#4caf50';
-    const stops = options.colorStops || [];
-
-    if (colorMode === 'solid') return mainColor;
-    
-    const sortedStops = [...stops].sort((a, b) => a.value - b.value);
-    if (sortedStops.length === 0) return mainColor;
-
-    if (colorMode === 'gradient' || colorMode === 'dynamic-gradient' || colorMode === 'static-gradient') {
-        let lower = sortedStops[0];
-        let upper = sortedStops[sortedStops.length - 1];
-
-        for (let i = 0; i < sortedStops.length - 1; i++) {
-            if (normalizedValue >= sortedStops[i].value) {
-                lower = sortedStops[i];
-                upper = sortedStops[i+1];
-            }
-            if (normalizedValue <= sortedStops[i+1].value) break;
-        }
-
-        if (lower === upper) return lower.color;
-        const range = upper.value - lower.value;
-        const factor = range === 0 ? 0 : (normalizedValue - lower.value) / range;
-        return interpolateColor(lower.color, upper.color, factor);
-    } 
-    
-    if (colorMode === 'steps') {
-        const matchingStop = sortedStops.find(stop => normalizedValue <= stop.value) || sortedStops[sortedStops.length - 1];
-        return matchingStop.color;
-    }
-
-    // Legacy Support for colorRules (used in Drawer)
-    if (options.colorRules && Array.isArray(options.colorRules) && options.colorRules.length > 0) {
-        const sortedRules = [...options.colorRules].sort((a, b) => a.threshold - b.threshold);
-        const matchingRule = sortedRules.find(rule => normalizedValue <= rule.threshold);
-        if (matchingRule) return matchingRule.color;
-    }
-
-    return mainColor;
-}
-
-function interpolateColor(color1, color2, factor) {
-    const c1 = hexToRgb(color1);
-    const c2 = hexToRgb(color2);
-    const r = Math.round(c1.r + (c2.r - c1.r) * factor);
-    const g = Math.round(c1.g + (c2.g - c1.g) * factor);
-    const b = Math.round(c1.b + (c2.b - c1.b) * factor);
-    return `rgb(${r}, ${g}, ${b})`;
 }
 
 function hexToRgb(hex) {

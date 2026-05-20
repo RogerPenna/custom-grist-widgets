@@ -1405,14 +1405,15 @@ export const CardConfigEditor = (() => {
                                 <div class="form-group" style="margin-top: 8px;">
                                     <label style="font-size: 10px;">Color Mode:</label>
                                     <select id="${prefix}-mode" style="width:100%; font-size: 11px;">
-                                        <option value="solid" ${curMode === 'solid' ? 'selected' : ''}>Solid</option>
-                                        <option value="dynamic-gradient" ${curMode === 'dynamic-gradient' ? 'selected' : ''}>Dynamic Gradient</option>
-                                        <option value="static-gradient" ${curMode === 'static-gradient' ? 'selected' : ''}>Static Gradient (Full Bar)</option>
-                                        <option value="steps" ${curMode === 'steps' ? 'selected' : ''}>Steps (Thresholds)</option>
+                                        <option value="solid-fixed" ${curMode === 'solid-fixed' || curMode === 'solid' ? 'selected' : ''}>Sólida Estática</option>
+                                        <option value="solid-dynamic" ${curMode === 'solid-dynamic' || curMode === 'dynamic-gradient' ? 'selected' : ''}>Sólida Dinâmica</option>
+                                        <option value="solid-thresholds" ${curMode === 'solid-thresholds' ? 'selected' : ''}>Sólida por Degraus</option>
+                                        <option value="gradient-smooth" ${curMode === 'gradient-smooth' || curMode === 'static-gradient' ? 'selected' : ''}>Gradiente Suave</option>
+                                        <option value="gradient-steps" ${curMode === 'gradient-steps' || curMode === 'steps' ? 'selected' : ''}>Gradiente em Blocos</option>
                                     </select>
                                 </div>
 
-                                <div id="${prefix}-stops-container" style="display: ${curMode === 'solid' ? 'none' : 'block'}; margin-top: 8px; border: 1px solid #e2e8f0; padding: 5px; border-radius: 4px; background: #fff;">
+                                <div id="${prefix}-stops-container" style="display: ${curMode === 'solid-fixed' || curMode === 'solid' ? 'none' : 'block'}; margin-top: 8px; border: 1px solid #e2e8f0; padding: 5px; border-radius: 4px; background: #fff;">
                                     <label style="font-size: 10px; font-weight: bold;">Color Stops:</label>
                                     <div id="${prefix}-stops-list"></div>
                                     <button id="${prefix}-add-stop" type="button" class="btn btn-sm btn-secondary" style="width: 100%; font-size: 9px; padding: 2px; margin-top: 5px;">+ Add Stop</button>

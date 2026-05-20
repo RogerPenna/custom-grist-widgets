@@ -988,13 +988,13 @@ export const CardConfigEditor = (() => {
 
     function renderActionsLayout(container) {
         container.innerHTML = '';
-        const colGroups = document.createElement('div'); colGroups.className = 'col-groups'; colGroups.innerHTML = '<div class="list-header">Icon Groups</div><div class="groups-list-content" style="flex-grow:1; overflow-y:auto;"></div><div class="add-btn-row"><button class="add-btn-icon" title="Add Icon Group">+</button></div>';
+        const colGroups = document.createElement('div'); colGroups.className = 'col-groups'; colGroups.innerHTML = '<div class="list-header">Icon Groups</div><div class="groups-list-content" style="flex-grow:1; overflow-y:auto;"></div><div class="add-btn-row"><button type="button" class="add-btn-icon" title="Add Icon Group">+</button></div>';
         renderGroupsList(colGroups.querySelector('.groups-list-content'));
-        colGroups.querySelector('.add-btn-icon').onclick = () => { state.iconGroups = state.iconGroups || []; const newGroup = { id: `icon-group-${Date.now()}`, name: `Group ${state.iconGroups.length + 1}`, alignment: 'center', buttons: [] }; state.iconGroups.push(newGroup); activeGroupId = newGroup.id; activeButtonIndex = -1; renderActionsLayout(container); buildAvailableFieldsList(_mainContainer.querySelector("#cs-layout-fields")); updateDebugJson(); };
+        colGroups.querySelector('.add-btn-icon').onclick = (e) => { e.preventDefault(); e.stopPropagation(); state.iconGroups = state.iconGroups || []; const newGroup = { id: `icon-group-${Date.now()}`, name: `Group ${state.iconGroups.length + 1}`, alignment: 'center', buttons: [] }; state.iconGroups.push(newGroup); activeGroupId = newGroup.id; activeButtonIndex = -1; renderActionsLayout(container); buildAvailableFieldsList(_mainContainer.querySelector("#cs-layout-fields")); updateDebugJson(); };
         container.appendChild(colGroups);
-        const colButtons = document.createElement('div'); colButtons.className = 'col-buttons'; colButtons.innerHTML = '<div class="list-header">Buttons</div><div class="buttons-list-content" style="flex-grow:1; overflow-y:auto;"></div><div class="add-btn-row"><button class="add-btn-icon" title="Add Action Button">+</button></div>';
+        const colButtons = document.createElement('div'); colButtons.className = 'col-buttons'; colButtons.innerHTML = '<div class="list-header">Buttons</div><div class="buttons-list-content" style="flex-grow:1; overflow-y:auto;"></div><div class="add-btn-row"><button type="button" class="add-btn-icon" title="Add Action Button">+</button></div>';
         const activeGroup = (state.iconGroups || []).find(g => g.id === activeGroupId);
-        if (activeGroup) { renderButtonsList(colButtons.querySelector('.buttons-list-content'), activeGroup); colButtons.querySelector('.add-btn-icon').onclick = () => { activeGroup.buttons = activeGroup.buttons || []; activeGroup.buttons.push({ id: `btn-${Date.now()}`, icon: 'icon-star', tooltip: 'New Action', actionType: 'navigateToGristPage', buttonStyle: 'icon', shape: 'square', iconColor: '#000000', backgroundColor: '#f0f0f0', transparentBackground: false }); activeButtonIndex = activeGroup.buttons.length - 1; renderActionsLayout(container); updateDebugJson(); }; } 
+        if (activeGroup) { renderButtonsList(colButtons.querySelector('.buttons-list-content'), activeGroup); colButtons.querySelector('.add-btn-icon').onclick = (e) => { e.preventDefault(); e.stopPropagation(); activeGroup.buttons = activeGroup.buttons || []; activeGroup.buttons.push({ id: `btn-${Date.now()}`, icon: 'icon-star', tooltip: 'New Action', actionType: 'navigateToGristPage', buttonStyle: 'icon', shape: 'square', iconColor: '#000000', backgroundColor: '#f0f0f0', transparentBackground: false }); activeButtonIndex = activeGroup.buttons.length - 1; renderActionsLayout(container); updateDebugJson(); }; } 
         else { colButtons.innerHTML = '<div class="empty-state">Select a Group</div>'; }
         container.appendChild(colButtons);
         const colDetails = document.createElement('div'); colDetails.className = 'col-details';
@@ -1072,9 +1072,67 @@ export const CardConfigEditor = (() => {
         if (buttonConfig.actionType === 'navigateToGristPage') { container.innerHTML = `<div class="form-group"><label>Target Page:</label><select class="action-target-page" data-prop="targetPageId"><option value="">-- Select --</option>${allGristPages.map(p => `<option value="${p.id}" ${buttonConfig.targetPageId === p.id ? 'selected' : ''}>${p.name}</option>`).join('')}</select></div><div class="form-group"><label>Filter Column:</label><input type="text" class="action-target-filter-column" data-prop="targetFilterColumn" value="${buttonConfig.targetFilterColumn || ''}"></div><div class="form-group"><label>Filter Value:</label><select class="action-source-value-column" data-prop="sourceValueColumn"><option value="">-- Select --</option>${allGristColumns.map(col => `<option value="${col}" ${buttonConfig.sourceValueColumn === col ? 'selected' : ''}>${col}</option>`).join('')}</select></div>`; } 
         else if (buttonConfig.actionType === 'openUrlFromColumn') { container.innerHTML = `<div class="form-group"><label>URL Column:</label><select class="action-url-column" data-prop="urlColumn"><option value="">-- Select --</option>${allGristColumns.map(col => `<option value="${col}" ${buttonConfig.urlColumn === col ? 'selected' : ''}>${col}</option>`).join('')}</select></div>`; } 
         else if (buttonConfig.actionType === 'updateRecord') { container.innerHTML = `<div class="form-group"><label>Field:</label><select class="action-update-field" data-prop="updateField"><option value="">-- Select --</option>${allGristColumns.map(col => `<option value="${col}" ${buttonConfig.updateField === col ? 'selected' : ''}>${col}</option>`).join('')}</select></div><div class="form-group"><label>Value:</label><input type="text" class="action-update-value" data-prop="updateValue" value="${buttonConfig.updateValue || ''}"></div>`; } 
-        else if (buttonConfig.actionType === 'triggerWidget') { container.innerHTML = `<div class="form-group"><label>Target ID:</label><select class="action-target-config-id" data-prop="targetConfigId"><option value="">-- Select --</option>${allConfigs.map(c => `<option value="${c.configId}" ${buttonConfig.targetConfigId === c.configId ? 'selected' : ''}>${c.configId}</option>`).join('')}</select></div>`; } 
+        else if (buttonConfig.actionType === 'triggerWidget') {
+            container.innerHTML = `
+                <div class="form-group">
+                    <label>Target ID:</label>
+                    <select class="action-target-config-id" data-prop="targetConfigId">
+                        <option value="">-- Select --</option>
+                        ${allConfigs.map(c => `<option value="${c.configId}" ${buttonConfig.targetConfigId === c.configId ? 'selected' : ''} data-type="${c.componentType || ''}">${c.configId}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Filter Target Column:</label>
+                    <input type="text" class="action-filter-target-column" data-prop="filterTargetColumn" value="${buttonConfig.filterTargetColumn || ''}" placeholder="e.g. ref_parent">
+                    <p class="help-text" style="margin-top: 2px; color: #64748b; font-size: 0.8em;">Deixe em branco para chamar o widget sem filtrar.</p>
+                </div>
+            `;
+            const selectEl = container.querySelector('.action-target-config-id');
+            selectEl.addEventListener('change', (e) => {
+                const selectedOpt = e.target.options[e.target.selectedIndex];
+                const compType = selectedOpt ? (selectedOpt.dataset.type || '') : '';
+                buttonConfig.targetComponentType = compType;
+            });
+        } 
         else if (buttonConfig.actionType === 'deleteRecord') { container.innerHTML = `<div class="form-group"><label>Confirmation:</label><input type="text" class="action-confirm-msg" data-prop="confirmationMessage" value="${buttonConfig.confirmationMessage || 'Delete record?'}"></div>`; } 
-        else if (buttonConfig.actionType === 'addSubRecord') { container.innerHTML = `<div class="form-group"><label>Table:</label><select class="action-sub-table-id" data-prop="subRecordTableId"><option value="">-- Select --</option>${allGristPages.map(p => `<option value="${p.id}" ${buttonConfig.subRecordTableId === p.id ? 'selected' : ''}>${p.id}</option>`).join('')}</select></div>`; } 
+        else if (buttonConfig.actionType === 'addSubRecord') { 
+            const drawerConfigs = allConfigs.filter(c => c.componentType === 'Drawer');
+            container.innerHTML = `
+                <div class="form-group">
+                    <label>Target Table:</label>
+                    <select class="action-sub-table-id" data-prop="subRecordTableId">
+                        <option value="">-- Auto-detect --</option>
+                        ${allGristPages.map(p => `<option value="${p.id}" ${buttonConfig.subRecordTableId === p.id ? 'selected' : ''}>${p.id}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Relationship Field (in sub-table):</label>
+                    <input type="text" class="action-sub-record-ref-field" data-prop="subRecordRefField" value="${buttonConfig.subRecordRefField || ''}" placeholder="ex: ref_parent">
+                </div>
+                <div class="form-group">
+                    <label>Drawer Configuration:</label>
+                    <select class="action-sub-record-config-id" data-prop="subRecordConfigId">
+                        <option value="">-- Default / All Fields --</option>
+                        ${drawerConfigs.map(c => `<option value="${c.configId}" ${buttonConfig.subRecordConfigId === c.configId ? 'selected' : ''}>${c.widgetTitle} (${c.configId})</option>`).join('')}
+                    </select>
+                </div>
+            `; 
+        } 
+        else if (buttonConfig.actionType === 'moveRecord') {
+            if (!state.enableOrder || !state.orderColumn) {
+                container.innerHTML = `
+                    <div class="alert alert-warning" style="font-size: 0.85em; padding: 10px; border-radius: 6px; background: #fffbeb; border: 1px solid #fcd34d; color: #92400e;">
+                        <strong>⚠️ Requisito:</strong> Esta ação exige que a ordenação esteja habilitada na aba <b>Fields & Layout</b> e que uma coluna numérica de ordem seja selecionada.
+                    </div>
+                `;
+            } else {
+                container.innerHTML = `
+                    <div class="alert alert-success" style="font-size: 0.85em; padding: 10px; border-radius: 6px; background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534;">
+                        ✅ Alça de arraste configurada (usando coluna: <b>${state.orderColumn}</b>).
+                    </div>
+                `;
+            }
+        }
         else if (buttonConfig.actionType === 'showTooltipField') { container.innerHTML = `<div class="form-group"><label>Field:</label><select class="action-tooltip-field" data-prop="tooltipField"><option value="">-- Select --</option>${allGristColumns.map(col => `<option value="${col}" ${buttonConfig.tooltipField === col ? 'selected' : ''}>${col}</option>`).join('')}</select></div>`; }
     }
 
@@ -1091,6 +1149,7 @@ export const CardConfigEditor = (() => {
 
         // Generate widget options based on field type
         const fieldType = fieldSchema ? fieldSchema.type : 'Text';
+        const allGristColumns = (state.fields || []).map(f => f.colId);
         console.log(`[CardConfigEditor] Opening style popup for ${fieldDef.colId}. Type: ${fieldType}`);
 
         const isNumeric = ['Int', 'Float', 'Numeric', 'Any'].some(t => fieldType.startsWith(t));
@@ -1222,16 +1281,431 @@ export const CardConfigEditor = (() => {
                 widgetOptionsContainer.querySelector('#fs-toggle-off-color').onchange = e => tempWidgetOptions.offColor = e.target.value;
                 widgetOptionsContainer.querySelector('#fs-toggle-labels').onchange = e => tempWidgetOptions.showLabels = e.target.checked;
             } else if (widgetType === 'Progress Bar') {
+                const isCircular = tempWidgetOptions.progressType === 'circular';
+                const showInternal = tempWidgetOptions.showInternalBar;
+
+                const getFilteredPresets = (type) => {
+                    return allConfigs.filter(c => {
+                        if (c.componentType !== 'Progress Bar') return false;
+                        try {
+                            const data = JSON.parse(c.stylingJson || c.configJson || '{}');
+                            return (data.progressType || 'linear') === type;
+                        } catch(e) { return type === 'linear'; }
+                    });
+                };
+
+                const extPresets = getFilteredPresets(isCircular ? 'circular' : 'linear');
+                const intPresets = getFilteredPresets('circular');
+
+                const renderBarStylingBlock = (prefix, isInternal = false) => {
+                    const presetId = isInternal ? tempWidgetOptions.internalBarPreset : tempWidgetOptions.progressBarPreset;
+                    const colorPresetId = isInternal ? (tempWidgetOptions.internalColorPaletteId || tempWidgetOptions.internalColorPalette) : (tempWidgetOptions.colorPaletteId || tempWidgetOptions.colorPalette);
+                    const presets = isInternal ? intPresets : extPresets;
+                    const hasPreset = !!(presetId && presets.some(p => p.configId === presetId));
+                    const labelPos = isInternal ? tempWidgetOptions.internalLabelPosition : tempWidgetOptions.labelPosition;
+
+                    const curMainColor = isInternal ? tempWidgetOptions.internalMainColor : tempWidgetOptions.mainColor;
+                    const curBgColor = isInternal ? tempWidgetOptions.internalBgColor : tempWidgetOptions.bgColor;
+                    const curShowBg = (isInternal ? tempWidgetOptions.internalShowBgColor : tempWidgetOptions.showBgColor) !== false;
+                    const curRadius = (isInternal ? tempWidgetOptions.internalBorderRadius : tempWidgetOptions.borderRadius) ?? 4;
+                    const curThick = (isInternal ? tempWidgetOptions.internalThickness : tempWidgetOptions.thickness) || "100";
+                    const curMode = (isInternal ? tempWidgetOptions.internalColorMode : tempWidgetOptions.colorMode) || 'solid';
+
+                    return `
+                        <div style="background: #f1f5f9; padding: 10px; border-radius: 6px; margin-bottom: 15px; border: 1px solid #cbd5e1;">
+                            <div class="form-group">
+                                <label style="font-weight: bold; color: #475569;">PRESET:</label>
+                                <select id="${prefix}-preset" style="width:100%;">
+                                    <option value="">-- Personalizado --</option>
+                                    ${presets.map(c => `<option value="${c.configId}" ${presetId === c.configId ? 'selected' : ''}>${c.widgetTitle}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label style="font-size: 11px;">COLOR PRESET:</label>
+                                <select id="${prefix}-color-palette" style="width: 100%; font-size: 11px;">
+                                    <option value="">-- Custom --</option>
+                                    ${allConfigs.filter(c => c.componentType === 'Color Options').map(c => `<option value="${c.configId}" ${colorPresetId === c.configId ? 'selected' : ''}>${c.widgetTitle}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label style="font-size: 11px;">POS VALOR:</label>
+                                <select id="${prefix}-label-pos" style="width:100%; font-size: 11px;">
+                                    <option value="middle" ${labelPos === 'middle' ? 'selected' : ''}>Centro (Centro)</option>
+                                    <option value="above-in" ${labelPos === 'above-in' ? 'selected' : ''}>Centro (Acima)</option>
+                                    <option value="below-in" ${labelPos === 'below-in' ? 'selected' : ''}>Centro (Abaixo)</option>
+                                    <option value="left-in" ${labelPos === 'left-in' ? 'selected' : ''}>Centro (Esquerda)</option>
+                                    <option value="right-in" ${labelPos === 'right-in' ? 'selected' : ''}>Centro (Direita)</option>
+                                    <option value="above" ${labelPos === 'above' ? 'selected' : ''}>Fora (Acima)</option>
+                                    <option value="below" ${labelPos === 'below' ? 'selected' : ''}>Fora (Abaixo)</option>
+                                    <option value="left" ${labelPos === 'left' ? 'selected' : ''}>Fora (Esquerda)</option>
+                                    <option value="right" ${labelPos === 'right' ? 'selected' : ''}>Fora (Direita)</option>
+                                </select>
+                            </div>
+
+                            <div id="${prefix}-manual-styling" style="opacity: ${hasPreset ? '0.6' : '1'}; pointer-events: ${hasPreset ? 'none' : 'auto'}; border-top: 1px dashed #cbd5e1; padding-top: 10px; margin-top: 10px;">
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                                    <div class="form-group"><label style="font-size: 10px;">Bar Color:</label><input type="color" id="${prefix}-color" value="${curMainColor || '#4caf50'}"></div>
+                                    <div class="form-group">
+                                        <label style="font-size: 10px;">Track Bg:</label>
+                                        <div style="display: flex; gap: 3px; align-items: center;">
+                                            <input type="color" id="${prefix}-bgcolor" value="${curBgColor || '#e0e0e0'}" ${curShowBg ? '' : 'disabled'}>
+                                            <input type="checkbox" id="${prefix}-show-bg" ${curShowBg ? 'checked' : ''}>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                                    <div class="form-group"><label style="font-size: 10px;">Radius:</label><input type="number" id="${prefix}-radius" value="${curRadius}" min="0" style="width:100%; font-size: 11px;"></div>
+                                    <div class="form-group"><label style="font-size: 10px;">Thickness:</label>
+                                        <select id="${prefix}-thick" style="width:100%; font-size: 11px;">
+                                            <option value="50">50%</option>
+                                            <option value="75">75%</option>
+                                            <option value="100">100%</option>
+                                            <option value="150">150%</option>
+                                            <option value="200">200%</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="form-group" style="margin-top: 8px;">
+                                    <label style="font-size: 10px;">Color Mode:</label>
+                                    <select id="${prefix}-mode" style="width:100%; font-size: 11px;">
+                                        <option value="solid-fixed" ${curMode === 'solid-fixed' || curMode === 'solid' ? 'selected' : ''}>Sólida Estática</option>
+                                        <option value="solid-dynamic" ${curMode === 'solid-dynamic' || curMode === 'dynamic-gradient' ? 'selected' : ''}>Sólida Dinâmica</option>
+                                        <option value="solid-thresholds" ${curMode === 'solid-thresholds' ? 'selected' : ''}>Sólida por Degraus</option>
+                                        <option value="gradient-smooth" ${curMode === 'gradient-smooth' || curMode === 'static-gradient' ? 'selected' : ''}>Gradiente Suave</option>
+                                        <option value="gradient-steps" ${curMode === 'gradient-steps' || curMode === 'steps' ? 'selected' : ''}>Gradiente em Blocos</option>
+                                    </select>
+                                </div>
+
+                                <div id="${prefix}-stops-container" style="display: ${curMode === 'solid-fixed' || curMode === 'solid' ? 'none' : 'block'}; margin-top: 8px; border: 1px solid #e2e8f0; padding: 5px; border-radius: 4px; background: #fff;">
+                                    <label style="font-size: 10px; font-weight: bold;">Color Stops:</label>
+                                    <div id="${prefix}-stops-list"></div>
+                                    <button id="${prefix}-add-stop" type="button" class="btn btn-sm btn-secondary" style="width: 100%; font-size: 9px; padding: 2px; margin-top: 5px;">+ Add Stop</button>
+                                </div>
+                                </div>
+                                ${!isCircular && !isInternal ? `
+                                <div class="form-group" style="display: flex; gap: 10px; margin-top: 5px;">
+                                    <label style="font-size: 10px;"><input type="checkbox" id="${prefix}-striped" ${tempWidgetOptions.striped ? 'checked' : ''}> Striped</label>
+                                    <label style="font-size: 10px;"><input type="checkbox" id="${prefix}-animated" ${tempWidgetOptions.animated ? 'checked' : ''}> Animated</label>
+                                </div>` : ''}
+                            </div>
+                        </div>
+                    `;
+                };
+
                 widgetOptionsContainer.innerHTML = `
-                    <div class="form-group"><label>Main Color:</label><input type="color" id="fs-pb-color" value="${tempWidgetOptions.mainColor || '#4caf50'}"></div>
-                    <div class="form-group"><label><input type="checkbox" id="fs-pb-striped" ${tempWidgetOptions.striped ? 'checked' : ''}> Striped</label></div>
-                    <div class="form-group"><label>Thickness:</label><select id="fs-pb-thick" style="width:100%"><option value="100%">Default</option><option value="150%">Thick</option><option value="200%">Extra Thick</option></select></div>
+                    <div style="display: flex; gap: 10px; align-items: flex-end; margin-bottom: 15px; background: #fff; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                        <div class="form-group" style="flex: 2; margin-bottom: 0;">
+                            <label style="font-weight: bold;">Tipo:</label>
+                            <select id="fs-pb-type" style="width:100%">
+                                <option value="linear" ${!isCircular ? 'selected' : ''}>Linear</option>
+                                <option value="circular" ${isCircular ? 'selected' : ''}>Circular</option>
+                            </select>
+                        </div>
+                        <div style="flex: 1; padding-bottom: 5px;">
+                            <label style="font-size: 11px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" id="fs-pb-show-internal" ${showInternal ? 'checked' : ''}> Barra Interna
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="fs-pb-circular-layout" style="display: ${isCircular ? 'block' : 'none'}; border: 1px solid #e2e8f0; padding: 10px; border-radius: 8px; background: #f8fafc; margin-bottom: 15px;">
+                        <h5 style="margin-top:0; font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Layout (Circular Only)</h5>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px;">
+                            <div class="form-group"><label style="font-size: 11px;">Size (px):</label><input type="number" id="fs-pb-size" value="${tempWidgetOptions.size ?? 80}" min="20" max="400" style="width:100%; font-size: 11px;"></div>
+                            <div class="form-group">
+                                <label style="font-size: 11px;">Field Bg:</label>
+                                <div style="display: flex; gap: 3px; align-items: center;">
+                                    <input type="color" id="fs-pb-field-bg" value="${tempWidgetOptions.fieldBgColor || '#ffffff'}" ${tempWidgetOptions.useFieldBg ? '' : 'disabled'} style="width: 30px; height: 20px;">
+                                    <input type="checkbox" id="fs-pb-use-field-bg" ${tempWidgetOptions.useFieldBg ? 'checked' : ''}>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px;">
+                            <div class="form-group"><label style="font-size: 11px;">Border:</label><div style="display: flex; gap: 3px; align-items: center;"><input type="color" id="fs-pb-field-border-color" value="${tempWidgetOptions.fieldBorderColor || '#cbd5e1'}" style="width: 25px; height: 18px;"><input type="number" id="fs-pb-field-border-width" value="${tempWidgetOptions.fieldBorderWidth ?? 0}" min="0" max="10" style="width: 35px; font-size: 11px;"></div></div>
+                            <div class="form-group">
+                                <label style="font-size: 11px;">Opacity & Shadow:</label>
+                                <div style="display: flex; align-items: center; gap: 4px;">
+                                    <input type="range" id="fs-pb-field-opacity" min="0" max="100" value="${(tempWidgetOptions.fieldOpacity ?? 1) * 100}" style="width: 40px;"><span id="fs-pb-field-opacity-val" style="font-size: 9px;">${Math.round((tempWidgetOptions.fieldOpacity ?? 1) * 100)}%</span>
+                                    <input type="checkbox" id="fs-pb-field-shadow" ${tempWidgetOptions.fieldShadow ? 'checked' : ''}>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                            <div class="form-group">
+                                <label style="font-size: 11px;">Bg Shape:</label>
+                                <select id="fs-pb-circular-bg-mode" style="width:100%; font-size: 11px;">
+                                    <option value="circle" ${tempWidgetOptions.circularBgMode !== 'box' ? 'selected' : ''}>Circle</option>
+                                    <option value="box" ${tempWidgetOptions.circularBgMode === 'box' ? 'selected' : ''}>Box (Quadrado)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label style="font-size: 11px;">Contorno (Contrast):</label>
+                                <select id="fs-pb-circular-outline" style="width:100%; font-size: 11px;">
+                                    <option value="none" ${tempWidgetOptions.circularOutline === 'none' || !tempWidgetOptions.circularOutline ? 'selected' : ''}>Nenhum</option>
+                                    <option value="black" ${tempWidgetOptions.circularOutline === 'black' ? 'selected' : ''}>Preto</option>
+                                    <option value="white" ${tempWidgetOptions.circularOutline === 'white' ? 'selected' : ''}>Branco</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    ${showInternal ? `
+                        <div style="margin-bottom: 15px; padding: 8px; background: #fff5f5; border: 1px solid #feb2b2; border-radius: 6px;">
+                            <label style="font-size: 11px; font-weight: bold; color: #c53030;">COLUNA INTERNA:</label>
+                            <select id="fs-pb-internal-col" style="width: 100%; font-size: 11px;">
+                                <option value="">-- Selecione Coluna --</option>
+                                ${allGristColumns.map(f => `<option value="${f}" ${tempWidgetOptions.internalBarColId === f ? 'selected' : ''}>${f}</option>`).join('')}
+                            </select>
+                        </div>
+                        <h4 style="font-size: 11px; font-weight: bold; color: #2563eb; margin: 15px 0 5px 0; text-transform: uppercase;">BARRA EXTERNA</h4>
+                        ${renderBarStylingBlock('fs-pb-ext', false)}
+                        <h4 style="font-size: 11px; font-weight: bold; color: #059669; margin: 15px 0 5px 0; text-transform: uppercase;">BARRA INTERNA</h4>
+                        ${renderBarStylingBlock('fs-pb-int', true)}
+                    ` : `
+                        ${renderBarStylingBlock('fs-pb-ext', false)}
+                    `}
                 `;
-                widgetOptionsContainer.querySelector('#fs-pb-color').onchange = e => tempWidgetOptions.mainColor = e.target.value;
-                widgetOptionsContainer.querySelector('#fs-pb-striped').onchange = e => tempWidgetOptions.striped = e.target.checked;
-                const thickSelect = widgetOptionsContainer.querySelector('#fs-pb-thick');
-                thickSelect.value = tempWidgetOptions.thickness || "100%";
-                thickSelect.onchange = e => tempWidgetOptions.thickness = e.target.value;
+
+                const setThick = (prefix, val) => { const el = widgetOptionsContainer.querySelector(`#${prefix}-thick`); if (el) el.value = val || "100"; };
+                setThick('fs-pb-ext', tempWidgetOptions.thickness);
+                if (showInternal) setThick('fs-pb-int', tempWidgetOptions.internalThickness);
+
+                const renderStopsGeneric = (container, stopsArray, onUpdate) => {
+                    container.innerHTML = '';
+                    if (!stopsArray) return;
+                    
+                    [...stopsArray].sort((a,b) => a.value - b.value).forEach((stop, index) => {
+                        const row = document.createElement('div');
+                        row.style.cssText = 'display: flex; align-items: center; gap: 5px; margin-bottom: 5px;';
+                        row.innerHTML = `
+                            <input type="number" value="${stop.value}" min="0" max="100" style="width: 45px; font-size: 10px;">
+                            <input type="color" value="${stop.color}" style="flex-grow: 1; height: 20px;">
+                            <button type="button" class="btn-remove" style="border: none; background: none; cursor: pointer; color: red; font-size: 14px;">&times;</button>
+                        `;
+                        const [valInput, colorInput, removeBtn] = row.querySelectorAll('input, button');
+                        
+                        valInput.onchange = (e) => {
+                            stop.value = parseInt(e.target.value, 10);
+                            onUpdate();
+                        };
+                        colorInput.onchange = (e) => {
+                            stop.color = e.target.value;
+                            updateDebugJson();
+                        };
+                        removeBtn.onclick = (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const actualIdx = stopsArray.indexOf(stop);
+                            if (actualIdx > -1) stopsArray.splice(actualIdx, 1);
+                            onUpdate();
+                        };
+                        container.appendChild(row);
+                    });
+                };
+
+                const setupStylingListeners = (prefix, isInternal) => {
+                    const find = id => widgetOptionsContainer.querySelector(`#${prefix}-${id}`);
+                    
+                    const renderCurrentStops = () => {
+                        const list = find('stops-list');
+                        const stops = isInternal ? (tempWidgetOptions.internalColorStops || []) : (tempWidgetOptions.colorStops || []);
+                        renderStopsGeneric(list, stops, () => {
+                            renderCurrentStops();
+                            updateDebugJson();
+                        });
+                    };
+
+                    find('preset').onchange = e => {
+                        const val = e.target.value;
+                        if (isInternal) tempWidgetOptions.internalBarPreset = val;
+                        else tempWidgetOptions.progressBarPreset = val;
+                        
+                        if (val) {
+                            const preset = allConfigs.find(c => c.configId === val);
+                            if (preset) {
+                                try {
+                                    const data = JSON.parse(preset.stylingJson || preset.configJson || '{}');
+                                    if (isInternal) {
+                                        tempWidgetOptions.internalMainColor = data.mainColor;
+                                        tempWidgetOptions.internalBgColor = data.bgColor;
+                                        tempWidgetOptions.internalBorderRadius = data.borderRadius;
+                                        tempWidgetOptions.internalThickness = data.thickness;
+                                        tempWidgetOptions.internalShowBgColor = data.showBgColor !== false;
+                                        tempWidgetOptions.internalColorMode = data.colorMode || 'solid';
+                                        tempWidgetOptions.internalColorStops = data.colorStops ? JSON.parse(JSON.stringify(data.colorStops)) : null;
+                                    } else {
+                                        tempWidgetOptions.mainColor = data.mainColor;
+                                        tempWidgetOptions.bgColor = data.bgColor;
+                                        tempWidgetOptions.borderRadius = data.borderRadius;
+                                        tempWidgetOptions.thickness = data.thickness;
+                                        tempWidgetOptions.showBgColor = data.showBgColor !== false;
+                                        tempWidgetOptions.striped = data.striped;
+                                        tempWidgetOptions.animated = data.animated;
+                                        tempWidgetOptions.colorMode = data.colorMode || 'solid';
+                                        tempWidgetOptions.colorStops = data.colorStops ? JSON.parse(JSON.stringify(data.colorStops)) : null;
+                                    }
+                                } catch(err) {}
+                            }
+                        }
+                        renderWidgetOptions();
+                        updateDebugJson();
+                    };
+
+                    find('color-palette').onchange = e => {
+                        const val = e.target.value;
+                        if (isInternal) tempWidgetOptions.internalColorPaletteId = val;
+                        else tempWidgetOptions.colorPaletteId = val;
+                        
+                        if (val) {
+                            const palette = allConfigs.find(c => c.configId === val);
+                            if (palette) {
+                                try {
+                                    const data = JSON.parse(palette.stylingJson || palette.configJson || '{}');
+                                    const paletteColors = data.colors || [];
+                                    if (paletteColors.length > 0) {
+                                        const newStops = paletteColors.map((c, i) => ({
+                                            value: paletteColors.length > 1 ? Math.round((i / (paletteColors.length - 1)) * 100) : 0,
+                                            color: c.hex
+                                        }));
+                                        if (isInternal) tempWidgetOptions.internalColorStops = newStops;
+                                        else tempWidgetOptions.colorStops = newStops;
+                                        
+                                        // Ensure mode is dynamic-gradient to show the stops
+                                        if (isInternal) tempWidgetOptions.internalColorMode = 'dynamic-gradient';
+                                        else tempWidgetOptions.colorMode = 'dynamic-gradient';
+                                        
+                                        renderWidgetOptions(); // Full refresh to update dropdowns and stops list
+                                    }
+                                } catch(err) {}
+                            }
+                        }
+                        updateDebugJson();
+                    };
+
+                    find('label-pos').onchange = e => {
+                        if (isInternal) tempWidgetOptions.internalLabelPosition = e.target.value;
+                        else tempWidgetOptions.labelPosition = e.target.value;
+                        updateDebugJson();
+                    };
+
+                    find('color').onchange = e => {
+                        if (isInternal) tempWidgetOptions.internalMainColor = e.target.value;
+                        else tempWidgetOptions.mainColor = e.target.value;
+                        updateDebugJson();
+                    };
+
+                    find('show-bg').onchange = e => {
+                        if (isInternal) tempWidgetOptions.internalShowBgColor = e.target.checked;
+                        else tempWidgetOptions.showBgColor = e.target.checked;
+                        find('bgcolor').disabled = !e.target.checked;
+                        updateDebugJson();
+                    };
+
+                    find('bgcolor').onchange = e => {
+                        if (isInternal) tempWidgetOptions.internalBgColor = e.target.value;
+                        else tempWidgetOptions.bgColor = e.target.value;
+                        updateDebugJson();
+                    };
+
+                    find('radius').oninput = e => {
+                        const v = parseInt(e.target.value, 10);
+                        if (isInternal) tempWidgetOptions.internalBorderRadius = v;
+                        else tempWidgetOptions.borderRadius = v;
+                        updateDebugJson();
+                    };
+
+                    find('thick').onchange = e => {
+                        if (isInternal) tempWidgetOptions.internalThickness = e.target.value;
+                        else tempWidgetOptions.thickness = e.target.value;
+                        updateDebugJson();
+                    };
+
+                    find('mode').onchange = e => {
+                        const mode = e.target.value;
+                        if (isInternal) tempWidgetOptions.internalColorMode = mode;
+                        else tempWidgetOptions.colorMode = mode;
+                        
+                        find('stops-container').style.display = mode === 'solid' ? 'none' : 'block';
+                        if (mode !== 'solid') {
+                            const stops = isInternal ? tempWidgetOptions.internalColorStops : tempWidgetOptions.colorStops;
+                            if (!stops || stops.length === 0) {
+                                const initialStops = [{value: 0, color: '#ff4d4d'}, {value: 100, color: '#4caf50'}];
+                                if (isInternal) tempWidgetOptions.internalColorStops = initialStops;
+                                else tempWidgetOptions.colorStops = initialStops;
+                            }
+                            renderCurrentStops();
+                        }
+                        updateDebugJson();
+                    };
+
+                    find('add-stop').onclick = (e) => {
+                        e.preventDefault(); e.stopPropagation();
+                        let stops = isInternal ? tempWidgetOptions.internalColorStops : tempWidgetOptions.colorStops;
+                        if (!stops) {
+                            stops = [];
+                            if (isInternal) tempWidgetOptions.internalColorStops = stops;
+                            else tempWidgetOptions.colorStops = stops;
+                        }
+                        stops.push({ value: 50, color: '#ffcc00' });
+                        renderCurrentStops();
+                        updateDebugJson();
+                    };
+
+                    const striped = find('striped');
+                    if (striped) striped.onchange = e => { tempWidgetOptions.striped = e.target.checked; updateDebugJson(); };
+                    const animated = find('animated');
+                    if (animated) animated.onchange = e => { tempWidgetOptions.animated = e.target.checked; updateDebugJson(); };
+
+                    // Initial render of stops
+                    const mode = isInternal ? (tempWidgetOptions.internalColorMode || 'solid') : (tempWidgetOptions.colorMode || 'solid');
+                    if (mode !== 'solid') renderCurrentStops();
+                };
+
+                widgetOptionsContainer.querySelector('#fs-pb-type').onchange = e => { tempWidgetOptions.progressType = e.target.value; renderWidgetOptions(); updateDebugJson(); };
+                widgetOptionsContainer.querySelector('#fs-pb-show-internal').onchange = e => { tempWidgetOptions.showInternalBar = e.target.checked; renderWidgetOptions(); updateDebugJson(); };
+                
+                const intCol = widgetOptionsContainer.querySelector('#fs-pb-internal-col');
+                if (intCol) intCol.onchange = e => { tempWidgetOptions.internalBarColId = e.target.value; updateDebugJson(); };
+
+                const sz = widgetOptionsContainer.querySelector('#fs-pb-size');
+                if (sz) sz.oninput = e => { tempWidgetOptions.size = parseInt(e.target.value, 10); updateDebugJson(); };
+                
+                const fbg = widgetOptionsContainer.querySelector('#fs-pb-field-bg');
+                const ufbg = widgetOptionsContainer.querySelector('#fs-pb-use-field-bg');
+                if (ufbg) {
+                    ufbg.onchange = e => {
+                        tempWidgetOptions.useFieldBg = e.target.checked;
+                        fbg.disabled = !e.target.checked;
+                        if (e.target.checked && !tempWidgetOptions.fieldBgColor) tempWidgetOptions.fieldBgColor = '#ffffff';
+                        updateDebugJson();
+                    };
+                    fbg.onchange = e => { tempWidgetOptions.fieldBgColor = e.target.value; updateDebugJson(); };
+                }
+
+                const fbcol = widgetOptionsContainer.querySelector('#fs-pb-field-border-color');
+                const fbw = widgetOptionsContainer.querySelector('#fs-pb-field-border-width');
+                if (fbcol) fbcol.onchange = e => { tempWidgetOptions.fieldBorderColor = e.target.value; updateDebugJson(); };
+                if (fbw) fbw.oninput = e => { tempWidgetOptions.fieldBorderWidth = parseInt(e.target.value, 10); updateDebugJson(); };
+                
+                const fop = widgetOptionsContainer.querySelector('#fs-pb-field-opacity');
+                if (fop) fop.oninput = e => {
+                    tempWidgetOptions.fieldOpacity = parseInt(e.target.value, 10) / 100;
+                    widgetOptionsContainer.querySelector('#fs-pb-field-opacity-val').textContent = `${e.target.value}%`;
+                    updateDebugJson();
+                };
+                const fsh = widgetOptionsContainer.querySelector('#fs-pb-field-shadow');
+                if (fsh) fsh.onchange = e => { tempWidgetOptions.fieldShadow = e.target.checked; updateDebugJson(); };
+
+                const bgm = widgetOptionsContainer.querySelector('#fs-pb-circular-bg-mode');
+                if (bgm) bgm.onchange = e => { tempWidgetOptions.circularBgMode = e.target.value; updateDebugJson(); };
+                
+                const outl = widgetOptionsContainer.querySelector('#fs-pb-circular-outline');
+                if (outl) outl.onchange = e => { tempWidgetOptions.circularOutline = e.target.value; updateDebugJson(); };
+
+                setupStylingListeners('fs-pb-ext', false);
+                if (showInternal) setupStylingListeners('fs-pb-int', true);
+
             } else if (widgetType === 'Image') {
                 const sizes = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 150, 200, 250, 500];
                 const sizeOptions = sizes.map(s => `<option value="${s}" ${tempWidgetOptions.imageSize === String(s) ? 'selected' : ''}>${s}px</option>`).join('');
