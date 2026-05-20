@@ -64,7 +64,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (response.ok) {
                 filterBarContainer.innerHTML = await response.text();
                 new GristFilterBar({
-                    onFilter: (searchTerm) => CardSystem.filterRecords(searchTerm)
+                    onFilter: (searchTerm) => CardSystem.filterRecords(cardContainer, searchTerm)
                 });
             }
         } catch (e) { console.error('Erro ao carregar barra de filtros:', e); }

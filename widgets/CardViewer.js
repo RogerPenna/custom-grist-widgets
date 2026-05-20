@@ -46,8 +46,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
 
-            const targetType = (data.componentType || '').replace(/\s+/g, '').toLowerCase();
+            let targetType = (data.componentType || '').replace(/\s+/g, '').toLowerCase();
             
+            // If targetType is empty, resolve it dynamically from targetConfigId
+            if (!targetType && data.configId) {
+                try {
+                    const targetConfig = await tableLens.fetchConfig(data.configId);
+                    if (targetConfig) {
+                        targetType = (targetConfig.componentType || targetConfig.mapping?.componentType || '').replace(/\s+/g, '').toLowerCase();
+                    }
+                } catch (err) {
+                    console.warn("[CardViewer] Falha ao resolver tipo do widget alvo:", err);
+                }
+            }
+
             // No CardViewer, ele só processa se o alvo for um tipo suportado para drill-down no mesmo local
             // Se o targetType for vazio, assumimos que é compatível (legado ou default)
             const isCompatible = !targetType || ['cardsystem', 'table', 'bsc', 'indicators'].includes(targetType);
@@ -57,7 +69,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 await loadDynamicWidget(data.configId, {
                     value: data.filterValue,
                     column: data.filterTargetColumn,
-                    sourceLabel: data.sourceRecord?.Label || data.sourceRecord?.label || data.sourceRecord?.id || 'Filtrado'
+                    sourceLabel: data.sourceRecord?.Label || data.sourceRecord?.label || data.sourceRecord?.id || 'Filtrado',
+                    disableFiltering: data.disableFiltering
                 });
             } else {
                 console.log("[CardViewer] Tipo de componente não compatível para drill-down inline:", targetType);
@@ -163,7 +176,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (response.ok) {
                 filterBarContainer.innerHTML = await response.text();
                 new GristFilterBar({
-                    onFilter: (searchTerm) => CardSystem.filterRecords(searchTerm)
+                    onFilter: (searchTerm) => CardSystem.filterRecords(cardsContentArea, searchTerm)
                 });
             }
         } catch (e) { console.error('Erro ao carregar barra de filtros:', e); }
@@ -234,55 +247,157 @@ document.addEventListener('DOMContentLoaded', async () => {
                 tableLens.getTableSchema(tableId, { mode: 'raw' })
             ]);
 
-            // Aplicar Filtro Externo (Drill-down)
-            if (currentFilter && currentFilter.column && currentFilter.value) {
-                console.log(`[CardViewer] Aplicando filtro drill-down: ${currentFilter.column} = ${currentFilter.value}`);
-                records = records.filter(r => {
-                    const val = r[currentFilter.column];
-                    if (Array.isArray(val)) return val.includes(currentFilter.value);
-                    return val == currentFilter.value;
+            // Resolve component type
+            let type = currentConfig.componentType || currentConfig.mapping?.componentType;
+            if (!type) {
+                const rawRecord = await tableLens.findRecord('Grf_config', { configId: currentConfigId });
+                type = rawRecord?.componentType;
+            }
+            type = (type || 'cardsystem').replace(/\s+/g, '').toLowerCase();
+
+            if (type === 'cardsystem') {
+                // Aplicar Filtro Externo (Drill-down)
+                if (currentFilter && currentFilter.column && currentFilter.value && !currentFilter.disableFiltering) {
+                    console.log(`[CardViewer] Aplicando filtro drill-down: ${currentFilter.column} = ${currentFilter.value}`);
+                    records = records.filter(r => {
+                        const val = r[currentFilter.column];
+                        if (Array.isArray(val)) return val.includes(currentFilter.value);
+                        return val == currentFilter.value;
+                    });
+                }
+
+                Object.keys(cleanSchema).forEach(colId => {
+                    if (rawSchema[colId] && rawSchema[colId].description) {
+                        cleanSchema[colId].description = rawSchema[colId].description;
+                    }
+                });
+
+                cardsContentArea.innerHTML = '';
+
+                // Lógica para Estado Vazio (Empty State)
+                if (records.length === 0) {
+                    const showAddTop = currentConfig.showAddButtonTop || currentConfig.actions?.showAddButtonTop;
+                    const showAddBottom = currentConfig.showAddButtonBottom || currentConfig.actions?.showAddButtonBottom;
+
+                    if (showAddTop || showAddBottom) {
+                        const empty = document.createElement('div');
+                        empty.className = 'empty-state-container';
+                        empty.innerHTML = `<p style="font-size:12px; font-weight:600; margin-bottom:10px;">Nenhum registro encontrado</p>`;
+                        empty.appendChild(createAddButton('empty'));
+                        cardsContentArea.appendChild(empty);
+                    } else {
+                        cardsContentArea.innerHTML = '<div class="status-placeholder">Nenhum registro encontrado.</div>';
+                    }
+                    return;
+                }
+
+                // 1. Botão Topo (Discreto)
+                if (currentConfig.showAddButtonTop || currentConfig.actions?.showAddButtonTop) {
+                    cardsContentArea.appendChild(createAddButton('top'));
+                }
+
+                // 2. Cards
+                const cardsWrapper = document.createElement('div');
+                cardsWrapper.className = 'cards-wrapper';
+                CardSystem.renderCards(cardsWrapper, records, { ...currentConfig, tableLens }, cleanSchema); 
+                cardsContentArea.appendChild(cardsWrapper);
+
+                // 3. Botão Rodapé (Discreto)
+                if (currentConfig.showAddButtonBottom || currentConfig.actions?.showAddButtonBottom) {
+                    cardsContentArea.appendChild(createAddButton('bottom'));
+                }
+            }
+            else if (type === 'table') {
+                const { TableRenderer } = await import('../libraries/grist-table-renderer/TableRenderer.js');
+                let tableRecords = await tableLens.fetchTableRecords(tableId);
+
+                // Aplicar Filtro Externo (Drill-down)
+                if (currentFilter && currentFilter.column && currentFilter.value && !currentFilter.disableFiltering) {
+                    tableRecords = tableRecords.filter(r => {
+                        const val = r[currentFilter.column];
+                        if (Array.isArray(val)) return val.includes(currentFilter.value);
+                        return val == currentFilter.value;
+                    });
+                }
+
+                cardsContentArea.innerHTML = '';
+                const tableDiv = document.createElement('div');
+                tableDiv.style.height = '100%';
+                cardsContentArea.appendChild(tableDiv);
+                await TableRenderer.renderTable({
+                    container: tableDiv,
+                    records: tableRecords,
+                    config: currentConfig,
+                    tableLens,
+                    onRowClick: async (record, mode) => {
+                        if (currentConfig.editMode === 'drawer' && currentConfig.drawerId) {
+                            const drawerCfg = await tableLens.fetchConfig(currentConfig.drawerId);
+                            window.GristDrawer.open(currentConfig.tableId, record.id, { 
+                                ...drawerCfg, 
+                                tableLens,
+                                mode: mode || 'view'
+                            });
+                        }
+                    }
                 });
             }
+            else if (type === 'bsc') {
+                const { BSCRenderer } = await import('../libraries/grist-bsc-renderer/BSCRenderer.js');
+                const mapping = currentConfig.mapping || currentConfig || {};
+                const tableNames = {
+                    modelsTable: mapping.modelsTable || 'Modelos',
+                    perspectivesTable: mapping.perspectivesTable || 'Perspectivas',
+                    objectivesTable: mapping.objectivesTable || 'Objetivos',
+                    refModelCol: mapping.refModelCol || 'ref_model',
+                    refPerspCol: mapping.refPerspCol || 'ref_persp',
+                    relationshipField: mapping.relationshipField || 'ref_obj'
+                };
 
-            Object.keys(cleanSchema).forEach(colId => {
-                if (rawSchema[colId] && rawSchema[colId].description) {
-                    cleanSchema[colId].description = rawSchema[colId].description;
-                }
-            });
-
-            cardsContentArea.innerHTML = '';
-
-            // Lógica para Estado Vazio (Empty State)
-            if (records.length === 0) {
-                const showAddTop = currentConfig.showAddButtonTop || currentConfig.actions?.showAddButtonTop;
-                const showAddBottom = currentConfig.showAddButtonBottom || currentConfig.actions?.showAddButtonBottom;
-
-                if (showAddTop || showAddBottom) {
-                    const empty = document.createElement('div');
-                    empty.className = 'empty-state-container';
-                    empty.innerHTML = `<p style="font-size:12px; font-weight:600; margin-bottom:10px;">Nenhum registro encontrado</p>`;
-                    empty.appendChild(createAddButton('empty'));
-                    cardsContentArea.appendChild(empty);
+                let currentModelId = null;
+                if (currentFilter && currentFilter.value) {
+                    currentModelId = Number(currentFilter.value);
                 } else {
-                    cardsContentArea.innerHTML = '<div class="status-placeholder">Nenhum registro encontrado.</div>';
+                    const allModels = await tableLens.fetchTableRecords(tableNames.modelsTable);
+                    if (allModels && allModels.length > 0) {
+                        currentModelId = allModels[0].id;
+                    }
                 }
-                return;
+
+                if (!currentModelId) {
+                    cardsContentArea.innerHTML = '<div class="status-placeholder">Nenhum modelo encontrado para exibir o BSC.</div>';
+                    return;
+                }
+
+                const bscData = await BSCRenderer.fetchFullBscStructure(currentModelId, tableLens, tableNames);
+                cardsContentArea.innerHTML = '';
+                await BSCRenderer.renderBsc({
+                    container: cardsContentArea,
+                    bscData: bscData,
+                    config: currentConfig,
+                    tableLens: tableLens,
+                    showRelationships: true
+                });
             }
-
-            // 1. Botão Topo (Discreto)
-            if (currentConfig.showAddButtonTop || currentConfig.actions?.showAddButtonTop) {
-                cardsContentArea.appendChild(createAddButton('top'));
+            else if (type === 'indicators') {
+                const { IndicatorsRenderer } = await import('../libraries/grist-indicators-renderer/IndicatorsRenderer.js');
+                const [indRecords, configs] = await Promise.all([
+                    tableLens.fetchTableRecords(tableId),
+                    tableLens.fetchTableRecords('Grf_config')
+                ]);
+                cardsContentArea.innerHTML = '';
+                const currentYear = new Date().getFullYear().toString();
+                const styling = currentConfig.styling || {};
+                
+                const wrapper = document.createElement('div');
+                wrapper.className = 'indicators-wrapper';
+                cardsContentArea.appendChild(wrapper);
+                
+                for (const rec of indRecords) {
+                    await IndicatorsRenderer.renderIndicatorRow(wrapper, rec, currentConfig, currentYear, styling, configs, tableLens);
+                }
             }
-
-            // 2. Cards
-            const cardsWrapper = document.createElement('div');
-            cardsWrapper.className = 'cards-wrapper';
-            CardSystem.renderCards(cardsWrapper, records, { ...currentConfig, tableLens }, cleanSchema); 
-            cardsContentArea.appendChild(cardsWrapper);
-
-            // 3. Botão Rodapé (Discreto)
-            if (currentConfig.showAddButtonBottom || currentConfig.actions?.showAddButtonBottom) {
-                cardsContentArea.appendChild(createAddButton('bottom'));
+            else {
+                cardsContentArea.innerHTML = `<div class="status-placeholder">Tipo de componente "${currentConfig.componentType}" não suportado.</div>`;
             }
 
         } catch (e) {

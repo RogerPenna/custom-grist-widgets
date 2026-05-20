@@ -11,14 +11,8 @@ import { publish } from '../grist-event-bus/grist-event-bus.js';
  *******************************************************************/
 export const CardSystem = (() => {
   //--------------------------------------------------------------------
-  // 1) Internal State + Defaults
+  // 1) Defaults
   //--------------------------------------------------------------------
-  let _displayedRecords = []; // Store currently displayed records
-  let _lastOptions = {};      // Store last options for filtering
-  let _lastSchema = {};       // Store last schema for filtering
-  let _container = null;      // Store the container element
-  let _originalRecords = [];  // Store the original, unfiltered records
-
   const DEFAULT_FIELD_STYLE = {
     labelVisible: true, labelPosition: 'above', labelFont: 'inherit', labelFontSize: 'inherit', labelColor: 'inherit', labelAllCaps: false, labelOutline: false, labelOutlineColor: '#ffffff', dataJustify: 'left', dataAllCaps: false, heightLimited: false, maxHeightRows: 1, isTitleField: false
   };
@@ -36,6 +30,9 @@ export const CardSystem = (() => {
     cardTitleFontColor: "#000000", cardTitleFontStyle: "Calibri", cardTitleFontSize: "20px", cardTitleAllCaps: false,
     cardTitleTopBarEnabled: false, cardTitleTopBarMode: "solid", cardTitleTopBarSolidColor: "#dddddd", cardTitleTopBarGradientType: "linear-gradient(to right, {c1}, {c2})", cardTitleTopBarGradientColor1: "#dddddd", cardTitleTopBarGradientColor2: "#cccccc", cardTitleTopBarLabelFontColor: "#000000", cardTitleTopBarLabelFontStyle: "Calibri", cardTitleTopBarLabelFontSize: "16px", cardTitleTopBarLabelAllCaps: false, cardTitleTopBarDataFontColor: "#333333", cardTitleTopBarDataFontStyle: "Calibri", cardTitleTopBarDataFontSize: "16px", cardTitleTopBarDataAllCaps: false,
     handleAreaWidth: "8px", handleAreaMode: "solid", handleAreaSolidColor: "#40E0D0",
+    handleAreaOverlayEffect: "darken", handleAreaOverlayOpacity: 10,
+    handleAreaField: null,
+    handleAreaTitleField: null, handleAreaTitleColor: "#ffffff", handleAreaTitleFontSize: "10px", handleAreaTitleAllCaps: false,
     widgetPadding: "10px", cardsSpacing: "15px",
     cardTitleTopBarApplyText: false,
     selectedCard: { enabled: false, scale: 1.05, colorEffect: "none" }
@@ -80,11 +77,11 @@ export const CardSystem = (() => {
   //--------------------------------------------------------------------
   // 2) Public renderCards(container, records, options, schema)
   //--------------------------------------------------------------------
-  async function renderCards(container, records, options, schema) { // Added async
+  async function renderCards(container, records, options, schema) {
     _injectTooltipStyles();
-    await loadIcons(); // Call loadIcons here
+    await loadIcons();
     const currentOptions = options || {};
-    const tableLens = currentOptions.tableLens; // Extract tableLens
+    const tableLens = currentOptions.tableLens;
     const styling = { ...DEFAULT_STYLING, ...currentOptions.styling, selectedCard: { ...DEFAULT_STYLING.selectedCard, ...(currentOptions.styling?.selectedCard || {}) } };
     const layout = currentOptions.layout || [];
     
@@ -104,29 +101,22 @@ export const CardSystem = (() => {
         });
     }
 
-    // Store records for filtering and display
-    _displayedRecords = processedRecords;
-    if (_originalRecords.length === 0) { // Only set original records on initial load
-      _originalRecords = records;
-    }
-    _lastOptions = currentOptions;
-    _lastSchema = schema;
-    _container = container;
+    // ARMAZENA ESTADO NO CONTAINER (Evita estado global compartilhado entre instâncias)
+    container._csRecords = processedRecords;
+    container._csOriginalRecords = records;
+    container._csOptions = currentOptions;
+    container._csSchema = schema;
 
     container.innerHTML = "";
     if (!processedRecords || !processedRecords.length) {
       container.textContent = "No records found.";
-      // Mesmo sem registros, aplicamos o fundo ao body
-      _applyWidgetBackground(styling, currentOptions);
+      _applyWidgetBackground(container, styling, currentOptions);
       return;
     }
 
-    // --- APLICAÇÃO DO FUNDO GLOBAL (BODY) ---
-    _applyWidgetBackground(styling, currentOptions);
-    
+    _applyWidgetBackground(container, styling, currentOptions);
     container.style.padding = currentOptions.isRefList ? '0px' : styling.widgetPadding;
 
-    // --- Grid Layout Logic (Final Fixed Version) ---
     const colLimit = styling.cardsColumnLimit || 1;
     const colMode = styling.cardsColumnMode || 'fixed';
     let numCols = colLimit;
@@ -139,27 +129,24 @@ export const CardSystem = (() => {
 
     container.style.display = 'grid';
     container.style.gridTemplateColumns = `repeat(${numCols}, 1fr)`;
-    container.style.gridAutoRows = 'min-content'; // Essential for nested grids
+    container.style.gridAutoRows = 'min-content';
     container.style.gap = styling.cardsSpacing;
-    // ---------------------------------------------------
 
-    // We use for...of to allow awaiting renderField calls properly
     for (const record of processedRecords) {
       const cardEl = document.createElement("div");
       cardEl.className = "cs-card";
       
       const idPrefix = currentOptions.tableId ? `${currentOptions.tableId}-` : '';
-      cardEl.id = `record-${idPrefix}${record.id}`; // ID for linking (e.g., record-Objetivos-1)
+      cardEl.id = `record-${idPrefix}${record.id}`;
       
-      cardEl.dataset.recordId = record.id; // Data attribute for finding
+      cardEl.dataset.recordId = record.id;
       cardEl.dataset.tableId = currentOptions.tableId || '';
       cardEl.style.display = "grid";
       cardEl.style.gridTemplateRows = `repeat(${numRows}, auto)`;
       
       cardEl.style.gridTemplateColumns = `repeat(${NUM_COLS}, 1fr)`;
       cardEl.style.gap = "4px";
-      // cardEl.style.marginBottom = styling.cardsSpacing; // Removed: grid gap handles spacing now
-      cardEl.style.alignSelf = "start"; // Essential: Prevent vertical stretching
+      cardEl.style.alignSelf = "start";
       cardEl.style.borderRadius = "8px";
       cardEl.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)";
       cardEl.style.position = "relative";
@@ -167,27 +154,23 @@ export const CardSystem = (() => {
       cardEl.style.transition = "all 0.2s ease-in-out";
 
       const internalPadding = parseInt(styling.internalCardPadding, 10) || 10;
-      const handleWidth = parseInt(styling.handleAreaWidth, 10); // Don't default to 8 if 0
+      const handleWidth = parseInt(styling.handleAreaWidth, 10);
 
       cardEl.style.padding = `${internalPadding}px`;
       cardEl.style.paddingLeft = `${internalPadding + handleWidth}px`;
 
-      let finalCardColor = styling.cardsColorSolidColor; // Default fallback
+      let finalCardColor = styling.cardsColorSolidColor;
 
-      // --- INÍCIO DA LÓGICA DE ESTILO DO CARD ATUALIZADA ---
       if (styling.cardsColorMode === 'conditional' && styling.cardsColorField) {
         const colSchema = schema[styling.cardsColorField];
         if (colSchema) {
           const fieldStyle = getFieldStyle(record, colSchema, schema);
-          // Aplica a cor de fundo (com fallback para a cor sólida padrão)
           finalCardColor = fieldStyle.fillColor || styling.cardsColorSolidColor;
           cardEl.style.background = finalCardColor;
-          // APLICA A COR DE TEXTO SE A OPÇÃO ESTIVER MARCADA
           if (styling.cardsColorApplyText && fieldStyle.textColor) {
             cardEl.style.color = fieldStyle.textColor;
           }
         } else {
-          // Fallback se o campo configurado não for encontrado no schema
           cardEl.style.background = styling.cardsColorSolidColor;
         }
       } else if (styling.cardsColorMode === 'text-value') {
@@ -208,9 +191,9 @@ export const CardSystem = (() => {
               finalCardColor = bgVal;
               cardEl.style.background = bgVal;
           } else {
-              cardEl.style.background = styling.cardsColorSolidColor; // Fallback to configured solid color
+              cardEl.style.background = styling.cardsColorSolidColor;
           }
-          if (styling.cardsColorApplyText && styling.cardsColorFontField) { // Apply font color if configured
+          if (styling.cardsColorApplyText && styling.cardsColorFontField) {
                const fontVal = record[styling.cardsColorFontField];
                if (fontVal) cardEl.style.color = fontVal;
           }
@@ -222,11 +205,9 @@ export const CardSystem = (() => {
           finalCardColor = `rgba(${rgb}, ${opacity})`;
           cardEl.style.background = finalCardColor;
       } else {
-        // This is the true fallback for solid color if no field is specified, or for gradient
         finalCardColor = resolveStyle(record, schema, styling.cardsColorMode, styling.cardsColorSolidColor, { type: styling.cardsColorGradientType, c1: styling.cardsColorGradientColor1, c2: styling.cardsColorGradientColor2 }, styling.cardsColorField);
         cardEl.style.background = finalCardColor;
       }
-      // --- FIM DA LÓGICA DE ESTILO DO CARD ATUALIZADA ---
 
       if (styling.cardBorderThickness > 0) {
         const borderColor = resolveStyle(record, schema, styling.cardBorderMode, styling.cardBorderSolidColor, null, styling.cardBorderField);
@@ -241,12 +222,52 @@ export const CardSystem = (() => {
       handleEl.style.top = "0";
       handleEl.style.bottom = "0";
       handleEl.style.width = styling.handleAreaWidth;
-      handleEl.style.background = resolveStyle(record, schema, styling.handleAreaMode, styling.handleAreaSolidColor, null, styling.handleAreaField);
+      
+      let handleBg;
+      if (styling.handleAreaMode === 'overlay') {
+          const opacity = (parseInt(styling.handleAreaOverlayOpacity, 10) || 0) / 100;
+          const isDarken = styling.handleAreaOverlayEffect === 'darken';
+          const rgb = isDarken ? '0, 0, 0' : '255, 255, 255';
+          handleBg = `rgba(${rgb}, ${opacity})`;
+      } else {
+          handleBg = resolveStyle(record, schema, styling.handleAreaMode, styling.handleAreaSolidColor, null, styling.handleAreaField);
+      }
+      handleEl.style.background = handleBg;
       handleEl.style.borderTopLeftRadius = "8px";
       handleEl.style.borderBottomLeftRadius = "8px";
+
+      if (styling.handleAreaTitleField && record[styling.handleAreaTitleField] !== undefined && record[styling.handleAreaTitleField] !== null) {
+          const titleText = String(record[styling.handleAreaTitleField]);
+          if (titleText.trim() !== "") {
+              const titleEl = document.createElement("div");
+              titleEl.className = "cs-handle-title";
+              titleEl.textContent = styling.handleAreaTitleAllCaps ? titleText.toUpperCase() : titleText;
+              titleEl.style.position = "absolute";
+              titleEl.style.left = "0";
+              titleEl.style.top = "0";
+              titleEl.style.width = "100%";
+              titleEl.style.height = "100%";
+              titleEl.style.display = "flex";
+              titleEl.style.alignItems = "center";
+              titleEl.style.justifyContent = "center";
+              titleEl.style.writingMode = "vertical-rl";
+              titleEl.style.transform = "rotate(180deg)";
+              titleEl.style.whiteSpace = "normal";
+              titleEl.style.wordBreak = "break-word";
+              titleEl.style.textAlign = "center";
+              titleEl.style.padding = "2px";
+              titleEl.style.boxSizing = "border-box";
+              titleEl.style.color = styling.handleAreaTitleColor || "#ffffff";
+              titleEl.style.fontSize = styling.handleAreaTitleFontSize || "10px";
+              titleEl.style.fontWeight = "bold";
+              titleEl.style.pointerEvents = "none";
+              handleEl.appendChild(titleEl);
+          }
+      }
+
       cardEl.appendChild(handleEl);
       
-      if (handleWidth === 0) { // If width is 0, hide the handle completely
+      if (handleWidth === 0) {
         handleEl.style.display = "none";
       }
 
@@ -280,12 +301,7 @@ export const CardSystem = (() => {
           const colSchema = schema[styling.cardTitleTopBarField];
           if (colSchema) {
             const fieldStyle = getFieldStyle(record, colSchema, schema);
-
-            // Aplica a cor de fundo (com fallback)
             topBarEl.style.background = fieldStyle.fillColor || styling.cardTitleTopBarSolidColor;
-
-            // APLICA A COR DE TEXTO SE A OPÇÃO ESTIVER MARCADA
-            // Nota: Isso afetará os labels "Label Style" e "Data Style" se eles não tiverem uma cor própria definida.
             if (styling.cardTitleTopBarApplyText && fieldStyle.textColor) {
               topBarEl.style.color = fieldStyle.textColor;
             }
@@ -293,7 +309,6 @@ export const CardSystem = (() => {
             topBarEl.style.background = styling.cardTitleTopBarSolidColor;
           }
         } else {
-          // A lógica antiga para Solid e Gradient permanece
           topBarEl.style.background = resolveStyle(record, schema, styling.cardTitleTopBarMode, styling.cardTitleTopBarSolidColor, { type: styling.cardTitleTopBarGradientType, c1: styling.cardTitleTopBarGradientColor1, c2: styling.cardTitleTopBarGradientColor2 }, styling.cardTitleTopBarField);
         }
         topBarEl.style.borderTopLeftRadius = "8px";
@@ -317,7 +332,6 @@ export const CardSystem = (() => {
             tContainer.appendChild(lblEl);
           }
           const dataEl = document.createElement("div");
-          // dataEl.textContent = String(record[f.colId] ?? ""); // LEGACY
           dataEl.style.fontFamily = styling.cardTitleTopBarDataFontStyle;
           dataEl.style.fontSize = styling.cardTitleTopBarDataFontSize;
           dataEl.style.color = styling.cardTitleTopBarDataFontColor;
@@ -338,8 +352,6 @@ export const CardSystem = (() => {
         }
       }
 
-
-
       for (const f of layout) {
         if (f.isIconGroup) {
           const actions = currentOptions.actions || {};
@@ -354,15 +366,11 @@ export const CardSystem = (() => {
           groupContainer.style.gap = "8px";
           groupContainer.style.alignItems = "center";
           
-          // Vertical Offset
           if (groupConfig.verticalOffset) {
               groupContainer.style.transform = `translateY(${groupConfig.verticalOffset}px)`;
-              // Ensure it can overlap if needed, though grid cells might clip. 
-              // z-index might be needed if it goes outside.
               groupContainer.style.zIndex = "10"; 
           }
 
-          // Visibility Logic
           const isHoverOnly = groupConfig.visibilityMode === 'hover';
           if (isHoverOnly) {
               groupContainer.style.opacity = "0";
@@ -387,35 +395,30 @@ export const CardSystem = (() => {
             const actionButton = document.createElement("button");
             actionButton.className = "cs-action-button";
             
-            // --- New Styling Logic (Updated) ---
             const isText = buttonConfig.buttonStyle === 'text';
             const shape = groupConfig.shape || 'square';
             const fgColor = groupConfig.iconColor || '#000000';
             const borderWidth = groupConfig.borderWidth !== undefined ? groupConfig.borderWidth : 1;
             
-            // Calculate Background
             let bgColor = '#f0f0f0';
             if (groupConfig.bgMode === 'transparent') {
                 bgColor = 'transparent';
             } else if (groupConfig.bgMode === 'solid') {
                 bgColor = groupConfig.backgroundColor || '#f0f0f0';
             } else if (groupConfig.bgMode === 'overlay') {
-                // Adaptive/Overlay (standalone config)
                 const op = (parseInt(groupConfig.overlayOpacity, 10) || 20) / 100;
                 const rgb = groupConfig.overlayEffect === 'darken' ? '0,0,0' : '255,255,255';
                 bgColor = `rgba(${rgb}, ${op})`;
             } else if (groupConfig.bgMode === 'match-card') {
-                // Match Card Color + Adjust
                 const effect = groupConfig.overlayEffect || 'lighten';
                 const opacity = groupConfig.overlayOpacity || 20;
                 bgColor = adjustColor(finalCardColor, opacity, effect);
             } else {
-                // Fallback for legacy
                 bgColor = groupConfig.transparentBackground ? 'transparent' : (groupConfig.backgroundColor || '#f0f0f0');
             }
 
             if (isText) {
-                actionButton.textContent = (buttonConfig.text || 'Tx').substring(0, 3); // Limit length
+                actionButton.textContent = (buttonConfig.text || 'Tx').substring(0, 3);
                 actionButton.style.fontFamily = 'sans-serif';
                 actionButton.style.fontWeight = 'bold';
                 actionButton.style.fontSize = '20px';
@@ -423,7 +426,6 @@ export const CardSystem = (() => {
                 actionButton.innerHTML = getIcon(buttonConfig.icon || 'icon-link');
             }
 
-            // Tooltip Action Special Handling
             if (buttonConfig.actionType === 'showTooltipField' && buttonConfig.tooltipField) {
                 const val = record[buttonConfig.tooltipField];
                 if (val !== undefined && val !== null) {
@@ -433,23 +435,16 @@ export const CardSystem = (() => {
                 actionButton.title = buttonConfig.tooltip || '';
             }
 
-            // --- ENHANCEMENT: Record Count Tooltip ---
             const shouldShowCount = (buttonConfig.actionType === 'triggerWidget' || buttonConfig.actionType === 'navigate') && 
                                     buttonConfig.targetTable && tableLens;
             
             if (shouldShowCount) {
-                // Initialize tooltip with loading state if it has a label
                 const baseTooltip = buttonConfig.tooltip || '';
-                
-                // Asynchronously fetch count
                 (async () => {
                     try {
                         const targetTableId = buttonConfig.targetTable;
                         const sourceTableId = record.gristHelper_tableId;
-                        
-                        // Find the relationship field in the target table
                         const relationColId = await tableLens.findRelationField(targetTableId, sourceTableId);
-                        
                         if (relationColId) {
                             const allTargetRecords = await tableLens.fetchTableRecords(targetTableId);
                             const relatedCount = allTargetRecords.filter(r => {
@@ -457,12 +452,8 @@ export const CardSystem = (() => {
                                 if (Array.isArray(val)) return val.includes(record.id);
                                 return val === record.id;
                             }).length;
-                            
                             const countText = ` (${relatedCount})`;
                             actionButton.title = baseTooltip ? `${baseTooltip}${countText}` : `${relatedCount} itens`;
-                            
-                            // Also add a little badge if there are items? 
-                            // For now just tooltip as requested.
                         }
                     } catch (err) {
                         console.error("[CardSystem] Error fetching related count for tooltip:", err);
@@ -473,24 +464,17 @@ export const CardSystem = (() => {
             const iconSize = styling.iconSize || 1.0;
             actionButton.style.width = `${32 * iconSize}px`;
             actionButton.style.height = `${32 * iconSize}px`;
-            
-            // Border Logic
             actionButton.style.border = groupConfig.borderColor ? `${borderWidth}px solid ${groupConfig.borderColor}` : `${borderWidth}px solid #ccc`;
-            
             actionButton.style.background = bgColor;
             actionButton.style.color = fgColor;
             actionButton.style.borderRadius = shape === 'circle' ? "50%" : "5px";
             
-            // SVG Fill color fix and Sizing
             const svgIcon = actionButton.querySelector('svg.icon');
             if (svgIcon) {
-                // Explicitly set fill/stroke to current color to ensure visibility
-                // We use the calculated fgColor which handles the contrast logic.
                 svgIcon.style.color = fgColor;
                 svgIcon.setAttribute('fill', 'currentColor');
                 svgIcon.setAttribute('stroke', 'currentColor');
-                
-                svgIcon.style.width = '85%'; // Increased from 75%
+                svgIcon.style.width = '85%';
                 svgIcon.style.height = '85%';
             }
 
@@ -504,11 +488,9 @@ export const CardSystem = (() => {
             actionButton.addEventListener('mouseenter', () => actionButton.style.opacity = '0.8');
             actionButton.addEventListener('mouseleave', () => actionButton.style.opacity = '1');
             
-            // --- Logic for special action types ---
             if (buttonConfig.actionType === 'moveRecord') {
                 actionButton.classList.add('cs-move-handle');
                 actionButton.style.cursor = 'grab';
-                // Force move icon if missing and not text style
                 if (!isText && (!buttonConfig.icon || buttonConfig.icon === 'icon-link')) {
                     buttonConfig.icon = 'icon-arrow-move';
                     actionButton.innerHTML = getIcon(buttonConfig.icon);
@@ -528,40 +510,31 @@ export const CardSystem = (() => {
             }
 
             actionButton.addEventListener("click", (e) => {
-              console.log(`[CardSystem] Action Button Clicked: ${buttonConfig.actionType}`, { recordId: record.id });
               e.stopPropagation();
-
-              if (buttonConfig.actionType === 'moveRecord') {
-                console.log("[CardSystem] Move handle clicked - ignoring click (use for drag)");
-                return;
-              }
+              if (buttonConfig.actionType === 'moveRecord') return;
 
               if (buttonConfig.actionType === 'triggerWidget') {
                 const configIdToPublish = buttonConfig.targetConfigId || currentOptions.configId;
-                if (!configIdToPublish) {
-                  console.warn("CardSystem: Cannot publish grf-trigger-widget. configId is missing in button configuration and current widget options.");
-                  return;
-                }
+                if (!configIdToPublish) return;
                 let rowIdsToPublish = [];
-                let filterValueToPublish = record.id; // Default to record.id
+                let filterValueToPublish = record.id;
 
                 if (buttonConfig.sourceRefListColumn) {
                   const refListValue = record[buttonConfig.sourceRefListColumn];
                   if (Array.isArray(refListValue) && refListValue[0] === 'L') {
                     rowIdsToPublish = refListValue.slice(1);
-                    filterValueToPublish = rowIdsToPublish; // Use the array of IDs for filtering
-                  } else {
-                    console.warn(`CardSystem: sourceRefListColumn '${buttonConfig.sourceRefListColumn}' is not a valid RefList in record. Falling back to record.id.`);
+                    filterValueToPublish = rowIdsToPublish;
                   }
                 }
 
                 publish('grf-trigger-widget', {
                   configId: configIdToPublish,
                   sourceRecord: record,
-                  rowIds: rowIdsToPublish, // Pass the array of row IDs
-                  filterValue: filterValueToPublish, // Pass either single ID or array of IDs
+                  rowIds: rowIdsToPublish,
+                  filterValue: filterValueToPublish,
                   componentType: buttonConfig.targetComponentType,
-                  filterTargetColumn: buttonConfig.filterTargetColumn
+                  filterTargetColumn: buttonConfig.filterTargetColumn,
+                  disableFiltering: buttonConfig.disableFiltering
                 });
               } else {
                 publish('grf-navigation-action-triggered', {
@@ -586,9 +559,7 @@ export const CardSystem = (() => {
           const fieldBox = document.createElement("div");
           fieldBox.style.gridRow = `${f.row + 1} / span ${f.rowSpan || 1}`;
           fieldBox.style.gridColumn = `${f.col + 1} / span ${f.colSpan || 1}`;
-          if (f.row === 0) {
-            console.log(`Applying style to ${f.colId}:`, fieldBox.style.gridColumn);
-          } fieldBox.style.padding = "4px";
+          fieldBox.style.padding = "4px";
 
           if (styling.fieldBackground?.enabled) {
             const cardBaseColor = resolveStyle(record, schema, styling.cardsColorMode, styling.cardsColorSolidColor, null, styling.cardsColorField);
@@ -598,59 +569,43 @@ export const CardSystem = (() => {
 
           fieldBox.style.display = "flex";
           fieldBox.style.flexDirection = (fieldStyle.labelPosition === 'left' ? "row" : "column");
-          
-          // Fix for spacing issue when label is hidden:
-          // Only apply gap if label is visible
           fieldBox.style.gap = fieldStyle.labelVisible ? (fieldStyle.labelPosition === 'left' ? "8px" : "2px") : "0px";
-          
           fieldBox.style.alignItems = (fieldStyle.labelPosition === 'left' ? "center" : "stretch");
 
           if (fieldStyle.labelVisible) {
             const labelEl = document.createElement("div");
             const fieldSchema = schema ? schema[f.colId] : null;
             let labelText = fieldSchema ? (fieldSchema.label || f.colId) : f.colId;
-
-            // Append item count for RefList fields
             if (fieldSchema && fieldSchema.type.startsWith('RefList:')) {
               const refListValue = record[f.colId];
               const count = Array.isArray(refListValue) && refListValue[0] === 'L' ? refListValue.length - 1 : 0;
               labelText += ` (${count} itens)`;
             }
-
             let labelHtml = labelText;
             if (fieldSchema && fieldSchema.description && fieldSchema.description.trim() !== '') {
               const sanitizedDescription = fieldSchema.description.replace(/"/g, '&quot;');
               labelHtml += ` <span class="grf-tooltip-trigger" data-tooltip="${sanitizedDescription}">?</span>`;
             }
-
             labelEl.innerHTML = labelHtml;
             const ls = styling.labelStyle || {};
             labelEl.style.fontWeight = ls.bold ? 'bold' : 'normal';
             labelEl.style.color = ls.color;
             labelEl.style.fontFamily = ls.font;
             labelEl.style.fontSize = ls.size;
-            if (ls.allCaps || fieldStyle.labelAllCaps) {
-              labelEl.style.textTransform = 'uppercase';
-            }
-
+            if (ls.allCaps || fieldStyle.labelAllCaps) labelEl.style.textTransform = 'uppercase';
             if (fieldStyle.isTitleField && !styling.cardTitleTopBarEnabled) {
-              // Override with title styles if it's a title field
               labelEl.style.fontWeight = "bold";
               labelEl.style.color = styling.cardTitleFontColor;
               labelEl.style.fontSize = styling.cardTitleFontSize;
               labelEl.style.fontFamily = styling.cardTitleFontStyle;
-              if (styling.cardTitleAllCaps) {
-                labelEl.style.textTransform = 'uppercase';
-              }
+              if (styling.cardTitleAllCaps) labelEl.style.textTransform = 'uppercase';
             }
             fieldBox.appendChild(labelEl);
           }
 
           const fieldSchema = schema ? schema[f.colId] : null;
           const isTabulatorRefList = fieldSchema && fieldSchema.type.startsWith('RefList:') && fieldStyle.refListConfig?.displayAs === 'tabulator';
-
           let containerForField;
-
           if (isTabulatorRefList) {
               containerForField = document.createElement('div');
               fieldBox.appendChild(containerForField);
@@ -663,34 +618,21 @@ export const CardSystem = (() => {
                   containerForField.style.padding = '4px 6px';
                   containerForField.style.backgroundColor = fb.backgroundColor || '#ffffff';
                   switch (fb.effect) {
-                      case 'bevel':
-                          containerForField.style.boxShadow = 'inset 0 2px 4px rgba(0,0,0,0.3)';
-                          break;
-                      case 'bevel-outset':
-                          containerForField.style.boxShadow = '-1px -1px 3px rgba(255,255,255,0.7), 1px 1px 3px rgba(0,0,0,0.2)';
-                          break;
-                      case 'shadow':
-                          containerForField.style.boxShadow = '0 2px 5px rgba(0,0,0,0.3)';
-                          break;
+                      case 'bevel': containerForField.style.boxShadow = 'inset 0 2px 4px rgba(0,0,0,0.3)'; break;
+                      case 'bevel-outset': containerForField.style.boxShadow = '-1px -1px 3px rgba(255,255,255,0.7), 1px 1px 3px rgba(0,0,0,0.2)'; break;
+                      case 'shadow': containerForField.style.boxShadow = '0 2px 5px rgba(0,0,0,0.3)'; break;
                   }
               }
               fieldBox.appendChild(containerForField);
           }
 
           const fieldOptions = {};
-          if (fieldStyle.widget === 'Color Picker' || fieldStyle.widget === 'color') {
-            fieldOptions.colorPicker = true;
-          } else if (fieldStyle.widget === 'Progress Bar' || fieldStyle.widget === 'progress') {
+          if (fieldStyle.widget === 'Color Picker' || fieldStyle.widget === 'color') fieldOptions.colorPicker = true;
+          else if (fieldStyle.widget === 'Progress Bar' || fieldStyle.widget === 'progress') {
             fieldOptions.progressBar = true;
             fieldOptions.widgetOptions = fieldStyle.widgetOptions;
           }
-
-          // Apply All Caps for Data
-          if (fieldStyle.dataStyle?.allCaps || fieldStyle.dataAllCaps) {
-            containerForField.style.textTransform = 'uppercase';
-          }
-
-          // --- NOVO: Se for campo de título e a barra de topo estiver OFF, herda estilos de título ---
+          if (fieldStyle.dataStyle?.allCaps || fieldStyle.dataAllCaps) containerForField.style.textTransform = 'uppercase';
           if (fieldStyle.isTitleField && !styling.cardTitleTopBarEnabled) {
             if (styling.cardTitleAllCaps) containerForField.style.textTransform = 'uppercase';
             if (styling.cardTitleFontColor) containerForField.style.color = styling.cardTitleFontColor;
@@ -698,47 +640,31 @@ export const CardSystem = (() => {
             if (styling.cardTitleFontStyle) containerForField.style.fontFamily = styling.cardTitleFontStyle;
             containerForField.style.fontWeight = "bold";
           }
-
-          // Apply Limit Height (Line Clamp) and Tooltip
           if (fieldStyle.heightLimited && fieldStyle.maxHeightRows > 0) {
             containerForField.style.display = "-webkit-box";
             containerForField.style.webkitLineClamp = fieldStyle.maxHeightRows;
             containerForField.style.webkitBoxOrient = "vertical";
             containerForField.style.overflow = "hidden";
             containerForField.style.wordBreak = "break-word";
-            
-            // Set title for tooltip if value is present
             const rawValue = record[f.colId];
-            if (rawValue !== null && rawValue !== undefined) {
-              containerForField.title = String(rawValue);
-            }
+            if (rawValue !== null && rawValue !== undefined) containerForField.title = String(rawValue);
           }
 
           await renderField({
-            container: containerForField,
-            colSchema: fieldSchema,
-            record: record,
-            isEditing: false,
-            tableLens: tableLens,
-            fieldStyle: fieldStyle,
-            fieldConfig: currentOptions.fieldConfig?.[f.colId] || fieldStyle, // Pass specific field overrides
-            styling: styling,
-            fieldOptions: fieldOptions,
-            receivedConfigs: currentOptions.receivedConfigs // Added for global presets support
+            container: containerForField, colSchema: fieldSchema, record: record, isEditing: false, tableLens: tableLens, fieldStyle: fieldStyle,
+            fieldConfig: currentOptions.fieldConfig?.[f.colId] || fieldStyle, styling: styling, fieldOptions: fieldOptions,
+            receivedConfigs: currentOptions.receivedConfigs, tableSchema: schema
           });
-
           cardEl.appendChild(fieldBox);
         }
       }
       container.appendChild(cardEl);
     }
 
-    // --- DRAG & DROP ---
     if (enableOrder && orderColumn) {
         _handleDragAndDrop(container, orderColumn, currentOptions);
     }
 
-    // --- DEBUG INFO RENDER ---
     if (styling.showDebugInfo) {
         const debugDiv = document.createElement('div');
         debugDiv.style.marginTop = '20px';
@@ -746,105 +672,72 @@ export const CardSystem = (() => {
         debugDiv.style.border = '1px solid red';
         debugDiv.style.backgroundColor = '#fff0f0';
         debugDiv.innerHTML = `<h3>Schema Debug Info (TableLens)</h3>
-        <textarea rows="10" style="width: 100%; font-family: monospace;">${JSON.stringify(_lastSchema, null, 2)}</textarea>`;
+        <textarea rows="10" style="width: 100%; font-family: monospace;">${JSON.stringify(schema, null, 2)}</textarea>`;
         container.appendChild(debugDiv);
     }
   }
 
-  // Function to filter records based on a search term
-  function filterRecords(searchTerm) {
-    if (!_container) {
-      console.error("Card container not found for filtering.");
-      return;
-    }
-    const filteredRecords = _originalRecords.filter(record => {
-      const lowerCaseSearchTerm = searchTerm.toLowerCase();
-      return Object.keys(_lastSchema).some(colId => {
-        const colSchema = _lastSchema[colId];
-        // Exclude Grist helper fields (e.g., 'id', 'manualSort', 'gristHelper_...')
-        if (colId === 'id' || colId === 'manualSort' || colId.startsWith('gristHelper_')) {
-          return false;
-        }
+  function filterRecords(container, searchTerm) {
+    if (!container) return;
+    const originalRecords = container._csOriginalRecords || [];
+    const schema = container._csSchema || {};
+    const options = container._csOptions || {};
 
+    const filteredRecords = originalRecords.filter(record => {
+      const lowerCaseSearchTerm = searchTerm.toLowerCase();
+      return Object.keys(schema).some(colId => {
+        if (colId === 'id' || colId === 'manualSort' || colId.startsWith('gristHelper_')) return false;
         let valueToSearch = record[colId];
         let stringValue = '';
-
-        if (colSchema.type === 'Bool') {
+        if (schema[colId].type === 'Bool') {
           stringValue = (valueToSearch === true) ? 'sim' : (valueToSearch === false) ? 'não' : '';
         } else if (valueToSearch !== null && valueToSearch !== undefined) {
           stringValue = String(valueToSearch).toLowerCase();
         }
-
-        console.log(`Checking field '${colId}' with value: '${stringValue}' for search term: '${lowerCaseSearchTerm}'`);
         return stringValue.includes(lowerCaseSearchTerm);
       });
     });
-    // We need to pass the current options and schema to renderCards for it to work correctly
-    // This assumes that the last options and schema used for rendering are still available or can be reconstructed.
-    // For simplicity, we'll re-fetch them or store them if needed. For now, let's assume they are passed.
-    // A more robust solution might involve storing the last used options/schema in _CardSystem state.
-    renderCards(_container, filteredRecords, _lastOptions, _lastSchema);
+    renderCards(container, filteredRecords, options, schema);
   }
 
   function handleCardClick(record, options) {
-    // Busca o ID do drawer no local legado ou no novo local tripartido
     const drawerConfigId = options?.actions?.sidePanel?.drawerConfigId || options?.sidePanel?.drawerConfigId || null;
     const tableId = options?.tableId;
-    
-    if (!tableId) {
-      console.warn("CardSystem: tableId não encontrado nas opções do card.");
-      return;
-    }
-
-    console.log("CardSystem: Disparando grf-card-clicked para record", record.id);
-    
+    if (!tableId) return;
     publish('grf-card-clicked', {
-      drawerConfigId: drawerConfigId, // Pode ser null para gaveta padrão
+      drawerConfigId: drawerConfigId,
       recordId: record.id,
       tableId: tableId,
-      cardConfig: options // Passamos a config do card que disparou o clique
+      cardConfig: options
     });
   }
 
   function resolveStyle(record, schema, mode, solidColor, gradientOptions, fieldName) {
     if (mode === 'gradient' && gradientOptions?.type) { return gradientOptions.type.replace('{c1}', gradientOptions.c1).replace('{c2}', gradientOptions.c2); }
     if (mode === 'conditional' && fieldName && record && schema?.[fieldName]) {
-      const colSchema = schema[fieldName];
-      const fieldStyle = getFieldStyle(record, colSchema, schema);
+      const fieldStyle = getFieldStyle(record, schema[fieldName], schema);
       return fieldStyle.fillColor || solidColor;
     }
-    if (mode === 'text-value' && fieldName && record) {
-      return record[fieldName] || solidColor;
-    }
+    if (mode === 'text-value' && fieldName && record) return record[fieldName] || solidColor;
     return solidColor;
   }
 
   function adjustColor(hex, percent, effect) {
-    if (!hex) return hex;
-    // Handle RGB/RGBA if passed from computed style
-    if (hex.startsWith('rgb')) {
-        // Simple parsing for now, or fallback
-        return hex; 
-    }
+    if (!hex || hex.startsWith('rgb')) return hex;
     if (!hex.startsWith('#')) return hex;
-
     let r = parseInt(hex.slice(1, 3), 16);
     let g = parseInt(hex.slice(3, 5), 16);
     let b = parseInt(hex.slice(5, 7), 16);
-
     const p = percent / 100;
-
     if (effect === 'darken') {
         r = Math.round(Math.max(0, r - (r * p)));
         g = Math.round(Math.max(0, g - (g * p)));
         b = Math.round(Math.max(0, b - (b * p)));
     } else {
-        // Lighten (default)
         r = Math.round(Math.min(255, r + (255 - r) * p));
         g = Math.round(Math.min(255, g + (255 - g) * p));
         b = Math.round(Math.min(255, b + (255 - b) * p));
     }
-
     const toHex = c => c.toString(16).padStart(2, '0');
     return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
   }
@@ -852,56 +745,53 @@ export const CardSystem = (() => {
   function _handleDragAndDrop(container, orderColumn, options) {
     const mapping = options.mapping || options;
     const behavior = mapping.orderBehavior || 'free';
-    
     let handle = ".cs-card";
-    // Filter out action buttons from starting a drag so they remain clickable.
     let filter = ".cs-action-button:not(.cs-move-handle)";
-
-    if (behavior === 'strict') {
-      handle = ".cs-move-handle";
-      filter = ".cs-action-button:not(.cs-move-handle)"; 
-    } else {
-      // For 'free' and 'hybrid', the card is the handle.
-      handle = ".cs-card";
-      filter = ".cs-action-button:not(.cs-move-handle)";
-    }
-
-    console.log(`[CardSystem] Initializing SortableJS with behavior: ${behavior}`, { handle, filter });
-
-    // Check if Sortable is available (it should be loaded in the index.html via CDN)
+    if (behavior === 'strict') handle = ".cs-move-handle";
+    
     if (typeof Sortable !== 'undefined') {
-        new Sortable(container, {
-            animation: 150,
-            handle: handle,
-            filter: filter,
-            preventOnFilter: false, // CRITICAL: Allow clicks on filtered elements
-            draggable: ".cs-card",
+        // Limpa instância anterior se existir para evitar conflitos
+        if (container._csSortable) {
+            container._csSortable.destroy();
+        }
+
+        container._csSortable = new Sortable(container, {
+            animation: 150, handle: handle, filter: filter, preventOnFilter: false, draggable: ".cs-card",
             onEnd: function (evt) {
                 const itemEl = evt.item;
                 const recordId = itemEl.dataset.recordId;
+                const records = container._csRecords || [];
                 
-                // Encontrar o novo "vizinho" para calcular a nova posição
                 const prevEl = itemEl.previousElementSibling;
                 const nextEl = itemEl.nextElementSibling;
 
-                const prevRecord = prevEl ? _displayedRecords.find(r => r.id == prevEl.dataset.recordId) : null;
-                const nextRecord = nextEl ? _displayedRecords.find(r => r.id == nextEl.dataset.recordId) : null;
+                const prevRecord = prevEl ? records.find(r => r.id == prevEl.dataset.recordId) : null;
+                const nextRecord = nextEl ? records.find(r => r.id == nextEl.dataset.recordId) : null;
 
                 let newPos;
                 const posPrev = prevRecord ? (prevRecord[orderColumn] ?? 0) : null;
                 const posNext = nextRecord ? (nextRecord[orderColumn] ?? 0) : null;
 
+                // LÓGICA DE ORDENAÇÃO MELHORADA
                 if (posPrev !== null && posNext !== null) {
-                    newPos = (posPrev + posNext) / 2;
+                    if (posPrev === posNext) {
+                         // Se ambos forem iguais (ex: tudo 0), forçamos uma diferenciação
+                         // Isso resolve o problema de registros que começam com o mesmo valor
+                         // Ao mover um pra "baixo" do outro, o de baixo ganha um incremento
+                         newPos = posPrev + 1.0;
+                         // Nota: Isso pode exigir re-ordenar outros itens se for massivo, 
+                         // mas para arrastar e soltar um a um, funciona bem com Grist.
+                    } else {
+                        newPos = (posPrev + posNext) / 2;
+                    }
                 } else if (posPrev !== null) {
-                    newPos = posPrev + 10;
+                    newPos = posPrev + 1.0;
                 } else if (posNext !== null) {
-                    newPos = posNext - 10;
+                    newPos = posNext - 1.0;
                 } else {
-                    newPos = 10;
+                    newPos = 1.0;
                 }
 
-                // Disparar atualização para o Grist
                 publish('grf-update-record', {
                     tableId: options.tableId,
                     recordId: recordId,
@@ -909,12 +799,10 @@ export const CardSystem = (() => {
                 });
             }
         });
-    } else {
-        console.warn("CardSystem: SortableJS not found. Drag and Drop disabled.");
     }
   }
 
-  function _applyWidgetBackground(styling, options) {
+  function _applyWidgetBackground(container, styling, options) {
     const isTransparent = styling.widgetBackgroundMode === 'transparent' || options.isRefList;
     const backgroundStyle = isTransparent 
         ? 'transparent' 
@@ -924,16 +812,13 @@ export const CardSystem = (() => {
             c2: styling.widgetBackgroundGradientColor2 
           });
 
-    document.body.style.background = backgroundStyle;
-    document.body.style.minHeight = "100vh"; // Garante cobertura total
-    
-    // Se não for transparente, garantimos que o container interno não tenha fundo duplicado
-    if (_container) {
-        _container.style.background = 'transparent';
+    if (!options.isRefList) {
+        document.body.style.background = backgroundStyle;
+        document.body.style.minHeight = "100vh";
     }
+    if (container) container.style.background = 'transparent';
   }
 
-  // Helper local para resolver o valor do background sem depender do resolveStyle completo
   function _resolveBackgroundValue(mode, solid, grad) {
     if (mode === 'gradient' && grad) {
       return (grad.type || "linear-gradient(to right, {c1}, {c2})")
@@ -943,6 +828,18 @@ export const CardSystem = (() => {
     return solid || "#f9f9f9";
   }
 
+  function lightenHexColor(hex, percent) {
+      if (!hex || !hex.startsWith('#')) return hex;
+      let r = parseInt(hex.slice(1, 3), 16);
+      let g = parseInt(hex.slice(3, 5), 16);
+      let b = parseInt(hex.slice(5, 7), 16);
+      const p = percent / 100;
+      r = Math.round(Math.min(255, r + (255 - r) * p));
+      g = Math.round(Math.min(255, g + (255 - g) * p));
+      b = Math.round(Math.min(255, b + (255 - b) * p));
+      const toHex = c => c.toString(16).padStart(2, '0');
+      return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+  }
+
   return { renderCards, filterRecords };
 })();
-
