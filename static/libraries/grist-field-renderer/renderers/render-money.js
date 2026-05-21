@@ -2,7 +2,7 @@
 
 export function renderMoney(options) {
     const { container, cellValue, isEditing, fieldOptions } = options;
-    const params = fieldOptions?.widgetOptions || {};
+    const params = fieldOptions || {};
     
     if (isEditing) {
         container.innerHTML = `<input type="number" step="0.01" class="grf-form-input" value="${cellValue || ''}">`;

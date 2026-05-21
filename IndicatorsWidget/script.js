@@ -140,7 +140,8 @@ async function start() {
                 await loadDynamicWidget(data.configId, {
                     value: data.filterValue,
                     column: data.filterTargetColumn,
-                    sourceLabel: data.sourceRecord.Label || data.sourceRecord.label || data.sourceRecord.id
+                    sourceLabel: data.sourceRecord.Label || data.sourceRecord.label || data.sourceRecord.id,
+                    disableFiltering: data.disableFiltering
                 });
             } else {
                 if (window.GristDrawer) {
@@ -351,7 +352,7 @@ async function initialize() {
         await updateCalculatedFields(records);
 
         // Aplicar Filtro Externo (Drill-down)
-        if (currentFilter && currentFilter.column && currentFilter.value) {
+        if (currentFilter && currentFilter.column && currentFilter.value && !currentFilter.disableFiltering) {
             console.log(`[IndicatorsWidget] Aplicando filtro drill-down: ${currentFilter.column} = ${currentFilter.value}`);
             records = records.filter(r => {
                 const val = r[currentFilter.column];

@@ -408,7 +408,8 @@ export const CardConfigEditor = (() => {
                     <label>Max Columns: <input type="number" id="cs-st-col-limit" min="1" max="20" style="width:50px;"></label>
                     <div style="margin-top: 5px;">
                         <label title="If fewer cards than Max Cols, cards are smaller (1/Max width)."><input type="radio" name="cs-st-col-mode" value="fixed"> Fixed Width</label><br>
-                        <label title="If fewer cards than Max Cols, cards expand to fill row."><input type="radio" name="cs-st-col-mode" value="responsive"> Responsive Fill</label>
+                        <label title="If fewer cards than Max Cols, cards expand to fill row."><input type="radio" name="cs-st-col-mode" value="responsive"> Responsive Fill</label><br>
+                        <label title="Cards occupy 50% if 1 or 2, 33% if 3, up to Max Columns. Extra rows match first row size."><input type="radio" name="cs-st-col-mode" value="balanced"> Balanced Grid</label>
                     </div>
                 </fieldset>
                 <fieldset><legend><b>Layout Spacing</b></legend>Widget Padding (px): <input type="number" id="cs-st-padding" min="0" style="width:60px"> <br>Card Spacing (px): <input type="number" id="cs-st-spacing" min="0" style="width:60px"> <br>Internal Card Padding (px): <input type="number" id="cs-st-internal-padding" min="0" style="width:60px"></fieldset>

@@ -125,6 +125,10 @@ export const CardSystem = (() => {
         const totalRecords = processedRecords.length;
         numCols = Math.min(totalRecords, colLimit);
         if (numCols < 1) numCols = 1;
+    } else if (colMode === 'balanced') {
+        const totalRecords = processedRecords.length;
+        numCols = Math.min(Math.max(totalRecords, 2), colLimit);
+        if (numCols < 1) numCols = 1;
     }
 
     container.style.display = 'grid';
@@ -280,7 +284,7 @@ export const CardSystem = (() => {
         cardEl.style.cursor = "default";
       } else {
         cardEl.style.cursor = "pointer";
-        cardEl.addEventListener("click", () => { handleCardClick(record, currentOptions); });
+        cardEl.addEventListener("click", (e) => { e.stopPropagation(); handleCardClick(record, currentOptions); });
       }
 
       if (styling.selectedCard?.enabled) {
@@ -757,16 +761,22 @@ export const CardSystem = (() => {
 
         container._csSortable = new Sortable(container, {
             animation: 150, handle: handle, filter: filter, preventOnFilter: false, draggable: ".cs-card",
+            onStart: function (evt) {
+                publish('grf-cards-drag-start');
+            },
+            onSort: function (evt) {
+                publish('grf-cards-drag-move');
+            },
             onEnd: function (evt) {
                 const itemEl = evt.item;
-                const recordId = itemEl.dataset.recordId;
+                const recordId = parseInt(itemEl.dataset.recordId, 10);
                 const records = container._csRecords || [];
                 
                 const prevEl = itemEl.previousElementSibling;
                 const nextEl = itemEl.nextElementSibling;
 
-                const prevRecord = prevEl ? records.find(r => r.id == prevEl.dataset.recordId) : null;
-                const nextRecord = nextEl ? records.find(r => r.id == nextEl.dataset.recordId) : null;
+                const prevRecord = prevEl ? records.find(r => r.id === parseInt(prevEl.dataset.recordId, 10)) : null;
+                const nextRecord = nextEl ? records.find(r => r.id === parseInt(nextEl.dataset.recordId, 10)) : null;
 
                 let newPos;
                 const posPrev = prevRecord ? (prevRecord[orderColumn] ?? 0) : null;
@@ -797,6 +807,9 @@ export const CardSystem = (() => {
                     recordId: recordId,
                     data: { [orderColumn]: newPos }
                 });
+
+                publish('grf-cards-drag-end');
+                publish('grf-reposition-lines');
             }
         });
     }

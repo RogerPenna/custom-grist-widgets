@@ -42,6 +42,10 @@ export const BscConfigEditor = (() => {
         state.refModelCol = current.mapping.refModelCol;
         state.refPerspCol = current.mapping.refPerspCol;
         state.relationshipField = current.mapping.relationshipField;
+        state.relTable = current.mapping.relTable;
+        state.relCauseCol = current.mapping.relCauseCol;
+        state.relEffectCol = current.mapping.relEffectCol;
+        state.relWeightCol = current.mapping.relWeightCol;
         state.typeField = current.mapping.typeField;
         state.defaultCardConfigId = current.mapping.defaultCardConfigId;
         state.typeConfigMap = current.mapping.typeConfigMap;
@@ -52,10 +56,13 @@ export const BscConfigEditor = (() => {
         state.arrowColor = current.styling.arrowColor;
         state.arrowColorPaletteId = current.styling.arrowColorPaletteId;
         state.arrowThickness = current.styling.arrowThickness;
+        state.arrowWeightMultiplier = current.styling.arrowWeightMultiplier;
         state.showArrowOutline = current.styling.showArrowOutline;
         state.arrowOutlineColor = current.styling.arrowOutlineColor;
         state.arrowOutlineColorPaletteId = current.styling.arrowOutlineColorPaletteId;
         state.arrowOutlineThickness = current.styling.arrowOutlineThickness;
+        state.connDistanceType = current.styling.connDistanceType;
+        state.connDistanceFixed = current.styling.connDistanceFixed;
 
         state.drawerConfigId = current.actions.drawerConfigId;
         state.showAddPerspective = current.actions.showAddPerspective;
@@ -96,10 +103,13 @@ export const BscConfigEditor = (() => {
             arrowColor: styling.arrowColor || 'rgba(0, 86, 168, 0.8)',
             arrowColorPaletteId: styling.arrowColorPaletteId || '',
             arrowThickness: styling.arrowThickness || 4,
+            arrowWeightMultiplier: styling.arrowWeightMultiplier !== undefined ? styling.arrowWeightMultiplier : 1,
             showArrowOutline: styling.showArrowOutline !== undefined ? styling.showArrowOutline : true,
             arrowOutlineColor: styling.arrowOutlineColor || 'rgba(255, 255, 255, 0.5)',
             arrowOutlineColorPaletteId: styling.arrowOutlineColorPaletteId || '',
             arrowOutlineThickness: styling.arrowOutlineThickness || 0.2,
+            connDistanceType: styling.connDistanceType || 'relative',
+            connDistanceFixed: styling.connDistanceFixed !== undefined ? styling.connDistanceFixed : 20,
 
             drawerConfigId: actions.drawerConfigId || null,
             showAddPerspective: actions.showAddPerspective || false,
@@ -118,6 +128,10 @@ export const BscConfigEditor = (() => {
             refModelCol: options.refModelCol || options.mapping?.refModelCol || 'ref_model',
             refPerspCol: options.refPerspCol || options.mapping?.refPerspCol || 'ref_persp',
             relationshipField: options.relationshipField || options.mapping?.relationshipField || 'ref_obj',
+            relTable: options.relTable || options.mapping?.relTable || '',
+            relCauseCol: options.relCauseCol || options.mapping?.relCauseCol || '',
+            relEffectCol: options.relEffectCol || options.mapping?.relEffectCol || '',
+            relWeightCol: options.relWeightCol || options.mapping?.relWeightCol || '',
             
             receivedConfigs: receivedConfigs,
             allTables: await tableLens.listAllTables()
@@ -127,6 +141,7 @@ export const BscConfigEditor = (() => {
         state.modelsSchema = await tableLens.getTableSchema(state.modelsTable);
         state.perspectivesSchema = await tableLens.getTableSchema(state.perspectivesTable);
         state.objectivesSchema = await tableLens.getTableSchema(state.objectivesTable);
+        state.relTableSchema = state.relTable ? await tableLens.getTableSchema(state.relTable) : null;
 
         container.innerHTML = `
             <style>
@@ -231,19 +246,26 @@ export const BscConfigEditor = (() => {
             arrowColorPaletteId: styleTab ? styleTab.querySelector('#bsc-cfg-arrow-color-palette-id').value : state.arrowColorPaletteId,
             
             arrowThickness: styleTab ? parseFloat(styleTab.querySelector('#bsc-cfg-arrow-thickness').value) : state.arrowThickness,
+            arrowWeightMultiplier: styleTab ? parseFloat(styleTab.querySelector('#bsc-cfg-arrow-weight-multiplier').value) : state.arrowWeightMultiplier,
             showArrowOutline: styleTab ? styleTab.querySelector('#bsc-cfg-show-arrow-outline').checked : state.showArrowOutline,
             
             arrowOutlineColor: styleTab ? styleTab.querySelector('#bsc-cfg-arrow-outline-color').value : state.arrowOutlineColor,
             arrowOutlineColorPaletteId: styleTab ? styleTab.querySelector('#bsc-cfg-arrow-outline-color-palette-id').value : state.arrowOutlineColorPaletteId,
             
             arrowOutlineThickness: styleTab ? parseFloat(styleTab.querySelector('#bsc-cfg-arrow-outline-thickness').value) : state.arrowOutlineThickness,
+            connDistanceType: styleTab ? styleTab.querySelector('#bsc-cfg-conn-distance-type').value : state.connDistanceType,
+            connDistanceFixed: styleTab ? parseFloat(styleTab.querySelector('#bsc-cfg-conn-distance-fixed').value) : state.connDistanceFixed,
 
             modelsTable: genTab ? genTab.querySelector('#bsc-cfg-models-table').value : state.modelsTable,
             perspectivesTable: genTab ? genTab.querySelector('#bsc-cfg-perspectives-table').value : state.perspectivesTable,
             objectivesTable: genTab ? genTab.querySelector('#bsc-cfg-objectives-table').value : state.objectivesTable,
             refModelCol: genTab ? genTab.querySelector('#bsc-cfg-ref-model-col').value : state.refModelCol,
             refPerspCol: genTab ? genTab.querySelector('#bsc-cfg-ref-persp-col').value : state.refPerspCol,
-            relationshipField: genTab ? genTab.querySelector('#bsc-cfg-rel-field').value : state.relationshipField,
+            relationshipField: genTab ? (genTab.querySelector('#bsc-cfg-rel-field') ? genTab.querySelector('#bsc-cfg-rel-field').value : state.relationshipField) : state.relationshipField,
+            relTable: genTab ? genTab.querySelector('#bsc-cfg-rel-table').value : state.relTable,
+            relCauseCol: genTab ? genTab.querySelector('#bsc-cfg-rel-cause-col').value : state.relCauseCol,
+            relEffectCol: genTab ? genTab.querySelector('#bsc-cfg-rel-effect-col').value : state.relEffectCol,
+            relWeightCol: genTab ? genTab.querySelector('#bsc-cfg-rel-weight-col').value : state.relWeightCol,
             
             typeField: colsTab ? colsTab.querySelector('#bsc-cfg-type-field').value : state.typeField,
             defaultCardConfigId: colsTab ? colsTab.querySelector('#bsc-cfg-default-card-id').value : state.defaultCardConfigId,
@@ -265,6 +287,10 @@ export const BscConfigEditor = (() => {
             refModelCol: fullConfig.refModelCol,
             refPerspCol: fullConfig.refPerspCol,
             relationshipField: fullConfig.relationshipField,
+            relTable: fullConfig.relTable,
+            relCauseCol: fullConfig.relCauseCol,
+            relEffectCol: fullConfig.relEffectCol,
+            relWeightCol: fullConfig.relWeightCol,
             typeField: fullConfig.typeField,
             defaultCardConfigId: fullConfig.defaultCardConfigId,
             typeConfigMap: fullConfig.typeConfigMap
@@ -277,10 +303,13 @@ export const BscConfigEditor = (() => {
             arrowColor: fullConfig.arrowColor,
             arrowColorPaletteId: fullConfig.arrowColorPaletteId,
             arrowThickness: fullConfig.arrowThickness,
+            arrowWeightMultiplier: fullConfig.arrowWeightMultiplier,
             showArrowOutline: fullConfig.showArrowOutline,
             arrowOutlineColor: fullConfig.arrowOutlineColor,
             arrowOutlineColorPaletteId: fullConfig.arrowOutlineColorPaletteId,
-            arrowOutlineThickness: fullConfig.arrowOutlineThickness
+            arrowOutlineThickness: fullConfig.arrowOutlineThickness,
+            connDistanceType: fullConfig.connDistanceType,
+            connDistanceFixed: fullConfig.connDistanceFixed
         };
 
         const actions = {
@@ -380,13 +409,41 @@ export const BscConfigEditor = (() => {
                     </select>
                     <p class="help-text">Nome da coluna na tabela de <b>Objetivos</b> que aponta para a Perspectiva.</p>
                 </div>
+            </fieldset>
+
+            <fieldset>
+                <legend><b>Tabela de Relacionamento (Causa e Efeito)</b></legend>
                 <div class="form-group">
-                    <label for="bsc-cfg-rel-field">Vínculo Relacionamento (Setas):</label>
-                    <select id="bsc-cfg-rel-field" class="form-control">
-                        <option value="">-- Selecionar Coluna --</option>
-                        ${createColumnOptions(state.objectivesSchema, state.relationshipField)}
+                    <label for="bsc-cfg-rel-table">Tabela de Causa e Efeito:</label>
+                    <select id="bsc-cfg-rel-table" class="form-control">
+                        <option value="">-- Selecionar Tabela --</option>
+                        ${createTableOptions(state.relTable)}
                     </select>
-                    <p class="help-text">Nome da coluna na tabela de <b>Objetivos</b> que aponta para o objetivo de origem da seta.</p>
+                    <p class="help-text">Tabela intermédia de junção (Muitos para Muitos) dedicada a "Causa e Efeito".</p>
+                </div>
+                <div class="form-group">
+                    <label for="bsc-cfg-rel-cause-col">Coluna de Causa:</label>
+                    <select id="bsc-cfg-rel-cause-col" class="form-control">
+                        <option value="">-- Selecionar Coluna --</option>
+                        ${createColumnOptions(state.relTableSchema, state.relCauseCol)}
+                    </select>
+                    <p class="help-text">Coluna (Reference) que aponta para o objetivo de origem (Causa).</p>
+                </div>
+                <div class="form-group">
+                    <label for="bsc-cfg-rel-effect-col">Coluna de Efeito:</label>
+                    <select id="bsc-cfg-rel-effect-col" class="form-control">
+                        <option value="">-- Selecionar Coluna --</option>
+                        ${createColumnOptions(state.relTableSchema, state.relEffectCol)}
+                    </select>
+                    <p class="help-text">Coluna (Reference) que aponta para o objetivo de destino (Efeito).</p>
+                </div>
+                <div class="form-group">
+                    <label for="bsc-cfg-rel-weight-col">Coluna de Peso:</label>
+                    <select id="bsc-cfg-rel-weight-col" class="form-control">
+                        <option value="">-- Selecionar Coluna --</option>
+                        ${createColumnOptions(state.relTableSchema, state.relWeightCol)}
+                    </select>
+                    <p class="help-text">Coluna numérica que guarda o peso da relação.</p>
                 </div>
             </fieldset>
         `;
@@ -413,6 +470,16 @@ export const BscConfigEditor = (() => {
             state.objectivesSchema = await _tableLens.getTableSchema(state.objectivesTable);
             rebuildAll();
         });
+
+        const relTableSelect = tabEl.querySelector('#bsc-cfg-rel-table');
+        if (relTableSelect) {
+            relTableSelect.addEventListener('change', async (e) => {
+                syncState();
+                state.relTable = e.target.value;
+                state.relTableSchema = state.relTable ? await _tableLens.getTableSchema(state.relTable) : null;
+                rebuildAll();
+            });
+        }
     }
 
     function buildColumnsTab(container) {
@@ -526,9 +593,28 @@ export const BscConfigEditor = (() => {
                 
                 ${renderPaletteColorPicker('arrow-color', 'Cor Interna', state.arrowColor, state.arrowColorPaletteId)}
 
+                <div style="display: flex; gap: 10px; margin-top:10px;">
+                    <div style="flex: 1;">
+                        <label for="bsc-cfg-arrow-thickness">Espessura (px):</label>
+                        <input type="number" id="bsc-cfg-arrow-thickness" class="form-control" value="${state.arrowThickness}" step="0.5" min="1">
+                    </div>
+                    <div style="flex: 1;">
+                        <label for="bsc-cfg-arrow-weight-multiplier">Multiplicador Peso:</label>
+                        <input type="number" id="bsc-cfg-arrow-weight-multiplier" class="form-control" value="${state.arrowWeightMultiplier}" step="0.1" min="0">
+                    </div>
+                </div>
+
                 <div class="form-group" style="margin-top:10px;">
-                    <label for="bsc-cfg-arrow-thickness">Espessura (px):</label>
-                    <input type="number" id="bsc-cfg-arrow-thickness" class="form-control" value="${state.arrowThickness}" step="0.5" min="1">
+                    <label for="bsc-cfg-conn-distance-type">Tipo de Distribuição das Conexões:</label>
+                    <select id="bsc-cfg-conn-distance-type" class="form-control">
+                        <option value="relative" ${state.connDistanceType === 'relative' ? 'selected' : ''}>Relativo (%)</option>
+                        <option value="fixed" ${state.connDistanceType === 'fixed' ? 'selected' : ''}>Fixo (px)</option>
+                    </select>
+                </div>
+
+                <div class="form-group" id="conn-distance-fixed-group" style="margin-top:10px; display: ${state.connDistanceType === 'fixed' ? 'block' : 'none'};">
+                    <label for="bsc-cfg-conn-distance-fixed">Distância/Espaçamento Fixo (px):</label>
+                    <input type="number" id="bsc-cfg-conn-distance-fixed" class="form-control" value="${state.connDistanceFixed}" min="1" step="1">
                 </div>
                 
                 <div class="form-group" style="margin-top:15px;">
@@ -560,6 +646,13 @@ export const BscConfigEditor = (() => {
         tabEl.querySelector('#bsc-cfg-show-arrow-outline').addEventListener('change', (e) => {
             tabEl.querySelector('#arrow-outline-settings').style.display = e.target.checked ? 'block' : 'none';
         });
+
+        const distTypeSelect = tabEl.querySelector('#bsc-cfg-conn-distance-type');
+        if (distTypeSelect) {
+            distTypeSelect.addEventListener('change', (e) => {
+                tabEl.querySelector('#conn-distance-fixed-group').style.display = e.target.value === 'fixed' ? 'block' : 'none';
+            });
+        }
 
         // Initialize Palette Listeners
         setupPaletteListeners(tabEl, 'arrow-color');

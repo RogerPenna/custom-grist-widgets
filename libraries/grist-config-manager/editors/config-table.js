@@ -305,6 +305,8 @@ export const TableConfigEditor = (() => {
                 if (formatter === 'progress') {
                     colBase.formatterParams = {
                         progressBarPreset: item.querySelector('.progress-preset').value || '',
+                        progressType: item.querySelector('.progress-type').value || 'linear',
+                        labelPosition: item.querySelector('.progress-label-pos').value || 'middle',
                         min: parseFloat(item.querySelector('.progress-min').value) || 0,
                         max: parseFloat(item.querySelector('.progress-max').value) || 100,
                         legend: item.querySelector('.progress-legend')?.checked || false,
@@ -313,7 +315,9 @@ export const TableConfigEditor = (() => {
                         borderRadius: parseInt(item.querySelector('.progress-radius').value, 10),
                         striped: item.querySelector('.progress-striped').checked,
                         animated: item.querySelector('.progress-animated').checked,
-                        colorMode: item.querySelector('.progress-mode').value
+                        colorMode: item.querySelector('.progress-mode').value,
+                        showInternalBar: item.querySelector('.progress-show-internal')?.checked || false,
+                        internalBarColId: item.querySelector('.progress-internal-col')?.value || ''
                     };
                 } else if (formatter === 'money') {
                     colBase.formatterParams = {
@@ -538,11 +542,36 @@ export const TableConfigEditor = (() => {
                                 </select>
                             </div>
                             <div class="progress-manual-options" style="display: ${colConfig?.formatterParams?.progressBarPreset ? 'none' : 'grid'}; grid-template-columns: 1fr 1fr 1fr; gap: 5px;">
+                                <div style="grid-column: span 1.5;">
+                                    <label style="font-size:9px;">Tipo</label>
+                                    <select class="progress-type" style="width:100%; font-size:10px;">
+                                        <option value="linear" ${colConfig?.formatterParams?.progressType === 'linear' ? 'selected' : ''}>Linear</option>
+                                        <option value="circular" ${colConfig?.formatterParams?.progressType === 'circular' ? 'selected' : ''}>Circular</option>
+                                    </select>
+                                </div>
+                                <div class="progress-label-pos-container" style="display: ${colConfig?.formatterParams?.progressType === 'circular' ? 'block' : 'none'}; grid-column: span 1.5;">
+                                    <label style="font-size:9px;">Pos. Valor</label>
+                                    <select class="progress-label-pos" style="width:100%; font-size:10px;">
+                                        <option value="middle" ${colConfig?.formatterParams?.labelPosition === 'middle' ? 'selected' : ''}>Centro</option>
+                                        <option value="above" ${colConfig?.formatterParams?.labelPosition === 'above' ? 'selected' : ''}>Acima</option>
+                                        <option value="left" ${colConfig?.formatterParams?.labelPosition === 'left' ? 'selected' : ''}>Esquerda</option>
+                                        <option value="right" ${colConfig?.formatterParams?.labelPosition === 'right' ? 'selected' : ''}>Direita</option>
+                                    </select>
+                                </div>
+                                <div class="progress-internal-container" style="display: ${colConfig?.formatterParams?.progressType === 'circular' ? 'block' : 'none'}; grid-column: span 3; padding: 4px; background: #f1f5f9; border-radius: 4px; margin-top: 5px;">
+                                    <label style="font-size:9px; cursor: pointer;">
+                                        <input type="checkbox" class="progress-show-internal" ${colConfig?.formatterParams?.showInternalBar ? 'checked' : ''}> Barra Interna
+                                    </label>
+                                    <select class="progress-internal-col" style="width: 100%; font-size: 10px; display: ${colConfig?.formatterParams?.showInternalBar ? 'block' : 'none'}; margin-top: 2px;">
+                                        <option value="">-- Coluna Interna --</option>
+                                        ${currentSchema ? Object.values(currentSchema).filter(c => ['Numeric', 'Int', 'Any'].includes(c.type)).map(c => `<option value="${c.colId}" ${colConfig?.formatterParams?.internalBarColId === c.colId ? 'selected' : ''}>${c.label}</option>`).join('') : ''}
+                                    </select>
+                                </div>
+
                                 <div>
                                     <label style="font-size:9px;">Min</label>
                                     <input type="number" class="progress-min" value="${colConfig?.formatterParams?.min ?? 0}" style="width:100%; font-size:10px;">
-                                </div>
-                                <div>
+                                </div>                                <div>
                                     <label style="font-size:9px;">Max</label>
                                     <input type="number" class="progress-max" value="${colConfig?.formatterParams?.max ?? 100}" style="width:100%; font-size:10px;">
                                 </div>
@@ -655,6 +684,15 @@ export const TableConfigEditor = (() => {
                 if (pParams) pParams.style.display = (val === 'progress') ? 'grid' : 'none';
                 if (mParams) mParams.style.display = (val === 'money') ? 'grid' : 'none';
                 if (iParams) iParams.style.display = (val === 'image') ? 'grid' : 'none';
+                updateDebugJson();
+            };
+        }
+
+        const progressTypeSelect = card.querySelector('.progress-type');
+        if (progressTypeSelect) {
+            progressTypeSelect.onchange = () => {
+                const labelPosContainer = card.querySelector('.progress-label-pos-container');
+                if (labelPosContainer) labelPosContainer.style.display = (progressTypeSelect.value === 'circular') ? 'block' : 'none';
                 updateDebugJson();
             };
         }

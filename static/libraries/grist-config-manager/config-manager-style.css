@@ -641,26 +641,61 @@ textarea {
         flex-direction: column;
     }
 
-    /* Main Container Layout fixes for Modal */
-    .grf-cm-main-container {
-        display: flex;
-        flex-grow: 1;
-        height: 100%;
-        overflow: hidden;
-    }
+/* --- CONFIG MANAGER TABS --- */
+.grf-cm-tabs {
+    display: flex;
+    padding: 0 20px;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    gap: 4px;
+}
 
-    .grf-cm-sidebar {
-        width: 300px;
-        flex-shrink: 0;
-        border-right: 1px solid #dee2e6;
-        display: flex;
-        flex-direction: column;
-        background-color: #f8f9fa;
-        height: 100%;
-        overflow-y: auto;
-        padding: 20px;
-        box-sizing: border-box;
-    }
+.grf-cm-tab-btn {
+    padding: 8px 20px;
+    border: 1px solid #dee2e6;
+    border-bottom: none;
+    background-color: #e9ecef;
+    color: #6c757d;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    position: relative;
+    top: 1px;
+    transition: all 0.2s ease;
+}
+
+.grf-cm-tab-btn:hover {
+    background-color: #dee2e6;
+    color: #343a40;
+}
+
+.grf-cm-tab-btn.active {
+    background-color: #fff;
+    color: #0d6efd;
+    border-bottom: 1px solid #fff; /* Fuses with the container below */
+    z-index: 2;
+}
+
+.grf-cm-main-container {
+    display: flex;
+    flex-grow: 1;
+    height: calc(100% - 37px); /* Adjust for tab height */
+    overflow: hidden;
+    border-top: none;
+}
+
+.grf-cm-sidebar {
+    width: 320px;
+    flex-shrink: 0;
+    border-right: 1px solid #dee2e6;
+    display: flex;
+    flex-direction: column;
+    background-color: #fff; /* Changed to white to match active tab */
+    height: 100%;
+}
+
 
     .grf-cm-editor-panel {
         flex-grow: 1;

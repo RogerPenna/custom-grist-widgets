@@ -35,7 +35,8 @@ subscribe('grf-trigger-widget', (data) => {
     if (data && data.filterTargetColumn && data.filterValue) {
         externalFilter = {
             column: data.filterTargetColumn,
-            value: data.filterValue
+            value: data.filterValue,
+            disableFiltering: data.disableFiltering
         };
         renderAll();
     }
@@ -70,7 +71,7 @@ function renderAll() {
     let recordsToProcess = [...allRiskRecords]; 
 
     // Corrected External Filter Application
-    if (externalFilter && externalFilter.column && externalFilter.value !== undefined && externalFilter.value !== null) {
+    if (externalFilter && externalFilter.column && externalFilter.value !== undefined && externalFilter.value !== null && !externalFilter.disableFiltering) {
         console.log(`[Riscos] Aplicando filtro externo: ${externalFilter.column} = ${externalFilter.value}`);
         recordsToProcess = recordsToProcess.filter(riskRecord => {
             const rawVal = riskRecord[externalFilter.column];

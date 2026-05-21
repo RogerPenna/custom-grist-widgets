@@ -144,6 +144,8 @@ async function _handleSave() {
 
 async function _renderDrawerContent() {
     if (!drawerPanel) return;
+    const tableIdAtStart = currentTableId;
+    const recordIdAtStart = currentRecordId;
     const tabsContainer = drawerPanel.querySelector('.drawer-tabs');
     const panelsContainer = drawerPanel.querySelector('.drawer-tab-panels');
     
@@ -168,6 +170,12 @@ async function _renderDrawerContent() {
             currentRecord = currentRecord || {};
         } else {
             currentRecord = await tableLens.fetchRecordById(currentTableId, currentRecordId);
+        }
+
+        // Concurrency guard: if another drawer open request occurred during fetch, abort this rendering pass
+        if (currentTableId !== tableIdAtStart || currentRecordId !== recordIdAtStart) {
+            console.log(`[Drawer] Stale render pass aborted. Expected record ID ${recordIdAtStart} on table ${tableIdAtStart}, but current is ${currentRecordId} on table ${currentTableId}`);
+            return;
         }
 
         // --- APLICAÇÃO DE ESTILOS DO CABEÇALHO ---
@@ -375,6 +383,9 @@ export async function openDrawer(tableId, recordId, options = {}) {
 }
 
 export function closeDrawer() {
+    currentRecordId = null;
+    currentTableId = null;
+    isOpen = false;
     if (!drawerPanel) {
         drawerPanel = document.getElementById('grist-drawer-panel');
         drawerOverlay = document.getElementById('grist-drawer-overlay');
@@ -385,7 +396,6 @@ export function closeDrawer() {
     drawerPanel.style.setProperty('right', `-${width}`, 'important');
     setTimeout(() => {
         if (drawerOverlay) drawerOverlay.style.setProperty('display', 'none', 'important');
-        isOpen = false;
     }, 300);
 }
 

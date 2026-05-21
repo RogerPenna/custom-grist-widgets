@@ -38,6 +38,16 @@ export const IndicatorsConfigEditor = (() => {
             consolidationMap: mapping.consolidationMap || {},
             periodicityMap: mapping.periodicityMap || {},
 
+            // Grouping
+            groupFields: mapping.groupFields || [],
+            groupDisplayFields: mapping.groupDisplayFields || {},
+
+            // Styling
+            cardType: styling.cardType || 'STANDARD',
+            cardConfigId: styling.cardConfigId || '',
+            yearsCount: styling.yearsCount !== undefined ? styling.yearsCount : 3,
+            progressBarPreset: styling.progressBarPreset || '',
+
             // Actions
             drawerConfigId: actions.drawerConfigId || null,
             
@@ -50,6 +60,8 @@ export const IndicatorsConfigEditor = (() => {
                 <div class="config-tabs">
                     <button type="button" class="config-tab-button active" data-tab-id="mapping">Mapeamento</button>
                     <button type="button" class="config-tab-button" data-tab-id="logic">Lógica & Valores</button>
+                    <button type="button" class="config-tab-button" data-tab-id="grouping">Agrupamento</button>
+                    <button type="button" class="config-tab-button" data-tab-id="styling">Estilo</button>
                     <button type="button" class="config-tab-button" data-tab-id="actions">Ações</button>
                 </div>
                 <div class="config-content">
@@ -132,6 +144,43 @@ export const IndicatorsConfigEditor = (() => {
                         </div>
                     </div>
 
+                    <div data-tab-section="grouping" style="display:none">
+                        <h3>Opções de Agrupamento</h3>
+                        <p class="help-text">Selecione as colunas que estarão disponíveis para agrupar os indicadores no widget.</p>
+                        <div id="ind-group-fields-list" style="max-height: 250px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 4px; background: #fff;">
+                            ${columns.map(c => `
+                                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 5px;">
+                                    <input type="checkbox" id="grp-${c}" value="${c}" ${state.groupFields.includes(c) ? 'checked' : ''}>
+                                    <label for="grp-${c}" style="margin:0; cursor:pointer;">${c}</label>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <div data-tab-section="styling" style="display:none">
+                        <h3>Configuração Visual</h3>
+                        <div class="form-group">
+                            <label>Tipo de Card (Lateral Esquerda):</label>
+                            <select id="ind-card-type" class="form-control">
+                                <option value="STANDARD" ${state.cardType === 'STANDARD' ? 'selected' : ''}>Padrão (Fixo)</option>
+                                <option value="CUSTOM" ${state.cardType === 'CUSTOM' ? 'selected' : ''}>Personalizado (Card System)</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="ind-card-config-container" style="display: ${state.cardType === 'CUSTOM' ? 'block' : 'none'}">
+                            <label>Configuração de Card (Card System):</label>
+                            <select id="ind-card-config-id" class="form-control">
+                                <option value="">-- Selecione uma Configuração --</option>
+                                ${state.receivedConfigs.filter(c => c.componentType === 'Card System').map(c => 
+                                    `<option value="${c.configId}" ${c.configId === state.cardConfigId ? 'selected' : ''}>${c.widgetTitle} (${c.configId})</option>`
+                                ).join('')}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Quantidade de Anos Anteriores (Grid Direita):</label>
+                            <input type="number" id="ind-years-count" class="form-control" value="${state.yearsCount}" min="0" max="10">
+                        </div>
+                    </div>
+
                     <div data-tab-section="actions" style="display:none">
                         <h3>Configuração de Ações</h3>
                         <div class="form-group">
@@ -149,6 +198,13 @@ export const IndicatorsConfigEditor = (() => {
 
             setupTabNavigation(container);
             setupLogicMapping(container, schema);
+
+            // Toggle custom card selector
+            const cardTypeSelect = container.querySelector('#ind-card-type');
+            const cardConfigContainer = container.querySelector('#ind-card-config-container');
+            cardTypeSelect.onchange = () => {
+                cardConfigContainer.style.display = cardTypeSelect.value === 'CUSTOM' ? 'block' : 'none';
+            };
 
             // Trigger debug update on any change
             container.querySelectorAll('input, select, textarea').forEach(el => {
@@ -271,6 +327,11 @@ export const IndicatorsConfigEditor = (() => {
             perMap[sel.dataset.value] = sel.value;
         });
 
+        const groupFields = [];
+        container.querySelectorAll('#ind-group-fields-list input:checked').forEach(cb => {
+            groupFields.push(cb.value);
+        });
+
         const mapping = {
             tableId: _targetTableId,
             resultsField: container.querySelector('#ind-results-field').value,
@@ -287,10 +348,15 @@ export const IndicatorsConfigEditor = (() => {
             lowerLimitValueField: container.querySelector('#ind-lower-limit-value-field').value,
             directionMap: dirMap,
             consolidationMap: consMap,
-            periodicityMap: perMap
+            periodicityMap: perMap,
+            groupFields: groupFields
         };
 
-        const styling = {};
+        const styling = {
+            cardType: container.querySelector('#ind-card-type').value,
+            cardConfigId: container.querySelector('#ind-card-config-id').value,
+            yearsCount: parseInt(container.querySelector('#ind-years-count').value, 10)
+        };
         const actions = {
             drawerConfigId: container.querySelector('#ind-drawer-id').value
         };

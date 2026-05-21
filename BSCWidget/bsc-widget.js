@@ -129,7 +129,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 objectivesTable: mapping.objectivesTable || 'Objetivos',
                 refModelCol: mapping.refModelCol || 'ref_model',
                 refPerspCol: mapping.refPerspCol || 'ref_persp',
-                relationshipField: mapping.relationshipField || 'ref_obj'
+                relationshipField: mapping.relationshipField || 'ref_obj',
+                relTable: mapping.relTable || '',
+                relCauseCol: mapping.relCauseCol || '',
+                relEffectCol: mapping.relEffectCol || '',
+                relWeightCol: mapping.relWeightCol || ''
             };
 
             await createModelDropdown(tableNames.modelsTable);
@@ -301,6 +305,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.GristDrawer = { open: openDrawer };
 
     // Subscrições globais do framework
+    subscribe('grf-update-record', async (data) => {
+        console.log("[BSC Widget] Evento 'grf-update-record' recebido:", data);
+        try {
+            await tableLens.updateRecord(data.tableId, data.recordId, data.data);
+        } catch (e) {
+            console.error("[BSC Widget] Erro ao atualizar registro:", e);
+        }
+    });
+
+    subscribe('grf-cards-drag-start', () => {
+        RelationshipLines.reposition();
+    });
+
+    subscribe('grf-cards-drag-move', () => {
+        RelationshipLines.reposition();
+    });
+
+    subscribe('grf-cards-drag-end', () => {
+        RelationshipLines.reposition();
+        setTimeout(() => RelationshipLines.reposition(), 50);
+        setTimeout(() => RelationshipLines.reposition(), 150);
+        setTimeout(() => RelationshipLines.reposition(), 300);
+    });
+
+    subscribe('grf-reposition-lines', () => {
+        RelationshipLines.reposition();
+    });
+
     subscribe('grf-navigation-action-triggered', async (eventData) => {
         console.log("[BSC Widget] Evento 'grf-navigation-action-triggered' recebido:", eventData);
         await handleNavigationAction(eventData.config, eventData.sourceRecord, eventData.tableId);

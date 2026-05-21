@@ -4,6 +4,7 @@ export const BscConfigEditor = (() => {
     let state = {};
     let _mainContainer = null;
     let _targetTableId = null;
+    let _tableLens = null;
 
     function updateDebugJson() {
         if (!_mainContainer) return;
@@ -30,26 +31,117 @@ export const BscConfigEditor = (() => {
         }
     }
 
-    function render(container, config, tableLens, tableId, receivedConfigs = []) {
+    function syncState() {
+        if (!_mainContainer) return;
+        const current = read(_mainContainer);
+        
+        // Flatten tripartition back into state
+        state.modelsTable = current.mapping.modelsTable;
+        state.perspectivesTable = current.mapping.perspectivesTable;
+        state.objectivesTable = current.mapping.objectivesTable;
+        state.refModelCol = current.mapping.refModelCol;
+        state.refPerspCol = current.mapping.refPerspCol;
+        state.relationshipField = current.mapping.relationshipField;
+        state.relTable = current.mapping.relTable;
+        state.relCauseCol = current.mapping.relCauseCol;
+        state.relEffectCol = current.mapping.relEffectCol;
+        state.relWeightCol = current.mapping.relWeightCol;
+        state.typeField = current.mapping.typeField;
+        state.defaultCardConfigId = current.mapping.defaultCardConfigId;
+        state.typeConfigMap = current.mapping.typeConfigMap;
+
+        state.useColoris = current.styling.useColoris;
+        state.showSwotTab = current.styling.showSwotTab;
+        state.showPestalTab = current.styling.showPestalTab;
+        state.arrowColor = current.styling.arrowColor;
+        state.arrowColorPaletteId = current.styling.arrowColorPaletteId;
+        state.arrowThickness = current.styling.arrowThickness;
+        state.arrowWeightMultiplier = current.styling.arrowWeightMultiplier;
+        state.showArrowOutline = current.styling.showArrowOutline;
+        state.arrowOutlineColor = current.styling.arrowOutlineColor;
+        state.arrowOutlineColorPaletteId = current.styling.arrowOutlineColorPaletteId;
+        state.arrowOutlineThickness = current.styling.arrowOutlineThickness;
+        state.connDistanceType = current.styling.connDistanceType;
+        state.connDistanceFixed = current.styling.connDistanceFixed;
+
+        state.drawerConfigId = current.actions.drawerConfigId;
+        state.showAddPerspective = current.actions.showAddPerspective;
+        state.addPerspectiveConfigId = current.actions.addPerspectiveConfigId;
+        state.showAddObjective = current.actions.showAddObjective;
+        state.addObjectiveConfigId = current.actions.addObjectiveConfigId;
+    }
+
+    function rebuildAll() {
+        if (!_mainContainer) return;
+        const contentArea = _mainContainer.querySelector("#bsc-config-contents");
+        const activeTab = _mainContainer.querySelector(".config-tab-button.active")?.dataset.tabId || "gen";
+        
+        contentArea.innerHTML = "";
+        buildGeneralTab(contentArea);
+        buildColumnsTab(contentArea);
+        buildStyleTab(contentArea);
+        buildActionsTab(contentArea);
+        
+        switchTab(activeTab, _mainContainer);
+        updateDebugJson();
+    }
+
+    async function render(container, config, tableLens, tableId, receivedConfigs = []) {
         _mainContainer = container;
         _targetTableId = tableId;
+        _tableLens = tableLens;
         const options = config || {};
         
         // Se vier de um widget unificado (GTL.fetchConfig), as ações estarão na raiz ou dentro de .actions
         const actions = options.actions || options;
+        const styling = options.styling || options;
 
         state = {
-            useColoris: options.useColoris || (options.styling?.useColoris) || false,
+            useColoris: styling.useColoris || false,
+            showSwotTab: styling.showSwotTab !== undefined ? styling.showSwotTab : true,
+            showPestalTab: styling.showPestalTab !== undefined ? styling.showPestalTab : true,
+            arrowColor: styling.arrowColor || 'rgba(0, 86, 168, 0.8)',
+            arrowColorPaletteId: styling.arrowColorPaletteId || '',
+            arrowThickness: styling.arrowThickness || 4,
+            arrowWeightMultiplier: styling.arrowWeightMultiplier !== undefined ? styling.arrowWeightMultiplier : 1,
+            showArrowOutline: styling.showArrowOutline !== undefined ? styling.showArrowOutline : true,
+            arrowOutlineColor: styling.arrowOutlineColor || 'rgba(255, 255, 255, 0.5)',
+            arrowOutlineColorPaletteId: styling.arrowOutlineColorPaletteId || '',
+            arrowOutlineThickness: styling.arrowOutlineThickness || 0.2,
+            connDistanceType: styling.connDistanceType || 'relative',
+            connDistanceFixed: styling.connDistanceFixed !== undefined ? styling.connDistanceFixed : 20,
+
             drawerConfigId: actions.drawerConfigId || null,
             showAddPerspective: actions.showAddPerspective || false,
             addPerspectiveConfigId: actions.addPerspectiveConfigId || null,
             showAddObjective: actions.showAddObjective || false,
             addObjectiveConfigId: actions.addObjectiveConfigId || null,
-            perspectivesConfigId: options.perspectivesConfigId || options.mapping?.perspectivesConfigId || null,
-            qualityConfigId: options.qualityConfigId || options.mapping?.qualityConfigId || null,
-            requirementsConfigId: options.requirementsConfigId || options.mapping?.requirementsConfigId || null,
-            receivedConfigs: receivedConfigs
+            
+            // Dynamic Mapping
+            modelsTable: options.modelsTable || options.mapping?.modelsTable || 'Modelos',
+            perspectivesTable: options.perspectivesTable || options.mapping?.perspectivesTable || 'Perspectivas',
+            objectivesTable: options.objectivesTable || options.mapping?.objectivesTable || 'Objetivos',
+            typeField: options.typeField || options.mapping?.typeField || 'TipoModelo',
+            typeConfigMap: options.typeConfigMap || options.mapping?.typeConfigMap || {},
+            defaultCardConfigId: options.defaultCardConfigId || options.mapping?.defaultCardConfigId || options.perspectivesConfigId || options.mapping?.perspectivesConfigId || null,
+
+            refModelCol: options.refModelCol || options.mapping?.refModelCol || 'ref_model',
+            refPerspCol: options.refPerspCol || options.mapping?.refPerspCol || 'ref_persp',
+            relationshipField: options.relationshipField || options.mapping?.relationshipField || 'ref_obj',
+            relTable: options.relTable || options.mapping?.relTable || '',
+            relCauseCol: options.relCauseCol || options.mapping?.relCauseCol || '',
+            relEffectCol: options.relEffectCol || options.mapping?.relEffectCol || '',
+            relWeightCol: options.relWeightCol || options.mapping?.relWeightCol || '',
+            
+            receivedConfigs: receivedConfigs,
+            allTables: await tableLens.listAllTables()
         };
+
+        // Fetch schemas for dynamic field selection
+        state.modelsSchema = await tableLens.getTableSchema(state.modelsTable);
+        state.perspectivesSchema = await tableLens.getTableSchema(state.perspectivesTable);
+        state.objectivesSchema = await tableLens.getTableSchema(state.objectivesTable);
+        state.relTableSchema = state.relTable ? await tableLens.getTableSchema(state.relTable) : null;
 
         container.innerHTML = `
             <style>
@@ -59,6 +151,35 @@ export const BscConfigEditor = (() => {
                 .debug-label.styling { color: #198754; }
                 .debug-label.actions { color: #fd7e14; }
                 .config-debugger pre { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 4px; max-height: 200px; overflow: auto; }
+                
+                .palette-picker-container {
+                    background: #f1f5f9;
+                    padding: 10px;
+                    border-radius: 4px;
+                    border: 1px solid #cbd5e1;
+                    margin-top: 5px;
+                }
+                .palette-color-grid {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 5px;
+                    margin-top: 10px;
+                }
+                .palette-color-swatch {
+                    width: 24px;
+                    height: 24px;
+                    border-radius: 4px;
+                    border: 1px solid #94a3b8;
+                    cursor: pointer;
+                    transition: transform 0.1s;
+                }
+                .palette-color-swatch:hover {
+                    transform: scale(1.1);
+                }
+                .palette-color-swatch.active {
+                    border: 2px solid #000;
+                    box-shadow: 0 0 0 2px #fff inset;
+                }
             </style>
         `;
 
@@ -67,7 +188,8 @@ export const BscConfigEditor = (() => {
         tabsRow.className = 'config-tabs';
         [
             createTabButton("General", "gen", container),
-            createTabButton("Display", "cols", container), // Renamed from Columns
+            createTabButton("Cards", "cols", container),
+            createTabButton("Style", "style", container),
             createTabButton("Actions", "act", container)
         ].forEach(t => tabsRow.appendChild(t));
         container.appendChild(tabsRow);
@@ -89,6 +211,7 @@ export const BscConfigEditor = (() => {
         // Build Tabs
         buildGeneralTab(contentArea);
         buildColumnsTab(contentArea);
+        buildStyleTab(contentArea);
         buildActionsTab(contentArea);
 
         // Initialize
@@ -102,30 +225,91 @@ export const BscConfigEditor = (() => {
     function read(container) {
         const genTab = container.querySelector("[data-tab-section='gen']");
         const colsTab = container.querySelector("[data-tab-section='cols']");
+        const styleTab = container.querySelector("[data-tab-section='style']");
         const actTab = container.querySelector("[data-tab-section='act']");
 
+        const typeConfigMap = {};
+        if (colsTab) {
+            colsTab.querySelectorAll(".dynamic-card-mapping").forEach(row => {
+                const choice = row.dataset.choice;
+                const configId = row.querySelector("select").value;
+                if (configId) typeConfigMap[choice] = configId;
+            });
+        }
+
         const fullConfig = {
-            useColoris: genTab ? genTab.querySelector('#bsc-cfg-use-coloris').checked : state.useColoris,
+            useColoris: styleTab ? styleTab.querySelector('#bsc-cfg-use-coloris').checked : state.useColoris,
+            showSwotTab: styleTab ? styleTab.querySelector('#bsc-cfg-show-swot').checked : state.showSwotTab,
+            showPestalTab: styleTab ? styleTab.querySelector('#bsc-cfg-show-pestal').checked : state.showPestalTab,
+            
+            arrowColor: styleTab ? styleTab.querySelector('#bsc-cfg-arrow-color').value : state.arrowColor,
+            arrowColorPaletteId: styleTab ? styleTab.querySelector('#bsc-cfg-arrow-color-palette-id').value : state.arrowColorPaletteId,
+            
+            arrowThickness: styleTab ? parseFloat(styleTab.querySelector('#bsc-cfg-arrow-thickness').value) : state.arrowThickness,
+            arrowWeightMultiplier: styleTab ? parseFloat(styleTab.querySelector('#bsc-cfg-arrow-weight-multiplier').value) : state.arrowWeightMultiplier,
+            showArrowOutline: styleTab ? styleTab.querySelector('#bsc-cfg-show-arrow-outline').checked : state.showArrowOutline,
+            
+            arrowOutlineColor: styleTab ? styleTab.querySelector('#bsc-cfg-arrow-outline-color').value : state.arrowOutlineColor,
+            arrowOutlineColorPaletteId: styleTab ? styleTab.querySelector('#bsc-cfg-arrow-outline-color-palette-id').value : state.arrowOutlineColorPaletteId,
+            
+            arrowOutlineThickness: styleTab ? parseFloat(styleTab.querySelector('#bsc-cfg-arrow-outline-thickness').value) : state.arrowOutlineThickness,
+            connDistanceType: styleTab ? styleTab.querySelector('#bsc-cfg-conn-distance-type').value : state.connDistanceType,
+            connDistanceFixed: styleTab ? parseFloat(styleTab.querySelector('#bsc-cfg-conn-distance-fixed').value) : state.connDistanceFixed,
+
+            modelsTable: genTab ? genTab.querySelector('#bsc-cfg-models-table').value : state.modelsTable,
+            perspectivesTable: genTab ? genTab.querySelector('#bsc-cfg-perspectives-table').value : state.perspectivesTable,
+            objectivesTable: genTab ? genTab.querySelector('#bsc-cfg-objectives-table').value : state.objectivesTable,
+            refModelCol: genTab ? genTab.querySelector('#bsc-cfg-ref-model-col').value : state.refModelCol,
+            refPerspCol: genTab ? genTab.querySelector('#bsc-cfg-ref-persp-col').value : state.refPerspCol,
+            relationshipField: genTab ? (genTab.querySelector('#bsc-cfg-rel-field') ? genTab.querySelector('#bsc-cfg-rel-field').value : state.relationshipField) : state.relationshipField,
+            relTable: genTab ? genTab.querySelector('#bsc-cfg-rel-table').value : state.relTable,
+            relCauseCol: genTab ? genTab.querySelector('#bsc-cfg-rel-cause-col').value : state.relCauseCol,
+            relEffectCol: genTab ? genTab.querySelector('#bsc-cfg-rel-effect-col').value : state.relEffectCol,
+            relWeightCol: genTab ? genTab.querySelector('#bsc-cfg-rel-weight-col').value : state.relWeightCol,
+            
+            typeField: colsTab ? colsTab.querySelector('#bsc-cfg-type-field').value : state.typeField,
+            defaultCardConfigId: colsTab ? colsTab.querySelector('#bsc-cfg-default-card-id').value : state.defaultCardConfigId,
+            typeConfigMap: typeConfigMap,
+
             drawerConfigId: actTab ? actTab.querySelector('#bsc-cfg-drawer-id').value : state.drawerConfigId,
             showAddPerspective: actTab ? actTab.querySelector('#bsc-cfg-show-add-persp').checked : state.showAddPerspective,
             addPerspectiveConfigId: actTab ? actTab.querySelector('#bsc-cfg-add-persp-id').value : state.addPerspectiveConfigId,
             showAddObjective: actTab ? actTab.querySelector('#bsc-cfg-show-add-obj').checked : state.showAddObjective,
-            addObjectiveConfigId: actTab ? actTab.querySelector('#bsc-cfg-add-obj-id').value : state.addObjectiveConfigId,
-            perspectivesConfigId: colsTab ? colsTab.querySelector('#bsc-cfg-persp-card-id').value : state.perspectivesConfigId,
-            qualityConfigId: colsTab ? colsTab.querySelector('#bsc-cfg-quality-card-id').value : state.qualityConfigId,
-            requirementsConfigId: colsTab ? colsTab.querySelector('#bsc-cfg-req-card-id').value : state.requirementsConfigId
+            addObjectiveConfigId: actTab ? actTab.querySelector('#bsc-cfg-add-obj-id').value : state.addObjectiveConfigId
         };
 
         // --- TRIPARTIÇÃO ---
         const mapping = {
             tableId: _targetTableId,
-            perspectivesConfigId: fullConfig.perspectivesConfigId,
-            qualityConfigId: fullConfig.qualityConfigId,
-            requirementsConfigId: fullConfig.requirementsConfigId
+            modelsTable: fullConfig.modelsTable,
+            perspectivesTable: fullConfig.perspectivesTable,
+            objectivesTable: fullConfig.objectivesTable,
+            refModelCol: fullConfig.refModelCol,
+            refPerspCol: fullConfig.refPerspCol,
+            relationshipField: fullConfig.relationshipField,
+            relTable: fullConfig.relTable,
+            relCauseCol: fullConfig.relCauseCol,
+            relEffectCol: fullConfig.relEffectCol,
+            relWeightCol: fullConfig.relWeightCol,
+            typeField: fullConfig.typeField,
+            defaultCardConfigId: fullConfig.defaultCardConfigId,
+            typeConfigMap: fullConfig.typeConfigMap
         };
 
         const styling = {
-            useColoris: fullConfig.useColoris
+            useColoris: fullConfig.useColoris,
+            showSwotTab: fullConfig.showSwotTab,
+            showPestalTab: fullConfig.showPestalTab,
+            arrowColor: fullConfig.arrowColor,
+            arrowColorPaletteId: fullConfig.arrowColorPaletteId,
+            arrowThickness: fullConfig.arrowThickness,
+            arrowWeightMultiplier: fullConfig.arrowWeightMultiplier,
+            showArrowOutline: fullConfig.showArrowOutline,
+            arrowOutlineColor: fullConfig.arrowOutlineColor,
+            arrowOutlineColorPaletteId: fullConfig.arrowOutlineColorPaletteId,
+            arrowOutlineThickness: fullConfig.arrowOutlineThickness,
+            connDistanceType: fullConfig.connDistanceType,
+            connDistanceFixed: fullConfig.connDistanceFixed
         };
 
         const actions = {
@@ -171,22 +355,131 @@ export const BscConfigEditor = (() => {
         const tabEl = document.createElement("div");
         tabEl.dataset.tabSection = "gen";
         tabEl.style.display = "none";
+
+        const createTableOptions = (selectedId) => state.allTables.map(t =>
+            `<option value="${t.id}" ${t.id === selectedId ? 'selected' : ''}>${t.name} (${t.id})</option>`
+        ).join('');
+
+        const createColumnOptions = (schema, selectedId) => {
+            if (!schema) return `<option value="">-- Selecione a Tabela Primeiro --</option>`;
+            return Object.values(schema).map(col =>
+                `<option value="${col.colId}" ${col.colId === selectedId ? 'selected' : ''}>${col.label} (${col.colId})</option>`
+            ).join('');
+        };
+
         tabEl.innerHTML = `
-            <h3>General Settings</h3>
-            <div class="form-group">
-                <label>
-                    <input type="checkbox" id="bsc-cfg-use-coloris" ${state.useColoris ? 'checked' : ''}>
-                    Use Coloris library (Legacy)
-                </label>
-                <p class="help-text">
-                    Use the legacy Coloris library for color picking instead of the native browser picker.
-                </p>
-            </div>
-            <div class="placeholder-notice">
-                <p>More general settings will be available here.</p>
-            </div>
+            <h3>Configuração das Tabelas Fonte</h3>
+            <fieldset>
+                <legend><b>Tabelas do Modelo BSC</b></legend>
+                <div class="form-group">
+                    <label for="bsc-cfg-models-table">Tabela de Modelos:</label>
+                    <select id="bsc-cfg-models-table" class="form-control">
+                        ${createTableOptions(state.modelsTable)}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="bsc-cfg-perspectives-table">Tabela de Perspectivas:</label>
+                    <select id="bsc-cfg-perspectives-table" class="form-control">
+                        ${createTableOptions(state.perspectivesTable)}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="bsc-cfg-objectives-table">Tabela de Objetivos:</label>
+                    <select id="bsc-cfg-objectives-table" class="form-control">
+                        ${createTableOptions(state.objectivesTable)}
+                    </select>
+                </div>
+            </fieldset>
+
+            <fieldset>
+                <legend><b>Mapeamento Avançado de Colunas</b></legend>
+                <div class="form-group">
+                    <label for="bsc-cfg-ref-model-col">Vínculo Perspectiva -> Modelo:</label>
+                    <select id="bsc-cfg-ref-model-col" class="form-control">
+                        <option value="">-- Selecionar Coluna --</option>
+                        ${createColumnOptions(state.perspectivesSchema, state.refModelCol)}
+                    </select>
+                    <p class="help-text">Nome da coluna na tabela de <b>Perspectivas</b> que aponta para o Modelo.</p>
+                </div>
+                <div class="form-group">
+                    <label for="bsc-cfg-ref-persp-col">Vínculo Objetivo -> Perspectiva:</label>
+                    <select id="bsc-cfg-ref-persp-col" class="form-control">
+                        <option value="">-- Selecionar Coluna --</option>
+                        ${createColumnOptions(state.objectivesSchema, state.refPerspCol)}
+                    </select>
+                    <p class="help-text">Nome da coluna na tabela de <b>Objetivos</b> que aponta para a Perspectiva.</p>
+                </div>
+            </fieldset>
+
+            <fieldset>
+                <legend><b>Tabela de Relacionamento (Causa e Efeito)</b></legend>
+                <div class="form-group">
+                    <label for="bsc-cfg-rel-table">Tabela de Causa e Efeito:</label>
+                    <select id="bsc-cfg-rel-table" class="form-control">
+                        <option value="">-- Selecionar Tabela --</option>
+                        ${createTableOptions(state.relTable)}
+                    </select>
+                    <p class="help-text">Tabela intermédia de junção (Muitos para Muitos) dedicada a "Causa e Efeito".</p>
+                </div>
+                <div class="form-group">
+                    <label for="bsc-cfg-rel-cause-col">Coluna de Causa:</label>
+                    <select id="bsc-cfg-rel-cause-col" class="form-control">
+                        <option value="">-- Selecionar Coluna --</option>
+                        ${createColumnOptions(state.relTableSchema, state.relCauseCol)}
+                    </select>
+                    <p class="help-text">Coluna (Reference) que aponta para o objetivo de origem (Causa).</p>
+                </div>
+                <div class="form-group">
+                    <label for="bsc-cfg-rel-effect-col">Coluna de Efeito:</label>
+                    <select id="bsc-cfg-rel-effect-col" class="form-control">
+                        <option value="">-- Selecionar Coluna --</option>
+                        ${createColumnOptions(state.relTableSchema, state.relEffectCol)}
+                    </select>
+                    <p class="help-text">Coluna (Reference) que aponta para o objetivo de destino (Efeito).</p>
+                </div>
+                <div class="form-group">
+                    <label for="bsc-cfg-rel-weight-col">Coluna de Peso:</label>
+                    <select id="bsc-cfg-rel-weight-col" class="form-control">
+                        <option value="">-- Selecionar Coluna --</option>
+                        ${createColumnOptions(state.relTableSchema, state.relWeightCol)}
+                    </select>
+                    <p class="help-text">Coluna numérica que guarda o peso da relação.</p>
+                </div>
+            </fieldset>
         `;
         container.appendChild(tabEl);
+
+        // Listeners for Table changes to refresh schemas
+        tabEl.querySelector('#bsc-cfg-models-table').addEventListener('change', async (e) => {
+            syncState();
+            state.modelsTable = e.target.value;
+            state.modelsSchema = await _tableLens.getTableSchema(state.modelsTable);
+            rebuildAll();
+        });
+
+        tabEl.querySelector('#bsc-cfg-perspectives-table').addEventListener('change', async (e) => {
+            syncState();
+            state.perspectivesTable = e.target.value;
+            state.perspectivesSchema = await _tableLens.getTableSchema(state.perspectivesTable);
+            rebuildAll();
+        });
+
+        tabEl.querySelector('#bsc-cfg-objectives-table').addEventListener('change', async (e) => {
+            syncState();
+            state.objectivesTable = e.target.value;
+            state.objectivesSchema = await _tableLens.getTableSchema(state.objectivesTable);
+            rebuildAll();
+        });
+
+        const relTableSelect = tabEl.querySelector('#bsc-cfg-rel-table');
+        if (relTableSelect) {
+            relTableSelect.addEventListener('change', async (e) => {
+                syncState();
+                state.relTable = e.target.value;
+                state.relTableSchema = state.relTable ? await _tableLens.getTableSchema(state.relTable) : null;
+                rebuildAll();
+            });
+        }
     }
 
     function buildColumnsTab(container) {
@@ -196,47 +489,251 @@ export const BscConfigEditor = (() => {
 
         // Filter for Card System configs
         const cardConfigs = state.receivedConfigs.filter(c => c.componentType === 'Card System');
-        
-        const createOptions = (selectedId) => cardConfigs.map(c =>
+        const createCardOptions = (selectedId) => cardConfigs.map(c =>
             `<option value="${c.configId}" ${c.configId === selectedId ? 'selected' : ''}>
                 ${c.widgetTitle} (${c.configId})
             </option>`
         ).join('');
 
+        // Create options for Choice columns in Models table
+        const choiceColumns = Object.values(state.modelsSchema || {}).filter(col => 
+            col.type === 'Choice' || col.type === 'Text'
+        );
+        const createFieldOptions = (selectedId) => choiceColumns.map(col =>
+            `<option value="${col.colId}" ${col.colId === selectedId ? 'selected' : ''}>${col.label} (${col.colId})</option>`
+        ).join('');
+
+        // Detect choices if typeField is a Choice column
+        let choiceRowsHtml = '';
+        const selectedCol = state.modelsSchema ? state.modelsSchema[state.typeField] : null;
+        if (selectedCol && selectedCol.type === 'Choice') {
+            const choices = selectedCol.widgetOptions?.choices || [];
+            choiceRowsHtml = choices.map(choice => `
+                <div class="form-group dynamic-card-mapping" data-choice="${choice}">
+                    <label>${choice}:</label>
+                    <select class="form-control">
+                        <option value="">-- Usar Padrão --</option>
+                        ${createCardOptions(state.typeConfigMap[choice])}
+                    </select>
+                </div>
+            `).join('');
+        }
+
         tabEl.innerHTML = `
-            <h3>Display Settings</h3>
+            <h3>Configuração de Exibição (Cards)</h3>
             <fieldset>
-                <legend><b>Map Display Configuration (by Model Type)</b></legend>
+                <legend><b>Mapeamento Dinâmico por Tipo de Modelo</b></legend>
                 
                 <div class="form-group">
-                    <label for="bsc-cfg-persp-card-id">Mapa Estratégico:</label>
-                    <select id="bsc-cfg-persp-card-id" class="form-control">
-                        <option value="">-- Default --</option>
-                        ${createOptions(state.perspectivesConfigId)}
+                    <label for="bsc-cfg-type-field">Coluna que define o Tipo (na tabela de Modelos):</label>
+                    <select id="bsc-cfg-type-field" class="form-control">
+                        <option value="">-- Selecionar Coluna --</option>
+                        ${createFieldOptions(state.typeField)}
                     </select>
-                    <p class="help-text">Controls rendering for "Mapa Estratégico".</p>
+                    <p class="help-text">Escolha uma coluna do tipo "Choice" na tabela de Modelos.</p>
                 </div>
 
                 <div class="form-group">
-                    <label for="bsc-cfg-quality-card-id">Objetivos Qualidade:</label>
-                    <select id="bsc-cfg-quality-card-id" class="form-control">
-                        <option value="">-- Same as Default --</option>
-                        ${createOptions(state.qualityConfigId)}
+                    <label for="bsc-cfg-default-card-id">Card Padrão (Fallback):</label>
+                    <select id="bsc-cfg-default-card-id" class="form-control">
+                        <option value="">-- Selecionar Card --</option>
+                        ${createCardOptions(state.defaultCardConfigId)}
                     </select>
-                    <p class="help-text">Controls rendering for "Objetivos Qualidade".</p>
+                    <p class="help-text">Card usado se não houver mapeamento específico ou a coluna de tipo estiver vazia.</p>
                 </div>
 
-                <div class="form-group">
-                    <label for="bsc-cfg-req-card-id">Requisitos Partes Interessadas:</label>
-                    <select id="bsc-cfg-req-card-id" class="form-control">
-                        <option value="">-- Same as Default --</option>
-                        ${createOptions(state.requirementsConfigId)}
-                    </select>
-                    <p class="help-text">Controls rendering for "Requisitos Partes Interessadas".</p>
-                </div>
+                ${choiceRowsHtml ? `
+                    <div style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed #ccc;">
+                        <h4>Configuração por Opção:</h4>
+                        ${choiceRowsHtml}
+                    </div>
+                ` : ''}
+
             </fieldset>
         `;
         container.appendChild(tabEl);
+        
+        // Listener to refresh tab when typeField changes to show choices
+        const fieldSelect = tabEl.querySelector('#bsc-cfg-type-field');
+        if (fieldSelect) {
+            fieldSelect.addEventListener('change', async (e) => {
+                syncState();
+                state.typeField = e.target.value;
+                rebuildAll();
+            });
+        }
+    }
+
+    function buildStyleTab(container) {
+        const tabEl = document.createElement("div");
+        tabEl.dataset.tabSection = "style";
+        tabEl.style.display = "none";
+
+        tabEl.innerHTML = `
+            <h3>Visual Style & Tabs</h3>
+            
+            <fieldset>
+                <legend><b>Abas Adicionais</b></legend>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="bsc-cfg-show-swot" ${state.showSwotTab ? 'checked' : ''}>
+                        Mostrar Aba SWOT
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="bsc-cfg-show-pestal" ${state.showPestalTab ? 'checked' : ''}>
+                        Mostrar Aba PESTAL
+                    </label>
+                </div>
+            </fieldset>
+
+            <fieldset>
+                <legend><b>Estilo das Setas (Relacionamentos)</b></legend>
+                
+                ${renderPaletteColorPicker('arrow-color', 'Cor Interna', state.arrowColor, state.arrowColorPaletteId)}
+
+                <div style="display: flex; gap: 10px; margin-top:10px;">
+                    <div style="flex: 1;">
+                        <label for="bsc-cfg-arrow-thickness">Espessura (px):</label>
+                        <input type="number" id="bsc-cfg-arrow-thickness" class="form-control" value="${state.arrowThickness}" step="0.5" min="1">
+                    </div>
+                    <div style="flex: 1;">
+                        <label for="bsc-cfg-arrow-weight-multiplier">Multiplicador Peso:</label>
+                        <input type="number" id="bsc-cfg-arrow-weight-multiplier" class="form-control" value="${state.arrowWeightMultiplier}" step="0.1" min="0">
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-top:10px;">
+                    <label for="bsc-cfg-conn-distance-type">Tipo de Distribuição das Conexões:</label>
+                    <select id="bsc-cfg-conn-distance-type" class="form-control">
+                        <option value="relative" ${state.connDistanceType === 'relative' ? 'selected' : ''}>Relativo (%)</option>
+                        <option value="fixed" ${state.connDistanceType === 'fixed' ? 'selected' : ''}>Fixo (px)</option>
+                    </select>
+                </div>
+
+                <div class="form-group" id="conn-distance-fixed-group" style="margin-top:10px; display: ${state.connDistanceType === 'fixed' ? 'block' : 'none'};">
+                    <label for="bsc-cfg-conn-distance-fixed">Distância/Espaçamento Fixo (px):</label>
+                    <input type="number" id="bsc-cfg-conn-distance-fixed" class="form-control" value="${state.connDistanceFixed}" min="1" step="1">
+                </div>
+                
+                <div class="form-group" style="margin-top:15px;">
+                    <label>
+                        <input type="checkbox" id="bsc-cfg-show-arrow-outline" ${state.showArrowOutline ? 'checked' : ''}>
+                        Habilitar Outline (Contorno)
+                    </label>
+                </div>
+                
+                <div id="arrow-outline-settings" style="display: ${state.showArrowOutline ? 'block' : 'none'}; margin-left: 20px;">
+                    ${renderPaletteColorPicker('arrow-outline-color', 'Cor do Contorno', state.arrowOutlineColor, state.arrowOutlineColorPaletteId)}
+                    <div class="form-group" style="margin-top:10px;">
+                        <label for="bsc-cfg-arrow-outline-thickness">Espessura do Contorno (proporcional):</label>
+                        <input type="number" id="bsc-cfg-arrow-outline-thickness" class="form-control" value="${state.arrowOutlineThickness}" step="0.1" min="0">
+                    </div>
+                </div>
+            </fieldset>
+
+            <h3>Outras Configurações</h3>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="bsc-cfg-use-coloris" ${state.useColoris ? 'checked' : ''}>
+                    Use Coloris library (Legacy)
+                </label>
+            </div>
+        `;
+        container.appendChild(tabEl);
+
+        tabEl.querySelector('#bsc-cfg-show-arrow-outline').addEventListener('change', (e) => {
+            tabEl.querySelector('#arrow-outline-settings').style.display = e.target.checked ? 'block' : 'none';
+        });
+
+        const distTypeSelect = tabEl.querySelector('#bsc-cfg-conn-distance-type');
+        if (distTypeSelect) {
+            distTypeSelect.addEventListener('change', (e) => {
+                tabEl.querySelector('#conn-distance-fixed-group').style.display = e.target.value === 'fixed' ? 'block' : 'none';
+            });
+        }
+
+        // Initialize Palette Listeners
+        setupPaletteListeners(tabEl, 'arrow-color');
+        setupPaletteListeners(tabEl, 'arrow-outline-color');
+    }
+
+    function renderPaletteColorPicker(idPrefix, label, currentValue, currentPaletteId) {
+        const palettes = state.receivedConfigs.filter(c => c.componentType === 'Color Options');
+        const paletteOptions = palettes.map(p => `<option value="${p.configId}" ${p.configId === currentPaletteId ? 'selected' : ''}>${p.widgetTitle}</option>`).join('');
+        
+        // Ensure hex for <input type="color">
+        const ensureHex = (val) => {
+            if (!val || typeof val !== 'string') return '#000000';
+            if (val.startsWith('#')) return val;
+            // Fallback for rgba or other formats that the color input doesn't like
+            return '#000000'; 
+        };
+
+        return `
+            <div class="palette-linked-picker" data-id-prefix="${idPrefix}">
+                <label style="font-weight: bold; font-size: 11px; color: #64748b; text-transform: uppercase;">${label}</label>
+                <div style="display: flex; gap: 10px; align-items: flex-end;">
+                    <div style="flex: 1;">
+                        <label style="font-size: 10px;">Vincular Paleta:</label>
+                        <select id="bsc-cfg-${idPrefix}-palette-id" class="form-control palette-id-select">
+                            <option value="">-- Manual (Hex) --</option>
+                            ${paletteOptions}
+                        </select>
+                    </div>
+                    <div style="width: 60px;">
+                        <label style="font-size: 10px;">Cor:</label>
+                        <input type="color" id="bsc-cfg-${idPrefix}" class="form-control color-manual-input" value="${ensureHex(currentValue)}">
+                    </div>
+                </div>
+                <div id="${idPrefix}-palette-container" class="palette-picker-container" style="display: ${currentPaletteId ? 'block' : 'none'};">
+                    <div class="palette-color-grid"></div>
+                </div>
+            </div>
+        `;
+    }
+
+    function setupPaletteListeners(tabEl, idPrefix) {
+        const paletteSelect = tabEl.querySelector(`#bsc-cfg-${idPrefix}-palette-id`);
+        const manualInput = tabEl.querySelector(`#bsc-cfg-${idPrefix}`);
+        const paletteContainer = tabEl.querySelector(`#${idPrefix}-palette-container`);
+        const grid = paletteContainer.querySelector('.palette-color-grid');
+
+        const updateGrid = () => {
+            const paletteId = paletteSelect.value;
+            if (!paletteId) {
+                paletteContainer.style.display = 'none';
+                return;
+            }
+            paletteContainer.style.display = 'block';
+            grid.innerHTML = '';
+            
+            const palette = state.receivedConfigs.find(c => c.configId === paletteId);
+            if (palette) {
+                try {
+                    const data = JSON.parse(palette.stylingJson || palette.configJson || '{}');
+                    const colors = data.colors || [];
+                    colors.forEach(c => {
+                        const swatch = document.createElement('div');
+                        swatch.className = 'palette-color-swatch' + (c.hex.toUpperCase() === manualInput.value.toUpperCase() ? ' active' : '');
+                        swatch.style.backgroundColor = c.hex;
+                        swatch.title = c.label || c.hex;
+                        swatch.onclick = () => {
+                            manualInput.value = c.hex;
+                            grid.querySelectorAll('.palette-color-swatch').forEach(s => s.classList.remove('active'));
+                            swatch.classList.add('active');
+                            // Trigger manual input change to update debug/state
+                            manualInput.dispatchEvent(new Event('change', { bubbles: true }));
+                        };
+                        grid.appendChild(swatch);
+                    });
+                } catch(e) { console.error("Error parsing palette JSON:", e); }
+            }
+        };
+
+        paletteSelect.addEventListener('change', updateGrid);
+        updateGrid();
     }
 
     function buildActionsTab(container) {

@@ -11,8 +11,9 @@ export const GristDataWriter = function(grist) {
         if (!tableId || !recordId || !changes) {
             throw new Error("updateRecord requires tableId, recordId, and changes.");
         }
+        const cleanId = typeof recordId === 'string' && /^\d+$/.test(recordId) ? parseInt(recordId, 10) : recordId;
         return grist.docApi.applyUserActions([
-            ['UpdateRecord', tableId, recordId, changes]
+            ['UpdateRecord', tableId, cleanId, changes]
         ]);
     };
 
@@ -43,7 +44,10 @@ export const GristDataWriter = function(grist) {
         if (!tableId || !Array.isArray(updates) || updates.length === 0) {
             throw new Error("updateRecords requires tableId and an array of updates.");
         }
-        const actions = updates.map(u => ['UpdateRecord', tableId, u.id, u.fields]);
+        const actions = updates.map(u => {
+            const cleanId = typeof u.id === 'string' && /^\d+$/.test(u.id) ? parseInt(u.id, 10) : u.id;
+            return ['UpdateRecord', tableId, cleanId, u.fields];
+        });
         return grist.docApi.applyUserActions(actions);
     };
 
@@ -69,9 +73,12 @@ export const GristDataWriter = function(grist) {
         if (!tableId || !recordIds || recordIds.length === 0) {
             throw new Error("deleteRecords requires tableId and an array of recordIds.");
         }
+        const cleanIds = Array.isArray(recordIds)
+            ? recordIds.map(id => typeof id === 'string' && /^\d+$/.test(id) ? parseInt(id, 10) : id)
+            : recordIds;
         // The action is 'BulkRemoveRecord'.
         return grist.docApi.applyUserActions([
-            ['BulkRemoveRecord', tableId, recordIds]
+            ['BulkRemoveRecord', tableId, cleanIds]
         ]);
     };
 };

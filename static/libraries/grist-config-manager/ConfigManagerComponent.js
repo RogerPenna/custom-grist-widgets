@@ -2,12 +2,14 @@ import { GristTableLens } from '../grist-table-lens/grist-table-lens.js';
 import { GristDataWriter } from '../grist-data-writer.js';
 
 // Import editor modules
-import { CardConfigEditor } from './editors/config-cards.js';
-import { DrawerConfigEditor } from './editors/config-drawer.js';
-import { CardStyleConfigEditor } from './editors/config-card-style.js';
-import { TableConfigEditor } from './editors/config-table.js';
-import { BscConfigEditor } from './editors/config-bsc.js';
-import { IndicatorsConfigEditor } from './editors/config-indicators.js';
+import { CardConfigEditor } from './editors/config-cards.js?v=1.0.2';
+import { DrawerConfigEditor } from './editors/config-drawer.js?v=1.0.2';
+import { CardStyleConfigEditor } from './editors/config-card-style.js?v=1.0.2';
+import { TableConfigEditor } from './editors/config-table.js?v=1.0.2';
+import { BscConfigEditor } from './editors/config-bsc.js?v=1.0.2';
+import { IndicatorsConfigEditor } from './editors/config-indicators.js?v=1.0.2';
+import { ProgressBarConfigEditor } from './editors/config-progress-bar.js?v=1.0.2';
+import { ColorOptionsConfigEditor } from './editors/config-color-options.js?v=1.0.2';
 
 let overlay = null;
 let _grist = null;
@@ -19,6 +21,9 @@ const COMPONENT_TYPE_COLORS = {
     'Table': '#fd7e14', // orange
     'BSC': '#6f42c1', // purple
     'Indicators': '#d63384', // pink
+    'ProgressBar': '#20c997', // teal
+    'ColorOptions': '#adb5bd', // secondary
+    'StatusIcons': '#ffc107', // warning
     'default': '#6c757d' // grey
 };
 
@@ -81,6 +86,10 @@ export async function renderMainUI(grist, container, initialConfigId, componentT
             return;
         }
 
+        // --- MASTER LISTS ---
+        const MASTER_WIDGET_TYPES = ['Card System', 'Drawer', 'Table', 'BSC', 'Indicators'];
+        const MASTER_COMPONENT_TYPES = ['Progress Bar', 'Color Options', 'Card Style', 'Status Icons'];
+
         // --- NOVA VERIFICAÇÃO DE COLUNAS (TRIPARTIÇÃO) ---
         const tableSchema = await tableLens.getTableSchema(CONFIG_TABLE, { mode: 'raw' });
         const requiredColumns = ['mappingJson', 'stylingJson', 'actionsJson'];
@@ -97,96 +106,44 @@ export async function renderMainUI(grist, container, initialConfigId, componentT
             console.log("ConfigManager: Caught grf-save-card-style event", e.detail);
             const { configJson, componentType, description } = e.detail;
             
-            const styleName = prompt("Enter a name for this new Card Style:", "My New Style");
-            if (!styleName) return; // User cancelled
+            const styleName = prompt("Insira um nome para este novo Estilo de Card:", "Meu Novo Estilo");
+            if (!styleName) return;
 
             const newRecord = {
                 widgetTitle: styleName,
                 configId: `style_${Date.now()}`,
                 description: description || '[STYLE]',
                 componentType: componentType,
-                configJson: configJson
+                configJson: configJson // Legado
             };
+
+            // Adiciona tripartição se as colunas existirem
+            const parsed = JSON.parse(configJson);
+            
+            if (tableSchema['stylingJson']) {
+                newRecord.stylingJson = JSON.stringify(parsed.styling || parsed);
+            }
+            if (tableSchema['actionsJson'] && parsed.actions) {
+                newRecord.actionsJson = JSON.stringify(parsed.actions);
+            }
 
             try {
                 await dataWriter.addRecord(CONFIG_TABLE, newRecord);
-                alert(`Style "${styleName}" saved successfully!`);
-                // Reload to show in list
+                alert(`Estilo "${styleName}" salvo com sucesso!`);
                 allConfigs = await tableLens.fetchTableRecords(CONFIG_TABLE);
                 loadList(filterTypeSelectorEl.value);
-                // Re-render the current editor to update the "Load Style" dropdown
                 if (selectedConfig) displayConfig(selectedConfig);
             } catch (err) {
                 console.error("Error saving style record:", err);
-                alert(`Failed to save style: ${err.message}`);
+                alert(`Falha ao salvar estilo: ${err.message}`);
             }
         });
 
         let allConfigs = await tableLens.fetchTableRecords(CONFIG_TABLE);
-
-        const createTypeOption = (type) => {
-            const color = COMPONENT_TYPE_COLORS[type.replace(/\s+/g, '')] || COMPONENT_TYPE_COLORS['default'];
-            const brightness = (parseInt(color.replace('#', ''), 16) > 0xffffff / 2) ? 'black' : 'white';
-            return `<option value="${type}" style="background-color: ${color}; color: ${brightness};">${type}</option>`;
-        };
-
-        const typeOptions = componentTypes.map(createTypeOption).join('');
-        const filterOptions = componentTypes.map(createTypeOption).join('');
-
-        container.innerHTML = `
-            <div class="grf-cm-main-container">
-                <div class="grf-cm-sidebar">
-                    <h2>Configurações</h2>
-                    <div class="grf-cm-controls-container">
-                        <div class="grf-cm-filter-controls">
-                            <label for="cm-filter-type-selector">Filtrar por tipo:</label>
-                            <select id="cm-filter-type-selector"><option value="">-- Todos --</option>${filterOptions}</select>
-                        </div>
-                        <div class="grf-cm-new-controls">
-                            <select id="cm-new-type-selector">${typeOptions}</select>
-                            <button id="cm-new-btn" class="btn btn-primary">+ Nova</button>
-                        </div>
-                    </div>
-                    <div id="cm-config-list-container">
-                        <ul id="cm-config-list"></ul>
-                    </div>
-                </div>
-                <div class="grf-cm-editor-panel">
-                    <form id="cm-config-form">
-                        <input type="hidden" id="cm-record-id">
-                        <div id="cm-editor-actions">
-                            <button type="button" id="cm-duplicate-btn" class="btn btn-secondary">Duplicar</button>
-                            <button type="button" id="cm-delete-btn" class="btn btn-danger">Excluir</button>
-                        </div>
-                        <div class="form-group"><label for="cm-widget-title">Título do Widget (Nome na lista)</label><input type="text" id="cm-widget-title" required></div>
-                        <div class="form-group"><label for="cm-config-id">ID da Configuração (Identificador único)</label><input type="text" id="cm-config-id" required></div>
-                        <div class="form-group"><label for="cm-description">Descrição</label><input type="text" id="cm-description"></div>
-                        <div id="cm-editor-content"><p class="editor-placeholder">Selecione uma config ou crie uma nova.</p></div>
-                        <div class="form-actions"><button type="button" id="cm-save-btn" class="btn btn-success">Salvar e Fechar</button></div>
-                    </form>
-                </div>
-            </div>`;
-
-        const editorMap = { 
-            'CardSystem': CardConfigEditor, 
-            'Drawer': DrawerConfigEditor, 
-            'CardStyle': CardStyleConfigEditor, 
-            'Table': TableConfigEditor, 
-            'BSC': BscConfigEditor, 
-            'StrategicPlanning': BscConfigEditor, // Alias for future/safety
-            'Indicators': IndicatorsConfigEditor
-        };
-        const configListEl = container.querySelector('#cm-config-list');
-        const editorContentEl = container.querySelector('#cm-editor-content');
-        const formEl = container.querySelector('#cm-config-form');
-        const editorActionsEl = container.querySelector('#cm-editor-actions');
-        const newTypeSelectorEl = container.querySelector('#cm-new-type-selector');
-        const filterTypeSelectorEl = container.querySelector('#cm-filter-type-selector');
-
-        let selectedConfig = null;
-        let currentEditorModule = null;
+        let activeTab = 'instances'; // 'instances' or 'components'
 
         const colorizeDropdown = (selectEl) => {
+            if (!selectEl) return;
             const selectedType = selectEl.value;
             if (!selectedType || selectedType === '') {
                 selectEl.style.backgroundColor = '';
@@ -198,6 +155,126 @@ export async function renderMainUI(grist, container, initialConfigId, componentT
                 selectEl.style.color = brightness;
             }
         };
+
+        const createTypeOption = (type) => {
+            const color = COMPONENT_TYPE_COLORS[type.replace(/\s+/g, '')] || COMPONENT_TYPE_COLORS['default'];
+            const brightness = (parseInt(color.replace('#', ''), 16) > 0xffffff / 2) ? 'black' : 'white';
+            return `<option value="${type}" style="background-color: ${color}; color: ${brightness};">${type}</option>`;
+        };
+
+        const updateSelectors = () => {
+            const types = activeTab === 'instances' ? MASTER_WIDGET_TYPES : MASTER_COMPONENT_TYPES;
+            const optionsHtml = types.map(createTypeOption).join('');
+            
+            const filterSelector = container.querySelector('#cm-filter-type-selector');
+            const newSelector = container.querySelector('#cm-new-type-selector');
+            
+            if (filterSelector && newSelector) {
+                const currentFilter = filterSelector.value;
+                filterSelector.innerHTML = `<option value="">-- Todos --</option>` + optionsHtml;
+                newSelector.innerHTML = optionsHtml;
+                
+                // Try to keep filter if valid for new tab
+                if (types.includes(currentFilter)) {
+                    filterSelector.value = currentFilter;
+                } else {
+                    filterSelector.value = "";
+                }
+                
+                colorizeDropdown(filterSelector);
+                colorizeDropdown(newSelector);
+            }
+        };
+
+        container.innerHTML = `
+            <div class="grf-cm-tabs">
+                <button class="grf-cm-tab-btn active" data-tab="instances">Instâncias de Widgets</button>
+                <button class="grf-cm-tab-btn" data-tab="components">Componentes Globais (Design System)</button>
+            </div>
+            <div class="grf-cm-main-container">
+                <div class="grf-cm-sidebar">
+                    <div class="cm-sidebar-header" style="padding: 10px 15px; border-bottom: 1px solid #eee;">
+                        <div class="cm-group-toggle" style="display: flex; align-items: center; gap: 8px; font-size: 12px;">
+                            <label style="font-weight: bold; color: #666; white-space: nowrap;">Agrupar por:</label>
+                            <select id="cm-group-mode" class="cm-mini-select" style="flex: 1; padding: 2px; border-radius: 4px; border: 1px solid #ddd;">
+                                <option value="type">Tipo</option>
+                                <option value="table">Tabela</option>
+                                <option value="tag">Pasta [TAG]</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grf-cm-controls-container" style="padding: 10px 15px;">
+                        <div class="grf-cm-filter-controls">
+                            <label for="cm-filter-type-selector">Filtro:</label>
+                            <select id="cm-filter-type-selector">
+                                <option value="">-- Todos --</option>
+                            </select>
+                        </div>
+                        <div class="grf-cm-new-controls">
+                            <select id="cm-new-type-selector"></select>
+                            <button id="cm-new-btn" class="btn btn-primary" title="Criar Nova Configuração">+</button>
+                        </div>
+                    </div>
+                    <div id="cm-config-list-container" style="flex: 1; overflow-y: auto; padding: 0 15px;">
+                        <ul id="cm-config-list"></ul>
+                    </div>
+                </div>
+                <div class="grf-cm-editor-panel">
+                    <form id="cm-config-form">
+                        <input type="hidden" id="cm-record-id">
+                        <div id="cm-editor-actions">
+                            <button type="button" id="cm-duplicate-btn" class="btn btn-secondary">Duplicar</button>
+                            <button type="button" id="cm-delete-btn" class="btn btn-danger">Excluir</button>
+                        </div>
+                        <div class="form-group"><label for="cm-widget-title">Título (Ex: Nome do Preset)</label><input type="text" id="cm-widget-title" required></div>
+                        <div class="form-group"><label for="cm-config-id">ID Único (Prefixado com @GLOBAL para padrões)</label><input type="text" id="cm-config-id" required></div>
+                        <div class="form-group"><label for="cm-description">Descrição</label><input type="text" id="cm-description"></div>
+                        <div id="cm-editor-content"><p class="editor-placeholder">Selecione uma config ou crie uma nova.</p></div>
+                        <div class="form-actions"><button type="button" id="cm-save-btn" class="btn btn-success">Salvar e Fechar</button></div>
+                    </form>
+                </div>
+            </div>`;
+
+        const formEl = container.querySelector('#cm-config-form');
+        formEl.onsubmit = (e) => e.preventDefault();
+
+        const editorMap = { 
+            'CardSystem': CardConfigEditor, 
+            'Drawer': DrawerConfigEditor, 
+            'CardStyle': CardStyleConfigEditor, 
+            'Table': TableConfigEditor, 
+            'BSC': BscConfigEditor, 
+            'StrategicPlanning': BscConfigEditor,
+            'Indicators': IndicatorsConfigEditor,
+            // Design System Components
+            'ProgressBar': ProgressBarConfigEditor,
+            'ColorOptions': ColorOptionsConfigEditor,
+            'StatusIcons': IndicatorsConfigEditor
+        };
+        const configListEl = container.querySelector('#cm-config-list');
+        const editorContentEl = container.querySelector('#cm-editor-content');
+        const editorActionsEl = container.querySelector('#cm-editor-actions');
+        const newTypeSelectorEl = container.querySelector('#cm-new-type-selector');
+        const filterTypeSelectorEl = container.querySelector('#cm-filter-type-selector');
+        const groupModeEl = container.querySelector('#cm-group-mode');
+
+        // Initial selector setup
+        updateSelectors();
+
+        // Tab logic
+        container.querySelectorAll('.grf-cm-tab-btn').forEach(btn => {
+            btn.onclick = () => {
+                container.querySelectorAll('.grf-cm-tab-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                activeTab = btn.dataset.tab;
+                updateSelectors();
+                clearForm();
+                loadList(filterTypeSelectorEl.value);
+            };
+        });
+
+        let selectedConfig = null;
+        let currentEditorModule = null;
 
         const clearForm = () => {
             selectedConfig = null;
@@ -237,20 +314,44 @@ export async function renderMainUI(grist, container, initialConfigId, componentT
         };
 
         const loadList = (filterType = '') => {
-            const configsToDisplay = filterType ? allConfigs.filter(c => c.componentType === filterType) : allConfigs;
+            let configsToDisplay = allConfigs;
+            
+            // Apply tab filtering
+            if (activeTab === 'instances') {
+                configsToDisplay = configsToDisplay.filter(c => !c.configId.startsWith('@GLOBAL:'));
+            } else {
+                configsToDisplay = configsToDisplay.filter(c => c.configId.startsWith('@GLOBAL:'));
+            }
+
+            // Apply type filter
+            if (filterType) {
+                configsToDisplay = configsToDisplay.filter(c => c.componentType === filterType);
+            }
+
             configListEl.innerHTML = '';
+            const groupMode = groupModeEl.value;
+
             const groupedConfigs = configsToDisplay.reduce((acc, config) => {
-                const description = config.description || '';
-                const match = description.match(/^\[(.*?)\]/);
-                const group = match ? match[1] : (config.componentType || 'Outros');
-                if (!acc[group]) { acc[group] = []; }
+                let group = 'Outros';
+                
+                if (groupMode === 'tag') {
+                    const match = (config.description || '').match(/^\[(.*?)\]/);
+                    group = match ? match[1] : (config.componentType || 'Outros');
+                } else if (groupMode === 'table') {
+                    const unified = tableLens.parseConfigRecord(config);
+                    group = unified.tableId || unified.mapping?.modelsTable || 'Sem Tabela';
+                } else {
+                    group = config.componentType || 'Outros';
+                }
+
+                if (!acc[group]) acc[group] = [];
                 acc[group].push(config);
                 return acc;
             }, {});
 
-            Object.keys(groupedConfigs).sort().forEach(type => {
+            Object.keys(groupedConfigs).sort().forEach(groupName => {
                 const groupHeader = document.createElement('h4');
-                groupHeader.textContent = type;
+                groupHeader.textContent = groupName;
                 groupHeader.className = 'cm-group-header';
                 configListEl.appendChild(groupHeader);
                 const groupItemList = document.createElement('ul');
@@ -260,19 +361,19 @@ export async function renderMainUI(grist, container, initialConfigId, componentT
                     groupItemList.style.display = groupItemList.style.display === 'none' ? '' : 'none';
                     groupHeader.classList.toggle('collapsed');
                 });
-                groupedConfigs[type].forEach(c => {
+                groupedConfigs[groupName].forEach(c => {
                     const li = document.createElement('li');
                     const nameSpan = document.createElement('span');
                     
-                    // Parse para pegar a tabela
                     const unified = tableLens.parseConfigRecord(c);
-                    const tableDisplay = unified.tableId ? ` (${unified.tableId})` : ' (Nenhuma Tabela)';
+                    const tableDisplay = unified.tableId ? ` [${unified.tableId}]` : '';
+                    const typeDisplay = groupMode !== 'type' ? ` (${c.componentType})` : '';
                     
-                    nameSpan.textContent = c.widgetTitle + tableDisplay;
+                    nameSpan.innerHTML = `<b>${c.widgetTitle}</b> <small style="color:#666">${tableDisplay}${typeDisplay}</small>`;
                     const typeCircle = document.createElement('span');
                     typeCircle.className = 'cm-type-circle';
                     typeCircle.style.backgroundColor = COMPONENT_TYPE_COLORS[c.componentType.replace(/\s+/g, '')] || COMPONENT_TYPE_COLORS['default'];
-                    typeCircle.innerHTML = '&nbsp;';
+                    
                     li.appendChild(typeCircle);
                     li.appendChild(nameSpan);
                     li.dataset.id = c.id;
@@ -298,10 +399,12 @@ export async function renderMainUI(grist, container, initialConfigId, componentT
             colorizeDropdown(filterTypeSelectorEl);
         });
         newTypeSelectorEl.addEventListener('change', () => colorizeDropdown(newTypeSelectorEl));
+        groupModeEl.addEventListener('change', () => loadList(filterTypeSelectorEl.value));
 
         const displayConfig = async (config) => {
             // Unifica a configuração (Tripartição) antes de passar para o editor
             const unifiedConfig = tableLens.parseConfigRecord(config);
+            const isGlobal = (config.configId || '').startsWith('@GLOBAL:');
             
             selectedConfig = { ...config, ...unifiedConfig }; // Mantém IDs e campos extras
             formEl.querySelector('#cm-record-id').value = config.id || '';
@@ -315,28 +418,47 @@ export async function renderMainUI(grist, container, initialConfigId, componentT
                 editorContentEl.innerHTML = `<p class="editor-error">Editor para "${config.componentType}" não encontrado.</p>`;
                 return;
             }
-            const tables = await tableLens.listAllTables();
+
+            const tables = isGlobal ? [] : await tableLens.listAllTables();
             const targetTableId = unifiedConfig.tableId || '';
+            
             editorContentEl.innerHTML = `
-                <div class="form-group" id="cm-table-selector-container">
-                    <label for="cm-table-selector">Tabela de Dados Alvo:</label>
-                    <select id="cm-table-selector"><option value="">-- Selecione --</option>${tables.map(t => `<option value="${t.id}" ${t.id === targetTableId ? 'selected' : ''}>${t.id}</option>`).join('')}</select>
-                </div>
+                ${isGlobal ? '' : `
+                    <div class="form-group" id="cm-table-selector-container">
+                        <label for="cm-table-selector">Tabela de Dados Alvo:</label>
+                        <select id="cm-table-selector"><option value="">-- Selecione --</option>${tables.map(t => `<option value="${t.id}" ${t.id === targetTableId ? 'selected' : ''}>${t.id}</option>`).join('')}</select>
+                    </div>
+                `}
                 <div id="cm-specialized-editor"></div>`;
+            
             const tableSelector = editorContentEl.querySelector('#cm-table-selector');
             const specializedEditorContainer = editorContentEl.querySelector('#cm-specialized-editor');
+            
             const renderSpecializedEditor = (tableId, configsToPass) => {
-                if (tableId) { currentEditorModule.render(specializedEditorContainer, unifiedConfig, tableLens, tableId, configsToPass); }
-                else { specializedEditorContainer.innerHTML = ''; }
+                if (isGlobal || tableId) { 
+                    currentEditorModule.render(specializedEditorContainer, unifiedConfig, tableLens, tableId, configsToPass); 
+                } else { 
+                    specializedEditorContainer.innerHTML = ''; 
+                }
             };
-            tableSelector.onchange = () => { renderSpecializedEditor(tableSelector.value, allConfigs); };
-            if (targetTableId) { renderSpecializedEditor(targetTableId, allConfigs); }
+
+            if (tableSelector) {
+                tableSelector.onchange = () => { renderSpecializedEditor(tableSelector.value, allConfigs); };
+            }
+            
+            if (isGlobal || targetTableId) { 
+                renderSpecializedEditor(targetTableId, allConfigs); 
+            }
         };
 
         container.querySelector('#cm-new-btn').onclick = () => {
             const type = newTypeSelectorEl.value;
+            let configId = `nova_${type.replace(/\s+/g, '').toLowerCase()}_${Date.now()}`;
+            if (activeTab === 'components') {
+                configId = `@GLOBAL:${type.replace(/\s+/g, '').toUpperCase()}:${Date.now()}`;
+            }
             clearForm();
-            displayConfig({ id: null, componentType: type, widgetTitle: `Nova Config - ${type}`, configId: `nova_${type.replace(/\s+/g, '').toLowerCase()}_${Date.now()}`, configJson: '{}' });
+            displayConfig({ id: null, componentType: type, widgetTitle: `Nova Config - ${type}`, configId: configId, configJson: '{}' });
         };
 
         container.querySelector('#cm-duplicate-btn').onclick = () => { if (selectedConfig) { duplicateConfig(selectedConfig); } };
@@ -432,4 +554,4 @@ export function open(grist, options = {}) {
     overlay.querySelector('.grf-cm-close').onclick = close;
     overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
     renderMainUI(grist, overlay.querySelector('.grf-cm-body'), initialConfigId, componentTypes);
-}
+    }

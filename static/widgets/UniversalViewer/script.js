@@ -55,6 +55,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         tableLens = new GristTableLens(window.grist);
     }
 
+    // Expor openDrawer globalmente
+    window.GristDrawer = { open: openDrawer };
+
     // --- 1. SUBSCRIPÇÕES GLOBAIS ---
     subscribe('data-changed', async () => {
         console.log("[UniversalViewer] Dados alterados, atualizando...");
@@ -68,20 +71,33 @@ document.addEventListener('DOMContentLoaded', async () => {
     subscribe('grf-trigger-widget', async (data) => {
         console.log("[UniversalViewer] Evento 'grf-trigger-widget' recebido:", data);
         try {
-            const targetType = (data.componentType || '').replace(/\s+/g, '').toLowerCase();
+            let targetType = (data.componentType || '').replace(/\s+/g, '').toLowerCase();
             
+            // If targetType is empty, resolve it dynamically from targetConfigId
+            if (!targetType && data.configId) {
+                try {
+                    const targetConfig = await tableLens.fetchConfig(data.configId);
+                    if (targetConfig) {
+                        targetType = (targetConfig.componentType || targetConfig.mapping?.componentType || '').replace(/\s+/g, '').toLowerCase();
+                    }
+                } catch (err) {
+                    console.warn("[UniversalViewer] Falha ao resolver tipo do widget alvo:", err);
+                }
+            }
+
             if (targetType === 'cardsystem' || targetType === 'table' || targetType === 'bsc' || targetType === 'indicators') {
                 console.log("[UniversalViewer] Carregando widget dinamicamente:", data.configId);
                 await loadDynamicWidget(data.configId, {
                     value: data.filterValue,
                     column: data.filterTargetColumn,
-                    sourceLabel: data.sourceRecord.Label || data.sourceRecord.label || data.sourceRecord.id
+                    sourceLabel: data.sourceRecord?.Label || data.sourceRecord?.label || data.sourceRecord?.id || 'Filtrado',
+                    disableFiltering: data.disableFiltering
                 });
             } else {
                 if (window.GristDrawer) {
                     const drawerConfig = await tableLens.fetchConfig(data.configId);
                     if (!drawerConfig) return;
-                    await window.GristDrawer.open(data.sourceRecord.gristHelper_tableId || currentConfig.tableId, data.sourceRecord.id, {
+                    await window.GristDrawer.open(data.sourceRecord?.gristHelper_tableId || currentConfig.tableId, data.sourceRecord?.id, {
                         ...drawerConfig,
                         tableLens,
                         filterValue: data.filterValue,
@@ -138,6 +154,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (data.drawerConfigId) drawerConfig = await tableLens.fetchConfig(data.drawerConfigId);
         else drawerConfig = currentConfig;
         
+        // Injeta a largura vinda do widget gatilho (data.cardConfig) como override
+        const triggerSize = data.cardConfig?.actions?.sidePanel?.size;
+        if (triggerSize) {
+            drawerConfig = { ...drawerConfig };
+            drawerConfig.actions = { ...(drawerConfig.actions || {}) };
+            drawerConfig.actions.sidePanel = { ...(drawerConfig.actions.sidePanel || {}), size: triggerSize };
+        }
+
         if (window.GristDrawer) {
             await window.GristDrawer.open(data.tableId, data.recordId, { ...drawerConfig, tableLens });
         }
@@ -195,7 +219,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 ]);
 
                 // Aplicar Filtro Externo (Drill-down)
-                if (currentFilter && currentFilter.column && currentFilter.value) {
+                if (currentFilter && currentFilter.column && currentFilter.value && !currentFilter.disableFiltering) {
                     console.log(`[UniversalViewer] Aplicando filtro drill-down: ${currentFilter.column} = ${currentFilter.value}`);
                     records = records.filter(r => {
                         const val = r[currentFilter.column];
@@ -215,7 +239,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 let records = await tableLens.fetchTableRecords(tableId);
 
                 // Aplicar Filtro Externo (Drill-down)
-                if (currentFilter && currentFilter.column && currentFilter.value) {
+                if (currentFilter && currentFilter.column && currentFilter.value && !currentFilter.disableFiltering) {
                     records = records.filter(r => {
                         const val = r[currentFilter.column];
                         if (Array.isArray(val)) return val.includes(currentFilter.value);
@@ -246,12 +270,40 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             else if (type === 'bsc') {
                 const { BSCRenderer } = await import('../libraries/grist-bsc-renderer/BSCRenderer.js');
-                const [records, schema] = await Promise.all([
-                    tableLens.fetchTableRecords(tableId),
-                    tableLens.getTableSchema(tableId)
-                ]);
+                const mapping = currentConfig.mapping || currentConfig || {};
+                const tableNames = {
+                    modelsTable: mapping.modelsTable || 'Modelos',
+                    perspectivesTable: mapping.perspectivesTable || 'Perspectivas',
+                    objectivesTable: mapping.objectivesTable || 'Objetivos',
+                    refModelCol: mapping.refModelCol || 'ref_model',
+                    refPerspCol: mapping.refPerspCol || 'ref_persp',
+                    relationshipField: mapping.relationshipField || 'ref_obj'
+                };
+
+                let currentModelId = null;
+                if (currentFilter && currentFilter.value) {
+                    currentModelId = Number(currentFilter.value);
+                } else {
+                    const allModels = await tableLens.fetchTableRecords(tableNames.modelsTable);
+                    if (allModels && allModels.length > 0) {
+                        currentModelId = allModels[0].id;
+                    }
+                }
+
+                if (!currentModelId) {
+                    rendererContainer.innerHTML = '<div class="status-placeholder">Nenhum modelo encontrado para exibir o BSC.</div>';
+                    return;
+                }
+
+                const bscData = await BSCRenderer.fetchFullBscStructure(currentModelId, tableLens, tableNames);
                 rendererContainer.innerHTML = '';
-                await BSCRenderer.renderBSC(rendererContainer, records, currentConfig, tableLens, schema);
+                await BSCRenderer.renderBsc({
+                    container: rendererContainer,
+                    bscData: bscData,
+                    config: currentConfig,
+                    tableLens: tableLens,
+                    showRelationships: true
+                });
             }
             else if (type === 'indicators') {
                 const { IndicatorsRenderer } = await import('../libraries/grist-indicators-renderer/IndicatorsRenderer.js');
@@ -338,15 +390,27 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const fetched = await tableLens.fetchConfig(drawerConfigId);
                     if (fetched) drawerOptions = { ...fetched, tableLens };
                 }
+                
+                // Injeta a largura vinda do widget gatilho (currentConfig) como override
+                const triggerSize = currentConfig?.actions?.sidePanel?.size;
+                if (triggerSize) {
+                    drawerOptions.actions = { ...(drawerOptions.actions || {}) };
+                    drawerOptions.actions.sidePanel = { ...(drawerOptions.actions.sidePanel || {}), size: triggerSize };
+                }
+
                 window.GristDrawer.open(tableId, record.id, drawerOptions);
             }
             else if (config.actionType === 'addSubRecord') {
-                if (window.GristDrawer && config.subRecordRefField) {
-                    const subTableId = await tableLens.getReferencedTableId(config.subRecordRefField);
+                const targetRefField = config.subRecordRefField || config.tooltipField; // Fallback para configs antigas
+                if (window.GristDrawer && (targetRefField || config.subRecordTableId)) {
+                    const subTableId = config.subRecordTableId || await tableLens.getReferencedTableId(targetRefField, tableId);
                     if (!subTableId) return;
                     let addConfig = {};
                     if (config.subRecordConfigId) addConfig = await tableLens.fetchConfig(config.subRecordConfigId);
-                    const initialData = { [config.subRecordRefField]: record.id };
+                    const initialData = {};
+                    if (targetRefField) {
+                        initialData[targetRefField] = record.id;
+                    }
                     window.GristDrawer.open(subTableId, 'new', { ...(addConfig || {}), tableLens, initialData });
                 }
             }

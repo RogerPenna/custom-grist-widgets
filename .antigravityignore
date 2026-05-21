@@ -1,0 +1,7 @@
+venv/
+libraries/external/
+static/
+.git/
+*.txt
+*.md
+!README.md

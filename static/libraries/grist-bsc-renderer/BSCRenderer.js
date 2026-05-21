@@ -8,12 +8,17 @@ export const BSCRenderer = (() => {
         const modelsTable = tableNames.modelsTable || 'Modelos';
         const perspectivesTable = tableNames.perspectivesTable || 'Perspectivas';
         const objectivesTable = tableNames.objectivesTable || 'Objetivos';
+        const relTable = tableNames.relTable;
 
         // Tenta buscar as tabelas de forma segura
-        const [modelRecord, allPerspectives, allObjectives] = await Promise.all([
+        const [modelRecord, allPerspectives, allObjectives, allRelationships] = await Promise.all([
             lens.findRecord(modelsTable, { id: modelId }),
             lens.fetchTableRecordsOrThrow(perspectivesTable),
             lens.fetchTableRecordsOrThrow(objectivesTable),
+            relTable ? lens.fetchTableRecordsOrThrow(relTable).catch(e => {
+                console.warn(`[BSC Renderer] Erro ao buscar tabela de relacionamentos "${relTable}":`, e);
+                return [];
+            }) : Promise.resolve([])
         ]);
 
         if (!modelRecord) throw new Error(`Modelo ID ${modelId} não encontrado na tabela "${modelsTable}".`);
@@ -50,7 +55,83 @@ export const BSCRenderer = (() => {
                     })
                 };
             });
-        return { ...modelRecord, perspectives: perspectivesForModel, mapping: { ...tableNames, refModelCol, refPerspCol, relationshipField } };
+
+        // Normalização das conexões causa/efeito
+        const relCauseCol = tableNames.relCauseCol || 'ID_Causa';
+        const relEffectCol = tableNames.relEffectCol || 'ID_Efeito';
+        const relWeightCol = tableNames.relWeightCol || 'Peso';
+
+        const normalizedRelationships = [];
+        if (relTable && allRelationships && allRelationships.length > 0) {
+            allRelationships.forEach(r => {
+                let causeVal = r[relCauseCol];
+                let effectVal = r[relEffectCol];
+                let weightVal = r[relWeightCol];
+
+                let causeId = null;
+                if (Array.isArray(causeVal)) {
+                    causeId = causeVal[0] === 'L' ? causeVal[1] : (typeof causeVal[0] === 'number' ? causeVal[0] : causeVal[1]);
+                } else if (typeof causeVal === 'number') {
+                    causeId = causeVal;
+                } else if (causeVal && typeof causeVal === 'string') {
+                    causeId = parseInt(causeVal, 10) || null;
+                }
+
+                let effectId = null;
+                if (Array.isArray(effectVal)) {
+                    effectId = effectVal[0] === 'L' ? effectVal[1] : (typeof effectVal[0] === 'number' ? effectVal[0] : effectVal[1]);
+                } else if (typeof effectVal === 'number') {
+                    effectId = effectVal;
+                } else if (effectVal && typeof effectVal === 'string') {
+                    effectId = parseInt(effectVal, 10) || null;
+                }
+
+                let weight = 1;
+                if (typeof weightVal === 'number') {
+                    weight = weightVal;
+                } else if (weightVal && !isNaN(parseFloat(weightVal))) {
+                    weight = parseFloat(weightVal);
+                }
+
+                if (causeId && effectId) {
+                    normalizedRelationships.push({
+                        causeId,
+                        effectId,
+                        weight
+                    });
+                }
+            });
+        } else {
+            // Fallback para o modelo antigo (RefList nos Objetivos)
+            allObjectives.forEach(o => {
+                let relVal = o[relationshipField];
+                let targetIds = [];
+                if (Array.isArray(relVal)) {
+                    targetIds = relVal[0] === 'L' ? relVal.slice(1) : relVal;
+                } else if (relVal && typeof relVal === 'number') {
+                    targetIds = [relVal];
+                } else if (relVal && typeof relVal === 'string') {
+                    targetIds = [parseInt(relVal, 10)].filter(Boolean);
+                }
+                
+                targetIds.forEach(targetId => {
+                    if (targetId && targetId > 0) {
+                        normalizedRelationships.push({
+                            causeId: targetId,
+                            effectId: o.id,
+                            weight: 1
+                        });
+                    }
+                });
+            });
+        }
+
+        return { 
+            ...modelRecord, 
+            perspectives: perspectivesForModel, 
+            relationships: normalizedRelationships,
+            mapping: { ...tableNames, refModelCol, refPerspCol, relationshipField } 
+        };
     }
 
     function patchConfigForBSC(config, schema) {
@@ -185,11 +266,16 @@ export const BSCRenderer = (() => {
                         const arrowOptions = {
                             color: arrowColor,
                             size: styling.arrowThickness,
+                            arrowWeightMultiplier: styling.arrowWeightMultiplier !== undefined ? styling.arrowWeightMultiplier : 1,
                             outline: styling.showArrowOutline,
                             outlineColor: arrowOutlineColor,
-                            outlineSize: styling.arrowOutlineThickness
+                            outlineSize: styling.arrowOutlineThickness,
+                            connDistanceType: styling.connDistanceType || 'relative',
+                            connDistanceFixed: styling.connDistanceFixed !== undefined ? styling.connDistanceFixed : 20
                         };
                         RelationshipLines.drawFromBscData(bscData, arrowOptions);
+                    } else {
+                        RelationshipLines.clear();
                     }
                     return;
                 }

@@ -436,6 +436,7 @@ export const GristTableLens = function(gristInstance) {
             }
             
             const parsedConfig = this.parseConfigRecord(targetConfig);
+            parsedConfig.receivedConfigs = configs; // Anexa todas as configs para suporte a presets globais
             _metaState.configCache[configId] = parsedConfig;
             return parsedConfig;
         } catch (error) {
@@ -576,7 +577,8 @@ export const GristTableLens = function(gristInstance) {
      * [NOVO] Encaminha ações de escrita para o Grist.
      */
     this.updateRecord = async function(tableId, recordId, changes) {
-        return _grist.docApi.applyUserActions([['UpdateRecord', tableId, recordId, changes]]);
+        const cleanId = typeof recordId === 'string' && /^\d+$/.test(recordId) ? parseInt(recordId, 10) : recordId;
+        return _grist.docApi.applyUserActions([['UpdateRecord', tableId, cleanId, changes]]);
     };
 
     this.addRecord = async function(tableId, newRecord) {
@@ -584,6 +586,9 @@ export const GristTableLens = function(gristInstance) {
     };
 
     this.deleteRecords = async function(tableId, recordIds) {
-        return _grist.docApi.applyUserActions([['BulkRemoveRecord', tableId, recordIds]]);
+        const cleanIds = Array.isArray(recordIds)
+            ? recordIds.map(id => typeof id === 'string' && /^\d+$/.test(id) ? parseInt(id, 10) : id)
+            : recordIds;
+        return _grist.docApi.applyUserActions([['BulkRemoveRecord', tableId, cleanIds]]);
     };
 };

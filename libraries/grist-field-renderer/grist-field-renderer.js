@@ -207,7 +207,8 @@ export async function renderField(options) {
     fieldStyle: customFieldStyle,
     fieldOptions: customFieldStyle.widgetOptions || {}, 
     refListConfig: customFieldStyle.refListConfig,
-    fieldConfig: customFieldStyle
+    fieldConfig: customFieldStyle,
+    tableSchema: tableSchema
   };
 
   // WIDGETS ESPECIAIS (Prioridade Máxima)

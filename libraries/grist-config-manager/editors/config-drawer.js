@@ -437,13 +437,18 @@ export const DrawerConfigEditor = (() => {
                         };
                     } else if (widgetType === 'ProgressBar') {
                         const striped = widgetConfigPanel.querySelector('.progress-striped')?.checked || false;
+                        const progressType = widgetConfigPanel.querySelector('.progress-type')?.value || 'linear';
+                        const labelPosition = widgetConfigPanel.querySelector('.progress-label-pos')?.value || 'middle';
                         const rules = [];
                         widgetConfigPanel.querySelectorAll('.color-rule-row').forEach(row => {
                             const threshold = parseFloat(row.querySelector('.rule-threshold').value);
                             const color = row.querySelector('.rule-color').value;
                             if (!isNaN(threshold)) rules.push({ threshold, color });
                         });
-                        drawerConfig.widgetOverrides[colId] = { widget: 'ProgressBar', options: { striped, colorRules: rules } };
+                        drawerConfig.widgetOverrides[colId] = { 
+                            widget: 'ProgressBar', 
+                            options: { striped, progressType, labelPosition, colorRules: rules } 
+                        };
                     } else if (widgetType) {
                         drawerConfig.widgetOverrides[colId] = { widget: widgetType, options: {} };
                     }
@@ -608,6 +613,33 @@ export const DrawerConfigEditor = (() => {
                 <label><input type="radio" name="widget-type-${col.colId}" value="" ${!isProgressBar ? 'checked' : ''} class="widget-type-radio"> Padrão</label>
                 <label><input type="radio" name="widget-type-${col.colId}" value="ProgressBar" ${isProgressBar ? 'checked' : ''} class="widget-type-radio"> Barra de Progresso</label>
                 <div class="progress-options" style="display: ${isProgressBar ? 'block' : 'none'}; padding: 8px; background: #f8f9fa;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
+                        <div>
+                            <label style="font-size: 10px;">Tipo:</label>
+                            <select class="progress-type" style="width: 100%; font-size: 11px;">
+                                <option value="linear" ${progressOptions.progressType === 'linear' ? 'selected' : ''}>Linear</option>
+                                <option value="circular" ${progressOptions.progressType === 'circular' ? 'selected' : ''}>Circular</option>
+                            </select>
+                        </div>
+                        <div class="progress-label-pos-container" style="display: ${progressOptions.progressType === 'circular' ? 'block' : 'none'}">
+                            <label style="font-size: 10px;">Pos. Valor:</label>
+                            <select class="progress-label-pos" style="width: 100%; font-size: 11px;">
+                                <option value="middle" ${progressOptions.labelPosition === 'middle' ? 'selected' : ''}>Centro</option>
+                                <option value="above" ${progressOptions.labelPosition === 'above' ? 'selected' : ''}>Acima</option>
+                                <option value="left" ${progressOptions.labelPosition === 'left' ? 'selected' : ''}>Esquerda</option>
+                                <option value="right" ${progressOptions.labelPosition === 'right' ? 'selected' : ''}>Direita</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="progress-internal-container" style="display: ${progressOptions.progressType === 'circular' ? 'block' : 'none'}; padding: 4px; background: #f1f5f9; border-radius: 4px; margin-bottom: 8px;">
+                        <label style="font-size: 10px; cursor: pointer;">
+                            <input type="checkbox" class="progress-show-internal" ${progressOptions.showInternalBar ? 'checked' : ''}> Barra Interna
+                        </label>
+                        <select class="progress-internal-col" style="width: 100%; font-size: 11px; display: ${progressOptions.showInternalBar ? 'block' : 'none'}; margin-top: 2px;">
+                            <option value="">-- Coluna Interna --</option>
+                            ${Object.values(currentSchema || {}).filter(c => ['Numeric', 'Int', 'Any'].includes(c.type)).map(c => `<option value="${c.colId}" ${progressOptions.internalBarColId === c.colId ? 'selected' : ''}>${c.label}</option>`).join('')}
+                        </select>
+                    </div>
                     <label><input type="checkbox" class="progress-striped" ${progressOptions.striped ? 'checked' : ''}> Listrado</label>
                     <div class="rules-container">${(progressOptions.colorRules || []).map(r => `<div class="color-rule-row"><input type="number" class="rule-threshold" value="${r.threshold}"><input type="color" class="rule-color" value="${r.color}"><button type="button" class="btn-danger remove-rule-btn">x</button></div>`).join('')}</div>
                     <button type="button" class="btn btn-sm btn-secondary add-rule-btn">+ Adicionar Regra</button>
@@ -681,6 +713,27 @@ export const DrawerConfigEditor = (() => {
             const select = card.querySelector('.reflist-display-as');
             select.onchange = () => {
                 card.querySelector('.reflist-card-options').style.display = select.value === 'cards' ? 'block' : 'none';
+                updateDebugJson();
+            };
+        }
+
+        // Interatividade para Barra de Progresso
+        const progressTypeSelect = card.querySelector('.progress-type');
+        if (progressTypeSelect) {
+            progressTypeSelect.onchange = () => {
+                const lpContainer = card.querySelector('.progress-label-pos-container');
+                const intContainer = card.querySelector('.progress-internal-container');
+                if (lpContainer) lpContainer.style.display = (progressTypeSelect.value === 'circular') ? 'block' : 'none';
+                if (intContainer) intContainer.style.display = (progressTypeSelect.value === 'circular') ? 'block' : 'none';
+                updateDebugJson();
+            };
+        }
+
+        const showInternalCheck = card.querySelector('.progress-show-internal');
+        if (showInternalCheck) {
+            showInternalCheck.onchange = () => {
+                const colSelect = card.querySelector('.progress-internal-col');
+                if (colSelect) colSelect.style.display = showInternalCheck.checked ? 'block' : 'none';
                 updateDebugJson();
             };
         }
