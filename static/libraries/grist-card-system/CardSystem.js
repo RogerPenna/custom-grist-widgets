@@ -390,11 +390,29 @@ export const CardSystem = (() => {
       if (styling.cardsColorMode === 'conditional' && styling.cardsColorField) {
         const colSchema = schema[styling.cardsColorField];
         if (colSchema) {
-          const fieldStyle = getFieldStyle(record, colSchema, schema);
-          finalCardColor = fieldStyle.fillColor || styling.cardsColorSolidColor;
-          cardEl.style.background = finalCardColor;
-          if (styling.cardsColorApplyText && fieldStyle.textColor) {
-            cardEl.style.color = fieldStyle.textColor;
+          const cellValue = record[styling.cardsColorField];
+          let resolved = false;
+          if (typeof cellValue === 'string') {
+            const trimmed = cellValue.trim();
+            if (
+              /^#([0-9a-fA-F]{3,8})$/.test(trimmed) || 
+              trimmed.startsWith('rgb(') || 
+              trimmed.startsWith('rgba(') || 
+              trimmed.startsWith('hsl(') || 
+              trimmed.startsWith('hsla(')
+            ) {
+              finalCardColor = trimmed;
+              cardEl.style.background = finalCardColor;
+              resolved = true;
+            }
+          }
+          if (!resolved) {
+            const fieldStyle = getFieldStyle(record, colSchema, schema);
+            finalCardColor = fieldStyle.fillColor || styling.cardsColorSolidColor;
+            cardEl.style.background = finalCardColor;
+            if (styling.cardsColorApplyText && fieldStyle.textColor) {
+              cardEl.style.color = fieldStyle.textColor;
+            }
           }
         } else {
           cardEl.style.background = styling.cardsColorSolidColor;
@@ -949,6 +967,19 @@ export const CardSystem = (() => {
   function resolveStyle(record, schema, mode, solidColor, gradientOptions, fieldName) {
     if (mode === 'gradient' && gradientOptions?.type) { return gradientOptions.type.replace('{c1}', gradientOptions.c1).replace('{c2}', gradientOptions.c2); }
     if (mode === 'conditional' && fieldName && record && schema?.[fieldName]) {
+      const cellValue = record[fieldName];
+      if (typeof cellValue === 'string') {
+        const trimmed = cellValue.trim();
+        if (
+          /^#([0-9a-fA-F]{3,8})$/.test(trimmed) || 
+          trimmed.startsWith('rgb(') || 
+          trimmed.startsWith('rgba(') || 
+          trimmed.startsWith('hsl(') || 
+          trimmed.startsWith('hsla(')
+        ) {
+          return trimmed;
+        }
+      }
       const fieldStyle = getFieldStyle(record, schema[fieldName], schema);
       return fieldStyle.fillColor || solidColor;
     }
