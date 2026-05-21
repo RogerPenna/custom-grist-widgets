@@ -79,6 +79,7 @@ export const CardSystem = (() => {
   //--------------------------------------------------------------------
   async function renderCards(container, records, options, schema) {
     _injectTooltipStyles();
+    _injectGroupingStyles();
     await loadIcons();
     const currentOptions = options || {};
     const tableLens = currentOptions.tableLens;
@@ -107,6 +108,15 @@ export const CardSystem = (() => {
     container._csOptions = currentOptions;
     container._csSchema = schema;
 
+    const groupingConfig = currentOptions.grouping || currentOptions.mapping?.grouping;
+    let activeGrouper = "";
+    if (groupingConfig && groupingConfig.enabled) {
+      if (container._csActiveGrouper === undefined) {
+        container._csActiveGrouper = groupingConfig.defaultGrouper || "";
+      }
+      activeGrouper = container._csActiveGrouper;
+    }
+
     container.innerHTML = "";
     if (!processedRecords || !processedRecords.length) {
       container.textContent = "No records found.";
@@ -131,10 +141,222 @@ export const CardSystem = (() => {
         if (numCols < 1) numCols = 1;
     }
 
-    container.style.display = 'grid';
-    container.style.gridTemplateColumns = `repeat(${numCols}, 1fr)`;
-    container.style.gridAutoRows = 'min-content';
-    container.style.gap = styling.cardsSpacing;
+    const isGrouped = !!(groupingConfig && groupingConfig.enabled && activeGrouper);
+
+    if (isGrouped) {
+        container.style.display = 'flex';
+        container.style.flexDirection = 'column';
+        container.style.gap = '15px';
+        container.style.width = '100%';
+    } else {
+        container.style.display = 'grid';
+        container.style.gridTemplateColumns = `repeat(${numCols}, 1fr)`;
+        container.style.gridAutoRows = 'min-content';
+        container.style.gap = styling.cardsSpacing;
+    }
+
+    // Render Grouping Select bar if grouping config is enabled
+    if (groupingConfig && groupingConfig.enabled) {
+        const groupBar = document.createElement("div");
+        groupBar.className = "cs-grouping-bar";
+        if (!isGrouped) {
+            groupBar.style.gridColumn = `1 / -1`;
+        }
+        
+        const label = document.createElement("span");
+        label.className = "cs-grouping-label";
+        label.textContent = "Agrupar por:";
+        
+        const select = document.createElement("select");
+        select.className = "cs-grouping-select";
+        
+        const optNone = document.createElement("option");
+        optNone.value = "";
+        optNone.textContent = "Sem Agrupamento";
+        select.appendChild(optNone);
+        
+        const allowed = groupingConfig.allowedGroupers || [];
+        allowed.forEach(g => {
+            if (g.colId) {
+                const opt = document.createElement("option");
+                opt.value = g.colId;
+                opt.textContent = g.label || g.colId;
+                select.appendChild(opt);
+            }
+        });
+        
+        select.value = activeGrouper;
+        select.addEventListener("change", (e) => {
+            container._csActiveGrouper = e.target.value;
+            renderCards(container, container._csOriginalRecords, currentOptions, schema);
+        });
+        
+        groupBar.appendChild(label);
+        groupBar.appendChild(select);
+        container.appendChild(groupBar);
+    }
+
+    // Build group map and render accordions if grouped
+    const groupMap = new Map();
+    if (isGrouped) {
+        // Group records
+        for (const record of processedRecords) {
+            const gKey = _getRecordGroupKey(record, activeGrouper);
+            if (!groupMap.has(gKey)) {
+                groupMap.set(gKey, []);
+            }
+            groupMap.get(gKey).push(record);
+        }
+
+        // Sort group keys with "Sem Grupo" at the end
+        const groupKeys = Array.from(groupMap.keys()).sort((a, b) => {
+            const aIsSem = (a === "Sem Grupo");
+            const bIsSem = (b === "Sem Grupo");
+            if (aIsSem && !bIsSem) return 1;
+            if (!aIsSem && bIsSem) return -1;
+            return a.localeCompare(b, undefined, { sensitivity: 'base' });
+        });
+
+        // Determine progress scale
+        let shouldScale = true;
+        if (groupingConfig.progressColumn) {
+            for (const rec of processedRecords) {
+                const rawVal = rec[groupingConfig.progressColumn];
+                if (rawVal !== null && rawVal !== undefined && rawVal !== '') {
+                    const num = parseFloat(rawVal);
+                    if (!isNaN(num) && num > 1.0) {
+                        shouldScale = false;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Create accordions
+        for (const gKey of groupKeys) {
+            const groupRecords = groupMap.get(gKey);
+            const totalCount = groupRecords.length;
+            
+            const accordion = document.createElement("div");
+            accordion.className = "cs-accordion";
+            
+            const header = document.createElement("div");
+            header.className = "cs-accordion-header";
+            
+            const headerLeft = document.createElement("div");
+            headerLeft.className = "cs-accordion-header-left";
+            
+            const chevronSpan = document.createElement("span");
+            chevronSpan.className = "cs-accordion-chevron";
+            chevronSpan.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>`;
+            headerLeft.appendChild(chevronSpan);
+            
+            const titleSpan = document.createElement("span");
+            titleSpan.className = "cs-accordion-title";
+            titleSpan.textContent = gKey;
+            headerLeft.appendChild(titleSpan);
+            
+            const countBadge = document.createElement("span");
+            countBadge.className = "cs-accordion-count";
+            countBadge.textContent = `${totalCount} ${totalCount === 1 ? 'card' : 'cards'}`;
+            headerLeft.appendChild(countBadge);
+            
+            if (groupingConfig.statusColumn) {
+                const statusListDiv = document.createElement("div");
+                statusListDiv.className = "cs-accordion-status-list";
+                
+                const statusValCounts = {};
+                for (const rec of groupRecords) {
+                    const statusVal = _getRecordGroupKey(rec, groupingConfig.statusColumn);
+                    statusValCounts[statusVal] = (statusValCounts[statusVal] || 0) + 1;
+                }
+                
+                Object.entries(statusValCounts).forEach(([statusName, count]) => {
+                    const pill = document.createElement("span");
+                    const semanticClass = _getStatusSemanticClass(statusName);
+                    pill.className = `cs-status-pill ${semanticClass}`;
+                    pill.textContent = `${statusName}: ${count}`;
+                    statusListDiv.appendChild(pill);
+                });
+                headerLeft.appendChild(statusListDiv);
+            }
+            
+            header.appendChild(headerLeft);
+            
+            const headerRight = document.createElement("div");
+            headerRight.className = "cs-accordion-header-right";
+            
+            let avgProgress = null;
+            if (groupingConfig.progressColumn) {
+                let sum = 0;
+                let count = 0;
+                for (const rec of groupRecords) {
+                    const rawVal = rec[groupingConfig.progressColumn];
+                    if (rawVal !== null && rawVal !== undefined && rawVal !== '') {
+                        const num = parseFloat(rawVal);
+                        if (!isNaN(num)) {
+                            let val = num;
+                            if (shouldScale) val *= 100;
+                            val = Math.max(0, Math.min(100, val));
+                            sum += val;
+                            count++;
+                        }
+                    }
+                }
+                if (count > 0) {
+                    avgProgress = Math.round(sum / count);
+                }
+            }
+            
+            if (avgProgress !== null) {
+                const progressLabel = document.createElement("span");
+                progressLabel.className = "cs-progress-label";
+                progressLabel.textContent = `${avgProgress}%`;
+                headerRight.appendChild(progressLabel);
+                
+                const progressTrack = document.createElement("div");
+                progressTrack.className = "cs-progress-track";
+                
+                const progressFill = document.createElement("div");
+                progressFill.className = "cs-progress-fill";
+                progressFill.style.width = `${avgProgress}%`;
+                progressFill.style.backgroundColor = `hsl(${avgProgress * 1.2}, 75%, 45%)`;
+                
+                progressTrack.appendChild(progressFill);
+                headerRight.appendChild(progressTrack);
+            }
+            
+            header.appendChild(headerRight);
+            accordion.appendChild(header);
+            
+            const body = document.createElement("div");
+            body.className = "cs-accordion-body";
+            
+            const cardsGrid = document.createElement("div");
+            cardsGrid.style.display = "grid";
+            cardsGrid.style.gridTemplateColumns = `repeat(${numCols}, 1fr)`;
+            cardsGrid.style.gridAutoRows = "min-content";
+            cardsGrid.style.gap = styling.cardsSpacing;
+            
+            body.appendChild(cardsGrid);
+            accordion.appendChild(body);
+            
+            header.addEventListener("click", () => {
+                const isCollapsed = body.style.display === "none";
+                if (isCollapsed) {
+                    body.style.display = "block";
+                    chevronSpan.classList.remove("collapsed");
+                } else {
+                    body.style.display = "none";
+                    chevronSpan.classList.add("collapsed");
+                }
+            });
+            
+            container.appendChild(accordion);
+            accordion._csCardsGrid = cardsGrid;
+            groupMap.set(gKey, accordion);
+        }
+    }
 
     for (const record of processedRecords) {
       const cardEl = document.createElement("div");
@@ -662,10 +884,18 @@ export const CardSystem = (() => {
           cardEl.appendChild(fieldBox);
         }
       }
-      container.appendChild(cardEl);
+      if (isGrouped) {
+        const gKey = _getRecordGroupKey(record, activeGrouper);
+        const accordion = groupMap.get(gKey);
+        if (accordion && accordion._csCardsGrid) {
+            accordion._csCardsGrid.appendChild(cardEl);
+        }
+      } else {
+        container.appendChild(cardEl);
+      }
     }
 
-    if (enableOrder && orderColumn) {
+    if (enableOrder && orderColumn && !isGrouped) {
         _handleDragAndDrop(container, orderColumn, currentOptions);
     }
 
@@ -852,6 +1082,122 @@ export const CardSystem = (() => {
       b = Math.round(Math.min(255, b + (255 - b) * p));
       const toHex = c => c.toString(16).padStart(2, '0');
       return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+  }
+
+  function _getRecordGroupKey(record, colId) {
+    const val = record[colId];
+    if (val === null || val === undefined || val === '') {
+      return "Sem Grupo";
+    }
+    if (Array.isArray(val)) {
+      let items = val;
+      if (val[0] === 'L') {
+        items = val.slice(1);
+      }
+      if (items.length === 0) return "Sem Grupo";
+      return items.map(item => {
+        if (item && typeof item === 'object') {
+          return item.label !== undefined ? String(item.label) : (item.id !== undefined ? String(item.id) : JSON.stringify(item));
+        }
+        return String(item);
+      }).join(", ");
+    }
+    if (val && typeof val === 'object') {
+      return val.label !== undefined ? String(val.label) : (val.id !== undefined ? String(val.id) : JSON.stringify(val));
+    }
+    return String(val);
+  }
+
+  function _normalizeString(str) {
+    return String(str)
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+  }
+
+  function _getStatusSemanticClass(statusText) {
+    if (!statusText) return "neutral";
+    const normalized = _normalizeString(statusText);
+    
+    if (
+      normalized.includes("atrasad") || 
+      normalized.includes("bloquead") || 
+      normalized.includes("cancelad") || 
+      normalized.includes("danger") || 
+      normalized.includes("error") ||
+      normalized.includes("critico") ||
+      normalized.includes("impedid")
+    ) {
+      return "danger";
+    }
+    
+    if (
+      normalized.includes("conclui") || 
+      normalized.includes("finaliz") || 
+      normalized.includes("sucess") || 
+      normalized.includes("success") || 
+      normalized.includes("pront") || 
+      normalized.includes("ok") ||
+      normalized.includes("feito") ||
+      normalized.includes("terminad")
+    ) {
+      return "success";
+    }
+    
+    if (
+      normalized.includes("andamento") || 
+      normalized.includes("pendent") || 
+      normalized.includes("analise") || 
+      normalized.includes("warning") || 
+      normalized.includes("medio") ||
+      normalized.includes("atencao") ||
+      normalized.includes("espera") ||
+      normalized.includes("pausad")
+    ) {
+      return "warning";
+    }
+    
+    return "neutral";
+  }
+
+  function _injectGroupingStyles() {
+    if (document.getElementById('cs-grouping-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'cs-grouping-styles';
+    style.textContent = `
+        .cs-grouping-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; padding: 10px 15px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .cs-grouping-label { font-size: 13px; font-weight: bold; color: #475569; display: flex; align-items: center; gap: 6px; }
+        .cs-grouping-select { padding: 6px 12px; font-size: 13px; border-radius: 6px; border: 1px solid #cbd5e1; background-color: #ffffff; color: #1e293b; outline: none; cursor: pointer; font-family: inherit; transition: border-color 0.2s ease, box-shadow 0.2s ease; }
+        .cs-grouping-select:hover, .cs-grouping-select:focus { border-color: #94a3b8; box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.1); }
+        
+        .cs-accordion { margin-bottom: 15px; border-radius: 8px; border: 1px solid #e2e8f0; background: #ffffff; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: box-shadow 0.2s ease; }
+        .cs-accordion:hover { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
+        .cs-accordion-header { padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; background: #f8fafc; border-bottom: 1px solid #e2e8f0; user-select: none; transition: background 0.2s ease; }
+        .cs-accordion-header:hover { background: #f1f5f9; }
+        
+        .cs-accordion-header-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .cs-accordion-chevron { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; color: #64748b; }
+        .cs-accordion-chevron svg { transition: transform 0.2s ease; transform: rotate(90deg); }
+        .cs-accordion-chevron.collapsed svg { transform: rotate(0deg); }
+        
+        .cs-accordion-title { font-weight: 700; font-size: 14px; color: #1e293b; }
+        .cs-accordion-count { background: #e2e8f0; color: #475569; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; }
+        .cs-accordion-status-list { display: flex; align-items: center; gap: 6px; margin-left: 8px; }
+        
+        .cs-status-pill { padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .cs-status-pill.success { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+        .cs-status-pill.warning { background: #fef9c3; color: #a16207; border: 1px solid #fef08a; }
+        .cs-status-pill.danger { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+        .cs-status-pill.neutral { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+        
+        .cs-accordion-header-right { display: flex; align-items: center; gap: 8px; min-width: 150px; justify-content: flex-end; }
+        .cs-progress-label { font-size: 12px; font-weight: bold; color: #475569; min-width: 35px; text-align: right; }
+        .cs-progress-track { width: 100px; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; position: relative; }
+        .cs-progress-fill { height: 100%; border-radius: 3px; transition: width 0.3s ease; }
+        
+        .cs-accordion-body { padding: 15px; border-top: 1px solid #e2e8f0; }
+    `;
+    document.head.appendChild(style);
   }
 
   return { renderCards, filterRecords };

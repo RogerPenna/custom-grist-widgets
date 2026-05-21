@@ -77,7 +77,8 @@ export const CardConfigEditor = (() => {
             showAddButtonTop: actions.showAddButtonTop || false,
             showAddButtonBottom: actions.showAddButtonBottom || false,
             addRecordConfigId: actions.addRecordConfigId || null,
-            iconGroups: actions.iconGroups || options.iconGroups || []
+            iconGroups: actions.iconGroups || options.iconGroups || [],
+            grouping: mapping.grouping || options.grouping || { enabled: false, statusColumn: "", progressColumn: "", allowedGroupers: [], defaultGrouper: "" }
         };
         state.layout.forEach(field => { if (!field.style) field.style = { ...DEFAULT_FIELD_STYLE }; });
 
@@ -96,7 +97,7 @@ export const CardConfigEditor = (() => {
 
         const tabsRow = document.createElement("div");
         tabsRow.className = 'config-tabs';
-        [createTabButton("Styling", "sty", container), createTabButton("Fields Layout", "fld", container), createTabButton("Actions & Nav", "actions", container)].forEach(t => tabsRow.appendChild(t));
+        [createTabButton("Styling", "sty", container), createTabButton("Fields Layout", "fld", container), createTabButton("Actions & Nav", "actions", container), createTabButton("Agrupadores", "grp", container)].forEach(t => tabsRow.appendChild(t));
         container.appendChild(tabsRow);
 
         const debugSection = document.createElement("div");
@@ -115,6 +116,7 @@ export const CardConfigEditor = (() => {
         buildStylingTab(contentArea);
         buildFieldsLayoutTab(contentArea);
         buildActionsTab(contentArea);
+        buildGroupingTab(contentArea);
         
         updateDebugJson();
         switchTab("sty", container);
@@ -327,7 +329,9 @@ export const CardConfigEditor = (() => {
         const mapping = readMappingTab(container);
         const styling = readStylingTab(container);
         const actions = readActionsTab(container);
+        const grouping = readGroupingTab(container);
         
+        mapping.grouping = grouping;
         styling.iconSize = actions.iconSize;
 
         return { mapping, styling, actions };
@@ -1834,6 +1838,115 @@ export const CardConfigEditor = (() => {
             };
             if (isRefList) { fieldDef.style.refListConfig = { displayAs: _fieldStylePopup.querySelector('#fs-reflist-display-as').value, cardConfigId: _fieldStylePopup.querySelector('#fs-reflist-card-config-id')?.value, tabulatorConfigId: _fieldStylePopup.querySelector('#fs-reflist-tabulator-config-id')?.value }; }
             backdrop.remove(); _fieldStylePopup.remove(); buildGridUI(gridEl, tabEl); updateDebugJson();
+        };
+    }
+
+    function buildGroupingTab(contentArea) {
+        const tabEl = document.createElement("div");
+        tabEl.dataset.tabSection = "grp";
+        tabEl.style.display = "none";
+        tabEl.innerHTML = `
+            <h3>Configuração de Agrupadores</h3>
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label style="display: flex; align-items: center; gap: 8px; font-weight: bold; cursor: pointer; user-select: none;">
+                    <input type="checkbox" id="cs-grp-enabled" style="width: 16px; height: 16px;">
+                    Habilitar Agrupamento de Cards
+                </label>
+            </div>
+            
+            <div style="background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px;">
+                <h4 style="margin-top: 0; margin-bottom: 10px; font-size: 14px; color: #1e293b;">Colunas de Resumo Global</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label for="cs-grp-status-col" style="display: block; font-size: 12px; font-weight: bold; margin-bottom: 5px;">Coluna de Status:</label>
+                        <select id="cs-grp-status-col" class="form-control" style="width: 100%;"><option value="">-- Selecione a Coluna --</option></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="cs-grp-progress-col" style="display: block; font-size: 12px; font-weight: bold; margin-bottom: 5px;">Coluna de Progresso (%):</label>
+                        <select id="cs-grp-progress-col" class="form-control" style="width: 100%;"><option value="">-- Selecione a Coluna --</option></select>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px;">
+                <h4 style="margin-top: 0; margin-bottom: 10px; font-size: 14px; color: #1e293b;">Critérios de Agrupamento Permitidos (Até 3)</h4>
+                <div style="display: flex; flex-direction: column; gap: 15px;">
+                    <div class="form-group">
+                        <label for="cs-grp-grouper-1" style="display: block; font-size: 12px; font-weight: bold; margin-bottom: 5px;">Agrupador 1:</label>
+                        <select id="cs-grp-grouper-1" class="form-control" style="width: 100%;"><option value="">-- Nenhum --</option></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="cs-grp-grouper-2" style="display: block; font-size: 12px; font-weight: bold; margin-bottom: 5px;">Agrupador 2:</label>
+                        <select id="cs-grp-grouper-2" class="form-control" style="width: 100%;"><option value="">-- Nenhum --</option></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="cs-grp-grouper-3" style="display: block; font-size: 12px; font-weight: bold; margin-bottom: 5px;">Agrupador 3:</label>
+                        <select id="cs-grp-grouper-3" class="form-control" style="width: 100%;"><option value="">-- Nenhum --</option></select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="cs-grp-default" style="display: block; font-size: 12px; font-weight: bold; margin-bottom: 5px;">Agrupador Padrão Inicial:</label>
+                <select id="cs-grp-default" class="form-control" style="width: 100%;"><option value="">-- Sem Agrupamento --</option></select>
+            </div>
+        `;
+        contentArea.appendChild(tabEl);
+        
+        const allFields = state.fields.map(f => f.colId);
+        populateFieldSelect(tabEl.querySelector("#cs-grp-status-col"), allFields);
+        populateFieldSelect(tabEl.querySelector("#cs-grp-progress-col"), allFields);
+        populateFieldSelect(tabEl.querySelector("#cs-grp-grouper-1"), allFields);
+        populateFieldSelect(tabEl.querySelector("#cs-grp-grouper-2"), allFields);
+        populateFieldSelect(tabEl.querySelector("#cs-grp-grouper-3"), allFields);
+        populateFieldSelect(tabEl.querySelector("#cs-grp-default"), allFields);
+        
+        const grp = state.grouping || {};
+        tabEl.querySelector("#cs-grp-enabled").checked = !!grp.enabled;
+        if (grp.statusColumn) tabEl.querySelector("#cs-grp-status-col").value = grp.statusColumn;
+        if (grp.progressColumn) tabEl.querySelector("#cs-grp-progress-col").value = grp.progressColumn;
+        
+        const allowed = grp.allowedGroupers || [];
+        if (allowed[0] && allowed[0].colId) tabEl.querySelector("#cs-grp-grouper-1").value = allowed[0].colId;
+        if (allowed[1] && allowed[1].colId) tabEl.querySelector("#cs-grp-grouper-2").value = allowed[1].colId;
+        if (allowed[2] && allowed[2].colId) tabEl.querySelector("#cs-grp-grouper-3").value = allowed[2].colId;
+        
+        if (grp.defaultGrouper) tabEl.querySelector("#cs-grp-default").value = grp.defaultGrouper;
+    }
+    
+    function readGroupingTab(container) {
+        const tabEl = container.querySelector("[data-tab-section='grp']");
+        if (!tabEl) return { enabled: false, statusColumn: "", progressColumn: "", allowedGroupers: [], defaultGrouper: "" };
+        
+        const enabled = tabEl.querySelector("#cs-grp-enabled").checked;
+        const statusColumn = tabEl.querySelector("#cs-grp-status-col").value;
+        const progressColumn = tabEl.querySelector("#cs-grp-progress-col").value;
+        const defaultGrouper = tabEl.querySelector("#cs-grp-default").value;
+        
+        const allowedGroupers = [];
+        const g1 = tabEl.querySelector("#cs-grp-grouper-1").value;
+        const g2 = tabEl.querySelector("#cs-grp-grouper-2").value;
+        const g3 = tabEl.querySelector("#cs-grp-grouper-3").value;
+        
+        if (g1) {
+            const fSchema = state.fields.find(f => f.colId === g1);
+            allowedGroupers.push({ colId: g1, label: fSchema ? (fSchema.label || g1) : g1 });
+        }
+        if (g2) {
+            const fSchema = state.fields.find(f => f.colId === g2);
+            allowedGroupers.push({ colId: g2, label: fSchema ? (fSchema.label || g2) : g2 });
+        }
+        if (g3) {
+            const fSchema = state.fields.find(f => f.colId === g3);
+            allowedGroupers.push({ colId: g3, label: fSchema ? (fSchema.label || g3) : g3 });
+        }
+        
+        return {
+            enabled,
+            statusColumn,
+            progressColumn,
+            allowedGroupers,
+            defaultGrouper
         };
     }
 
