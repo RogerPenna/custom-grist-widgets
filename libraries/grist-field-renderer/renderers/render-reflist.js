@@ -161,7 +161,7 @@ export async function renderRefList(options) {
                         formatter: (cell) => {
                             const d = document.createElement('div');
                             d.style.padding = "4px 0";
-                            renderField({ container: d, colSchema: c, record: cell.getRow().getData(), tableLens, ruleIdToColIdMap: ruleIdToColIdMap, fieldConfig, isChild: true });
+                            renderField({ container: d, colSchema: c, record: cell.getRow().getData(), tableLens, ruleIdToColIdMap: ruleIdToColIdMap, fieldConfig, isChild: true, tableSchema: relatedSchema });
                             return d;
                         }
                     }))
@@ -174,7 +174,17 @@ export async function renderRefList(options) {
             const cardConfig = await tableLens.fetchConfig(rawRefConfig.cardConfigId);
             const cardWrap = document.createElement('div');
             container.appendChild(cardWrap);
-            if (CardSystem) await CardSystem.renderCards(cardWrap, relatedRecords, { ...cardConfig, tableId: referencedTableId, isRefList: true }, relatedSchema, tableLens);
+            if (CardSystem) {
+                await CardSystem.renderCards(cardWrap, relatedRecords, { 
+                    ...cardConfig, 
+                    tableId: referencedTableId, 
+                    isRefList: true, 
+                    tableLens,
+                    orderColumn: rawRefConfig.orderColumn || cardConfig.orderColumn || cardConfig.mapping?.orderColumn,
+                    enableOrder: rawRefConfig.enableOrder === true || cardConfig.enableOrder === true || cardConfig.mapping?.enableOrder === true,
+                    orderBehavior: rawRefConfig.orderBehavior || cardConfig.orderBehavior || cardConfig.mapping?.orderBehavior || 'free'
+                }, relatedSchema);
+            }
         }
         // --- RENDERIZAR TABELA SIMPLES ---
         else {
@@ -199,7 +209,7 @@ export async function renderRefList(options) {
                 
                 columnsToDisplay.forEach(c => {
                     const td = tr.insertCell();
-                    renderField({ container: td, colSchema: c, record: relRec, tableLens, ruleIdToColIdMap: ruleIdToColIdMap, fieldConfig, isChild: true });
+                    renderField({ container: td, colSchema: c, record: relRec, tableLens, ruleIdToColIdMap: ruleIdToColIdMap, fieldConfig, isChild: true, tableSchema: relatedSchema });
                 });
             });
             wrap.appendChild(table);
