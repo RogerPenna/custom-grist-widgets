@@ -82,7 +82,10 @@ export const CardSystem = (() => {
   async function renderCards(container, records, options, schema) {
     _injectTooltipStyles();
     _injectGroupingStyles();
-    await loadIcons();
+
+    container._csRenderId = (container._csRenderId || 0) + 1;
+    const currentRenderId = container._csRenderId;
+
     const currentOptions = options || {};
     const tableLens = currentOptions.tableLens;
     const styling = { ...DEFAULT_STYLING, ...currentOptions.styling, selectedCard: { ...DEFAULT_STYLING.selectedCard, ...(currentOptions.styling?.selectedCard || {}) } };
@@ -91,12 +94,187 @@ export const CardSystem = (() => {
     const viewMode = currentOptions.viewMode || 'click';
     const numRows = currentOptions.numRows || DEFAULT_NUM_ROWS;
 
-    // --- ORDENAÇÃO ---
+    const isRefList = !!currentOptions.isRefList;
+
+    // ARMAZENA ESTADO NO CONTAINER (Evita estado global compartilhado entre instâncias)
+    if (!container._csIsFiltering) {
+        container._csDatabaseRecords = records;
+    }
+    container._csOriginalRecords = records;
+    container._csOptions = currentOptions;
+    container._csSchema = schema;
+    container.classList.add('cards-wrapper');
+
+    // Track top-level render session on document.body to prevent race conditions on the global filter bar
+    let mainRenderId = 0;
+    if (!isRefList) {
+        document.body._csMainRenderId = (document.body._csMainRenderId || 0) + 1;
+        mainRenderId = document.body._csMainRenderId;
+    }
+
+    // Clean up any existing grouping bar in both the filter bar and the container
+    const filterBar = document.querySelector('.filter-bar');
+    if (filterBar && !isRefList) {
+        filterBar.querySelectorAll('.cs-grouping-bar').forEach(el => el.remove());
+    }
+    container.querySelectorAll('.cs-grouping-bar').forEach(el => el.remove());
+
+    await loadIcons();
+    if (!document.body.contains(container) || container._csRenderId !== currentRenderId) return;
+    if (!isRefList && document.body._csMainRenderId !== mainRenderId) return;
+
+    // Initialize container states
+    let groupingConfig = currentOptions.grouping || currentOptions.mapping?.grouping;
+    if (isRefList) {
+        groupingConfig = null;
+    }
+    if (container._csActiveGrouper === undefined) {
+        container._csActiveGrouper = groupingConfig?.defaultGrouper || "";
+    }
+    if (container._csActiveSorter === undefined) {
+        container._csActiveSorter = groupingConfig?.defaultSorter || "";
+    }
+    if (container._csActiveSortDir === undefined) {
+        container._csActiveSortDir = groupingConfig?.defaultSortDir || "asc";
+    }
+    if (container._csDropdownFilters === undefined) {
+        container._csDropdownFilters = {};
+    }
+
+    const activeGrouper = container._csActiveGrouper;
+    const activeSorter = container._csActiveSorter;
+    const activeSortDir = container._csActiveSortDir;
+
+    // Determine filter fields
+    const configuredFilterFields = groupingConfig?.filterFields || [];
+    let searchCols = configuredFilterFields.map(f => f.colId);
+    if (!searchCols.length) {
+        searchCols = Object.keys(schema).filter(colId => {
+            return colId !== 'id' && colId !== 'manualSort' && !colId.startsWith('gristHelper_');
+        });
+    }
+
+    // Pre-resolve referenced columns asynchronously
+    const columnsToResolve = new Set();
+    if (groupingConfig) {
+        if (groupingConfig.statusColumn) columnsToResolve.add(groupingConfig.statusColumn);
+        if (groupingConfig.progressColumn) columnsToResolve.add(groupingConfig.progressColumn);
+        if (activeGrouper) columnsToResolve.add(activeGrouper);
+    }
+    if (activeSorter) columnsToResolve.add(activeSorter);
+    searchCols.forEach(colId => columnsToResolve.add(colId));
+
+    const resolvePromises = [];
+    for (const record of records) {
+        for (const colId of columnsToResolve) {
+            resolvePromises.push(_getOrResolveDisplayValue(record, colId, schema, tableLens));
+        }
+    }
+    if (resolvePromises.length > 0) {
+        await Promise.all(resolvePromises);
+        if (!document.body.contains(container) || container._csRenderId !== currentRenderId) return;
+        if (!isRefList && document.body._csMainRenderId !== mainRenderId) return;
+    }
+
+    // Unified filtering
+    let filteredRecords = [...records];
+    const lowerCaseSearchTerm = (container._csSearchTerm || "").trim().toLowerCase();
+    if (lowerCaseSearchTerm) {
+        filteredRecords = filteredRecords.filter(record => {
+            let matches = false;
+            for (const colId of searchCols) {
+                const colSchema = schema[colId];
+                let stringValue = '';
+                if (colSchema && colSchema.type === 'Bool') {
+                    stringValue = (record[colId] === true) ? 'sim' : (record[colId] === false) ? 'não' : '';
+                } else if (colSchema && (colSchema.type.startsWith('Ref:') || colSchema.type.startsWith('RefList:'))) {
+                    stringValue = record[`_csResolved_${colId}`] || '';
+                } else {
+                    const valueToSearch = record[colId];
+                    if (valueToSearch !== null && valueToSearch !== undefined) {
+                        stringValue = String(valueToSearch);
+                    }
+                }
+                if (stringValue.toLowerCase().includes(lowerCaseSearchTerm)) {
+                    matches = true;
+                    break;
+                }
+            }
+            return matches;
+        });
+    }
+
+    const dropdownFilters = container._csDropdownFilters || {};
+    Object.keys(dropdownFilters).forEach(colId => {
+        const selectedValue = dropdownFilters[colId];
+        if (selectedValue) {
+            filteredRecords = filteredRecords.filter(record => {
+                const colSchema = schema[colId];
+                let stringValue = '';
+                if (colSchema && colSchema.type === 'Bool') {
+                    stringValue = (record[colId] === true) ? 'Sim' : (record[colId] === false) ? 'Não' : '';
+                } else if (colSchema && (colSchema.type.startsWith('Ref:') || colSchema.type.startsWith('RefList:'))) {
+                    stringValue = record[`_csResolved_${colId}`] || '';
+                } else {
+                    const val = record[colId];
+                    if (val !== null && val !== undefined) stringValue = String(val);
+                }
+                return stringValue === selectedValue;
+            });
+        }
+    });
+
+    // Populate unique values for configured filter dropdowns based on database records
+    const filterFieldUniqueValues = {};
+    configuredFilterFields.forEach(f => {
+        const colId = f.colId;
+        if (!colId) return;
+        const colSchema = schema[colId];
+        const valSet = new Set();
+        (container._csDatabaseRecords || records).forEach(record => {
+            let stringValue = '';
+            if (colSchema && colSchema.type === 'Bool') {
+                stringValue = (record[colId] === true) ? 'Sim' : (record[colId] === false) ? 'Não' : '';
+            } else if (colSchema && (colSchema.type.startsWith('Ref:') || colSchema.type.startsWith('RefList:'))) {
+                stringValue = record[`_csResolved_${colId}`] || '';
+            } else {
+                const val = record[colId];
+                if (val !== null && val !== undefined) stringValue = String(val);
+            }
+            if (stringValue) {
+                valSet.add(stringValue);
+            }
+        });
+        filterFieldUniqueValues[colId] = Array.from(valSet).sort((a, b) => a.localeCompare(b));
+    });
+
+    // Unified sorting
+    let processedRecords = [...filteredRecords];
     const orderColumn = currentOptions.orderColumn || currentOptions.mapping?.orderColumn;
     const enableOrder = currentOptions.enableOrder || currentOptions.mapping?.enableOrder;
-    
-    let processedRecords = [...records];
-    if (enableOrder && orderColumn) {
+
+    if (activeSorter) {
+        const dirMultiplier = activeSortDir === 'desc' ? -1 : 1;
+        processedRecords.sort((a, b) => {
+            const colSchema = schema[activeSorter];
+            let valA = a[activeSorter];
+            let valB = b[activeSorter];
+            if (colSchema && (colSchema.type.startsWith('Ref:') || colSchema.type.startsWith('RefList:'))) {
+                valA = a[`_csResolved_${activeSorter}`] || '';
+                valB = b[`_csResolved_${activeSorter}`] || '';
+            }
+            if (valA === null || valA === undefined) valA = '';
+            if (valB === null || valB === undefined) valB = '';
+
+            if (typeof valA === 'string' && typeof valB === 'string') {
+                return valA.localeCompare(valB) * dirMultiplier;
+            }
+            if (typeof valA === 'number' && typeof valB === 'number') {
+                return (valA - valB) * dirMultiplier;
+            }
+            return String(valA).localeCompare(String(valB)) * dirMultiplier;
+        });
+    } else if (enableOrder && orderColumn) {
         processedRecords.sort((a, b) => {
             const valA = a[orderColumn] ?? 0;
             const valB = b[orderColumn] ?? 0;
@@ -104,25 +282,232 @@ export const CardSystem = (() => {
         });
     }
 
-    // ARMAZENA ESTADO NO CONTAINER (Evita estado global compartilhado entre instâncias)
-    container._csRecords = processedRecords;
-    container._csOriginalRecords = records;
-    container._csOptions = currentOptions;
-    container._csSchema = schema;
-
-    const groupingConfig = currentOptions.grouping || currentOptions.mapping?.grouping;
-    let activeGrouper = "";
-    if (groupingConfig && groupingConfig.enabled) {
-      if (container._csActiveGrouper === undefined) {
-        container._csActiveGrouper = groupingConfig.defaultGrouper || "";
-      }
-      activeGrouper = container._csActiveGrouper;
+    // Helper to render Visualização button & popup
+    function _renderOptionsButtonAndPopup() {
+        _injectOptionsStyles();
+        const filterBar = document.querySelector('.filter-bar');
+        if (filterBar && !isRefList) {
+            let optionsContainer = filterBar.querySelector('.cs-options-container');
+            if (!optionsContainer) {
+                optionsContainer = document.createElement('div');
+                optionsContainer.className = 'cs-options-container';
+                const filterInput = filterBar.querySelector('#filter-input');
+                if (filterInput) {
+                    filterInput.insertAdjacentElement('afterend', optionsContainer);
+                } else {
+                    filterBar.appendChild(optionsContainer);
+                }
+            }
+            
+            // Hide the legacy top-level filter input dynamically
+            const filterInput = filterBar.querySelector('#filter-input');
+            if (filterInput) {
+                filterInput.style.display = 'none';
+            }
+            
+            const isFilterActive = !!(container._csSearchTerm || Object.values(container._csDropdownFilters || {}).some(v => v));
+            const isSortActive = !!activeSorter;
+            const isGroupActive = !!activeGrouper;
+            
+            optionsContainer.innerHTML = `
+              <button class="cs-options-btn" id="cs-options-btn" title="Visualização e Filtros">
+                <span>Visualização</span>
+                <span class="cs-options-btn-icons">
+                  <svg class="cs-btn-icon cs-icon-filter ${isFilterActive ? 'active' : ''}" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><use xlink:href="#icon-filter"></use></svg>
+                  <svg class="cs-btn-icon cs-icon-sort ${isSortActive ? 'active' : ''}" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><use xlink:href="#icon-adjustments-vert"></use></svg>
+                  <svg class="cs-btn-icon cs-icon-group ${isGroupActive ? 'active' : ''}" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><use xlink:href="#icon-folder"></use></svg>
+                </span>
+              </button>
+            `;
+            
+            const btn = optionsContainer.querySelector('#cs-options-btn');
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                container._csOptionsPopupOpen = !container._csOptionsPopupOpen;
+                renderCards(container, container._csOriginalRecords, currentOptions, schema);
+            });
+            
+            // Close popup on click outside
+            if (!window._csOptionsOutsideClickRegistered) {
+                window._csOptionsOutsideClickRegistered = true;
+                document.addEventListener('click', () => {
+                    document.querySelectorAll('.cards-wrapper').forEach(wrapper => {
+                        if (wrapper._csOptionsPopupOpen) {
+                            wrapper._csOptionsPopupOpen = false;
+                            if (wrapper._csOriginalRecords && wrapper._csOptions && wrapper._csSchema) {
+                                renderCards(wrapper, wrapper._csOriginalRecords, wrapper._csOptions, wrapper._csSchema);
+                            }
+                        }
+                    });
+                });
+            }
+            
+            if (container._csOptionsPopupOpen) {
+                const popup = document.createElement('div');
+                popup.className = 'cs-options-popup';
+                popup.addEventListener('click', (e) => e.stopPropagation());
+                
+                let searchHtml = `
+                  <div class="cs-popup-section">
+                    <div class="cs-popup-label">Buscar</div>
+                    <input type="text" id="popup-filter-input" placeholder="Buscar..." class="cs-popup-input" value="${container._csSearchTerm || ''}">
+                  </div>
+                  <div class="cs-popup-divider"></div>
+                `;
+                
+                let groupingHtml = '';
+                const allowedGroupers = groupingConfig?.allowedGroupers || [];
+                if (groupingConfig && groupingConfig.enabled) {
+                    groupingHtml = `
+                      <div class="cs-popup-section">
+                        <div class="cs-popup-label">Agrupar por</div>
+                        <select class="cs-popup-select cs-select-grouper">
+                          <option value="">Sem Agrupamento</option>
+                          ${allowedGroupers.map(g => `
+                            <option value="${g.colId}" ${g.colId === activeGrouper ? 'selected' : ''}>${g.label || g.colId}</option>
+                          `).join('')}
+                        </select>
+                      </div>
+                    `;
+                }
+                
+                let sortingHtml = '';
+                const allowedSorts = groupingConfig?.allowedSorts || [];
+                if (allowedSorts.length > 0) {
+                    sortingHtml = `
+                      <div class="cs-popup-section">
+                        <div class="cs-popup-label">Ordenar por</div>
+                        <div class="cs-sort-group">
+                          <select class="cs-popup-select cs-select-sorter">
+                            <option value="">Padrão</option>
+                            ${allowedSorts.map(s => `
+                              <option value="${s.colId}" ${s.colId === activeSorter ? 'selected' : ''}>${s.label || s.colId}</option>
+                            `).join('')}
+                          </select>
+                          <div class="cs-sort-dir-toggle">
+                            <button class="cs-sort-dir-btn cs-btn-asc ${activeSortDir === 'asc' ? 'active' : ''}" title="A-Z">A-Z</button>
+                            <button class="cs-sort-dir-btn cs-btn-desc ${activeSortDir === 'desc' ? 'active' : ''}" title="Z-A">Z-A</button>
+                          </div>
+                        </div>
+                      </div>
+                    `;
+                }
+                
+                let filtersHtml = '';
+                if (configuredFilterFields.length > 0) {
+                    filtersHtml = `
+                      <div class="cs-popup-divider"></div>
+                      <div class="cs-popup-label">Filtros Avançados</div>
+                      ${configuredFilterFields.map(f => {
+                          const colId = f.colId;
+                          const uniqueVals = filterFieldUniqueValues[colId] || [];
+                          const selectedVal = dropdownFilters[colId] || '';
+                          return `
+                            <div class="cs-popup-section">
+                              <div class="cs-popup-label" style="font-size: 10px; color: #94a3b8;">${f.label || colId}</div>
+                              <select class="cs-popup-select cs-select-filter" data-colid="${colId}">
+                                <option value="">Todos</option>
+                                ${uniqueVals.map(val => `
+                                  <option value="${val}" ${val === selectedVal ? 'selected' : ''}>${val}</option>
+                                `).join('')}
+                              </select>
+                            </div>
+                          `;
+                      }).join('')}
+                    `;
+                }
+                
+                popup.innerHTML = `
+                  ${searchHtml}
+                  ${groupingHtml}
+                  ${sortingHtml}
+                  ${filtersHtml}
+                `;
+                
+                const popupFilterInput = popup.querySelector('#popup-filter-input');
+                if (popupFilterInput) {
+                    popupFilterInput.addEventListener('input', async (e) => {
+                        const val = e.target.value;
+                        container._csSearchTerm = val;
+                        
+                        const legacyInput = document.getElementById('filter-input');
+                        if (legacyInput) {
+                            legacyInput.value = val;
+                        }
+                        
+                        const selectionStart = e.target.selectionStart;
+                        const selectionEnd = e.target.selectionEnd;
+                        
+                        await renderCards(container, container._csOriginalRecords, currentOptions, schema);
+                        
+                        const newInput = document.getElementById('popup-filter-input');
+                        if (newInput) {
+                            newInput.focus();
+                            try {
+                                newInput.setSelectionRange(selectionStart, selectionEnd);
+                            } catch (err) {}
+                        }
+                    });
+                    
+                    popupFilterInput.addEventListener('keydown', (e) => {
+                        if (e.key === 'Escape') {
+                            container._csOptionsPopupOpen = false;
+                            renderCards(container, container._csOriginalRecords, currentOptions, schema);
+                        }
+                    });
+                }
+                
+                const selectGrouper = popup.querySelector('.cs-select-grouper');
+                if (selectGrouper) {
+                    selectGrouper.addEventListener('change', (e) => {
+                        container._csActiveGrouper = e.target.value;
+                        renderCards(container, container._csOriginalRecords, currentOptions, schema);
+                    });
+                }
+                
+                const selectSorter = popup.querySelector('.cs-select-sorter');
+                if (selectSorter) {
+                    selectSorter.addEventListener('change', (e) => {
+                        container._csActiveSorter = e.target.value;
+                        renderCards(container, container._csOriginalRecords, currentOptions, schema);
+                    });
+                }
+                
+                const btnAsc = popup.querySelector('.cs-btn-asc');
+                if (btnAsc) {
+                    btnAsc.addEventListener('click', () => {
+                        container._csActiveSortDir = 'asc';
+                        renderCards(container, container._csOriginalRecords, currentOptions, schema);
+                    });
+                }
+                
+                const btnDesc = popup.querySelector('.cs-btn-desc');
+                if (btnDesc) {
+                    btnDesc.addEventListener('click', () => {
+                        container._csActiveSortDir = 'desc';
+                        renderCards(container, container._csOriginalRecords, currentOptions, schema);
+                    });
+                }
+                
+                popup.querySelectorAll('.cs-select-filter').forEach(sel => {
+                    sel.addEventListener('change', (e) => {
+                        const colId = e.target.dataset.colid;
+                        if (!container._csDropdownFilters) container._csDropdownFilters = {};
+                        container._csDropdownFilters[colId] = e.target.value;
+                        renderCards(container, container._csOriginalRecords, currentOptions, schema);
+                    });
+                });
+                
+                optionsContainer.appendChild(popup);
+            }
+        }
     }
 
     container.innerHTML = "";
     if (!processedRecords || !processedRecords.length) {
       container.textContent = "No records found.";
       _applyWidgetBackground(container, styling, currentOptions);
+      _renderOptionsButtonAndPopup();
       return;
     }
 
@@ -145,27 +530,19 @@ export const CardSystem = (() => {
 
     const isGrouped = !!(groupingConfig && groupingConfig.enabled && activeGrouper);
 
-    // Build cache of resolved group keys
+    // Build cache of resolved group keys (reads from display value cache directly)
     const resolvedGroupValues = new Map();
     if (isGrouped || (groupingConfig && groupingConfig.statusColumn)) {
-        const resolvePromises = [];
         for (const record of processedRecords) {
             if (isGrouped && activeGrouper) {
-                resolvePromises.push((async () => {
-                    const key = `${record.id}_${activeGrouper}`;
-                    const resolvedVal = await _resolveRecordDisplayValue(record, activeGrouper, schema, tableLens);
-                    resolvedGroupValues.set(key, resolvedVal);
-                })());
+                const key = `${record.id}_${activeGrouper}`;
+                resolvedGroupValues.set(key, record[`_csResolved_${activeGrouper}`] || 'Sem Grupo');
             }
             if (groupingConfig && groupingConfig.statusColumn) {
-                resolvePromises.push((async () => {
-                    const key = `${record.id}_${groupingConfig.statusColumn}`;
-                    const resolvedVal = await _resolveRecordDisplayValue(record, groupingConfig.statusColumn, schema, tableLens);
-                    resolvedGroupValues.set(key, resolvedVal);
-                })());
+                const key = `${record.id}_${groupingConfig.statusColumn}`;
+                resolvedGroupValues.set(key, record[`_csResolved_${groupingConfig.statusColumn}`] || 'Sem Grupo');
             }
         }
-        await Promise.all(resolvePromises);
     }
 
     if (isGrouped) {
@@ -180,46 +557,8 @@ export const CardSystem = (() => {
         container.style.gap = styling.cardsSpacing;
     }
 
-    // Render Grouping Select bar if grouping config is enabled
-    if (groupingConfig && groupingConfig.enabled) {
-        const groupBar = document.createElement("div");
-        groupBar.className = "cs-grouping-bar";
-        if (!isGrouped) {
-            groupBar.style.gridColumn = `1 / -1`;
-        }
-        
-        const label = document.createElement("span");
-        label.className = "cs-grouping-label";
-        label.textContent = "Agrupar por:";
-        
-        const select = document.createElement("select");
-        select.className = "cs-grouping-select";
-        
-        const optNone = document.createElement("option");
-        optNone.value = "";
-        optNone.textContent = "Sem Agrupamento";
-        select.appendChild(optNone);
-        
-        const allowed = groupingConfig.allowedGroupers || [];
-        allowed.forEach(g => {
-            if (g.colId) {
-                const opt = document.createElement("option");
-                opt.value = g.colId;
-                opt.textContent = g.label || g.colId;
-                select.appendChild(opt);
-            }
-        });
-        
-        select.value = activeGrouper;
-        select.addEventListener("change", (e) => {
-            container._csActiveGrouper = e.target.value;
-            renderCards(container, container._csOriginalRecords, currentOptions, schema);
-        });
-        
-        groupBar.appendChild(label);
-        groupBar.appendChild(select);
-        container.appendChild(groupBar);
-    }
+    _renderOptionsButtonAndPopup();
+
 
     // Build group map and render accordions if grouped
     const groupMap = new Map();
@@ -616,6 +955,7 @@ export const CardSystem = (() => {
             fieldStyle: fieldStyle,
             styling: styling
           });
+          if (container._csRenderId !== currentRenderId) return;
 
           tContainer.appendChild(dataEl);
           topBarEl.appendChild(tContainer);
@@ -929,6 +1269,7 @@ export const CardSystem = (() => {
             fieldConfig: currentOptions.fieldConfig?.[f.colId] || fieldStyle, styling: styling, fieldOptions: fieldOptions,
             receivedConfigs: currentOptions.receivedConfigs, tableSchema: schema
           });
+          if (!document.body.contains(container) || container._csRenderId !== currentRenderId) return;
           cardEl.appendChild(fieldBox);
         }
       }
@@ -959,27 +1300,14 @@ export const CardSystem = (() => {
     }
   }
 
-  function filterRecords(container, searchTerm) {
+  async function filterRecords(container, searchTerm) {
     if (!container) return;
-    const originalRecords = container._csOriginalRecords || [];
-    const schema = container._csSchema || {};
-    const options = container._csOptions || {};
-
-    const filteredRecords = originalRecords.filter(record => {
-      const lowerCaseSearchTerm = searchTerm.toLowerCase();
-      return Object.keys(schema).some(colId => {
-        if (colId === 'id' || colId === 'manualSort' || colId.startsWith('gristHelper_')) return false;
-        let valueToSearch = record[colId];
-        let stringValue = '';
-        if (schema[colId].type === 'Bool') {
-          stringValue = (valueToSearch === true) ? 'sim' : (valueToSearch === false) ? 'não' : '';
-        } else if (valueToSearch !== null && valueToSearch !== undefined) {
-          stringValue = String(valueToSearch).toLowerCase();
-        }
-        return stringValue.includes(lowerCaseSearchTerm);
-      });
-    });
-    renderCards(container, filteredRecords, options, schema);
+    const targetContainer = container._csOriginalRecords ? container : (container.querySelector('.cards-wrapper') || container);
+    
+    targetContainer._csSearchTerm = searchTerm;
+    const options = targetContainer._csOptions || {};
+    const schema = targetContainer._csSchema || {};
+    await renderCards(targetContainer, targetContainer._csOriginalRecords || [], options, schema);
   }
 
   function handleCardClick(record, options) {
@@ -1146,6 +1474,12 @@ export const CardSystem = (() => {
   }
 
   function _getRecordGroupKey(record, colId, resolvedCache = null) {
+    if (record) {
+      const cached = record[`_csResolved_${colId}`];
+      if (cached !== undefined) {
+        return cached === '' ? 'Sem Grupo' : cached;
+      }
+    }
     if (resolvedCache && record) {
       const cacheKey = `${record.id}_${colId}`;
       if (resolvedCache.has(cacheKey)) {
@@ -1175,156 +1509,106 @@ export const CardSystem = (() => {
     return String(val);
   }
 
-  async function _resolveRecordDisplayValue(record, colId, schema, tableLens) {
+  async function _getOrResolveDisplayValue(record, colId, schema, tableLens) {
     if (!colId || !schema || !tableLens || !record) return '';
+    const cacheKey = `_csResolved_${colId}`;
+    if (record[cacheKey] !== undefined) {
+      return record[cacheKey];
+    }
     const colSchema = schema[colId];
-    if (!colSchema) return String(record[colId] ?? '');
+    if (!colSchema) {
+      const val = record[colId] ?? '';
+      return String(val);
+    }
     
     const type = colSchema.type || '';
     const val = record[colId];
     if (val === null || val === undefined || val === '') {
-      return "Sem Grupo";
-    }
-    
-    if (type.startsWith('Ref:')) {
-      try {
-        const resolved = await tableLens.resolveReference(colSchema, record);
-        return resolved?.displayValue || String(val);
-      } catch (err) {
-        console.error("Error resolving reference for group key:", err);
-        return String(val);
-      }
-    }
-    
-    if (type.startsWith('RefList:')) {
-      try {
-        const relatedRecords = await tableLens.fetchRelatedRecords(record, colId);
-        if (!relatedRecords || relatedRecords.length === 0) return "Sem Grupo";
-        const referencedTableId = type.split(':')[1];
-        if (!referencedTableId) return String(val);
-        
-        let finalDisplayColId = null;
-        const displayColIdNum = colSchema.displayCol;
-        if (displayColIdNum) {
-            const sourceTableId = record.gristHelper_tableId;
-            if (sourceTableId) {
-                const sourceSchema = await tableLens.getTableSchema(sourceTableId);
-                const displayColHelperSchema = Object.values(sourceSchema).find(c => c.id === displayColIdNum);
-                if (displayColHelperSchema) {
-                    if (displayColHelperSchema.isFormula && displayColHelperSchema.formula?.includes('.')) {
-                        const formulaParts = displayColHelperSchema.formula.split('.');
-                        finalDisplayColId = formulaParts[formulaParts.length - 1];
-                    } else {
-                        finalDisplayColId = displayColHelperSchema.colId;
-                    }
-                }
-            }
-        }
-        if (!finalDisplayColId) {
-            const refSchema = await tableLens.getTableSchema(referencedTableId);
-            const firstSensibleColumn = Object.values(refSchema).find(c => c && c.type === 'Text' && !c.isFormula);
-            finalDisplayColId = firstSensibleColumn ? firstSensibleColumn.colId : 'id';
-        }
-        
-        return relatedRecords.map(r => r[finalDisplayColId] || `ID: ${r.id}`).join(', ');
-      } catch (err) {
-        console.error("Error resolving refList for group key:", err);
-        return String(val);
-      }
-    }
-    
-    if (Array.isArray(val)) {
-      let items = val;
-      if (val[0] === 'L') {
-        items = val.slice(1);
-      }
-      if (items.length === 0) return "Sem Grupo";
-      return items.map(item => {
-        if (item && typeof item === 'object') {
-          return item.label !== undefined ? String(item.label) : (item.id !== undefined ? String(item.id) : JSON.stringify(item));
-        }
-        return String(item);
-      }).join(", ");
-    }
-    if (val && typeof val === 'object') {
-      return val.label !== undefined ? String(val.label) : (val.id !== undefined ? String(val.id) : JSON.stringify(val));
-    }
-    return String(val);
-  }
-
-  async function _resolveFieldDisplayText(record, colSchema, tableLens) {
-    if (!colSchema || record == null) return '';
-    const colId = colSchema.colId;
-    const type = colSchema.type || '';
-    const val = record[colId];
-    if (val === null || val === undefined || val === '') {
+      record[cacheKey] = '';
       return '';
     }
     
+    let resolvedStr = '';
     if (type.startsWith('Ref:')) {
       try {
         const resolved = await tableLens.resolveReference(colSchema, record);
-        return resolved?.displayValue || String(val);
+        resolvedStr = resolved?.displayValue || String(val);
       } catch (err) {
-        console.error("Error resolving reference for tooltip:", err);
-        return String(val);
+        console.error("Error resolving reference:", err);
+        resolvedStr = String(val);
       }
-    }
-    
-    if (type.startsWith('RefList:')) {
+    } else if (type.startsWith('RefList:')) {
       try {
         const relatedRecords = await tableLens.fetchRelatedRecords(record, colId);
-        if (!relatedRecords || relatedRecords.length === 0) return '';
-        const referencedTableId = type.split(':')[1];
-        if (!referencedTableId) return String(val);
-        
-        let finalDisplayColId = null;
-        const displayColIdNum = colSchema.displayCol;
-        if (displayColIdNum) {
-            const sourceTableId = record.gristHelper_tableId;
-            if (sourceTableId) {
-                const sourceSchema = await tableLens.getTableSchema(sourceTableId);
-                const displayColHelperSchema = Object.values(sourceSchema).find(c => c.id === displayColIdNum);
-                if (displayColHelperSchema) {
-                    if (displayColHelperSchema.isFormula && displayColHelperSchema.formula?.includes('.')) {
-                        const formulaParts = displayColHelperSchema.formula.split('.');
-                        finalDisplayColId = formulaParts[formulaParts.length - 1];
-                    } else {
-                        finalDisplayColId = displayColHelperSchema.colId;
+        if (!relatedRecords || relatedRecords.length === 0) {
+          resolvedStr = '';
+        } else {
+          const referencedTableId = type.split(':')[1];
+          if (!referencedTableId) {
+            resolvedStr = String(val);
+          } else {
+            let finalDisplayColId = null;
+            const displayColIdNum = colSchema.displayCol;
+            if (displayColIdNum) {
+                const sourceTableId = record.gristHelper_tableId;
+                if (sourceTableId) {
+                    const sourceSchema = await tableLens.getTableSchema(sourceTableId);
+                    const displayColHelperSchema = Object.values(sourceSchema).find(c => c.id === displayColIdNum);
+                    if (displayColHelperSchema) {
+                        if (displayColHelperSchema.isFormula && displayColHelperSchema.formula?.includes('.')) {
+                            const formulaParts = displayColHelperSchema.formula.split('.');
+                            finalDisplayColId = formulaParts[formulaParts.length - 1];
+                        } else {
+                            finalDisplayColId = displayColHelperSchema.colId;
+                        }
                     }
                 }
             }
+            if (!finalDisplayColId) {
+                const refSchema = await tableLens.getTableSchema(referencedTableId);
+                const firstSensibleColumn = Object.values(refSchema).find(c => c && c.type === 'Text' && !c.isFormula);
+                finalDisplayColId = firstSensibleColumn ? firstSensibleColumn.colId : 'id';
+            }
+            resolvedStr = relatedRecords.map(r => r[finalDisplayColId] || `ID: ${r.id}`).join(', ');
+          }
         }
-        if (!finalDisplayColId) {
-            const refSchema = await tableLens.getTableSchema(referencedTableId);
-            const firstSensibleColumn = Object.values(refSchema).find(c => c && c.type === 'Text' && !c.isFormula);
-            finalDisplayColId = firstSensibleColumn ? firstSensibleColumn.colId : 'id';
-        }
-        
-        return relatedRecords.map(r => r[finalDisplayColId] || `ID: ${r.id}`).join(', ');
       } catch (err) {
-        console.error("Error resolving refList for tooltip:", err);
-        return String(val);
+        console.error("Error resolving refList:", err);
+        resolvedStr = String(val);
       }
-    }
-    
-    if (Array.isArray(val)) {
+    } else if (Array.isArray(val)) {
       let items = val;
       if (val[0] === 'L') {
         items = val.slice(1);
       }
-      if (items.length === 0) return '';
-      return items.map(item => {
-        if (item && typeof item === 'object') {
-          return item.label !== undefined ? String(item.label) : (item.id !== undefined ? String(item.id) : JSON.stringify(item));
-        }
-        return String(item);
-      }).join(", ");
+      if (items.length === 0) {
+        resolvedStr = '';
+      } else {
+        resolvedStr = items.map(item => {
+          if (item && typeof item === 'object') {
+            return item.label !== undefined ? String(item.label) : (item.id !== undefined ? String(item.id) : JSON.stringify(item));
+          }
+          return String(item);
+        }).join(", ");
+      }
+    } else if (val && typeof val === 'object') {
+      resolvedStr = val.label !== undefined ? String(val.label) : (val.id !== undefined ? String(val.id) : JSON.stringify(val));
+    } else {
+      resolvedStr = String(val);
     }
-    if (val && typeof val === 'object') {
-      return val.label !== undefined ? String(val.label) : (val.id !== undefined ? String(val.id) : JSON.stringify(val));
-    }
-    return String(val);
+    
+    record[cacheKey] = resolvedStr;
+    return resolvedStr;
+  }
+
+  async function _resolveRecordDisplayValue(record, colId, schema, tableLens) {
+    const val = await _getOrResolveDisplayValue(record, colId, schema, tableLens);
+    return val === '' ? 'Sem Grupo' : val;
+  }
+
+  async function _resolveFieldDisplayText(record, colSchema, tableLens) {
+    if (!colSchema) return '';
+    return _getOrResolveDisplayValue(record, colSchema.colId, { [colSchema.colId]: colSchema }, tableLens);
   }
 
   function _normalizeString(str) {
@@ -1415,6 +1699,160 @@ export const CardSystem = (() => {
         .cs-progress-fill { height: 100%; border-radius: 3px; transition: width 0.3s ease; }
         
         .cs-accordion-body { padding: 15px; border-top: 1px solid #e2e8f0; }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function _injectOptionsStyles() {
+    if (document.getElementById('cs-options-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'cs-options-styles';
+    style.textContent = `
+        .cs-options-container {
+            position: relative;
+            display: inline-block;
+        }
+        .cs-options-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #475569;
+            cursor: pointer;
+            outline: none;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+        .cs-options-btn:hover {
+            border-color: #94a3b8;
+            background: #f8fafc;
+            color: #1e293b;
+        }
+        .cs-options-btn:focus {
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+        }
+        .cs-options-btn-icons {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .cs-btn-icon {
+            color: #cbd5e1;
+            transition: color 0.2s ease;
+        }
+        .cs-btn-icon.active {
+            color: #3b82f6;
+        }
+        
+        .cs-options-popup {
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0;
+            right: auto;
+            z-index: 1000;
+            width: 260px;
+            padding: 16px;
+            border-radius: 12px;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            box-sizing: border-box;
+        }
+        .cs-popup-input {
+            width: 100%;
+            padding: 6px 10px;
+            font-size: 13px;
+            border-radius: 6px;
+            border: 1px solid #cbd5e1;
+            background-color: #ffffff;
+            color: #1e293b;
+            outline: none;
+            box-sizing: border-box;
+            transition: border-color 0.2s ease;
+        }
+        .cs-popup-input:focus {
+            border-color: #3b82f6;
+        }
+        .cs-popup-section {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .cs-popup-label {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #64748b;
+        }
+        .cs-popup-select {
+            width: 100%;
+            padding: 6px 10px;
+            font-size: 13px;
+            border-radius: 6px;
+            border: 1px solid #cbd5e1;
+            background-color: #ffffff;
+            color: #1e293b;
+            outline: none;
+            cursor: pointer;
+            box-sizing: border-box;
+            transition: border-color 0.2s ease;
+        }
+        .cs-popup-select:focus {
+            border-color: #3b82f6;
+        }
+        .cs-sort-group {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .cs-select-sorter {
+            flex: 1;
+            min-width: 0;
+        }
+        .cs-sort-dir-toggle {
+            display: flex;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            overflow: hidden;
+            background: #f8fafc;
+            height: 30px;
+        }
+        .cs-sort-dir-btn {
+            border: none;
+            background: transparent;
+            font-size: 11px;
+            font-weight: 600;
+            color: #64748b;
+            cursor: pointer;
+            padding: 0 8px;
+            transition: all 0.2s ease;
+            outline: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .cs-sort-dir-btn:hover {
+            background: #e2e8f0;
+            color: #1e293b;
+        }
+        .cs-sort-dir-btn.active {
+            background: #3b82f6;
+            color: #ffffff;
+        }
+        .cs-popup-divider {
+            height: 1px;
+            background-color: #e2e8f0;
+            margin: 4px 0;
+        }
     `;
     document.head.appendChild(style);
   }

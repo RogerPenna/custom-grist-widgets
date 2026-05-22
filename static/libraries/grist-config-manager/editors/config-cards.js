@@ -78,7 +78,18 @@ export const CardConfigEditor = (() => {
             showAddButtonBottom: actions.showAddButtonBottom || false,
             addRecordConfigId: actions.addRecordConfigId || null,
             iconGroups: actions.iconGroups || options.iconGroups || [],
-            grouping: mapping.grouping || options.grouping || { enabled: false, statusColumn: "", progressColumn: "", allowedGroupers: [], defaultGrouper: "" }
+            grouping: {
+                enabled: false,
+                statusColumn: "",
+                progressColumn: "",
+                allowedGroupers: [],
+                defaultGrouper: "",
+                allowedSorts: [],
+                defaultSorter: "",
+                defaultSortDir: "asc",
+                filterFields: [],
+                ...(mapping.grouping || options.grouping || {})
+            }
         };
         state.layout.forEach(field => { if (!field.style) field.style = { ...DEFAULT_FIELD_STYLE }; });
 
@@ -1871,8 +1882,14 @@ export const CardConfigEditor = (() => {
         const tabEl = document.createElement("div");
         tabEl.dataset.tabSection = "grp";
         tabEl.style.display = "none";
+        
+        const grp = state.grouping || {};
+        const allowedGroupers = grp.allowedGroupers || [];
+        const allowedSorts = grp.allowedSorts || [];
+        const filterFields = grp.filterFields || [];
+
         tabEl.innerHTML = `
-            <h3>Configuração de Agrupadores</h3>
+            <h3>Configuração de Recursos e Agrupadores</h3>
             <div class="form-group" style="margin-bottom: 20px;">
                 <label style="display: flex; align-items: center; gap: 8px; font-weight: bold; cursor: pointer; user-select: none;">
                     <input type="checkbox" id="cs-grp-enabled" style="width: 16px; height: 16px;">
@@ -1895,26 +1912,60 @@ export const CardConfigEditor = (() => {
             </div>
             
             <div style="background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px;">
-                <h4 style="margin-top: 0; margin-bottom: 10px; font-size: 14px; color: #1e293b;">Critérios de Agrupamento Permitidos (Até 3)</h4>
-                <div style="display: flex; flex-direction: column; gap: 15px;">
-                    <div class="form-group">
-                        <label for="cs-grp-grouper-1" style="display: block; font-size: 12px; font-weight: bold; margin-bottom: 5px;">Agrupador 1:</label>
-                        <select id="cs-grp-grouper-1" class="form-control" style="width: 100%;"><option value="">-- Nenhum --</option></select>
-                    </div>
-                    <div class="form-group">
-                        <label for="cs-grp-grouper-2" style="display: block; font-size: 12px; font-weight: bold; margin-bottom: 5px;">Agrupador 2:</label>
-                        <select id="cs-grp-grouper-2" class="form-control" style="width: 100%;"><option value="">-- Nenhum --</option></select>
-                    </div>
-                    <div class="form-group">
-                        <label for="cs-grp-grouper-3" style="display: block; font-size: 12px; font-weight: bold; margin-bottom: 5px;">Agrupador 3:</label>
-                        <select id="cs-grp-grouper-3" class="form-control" style="width: 100%;"><option value="">-- Nenhum --</option></select>
-                    </div>
+                <h4 style="margin-top: 0; margin-bottom: 10px; font-size: 14px; color: #1e293b;">Matriz de Recursos dos Campos</h4>
+                <div style="max-height: 300px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 6px;">
+                    <table class="grp-matrix-table" style="margin: 0; border: none; width: 100%; border-collapse: collapse; font-size: 13px;">
+                        <thead>
+                            <tr style="position: sticky; top: 0; background: #f1f5f9; z-index: 1;">
+                                <th style="padding: 8px 10px; border: 1px solid #cbd5e1; text-align: left;">Campo</th>
+                                <th style="padding: 8px 10px; border: 1px solid #cbd5e1; text-align: left;">ID Coluna</th>
+                                <th style="text-align: center; width: 80px; padding: 8px 10px; border: 1px solid #cbd5e1;">Agrupar</th>
+                                <th style="text-align: center; width: 80px; padding: 8px 10px; border: 1px solid #cbd5e1;">Ordenar</th>
+                                <th style="text-align: center; width: 80px; padding: 8px 10px; border: 1px solid #cbd5e1;">Filtrar</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${state.fields.map(field => {
+                                const isGroup = allowedGroupers.some(g => (g.colId === field.colId || g === field.colId));
+                                const isSort = allowedSorts.some(s => (s.colId === field.colId || s === field.colId));
+                                const isFilter = filterFields.some(f => (f.colId === field.colId || f === field.colId));
+                                return `
+                                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                                        <td style="padding: 8px 10px;"><b>${field.label || field.colId}</b></td>
+                                        <td style="padding: 8px 10px; color: #64748b; font-family: monospace; font-size: 11px;">${field.colId}</td>
+                                        <td style="text-align: center; padding: 8px 10px;">
+                                            <input type="checkbox" class="grp-chk-group grp-matrix-checkbox" data-colid="${field.colId}" ${isGroup ? 'checked' : ''} style="width: 16px; height: 16px; cursor: pointer;">
+                                        </td>
+                                        <td style="text-align: center; padding: 8px 10px;">
+                                            <input type="checkbox" class="grp-chk-sort grp-matrix-checkbox" data-colid="${field.colId}" ${isSort ? 'checked' : ''} style="width: 16px; height: 16px; cursor: pointer;">
+                                        </td>
+                                        <td style="text-align: center; padding: 8px 10px;">
+                                            <input type="checkbox" class="grp-chk-filter grp-matrix-checkbox" data-colid="${field.colId}" ${isFilter ? 'checked' : ''} style="width: 16px; height: 16px; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
                 </div>
             </div>
             
-            <div class="form-group">
-                <label for="cs-grp-default" style="display: block; font-size: 12px; font-weight: bold; margin-bottom: 5px;">Agrupador Padrão Inicial:</label>
-                <select id="cs-grp-default" class="form-control" style="width: 100%;"><option value="">-- Sem Agrupamento --</option></select>
+            <div style="background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
+                <div class="form-group">
+                    <label for="cs-grp-default" style="display: block; font-size: 12px; font-weight: bold; margin-bottom: 5px;">Agrupador Padrão:</label>
+                    <select id="cs-grp-default" class="form-control" style="width: 100%;"><option value="">-- Sem Agrupamento --</option></select>
+                </div>
+                <div class="form-group">
+                    <label for="cs-grp-default-sorter" style="display: block; font-size: 12px; font-weight: bold; margin-bottom: 5px;">Ordenador Padrão:</label>
+                    <select id="cs-grp-default-sorter" class="form-control" style="width: 100%;"><option value="">-- Sem Ordenação --</option></select>
+                </div>
+                <div class="form-group">
+                    <label for="cs-grp-default-sortdir" style="display: block; font-size: 12px; font-weight: bold; margin-bottom: 5px;">Direção Ordenação:</label>
+                    <select id="cs-grp-default-sortdir" class="form-control" style="width: 100%;">
+                        <option value="asc" ${grp.defaultSortDir === 'asc' ? 'selected' : ''}>Ascendente (A-Z)</option>
+                        <option value="desc" ${grp.defaultSortDir === 'desc' ? 'selected' : ''}>Descendente (Z-A)</option>
+                    </select>
+                </div>
             </div>
         `;
         contentArea.appendChild(tabEl);
@@ -1922,57 +1973,104 @@ export const CardConfigEditor = (() => {
         const allFields = state.fields.map(f => f.colId);
         populateFieldSelect(tabEl.querySelector("#cs-grp-status-col"), allFields);
         populateFieldSelect(tabEl.querySelector("#cs-grp-progress-col"), allFields);
-        populateFieldSelect(tabEl.querySelector("#cs-grp-grouper-1"), allFields);
-        populateFieldSelect(tabEl.querySelector("#cs-grp-grouper-2"), allFields);
-        populateFieldSelect(tabEl.querySelector("#cs-grp-grouper-3"), allFields);
-        populateFieldSelect(tabEl.querySelector("#cs-grp-default"), allFields);
         
-        const grp = state.grouping || {};
         tabEl.querySelector("#cs-grp-enabled").checked = !!grp.enabled;
         if (grp.statusColumn) tabEl.querySelector("#cs-grp-status-col").value = grp.statusColumn;
         if (grp.progressColumn) tabEl.querySelector("#cs-grp-progress-col").value = grp.progressColumn;
-        
-        const allowed = grp.allowedGroupers || [];
-        if (allowed[0] && allowed[0].colId) tabEl.querySelector("#cs-grp-grouper-1").value = allowed[0].colId;
-        if (allowed[1] && allowed[1].colId) tabEl.querySelector("#cs-grp-grouper-2").value = allowed[1].colId;
-        if (allowed[2] && allowed[2].colId) tabEl.querySelector("#cs-grp-grouper-3").value = allowed[2].colId;
-        
+
+        const updateDefaultSelects = () => {
+            const defaultGrouperSelect = tabEl.querySelector("#cs-grp-default");
+            const defaultSorterSelect = tabEl.querySelector("#cs-grp-default-sorter");
+            
+            const currentGrouperVal = defaultGrouperSelect.value;
+            const currentSorterVal = defaultSorterSelect.value;
+
+            while (defaultGrouperSelect.options.length > 1) defaultGrouperSelect.remove(1);
+            while (defaultSorterSelect.options.length > 1) defaultSorterSelect.remove(1);
+
+            tabEl.querySelectorAll(".grp-chk-group:checked").forEach(chk => {
+                const colId = chk.dataset.colid;
+                const field = state.fields.find(f => f.colId === colId);
+                const opt = document.createElement("option");
+                opt.value = colId;
+                opt.textContent = field ? (field.label || colId) : colId;
+                defaultGrouperSelect.appendChild(opt);
+            });
+
+            tabEl.querySelectorAll(".grp-chk-sort:checked").forEach(chk => {
+                const colId = chk.dataset.colid;
+                const field = state.fields.find(f => f.colId === colId);
+                const opt = document.createElement("option");
+                opt.value = colId;
+                opt.textContent = field ? (field.label || colId) : colId;
+                defaultSorterSelect.appendChild(opt);
+            });
+
+            if ([...defaultGrouperSelect.options].some(opt => opt.value === currentGrouperVal)) {
+                defaultGrouperSelect.value = currentGrouperVal;
+            } else {
+                defaultGrouperSelect.value = "";
+            }
+
+            if ([...defaultSorterSelect.options].some(opt => opt.value === currentSorterVal)) {
+                defaultSorterSelect.value = currentSorterVal;
+            } else {
+                defaultSorterSelect.value = "";
+            }
+        };
+
+        updateDefaultSelects();
+
         if (grp.defaultGrouper) tabEl.querySelector("#cs-grp-default").value = grp.defaultGrouper;
+        if (grp.defaultSorter) tabEl.querySelector("#cs-grp-default-sorter").value = grp.defaultSorter;
+
+        tabEl.querySelectorAll(".grp-matrix-checkbox").forEach(chk => {
+            chk.addEventListener("change", updateDefaultSelects);
+        });
     }
     
     function readGroupingTab(container) {
         const tabEl = container.querySelector("[data-tab-section='grp']");
-        if (!tabEl) return { enabled: false, statusColumn: "", progressColumn: "", allowedGroupers: [], defaultGrouper: "" };
+        if (!tabEl) return { enabled: false, statusColumn: "", progressColumn: "", allowedGroupers: [], defaultGrouper: "", allowedSorts: [], defaultSorter: "", defaultSortDir: "asc", filterFields: [] };
         
         const enabled = tabEl.querySelector("#cs-grp-enabled").checked;
         const statusColumn = tabEl.querySelector("#cs-grp-status-col").value;
         const progressColumn = tabEl.querySelector("#cs-grp-progress-col").value;
         const defaultGrouper = tabEl.querySelector("#cs-grp-default").value;
+        const defaultSorter = tabEl.querySelector("#cs-grp-default-sorter").value;
+        const defaultSortDir = tabEl.querySelector("#cs-grp-default-sortdir").value;
         
         const allowedGroupers = [];
-        const g1 = tabEl.querySelector("#cs-grp-grouper-1").value;
-        const g2 = tabEl.querySelector("#cs-grp-grouper-2").value;
-        const g3 = tabEl.querySelector("#cs-grp-grouper-3").value;
-        
-        if (g1) {
-            const fSchema = state.fields.find(f => f.colId === g1);
-            allowedGroupers.push({ colId: g1, label: fSchema ? (fSchema.label || g1) : g1 });
-        }
-        if (g2) {
-            const fSchema = state.fields.find(f => f.colId === g2);
-            allowedGroupers.push({ colId: g2, label: fSchema ? (fSchema.label || g2) : g2 });
-        }
-        if (g3) {
-            const fSchema = state.fields.find(f => f.colId === g3);
-            allowedGroupers.push({ colId: g3, label: fSchema ? (fSchema.label || g3) : g3 });
-        }
+        tabEl.querySelectorAll(".grp-chk-group:checked").forEach(chk => {
+            const colId = chk.dataset.colid;
+            const field = state.fields.find(f => f.colId === colId);
+            allowedGroupers.push({ colId, label: field ? (field.label || colId) : colId });
+        });
+
+        const allowedSorts = [];
+        tabEl.querySelectorAll(".grp-chk-sort:checked").forEach(chk => {
+            const colId = chk.dataset.colid;
+            const field = state.fields.find(f => f.colId === colId);
+            allowedSorts.push({ colId, label: field ? (field.label || colId) : colId });
+        });
+
+        const filterFields = [];
+        tabEl.querySelectorAll(".grp-chk-filter:checked").forEach(chk => {
+            const colId = chk.dataset.colid;
+            const field = state.fields.find(f => f.colId === colId);
+            filterFields.push({ colId, label: field ? (field.label || colId) : colId });
+        });
         
         return {
             enabled,
             statusColumn,
             progressColumn,
             allowedGroupers,
-            defaultGrouper
+            defaultGrouper,
+            allowedSorts,
+            defaultSorter,
+            defaultSortDir,
+            filterFields
         };
     }
 
