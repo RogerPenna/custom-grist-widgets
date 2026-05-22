@@ -120,7 +120,7 @@ export const CardSystem = (() => {
     container.querySelectorAll('.cs-grouping-bar').forEach(el => el.remove());
 
     await loadIcons();
-    if (!document.body.contains(container) || container._csRenderId !== currentRenderId) return;
+    if (container._csRenderId !== currentRenderId) return;
     if (!isRefList && document.body._csMainRenderId !== mainRenderId) return;
 
     // Initialize container states
@@ -172,7 +172,7 @@ export const CardSystem = (() => {
     }
     if (resolvePromises.length > 0) {
         await Promise.all(resolvePromises);
-        if (!document.body.contains(container) || container._csRenderId !== currentRenderId) return;
+        if (container._csRenderId !== currentRenderId) return;
         if (!isRefList && document.body._csMainRenderId !== mainRenderId) return;
     }
 
@@ -1269,7 +1269,7 @@ export const CardSystem = (() => {
             fieldConfig: currentOptions.fieldConfig?.[f.colId] || fieldStyle, styling: styling, fieldOptions: fieldOptions,
             receivedConfigs: currentOptions.receivedConfigs, tableSchema: schema
           });
-          if (!document.body.contains(container) || container._csRenderId !== currentRenderId) return;
+          if (container._csRenderId !== currentRenderId) return;
           cardEl.appendChild(fieldBox);
         }
       }
