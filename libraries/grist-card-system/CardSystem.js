@@ -144,6 +144,29 @@ export const CardSystem = (() => {
 
     const isGrouped = !!(groupingConfig && groupingConfig.enabled && activeGrouper);
 
+    // Build cache of resolved group keys
+    const resolvedGroupValues = new Map();
+    if (isGrouped || (groupingConfig && groupingConfig.statusColumn)) {
+        const resolvePromises = [];
+        for (const record of processedRecords) {
+            if (isGrouped && activeGrouper) {
+                resolvePromises.push((async () => {
+                    const key = `${record.id}_${activeGrouper}`;
+                    const resolvedVal = await _resolveRecordDisplayValue(record, activeGrouper, schema, tableLens);
+                    resolvedGroupValues.set(key, resolvedVal);
+                })());
+            }
+            if (groupingConfig && groupingConfig.statusColumn) {
+                resolvePromises.push((async () => {
+                    const key = `${record.id}_${groupingConfig.statusColumn}`;
+                    const resolvedVal = await _resolveRecordDisplayValue(record, groupingConfig.statusColumn, schema, tableLens);
+                    resolvedGroupValues.set(key, resolvedVal);
+                })());
+            }
+        }
+        await Promise.all(resolvePromises);
+    }
+
     if (isGrouped) {
         container.style.display = 'flex';
         container.style.flexDirection = 'column';
@@ -202,7 +225,7 @@ export const CardSystem = (() => {
     if (isGrouped) {
         // Group records
         for (const record of processedRecords) {
-            const gKey = _getRecordGroupKey(record, activeGrouper);
+            const gKey = _getRecordGroupKey(record, activeGrouper, resolvedGroupValues);
             if (!groupMap.has(gKey)) {
                 groupMap.set(gKey, []);
             }
@@ -268,7 +291,7 @@ export const CardSystem = (() => {
                 
                 const statusValCounts = {};
                 for (const rec of groupRecords) {
-                    const statusVal = _getRecordGroupKey(rec, groupingConfig.statusColumn);
+                    const statusVal = _getRecordGroupKey(rec, groupingConfig.statusColumn, resolvedGroupValues);
                     statusValCounts[statusVal] = (statusValCounts[statusVal] || 0) + 1;
                 }
                 
@@ -892,7 +915,11 @@ export const CardSystem = (() => {
             containerForField.style.overflow = "hidden";
             containerForField.style.wordBreak = "break-word";
             const rawValue = record[f.colId];
-            if (rawValue !== null && rawValue !== undefined) containerForField.title = String(rawValue);
+            if (rawValue !== null && rawValue !== undefined) {
+              _resolveFieldDisplayText(record, fieldSchema, tableLens).then(txt => {
+                containerForField.title = txt;
+              });
+            }
           }
 
           await renderField({
@@ -904,7 +931,7 @@ export const CardSystem = (() => {
         }
       }
       if (isGrouped) {
-        const gKey = _getRecordGroupKey(record, activeGrouper);
+        const gKey = _getRecordGroupKey(record, activeGrouper, resolvedGroupValues);
         const accordion = groupMap.get(gKey);
         if (accordion && accordion._csCardsGrid) {
             accordion._csCardsGrid.appendChild(cardEl);
@@ -1116,7 +1143,13 @@ export const CardSystem = (() => {
       return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
   }
 
-  function _getRecordGroupKey(record, colId) {
+  function _getRecordGroupKey(record, colId, resolvedCache = null) {
+    if (resolvedCache && record) {
+      const cacheKey = `${record.id}_${colId}`;
+      if (resolvedCache.has(cacheKey)) {
+        return resolvedCache.get(cacheKey);
+      }
+    }
     const val = record[colId];
     if (val === null || val === undefined || val === '') {
       return "Sem Grupo";
@@ -1127,6 +1160,158 @@ export const CardSystem = (() => {
         items = val.slice(1);
       }
       if (items.length === 0) return "Sem Grupo";
+      return items.map(item => {
+        if (item && typeof item === 'object') {
+          return item.label !== undefined ? String(item.label) : (item.id !== undefined ? String(item.id) : JSON.stringify(item));
+        }
+        return String(item);
+      }).join(", ");
+    }
+    if (val && typeof val === 'object') {
+      return val.label !== undefined ? String(val.label) : (val.id !== undefined ? String(val.id) : JSON.stringify(val));
+    }
+    return String(val);
+  }
+
+  async function _resolveRecordDisplayValue(record, colId, schema, tableLens) {
+    if (!colId || !schema || !tableLens || !record) return '';
+    const colSchema = schema[colId];
+    if (!colSchema) return String(record[colId] ?? '');
+    
+    const type = colSchema.type || '';
+    const val = record[colId];
+    if (val === null || val === undefined || val === '') {
+      return "Sem Grupo";
+    }
+    
+    if (type.startsWith('Ref:')) {
+      try {
+        const resolved = await tableLens.resolveReference(colSchema, record);
+        return resolved?.displayValue || String(val);
+      } catch (err) {
+        console.error("Error resolving reference for group key:", err);
+        return String(val);
+      }
+    }
+    
+    if (type.startsWith('RefList:')) {
+      try {
+        const relatedRecords = await tableLens.fetchRelatedRecords(record, colId);
+        if (!relatedRecords || relatedRecords.length === 0) return "Sem Grupo";
+        const referencedTableId = type.split(':')[1];
+        if (!referencedTableId) return String(val);
+        
+        let finalDisplayColId = null;
+        const displayColIdNum = colSchema.displayCol;
+        if (displayColIdNum) {
+            const sourceTableId = record.gristHelper_tableId;
+            if (sourceTableId) {
+                const sourceSchema = await tableLens.getTableSchema(sourceTableId);
+                const displayColHelperSchema = Object.values(sourceSchema).find(c => c.id === displayColIdNum);
+                if (displayColHelperSchema) {
+                    if (displayColHelperSchema.isFormula && displayColHelperSchema.formula?.includes('.')) {
+                        const formulaParts = displayColHelperSchema.formula.split('.');
+                        finalDisplayColId = formulaParts[formulaParts.length - 1];
+                    } else {
+                        finalDisplayColId = displayColHelperSchema.colId;
+                    }
+                }
+            }
+        }
+        if (!finalDisplayColId) {
+            const refSchema = await tableLens.getTableSchema(referencedTableId);
+            const firstSensibleColumn = Object.values(refSchema).find(c => c && c.type === 'Text' && !c.isFormula);
+            finalDisplayColId = firstSensibleColumn ? firstSensibleColumn.colId : 'id';
+        }
+        
+        return relatedRecords.map(r => r[finalDisplayColId] || `ID: ${r.id}`).join(', ');
+      } catch (err) {
+        console.error("Error resolving refList for group key:", err);
+        return String(val);
+      }
+    }
+    
+    if (Array.isArray(val)) {
+      let items = val;
+      if (val[0] === 'L') {
+        items = val.slice(1);
+      }
+      if (items.length === 0) return "Sem Grupo";
+      return items.map(item => {
+        if (item && typeof item === 'object') {
+          return item.label !== undefined ? String(item.label) : (item.id !== undefined ? String(item.id) : JSON.stringify(item));
+        }
+        return String(item);
+      }).join(", ");
+    }
+    if (val && typeof val === 'object') {
+      return val.label !== undefined ? String(val.label) : (val.id !== undefined ? String(val.id) : JSON.stringify(val));
+    }
+    return String(val);
+  }
+
+  async function _resolveFieldDisplayText(record, colSchema, tableLens) {
+    if (!colSchema || record == null) return '';
+    const colId = colSchema.colId;
+    const type = colSchema.type || '';
+    const val = record[colId];
+    if (val === null || val === undefined || val === '') {
+      return '';
+    }
+    
+    if (type.startsWith('Ref:')) {
+      try {
+        const resolved = await tableLens.resolveReference(colSchema, record);
+        return resolved?.displayValue || String(val);
+      } catch (err) {
+        console.error("Error resolving reference for tooltip:", err);
+        return String(val);
+      }
+    }
+    
+    if (type.startsWith('RefList:')) {
+      try {
+        const relatedRecords = await tableLens.fetchRelatedRecords(record, colId);
+        if (!relatedRecords || relatedRecords.length === 0) return '';
+        const referencedTableId = type.split(':')[1];
+        if (!referencedTableId) return String(val);
+        
+        let finalDisplayColId = null;
+        const displayColIdNum = colSchema.displayCol;
+        if (displayColIdNum) {
+            const sourceTableId = record.gristHelper_tableId;
+            if (sourceTableId) {
+                const sourceSchema = await tableLens.getTableSchema(sourceTableId);
+                const displayColHelperSchema = Object.values(sourceSchema).find(c => c.id === displayColIdNum);
+                if (displayColHelperSchema) {
+                    if (displayColHelperSchema.isFormula && displayColHelperSchema.formula?.includes('.')) {
+                        const formulaParts = displayColHelperSchema.formula.split('.');
+                        finalDisplayColId = formulaParts[formulaParts.length - 1];
+                    } else {
+                        finalDisplayColId = displayColHelperSchema.colId;
+                    }
+                }
+            }
+        }
+        if (!finalDisplayColId) {
+            const refSchema = await tableLens.getTableSchema(referencedTableId);
+            const firstSensibleColumn = Object.values(refSchema).find(c => c && c.type === 'Text' && !c.isFormula);
+            finalDisplayColId = firstSensibleColumn ? firstSensibleColumn.colId : 'id';
+        }
+        
+        return relatedRecords.map(r => r[finalDisplayColId] || `ID: ${r.id}`).join(', ');
+      } catch (err) {
+        console.error("Error resolving refList for tooltip:", err);
+        return String(val);
+      }
+    }
+    
+    if (Array.isArray(val)) {
+      let items = val;
+      if (val[0] === 'L') {
+        items = val.slice(1);
+      }
+      if (items.length === 0) return '';
       return items.map(item => {
         if (item && typeof item === 'object') {
           return item.label !== undefined ? String(item.label) : (item.id !== undefined ? String(item.id) : JSON.stringify(item));
