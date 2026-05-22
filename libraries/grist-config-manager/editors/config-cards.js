@@ -1510,6 +1510,8 @@ export const CardConfigEditor = (() => {
                                     <option value="none" ${tempWidgetOptions.circularOutline === 'none' || !tempWidgetOptions.circularOutline ? 'selected' : ''}>Nenhum</option>
                                     <option value="black" ${tempWidgetOptions.circularOutline === 'black' ? 'selected' : ''}>Preto</option>
                                     <option value="white" ${tempWidgetOptions.circularOutline === 'white' ? 'selected' : ''}>Branco</option>
+                                    <option value="light-gray" ${tempWidgetOptions.circularOutline === 'light-gray' ? 'selected' : ''}>Cinza Claro</option>
+                                    <option value="dark-gray" ${tempWidgetOptions.circularOutline === 'dark-gray' ? 'selected' : ''}>Cinza Escuro</option>
                                 </select>
                             </div>
                         </div>

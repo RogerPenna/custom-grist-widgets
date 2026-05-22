@@ -87,7 +87,8 @@ export function renderProgressBar(options) {
     }
 
     const isCircular = fieldOptions.progressType === 'circular';
-    const useCircleBg = isCircular && fieldOptions.useFieldBg && (fieldOptions.circularBgMode !== 'box');
+    const isCircularShape = isCircular && (fieldOptions.circularBgMode !== 'box');
+    const useCircleBg = isCircularShape && fieldOptions.useFieldBg;
 
     const outerContainer = document.createElement('div');
     outerContainer.className = 'grf-progress-field-container';
@@ -103,7 +104,7 @@ export function renderProgressBar(options) {
         outerContainer.style.borderRadius = '4px';
     }
 
-    if (fieldOptions.fieldShadow && !useCircleBg) {
+    if (fieldOptions.fieldShadow && !isCircularShape) {
         outerContainer.classList.add('grf-field-shadow');
         outerContainer.style.margin = '4px';
         outerContainer.style.width = 'calc(100% - 8px)';
@@ -194,16 +195,19 @@ function renderCircularProgress(container, value, extLabel, extOpts, intLabel, i
     outerWrapper.style.alignItems = 'center';
 
     const useCircleBg = options.fieldOptions.useFieldBg && (options.fieldOptions.circularBgMode !== 'box');
-
-    if (useCircleBg && options.fieldOptions.fieldShadow) {
-        outerWrapper.style.filter = 'drop-shadow(0px 2px 4px rgba(0, 0, 0, 0.15))';
-    }
+    const isCircularShape = options.fieldOptions.circularBgMode !== 'box';
 
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svg.setAttribute("viewBox", "0 0 100 100");
     svg.setAttribute("class", "grf-circular-svg");
     svg.style.width = '100%';
     svg.style.height = '100%';
+
+    if (isCircularShape && options.fieldOptions.fieldShadow) {
+        svg.style.filter = 'drop-shadow(0px 2px 4px rgba(0, 0, 0, 0.25))';
+        svg.style.overflow = 'visible';
+        container.style.padding = '4px';
+    }
 
     const getStrokeWidth = (thickVal) => (8 * parseInt(thickVal || '100', 10)) / 100;
     const center = 50;
@@ -305,8 +309,14 @@ function renderCircularProgress(container, value, extLabel, extOpts, intLabel, i
 
     // 2.5. Contrast Outlines
     const outlineColor = options.fieldOptions.circularOutline;
-    if (outlineColor === 'black' || outlineColor === 'white') {
-        const color = outlineColor === 'black' ? '#000000' : '#ffffff';
+    const allowedOutlines = {
+        'black': '#000000',
+        'white': '#ffffff',
+        'light-gray': '#d1d5db',
+        'dark-gray': '#4b5563'
+    };
+    if (allowedOutlines.hasOwnProperty(outlineColor)) {
+        const color = allowedOutlines[outlineColor];
         svg.appendChild(createCircle(center, radius + strokeWidth1 / 2, 0.6, color));
         svg.appendChild(createCircle(center, radius - strokeWidth1 / 2, 0.6, color));
         if (intOpts) {
