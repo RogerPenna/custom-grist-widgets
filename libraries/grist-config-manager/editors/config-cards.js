@@ -258,6 +258,18 @@ export const CardConfigEditor = (() => {
 
         if (tabEl.querySelector("#cs-st-spacing")) s.cardsSpacing = `${parseInt(tabEl.querySelector("#cs-st-spacing").value, 10) || 0}px`;
         if (tabEl.querySelector("#cs-st-internal-padding")) s.internalCardPadding = `${parseInt(tabEl.querySelector("#cs-st-internal-padding").value, 10) || 10}px`;
+        if (tabEl.querySelector("#cs-st-field-rowgap")) {
+            const val = parseInt(tabEl.querySelector("#cs-st-field-rowgap").value, 10);
+            s.fieldRowGap = `${isNaN(val) ? 4 : val}px`;
+        }
+        if (tabEl.querySelector("#cs-st-field-colgap")) {
+            const val = parseInt(tabEl.querySelector("#cs-st-field-colgap").value, 10);
+            s.fieldColGap = `${isNaN(val) ? 4 : val}px`;
+        }
+        if (tabEl.querySelector("#cs-st-field-padding")) {
+            const val = parseInt(tabEl.querySelector("#cs-st-field-padding").value, 10);
+            s.fieldPadding = `${isNaN(val) ? 4 : val}px`;
+        }
         if (tabEl.querySelector("#cs-st-sel-enabled")) s.selectedCard = { enabled: tabEl.querySelector("#cs-st-sel-enabled").checked, scale: 1 + ((parseInt(tabEl.querySelector("#cs-st-sel-scale").value, 10) || 0) / 100), colorEffect: "none" };
 
         if (tabEl.querySelector("#cs-st-fieldbg-enabled")) {
@@ -344,7 +356,7 @@ export const CardConfigEditor = (() => {
     }
 
     const DEFAULT_FIELD_STYLE = { useGristStyle: true, labelVisible: true, labelPosition: 'above', labelFont: 'inherit', labelFontSize: 'inherit', labelColor: 'inherit', labelAllCaps: false, labelOutline: false, labelOutlineColor: '#ffffff', dataJustify: 'left', dataAllCaps: false, heightLimited: false, maxHeightRows: 1, isTitleField: false };
-    const DEFAULT_STYLING = { iconSize: 1.0, internalCardPadding: '10px', fieldBox: { borderEnabled: false, borderColor: '#cccccc', borderWidth: 1, borderRadius: 4, backgroundColor: '#ffffff', effect: 'none' }, labelStyle: { bold: false, allCaps: false, color: '#333333', font: 'Calibri', size: '12px' }, dataStyle: { font: 'Calibri', size: '14px', color: '#000000' }, fieldBackground: { enabled: false, lightenPercentage: 15 }, iconGroups: [], groupBoxes: [], widgetBackgroundMode: "solid", widgetBackgroundSolidColor: "#f9f9f9", widgetBackgroundGradientType: "linear-gradient(to right, {c1}, {c2})", widgetBackgroundGradientColor1: "#f9f9f9", widgetBackgroundGradientColor2: "#e9e9e9", cardsColorMode: "solid", cardsColorSolidColor: "#ffffff", cardsColorGradientType: "linear-gradient(to right, {c1}, {c2})", cardsColorGradientColor1: "#ffffff", cardsColorGradientColor2: "#f0f0f0", cardsColorApplyText: false, cardsColorTextField: null, cardsColorFontField: null, cardsColorOverlayEffect: 'darken', cardsColorOverlayOpacity: 10, cardBorderThickness: 0, cardBorderMode: "solid", cardBorderSolidColor: "#cccccc", cardTitleFontColor: "#000000", cardTitleFontStyle: "Calibri", cardTitleFontSize: "20px", cardTitleAllCaps: false, cardTitleTopBarEnabled: false, cardTitleTopBarMode: "solid", cardTitleTopBarSolidColor: "#dddddd", cardTitleTopBarGradientType: "linear-gradient(to right, {c1}, {c2})", cardTitleTopBarGradientColor1: "#dddddd", cardTitleTopBarGradientColor2: "#cccccc", cardTitleTopBarLabelFontColor: "#000000", cardTitleTopBarLabelFontStyle: "Calibri", cardTitleTopBarLabelFontSize: "16px", cardTitleTopBarLabelAllCaps: false, cardTitleTopBarDataFontColor: "#333333", cardTitleTopBarDataFontStyle: "Calibri", cardTitleTopBarDataFontSize: "16px", cardTitleTopBarDataAllCaps: false, handleAreaWidth: "8px", handleAreaMode: "solid", handleAreaSolidColor: "#40E0D0", handleAreaOverlayEffect: "darken", handleAreaOverlayOpacity: 10, handleAreaField: null, handleAreaTitleField: null, handleAreaTitleColor: "#ffffff", handleAreaTitleFontSize: "10px", handleAreaTitleAllCaps: false, widgetPadding: "10px", cardsSpacing: "15px", selectedCard: { enabled: false, scale: 1.05, colorEffect: "none" } };
+    const DEFAULT_STYLING = { iconSize: 1.0, internalCardPadding: '10px', fieldBox: { borderEnabled: false, borderColor: '#cccccc', borderWidth: 1, borderRadius: 4, backgroundColor: '#ffffff', effect: 'none' }, labelStyle: { bold: false, allCaps: false, color: '#333333', font: 'Calibri', size: '12px' }, dataStyle: { font: 'Calibri', size: '14px', color: '#000000' }, fieldBackground: { enabled: false, lightenPercentage: 15 }, iconGroups: [], groupBoxes: [], widgetBackgroundMode: "solid", widgetBackgroundSolidColor: "#f9f9f9", widgetBackgroundGradientType: "linear-gradient(to right, {c1}, {c2})", widgetBackgroundGradientColor1: "#f9f9f9", widgetBackgroundGradientColor2: "#e9e9e9", cardsColorMode: "solid", cardsColorSolidColor: "#ffffff", cardsColorGradientType: "linear-gradient(to right, {c1}, {c2})", cardsColorGradientColor1: "#ffffff", cardsColorGradientColor2: "#f0f0f0", cardsColorApplyText: false, cardsColorTextField: null, cardsColorFontField: null, cardsColorOverlayEffect: 'darken', cardsColorOverlayOpacity: 10, cardBorderThickness: 0, cardBorderMode: "solid", cardBorderSolidColor: "#cccccc", cardTitleFontColor: "#000000", cardTitleFontStyle: "Calibri", cardTitleFontSize: "20px", cardTitleAllCaps: false, cardTitleTopBarEnabled: false, cardTitleTopBarMode: "solid", cardTitleTopBarSolidColor: "#dddddd", cardTitleTopBarGradientType: "linear-gradient(to right, {c1}, {c2})", cardTitleTopBarGradientColor1: "#dddddd", cardTitleTopBarGradientColor2: "#cccccc", cardTitleTopBarLabelFontColor: "#000000", cardTitleTopBarLabelFontStyle: "Calibri", cardTitleTopBarLabelFontSize: "16px", cardTitleTopBarLabelAllCaps: false, cardTitleTopBarDataFontColor: "#333333", cardTitleTopBarDataFontStyle: "Calibri", cardTitleTopBarDataFontSize: "16px", cardTitleTopBarDataAllCaps: false, handleAreaWidth: "8px", handleAreaMode: "solid", handleAreaSolidColor: "#40E0D0", handleAreaOverlayEffect: "darken", handleAreaOverlayOpacity: 10, handleAreaField: null, handleAreaTitleField: null, handleAreaTitleColor: "#ffffff", handleAreaTitleFontSize: "10px", handleAreaTitleAllCaps: false, widgetPadding: "10px", cardsSpacing: "15px", fieldRowGap: "4px", fieldColGap: "4px", fieldPadding: "4px", selectedCard: { enabled: false, scale: 1.05, colorEffect: "none" } };
     const DEFAULT_NUM_ROWS = 1; const NUM_COLS = 10; const CONFIG_WIDTH = 700; const COL_WIDTH = CONFIG_WIDTH / NUM_COLS;
 
     function createTabButton(label, tabId, container) { const btn = document.createElement("button"); btn.type = "button"; btn.textContent = label; btn.className = 'config-tab-button'; btn.addEventListener("click", () => switchTab(tabId, container)); btn.dataset.tabId = tabId; return btn; }
@@ -422,7 +434,7 @@ export const CardConfigEditor = (() => {
                         <label title="Cards occupy 50% if 1 or 2, 33% if 3, up to Max Columns. Extra rows match first row size."><input type="radio" name="cs-st-col-mode" value="balanced"> Balanced Grid</label>
                     </div>
                 </fieldset>
-                <fieldset><legend><b>Layout Spacing</b></legend>Widget Padding (px): <input type="number" id="cs-st-padding" min="0" style="width:60px"> <br>Card Spacing (px): <input type="number" id="cs-st-spacing" min="0" style="width:60px"> <br>Internal Card Padding (px): <input type="number" id="cs-st-internal-padding" min="0" style="width:60px"></fieldset>
+                <fieldset><legend><b>Layout Spacing</b></legend>Widget Padding (px): <input type="number" id="cs-st-padding" min="0" style="width:60px"> <br>Card Spacing (px): <input type="number" id="cs-st-spacing" min="0" style="width:60px"> <br>Internal Card Padding (px): <input type="number" id="cs-st-internal-padding" min="0" style="width:60px"> <br>Field Vertical Gap (px): <input type="number" id="cs-st-field-rowgap" min="0" style="width:60px"> <br>Field Horizontal Gap (px): <input type="number" id="cs-st-field-colgap" min="0" style="width:60px"> <br>Field Internal Padding (px): <input type="number" id="cs-st-field-padding" min="0" style="width:60px"></fieldset>
                 <fieldset>
                     <legend><b>Field Background</b></legend>
                     <label><input type="checkbox" id="cs-st-fieldbg-enabled"> Enable custom background</label>
@@ -725,6 +737,9 @@ export const CardConfigEditor = (() => {
         const colModeRadio = tabEl.querySelector(`input[name="cs-st-col-mode"][value="${colMode}"]`);
         if (colModeRadio) colModeRadio.checked = true;
         tabEl.querySelector("#cs-st-internal-padding").value = parseInt(s.internalCardPadding, 10); 
+        if (tabEl.querySelector("#cs-st-field-rowgap")) tabEl.querySelector("#cs-st-field-rowgap").value = isNaN(parseInt(s.fieldRowGap, 10)) ? 4 : parseInt(s.fieldRowGap, 10);
+        if (tabEl.querySelector("#cs-st-field-colgap")) tabEl.querySelector("#cs-st-field-colgap").value = isNaN(parseInt(s.fieldColGap, 10)) ? 4 : parseInt(s.fieldColGap, 10);
+        if (tabEl.querySelector("#cs-st-field-padding")) tabEl.querySelector("#cs-st-field-padding").value = isNaN(parseInt(s.fieldPadding, 10)) ? 4 : parseInt(s.fieldPadding, 10);
         tabEl.querySelector("#cs-st-sel-enabled").checked = s.selectedCard.enabled; 
         tabEl.querySelector("#cs-st-sel-scale").value = s.selectedCard ? ((s.selectedCard.scale - 1) * 100).toFixed(0) : 0;
         s.fieldBackground = s.fieldBackground || {};

@@ -35,6 +35,7 @@ export const CardSystem = (() => {
     handleAreaField: null,
     handleAreaTitleField: null, handleAreaTitleColor: "#ffffff", handleAreaTitleFontSize: "10px", handleAreaTitleAllCaps: false,
     widgetPadding: "10px", cardsSpacing: "15px",
+    fieldRowGap: "4px", fieldColGap: "4px", fieldPadding: "4px",
     cardTitleTopBarApplyText: false,
     selectedCard: { enabled: false, scale: 1.05, colorEffect: "none" }
   };
@@ -395,7 +396,8 @@ export const CardSystem = (() => {
       cardEl.style.gridTemplateRows = `repeat(${numRows}, auto)`;
       
       cardEl.style.gridTemplateColumns = `repeat(${NUM_COLS}, 1fr)`;
-      cardEl.style.gap = "4px";
+      cardEl.style.rowGap = styling.fieldRowGap !== undefined ? styling.fieldRowGap : "4px";
+      cardEl.style.columnGap = styling.fieldColGap !== undefined ? styling.fieldColGap : "4px";
       cardEl.style.alignSelf = "start";
       cardEl.style.borderRadius = "8px";
       cardEl.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)";
@@ -827,7 +829,7 @@ export const CardSystem = (() => {
           const fieldBox = document.createElement("div");
           fieldBox.style.gridRow = `${f.row + 1} / span ${f.rowSpan || 1}`;
           fieldBox.style.gridColumn = `${f.col + 1} / span ${f.colSpan || 1}`;
-          fieldBox.style.padding = "4px";
+          fieldBox.style.padding = styling.fieldPadding !== undefined ? styling.fieldPadding : "4px";
 
           if (styling.fieldBackground?.enabled) {
             const cardBaseColor = resolveStyle(record, schema, styling.cardsColorMode, styling.cardsColorSolidColor, null, styling.cardsColorField);
