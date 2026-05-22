@@ -192,6 +192,14 @@ export async function renderField(options) {
   container.innerHTML = '';
   container.classList.remove('has-conditional-style');
 
+  // Apply standard data style if provided in global styling (acts as baseline)
+  if (styling) {
+    const ds = styling.dataStyle || {};
+    if (ds.font || styling.simpleTextFont) container.style.fontFamily = ds.font || styling.simpleTextFont;
+    if (ds.size || styling.simpleTextSize) container.style.fontSize = ds.size || styling.simpleTextSize;
+    if (ds.color || styling.simpleTextColor) container.style.color = ds.color || styling.simpleTextColor;
+  }
+
   const isDisabled = isEditing && colSchema.isFormula;
   container.classList.toggle('is-disabled', isDisabled);
 

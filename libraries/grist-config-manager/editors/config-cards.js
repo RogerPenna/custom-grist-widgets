@@ -269,10 +269,16 @@ export const CardConfigEditor = (() => {
 
         s.groupBoxes = state.styling.groupBoxes || [];
 
-        if (tabEl.querySelector('#cs-st-simple-textcolor')) {
-            s.simpleTextColor = tabEl.querySelector('#cs-st-simple-textcolor').value;
-            s.simpleTextFont = tabEl.querySelector('#cs-st-simple-textfont').value;
-            s.simpleTextSize = `${parseInt(tabEl.querySelector('#cs-st-simple-textsize').value, 10) || 14}px`;
+        if (tabEl.querySelector('#cs-st-data-textcolor')) {
+            s.dataStyle = {
+                color: tabEl.querySelector('#cs-st-data-textcolor').value,
+                font: tabEl.querySelector('#cs-st-data-textfont').value,
+                size: `${parseInt(tabEl.querySelector('#cs-st-data-textsize').value, 10) || 14}px`
+            };
+            // For backward compatibility
+            s.simpleTextColor = s.dataStyle.color;
+            s.simpleTextFont = s.dataStyle.font;
+            s.simpleTextSize = s.dataStyle.size;
         }
 
         if (tabEl.querySelector('#cs-st-fbox-enabled')) {
@@ -338,7 +344,7 @@ export const CardConfigEditor = (() => {
     }
 
     const DEFAULT_FIELD_STYLE = { useGristStyle: true, labelVisible: true, labelPosition: 'above', labelFont: 'inherit', labelFontSize: 'inherit', labelColor: 'inherit', labelAllCaps: false, labelOutline: false, labelOutlineColor: '#ffffff', dataJustify: 'left', dataAllCaps: false, heightLimited: false, maxHeightRows: 1, isTitleField: false };
-    const DEFAULT_STYLING = { iconSize: 1.0, internalCardPadding: '10px', fieldBox: { borderEnabled: false, borderColor: '#cccccc', borderWidth: 1, borderRadius: 4, backgroundColor: '#ffffff', effect: 'none' }, labelStyle: { bold: false, allCaps: false, color: '#333333', font: 'Calibri', size: '12px' }, simpleTextColor: '#000000', simpleTextFont: 'Calibri', simpleTextSize: '14px', fieldBackground: { enabled: false, lightenPercentage: 15 }, iconGroups: [], groupBoxes: [], widgetBackgroundMode: "solid", widgetBackgroundSolidColor: "#f9f9f9", widgetBackgroundGradientType: "linear-gradient(to right, {c1}, {c2})", widgetBackgroundGradientColor1: "#f9f9f9", widgetBackgroundGradientColor2: "#e9e9e9", cardsColorMode: "solid", cardsColorSolidColor: "#ffffff", cardsColorGradientType: "linear-gradient(to right, {c1}, {c2})", cardsColorGradientColor1: "#ffffff", cardsColorGradientColor2: "#f0f0f0", cardsColorApplyText: false, cardsColorTextField: null, cardsColorFontField: null, cardsColorOverlayEffect: 'darken', cardsColorOverlayOpacity: 10, cardBorderThickness: 0, cardBorderMode: "solid", cardBorderSolidColor: "#cccccc", cardTitleFontColor: "#000000", cardTitleFontStyle: "Calibri", cardTitleFontSize: "20px", cardTitleAllCaps: false, cardTitleTopBarEnabled: false, cardTitleTopBarMode: "solid", cardTitleTopBarSolidColor: "#dddddd", cardTitleTopBarGradientType: "linear-gradient(to right, {c1}, {c2})", cardTitleTopBarGradientColor1: "#dddddd", cardTitleTopBarGradientColor2: "#cccccc", cardTitleTopBarLabelFontColor: "#000000", cardTitleTopBarLabelFontStyle: "Calibri", cardTitleTopBarLabelFontSize: "16px", cardTitleTopBarLabelAllCaps: false, cardTitleTopBarDataFontColor: "#333333", cardTitleTopBarDataFontStyle: "Calibri", cardTitleTopBarDataFontSize: "16px", cardTitleTopBarDataAllCaps: false, handleAreaWidth: "8px", handleAreaMode: "solid", handleAreaSolidColor: "#40E0D0", handleAreaOverlayEffect: "darken", handleAreaOverlayOpacity: 10, handleAreaField: null, handleAreaTitleField: null, handleAreaTitleColor: "#ffffff", handleAreaTitleFontSize: "10px", handleAreaTitleAllCaps: false, widgetPadding: "10px", cardsSpacing: "15px", selectedCard: { enabled: false, scale: 1.05, colorEffect: "none" } };
+    const DEFAULT_STYLING = { iconSize: 1.0, internalCardPadding: '10px', fieldBox: { borderEnabled: false, borderColor: '#cccccc', borderWidth: 1, borderRadius: 4, backgroundColor: '#ffffff', effect: 'none' }, labelStyle: { bold: false, allCaps: false, color: '#333333', font: 'Calibri', size: '12px' }, dataStyle: { font: 'Calibri', size: '14px', color: '#000000' }, fieldBackground: { enabled: false, lightenPercentage: 15 }, iconGroups: [], groupBoxes: [], widgetBackgroundMode: "solid", widgetBackgroundSolidColor: "#f9f9f9", widgetBackgroundGradientType: "linear-gradient(to right, {c1}, {c2})", widgetBackgroundGradientColor1: "#f9f9f9", widgetBackgroundGradientColor2: "#e9e9e9", cardsColorMode: "solid", cardsColorSolidColor: "#ffffff", cardsColorGradientType: "linear-gradient(to right, {c1}, {c2})", cardsColorGradientColor1: "#ffffff", cardsColorGradientColor2: "#f0f0f0", cardsColorApplyText: false, cardsColorTextField: null, cardsColorFontField: null, cardsColorOverlayEffect: 'darken', cardsColorOverlayOpacity: 10, cardBorderThickness: 0, cardBorderMode: "solid", cardBorderSolidColor: "#cccccc", cardTitleFontColor: "#000000", cardTitleFontStyle: "Calibri", cardTitleFontSize: "20px", cardTitleAllCaps: false, cardTitleTopBarEnabled: false, cardTitleTopBarMode: "solid", cardTitleTopBarSolidColor: "#dddddd", cardTitleTopBarGradientType: "linear-gradient(to right, {c1}, {c2})", cardTitleTopBarGradientColor1: "#dddddd", cardTitleTopBarGradientColor2: "#cccccc", cardTitleTopBarLabelFontColor: "#000000", cardTitleTopBarLabelFontStyle: "Calibri", cardTitleTopBarLabelFontSize: "16px", cardTitleTopBarLabelAllCaps: false, cardTitleTopBarDataFontColor: "#333333", cardTitleTopBarDataFontStyle: "Calibri", cardTitleTopBarDataFontSize: "16px", cardTitleTopBarDataAllCaps: false, handleAreaWidth: "8px", handleAreaMode: "solid", handleAreaSolidColor: "#40E0D0", handleAreaOverlayEffect: "darken", handleAreaOverlayOpacity: 10, handleAreaField: null, handleAreaTitleField: null, handleAreaTitleColor: "#ffffff", handleAreaTitleFontSize: "10px", handleAreaTitleAllCaps: false, widgetPadding: "10px", cardsSpacing: "15px", selectedCard: { enabled: false, scale: 1.05, colorEffect: "none" } };
     const DEFAULT_NUM_ROWS = 1; const NUM_COLS = 10; const CONFIG_WIDTH = 700; const COL_WIDTH = CONFIG_WIDTH / NUM_COLS;
 
     function createTabButton(label, tabId, container) { const btn = document.createElement("button"); btn.type = "button"; btn.textContent = label; btn.className = 'config-tab-button'; btn.addEventListener("click", () => switchTab(tabId, container)); btn.dataset.tabId = tabId; return btn; }
@@ -512,7 +518,7 @@ export const CardConfigEditor = (() => {
                         </fieldset>
                     </div>
                 </fieldset>
-                <fieldset><legend><b>Simple Text Style</b></legend><p class="help-text">For fields where "Use Grist Field Style" is disabled.</p>Color: <input type="color" id="cs-st-simple-textcolor"> Font: <select id="cs-st-simple-textfont"><option>Calibri</option><option>Arial</option><option>Inter</option><option>Roboto</option><option>Open Sans</option><option>Times New Roman</option></select> Size: <input type="number" id="cs-st-simple-textsize" min="8" style="width:60px">px</fieldset>
+                <fieldset><legend><b>Standard Data Style</b></legend><p class="help-text">Baseline style for all data fields.</p>Color: <input type="color" id="cs-st-data-textcolor"> Font: <select id="cs-st-data-textfont"><option>Calibri</option><option>Arial</option><option>Inter</option><option>Roboto</option><option>Open Sans</option><option>Times New Roman</option></select> Size: <input type="number" id="cs-st-data-textsize" min="8" style="width:60px">px</fieldset>
                 <fieldset>
                     <legend><b>Debug</b></legend>
                     <label><input type="checkbox" id="cs-st-show-debug"> Show Schema Debug Info (TableLens output)</label>
@@ -724,9 +730,12 @@ export const CardConfigEditor = (() => {
         s.fieldBackground = s.fieldBackground || {};
         tabEl.querySelector("#cs-st-fieldbg-enabled").checked = s.fieldBackground.enabled === true;
         tabEl.querySelector("#cs-st-fieldbg-lighten").value = s.fieldBackground.lightenPercentage || 15;
-        tabEl.querySelector('#cs-st-simple-textcolor').value = s.simpleTextColor || '#000000';
-        tabEl.querySelector('#cs-st-simple-textfont').value = s.simpleTextFont || 'Calibri';
-        tabEl.querySelector('#cs-st-simple-textsize').value = parseInt(s.simpleTextSize, 10) || 14;
+
+        const ds = s.dataStyle || { color: s.simpleTextColor, font: s.simpleTextFont, size: s.simpleTextSize } || {};
+        tabEl.querySelector("#cs-st-data-textcolor").value = ds.color || '#000000';
+        tabEl.querySelector("#cs-st-data-textfont").value = ds.font || 'Calibri';
+        tabEl.querySelector("#cs-st-data-textsize").value = parseInt(ds.size, 10) || 14;
+
         const fb = s.fieldBox || {};
         tabEl.querySelector('#cs-st-fbox-enabled').checked = fb.borderEnabled;
         tabEl.querySelector('#cs-st-fbox-bcolor').value = fb.borderColor;

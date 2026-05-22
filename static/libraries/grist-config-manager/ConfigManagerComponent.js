@@ -2,14 +2,14 @@ import { GristTableLens } from '../grist-table-lens/grist-table-lens.js';
 import { GristDataWriter } from '../grist-data-writer.js';
 
 // Import editor modules
-import { CardConfigEditor } from './editors/config-cards.js?v=1.0.2';
-import { DrawerConfigEditor } from './editors/config-drawer.js?v=1.0.2';
-import { CardStyleConfigEditor } from './editors/config-card-style.js?v=1.0.2';
-import { TableConfigEditor } from './editors/config-table.js?v=1.0.2';
-import { BscConfigEditor } from './editors/config-bsc.js?v=1.0.2';
-import { IndicatorsConfigEditor } from './editors/config-indicators.js?v=1.0.2';
-import { ProgressBarConfigEditor } from './editors/config-progress-bar.js?v=1.0.2';
-import { ColorOptionsConfigEditor } from './editors/config-color-options.js?v=1.0.2';
+import { CardConfigEditor } from './editors/config-cards.js?v=1.0.3';
+import { DrawerConfigEditor } from './editors/config-drawer.js?v=1.0.3';
+import { CardStyleConfigEditor } from './editors/config-card-style.js?v=1.0.3';
+import { TableConfigEditor } from './editors/config-table.js?v=1.0.3';
+import { BscConfigEditor } from './editors/config-bsc.js?v=1.0.3';
+import { IndicatorsConfigEditor } from './editors/config-indicators.js?v=1.0.3';
+import { ProgressBarConfigEditor } from './editors/config-progress-bar.js?v=1.0.3';
+import { ColorOptionsConfigEditor } from './editors/config-color-options.js?v=1.0.3';
 
 let overlay = null;
 let _grist = null;
