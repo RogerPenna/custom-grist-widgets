@@ -54,12 +54,35 @@ function _initializeModalDOM() {
 
 async function _handleSave() {
     const changes = {};
-    const formElements = modalBody.querySelectorAll('[data-col-id]');
+    const formElements = modalBody.querySelectorAll('input[data-col-id], select[data-col-id], textarea[data-col-id]');
+    
     formElements.forEach(el => {
         const colId = el.dataset.colId;
         const colSchema = currentSchema[colId];
         if (!colSchema || colSchema.isFormula) return;
-        changes[colId] = (colSchema.type === 'Bool') ? el.checked : el.value;
+
+        let value;
+        if (el.type === 'checkbox') {
+            value = el.checked;
+        } else if (el.tagName === 'SELECT' && el.multiple) {
+            const selectedOptions = Array.from(el.selectedOptions).map(opt => opt.value);
+            value = selectedOptions.length > 0 ? ['L', ...selectedOptions] : null;
+        } else if (colSchema.type.startsWith('Date')) {
+            if (!el.value) value = null;
+            else if (colSchema.type === 'Date') {
+                const parts = el.value.split('-');
+                value = Date.UTC(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2])) / 1000;
+            } else {
+                value = new Date(el.value).getTime() / 1000;
+            }
+        } else if (colSchema.type.startsWith('Ref:')) {
+            value = el.value ? Number(el.value) : 0;
+        } else if (colSchema.type === 'Numeric' || colSchema.type === 'Int') {
+            value = el.value !== '' ? Number(el.value) : null;
+        } else {
+            value = el.value;
+        }
+        changes[colId] = value;
     });
 
     if (currentOnSave) {

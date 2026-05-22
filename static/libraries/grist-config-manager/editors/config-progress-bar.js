@@ -143,10 +143,11 @@ export const ProgressBarConfigEditor = (() => {
                         <div class="form-group">
                             <label>Modo de Cores:</label>
                             <select id="pb-color-mode" class="form-control">
-                                <option value="solid" ${state.colorMode === 'solid' ? 'selected' : ''}>Sólida (Cor única fixa)</option>
-                                <option value="dynamic" ${state.colorMode === 'dynamic' || state.colorMode === 'dynamic-gradient' ? 'selected' : ''}>Dinâmica (Barra toda muda com %)</option>
-                                <option value="smooth" ${state.colorMode === 'smooth' || state.colorMode === 'static-gradient' ? 'selected' : ''}>Gradiente Suave (Multi-cor)</option>
-                                <option value="stepped" ${state.colorMode === 'stepped' || state.colorMode === 'steps' ? 'selected' : ''}>Gradiente em Blocos (Multi-cor)</option>
+                                <option value="solid-fixed" ${state.colorMode === 'solid-fixed' || state.colorMode === 'solid' ? 'selected' : ''}>Sólida Estática (Cor única fixa)</option>
+                                <option value="solid-dynamic" ${state.colorMode === 'solid-dynamic' || state.colorMode === 'dynamic' || state.colorMode === 'dynamic-gradient' ? 'selected' : ''}>Sólida Dinâmica (Muda tom com %)</option>
+                                <option value="solid-thresholds" ${state.colorMode === 'solid-thresholds' ? 'selected' : ''}>Sólida por Degraus (Abrupto)</option>
+                                <option value="gradient-smooth" ${state.colorMode === 'gradient-smooth' || state.colorMode === 'smooth' || state.colorMode === 'static-gradient' || state.colorMode === 'gradient' ? 'selected' : ''}>Gradiente Suave (Multi-cor)</option>
+                                <option value="gradient-steps" ${state.colorMode === 'gradient-steps' || state.colorMode === 'stepped' || state.colorMode === 'steps' ? 'selected' : ''}>Gradiente em Blocos (Multi-cor)</option>
                             </select>
                             <div id="pb-color-mode-desc" style="font-size: 11px; color: #666; margin-top: 5px; font-style: italic;">
                                 <!-- Descrição dinâmica injetada via JS -->
@@ -286,22 +287,23 @@ export const ProgressBarConfigEditor = (() => {
             const mode = container.querySelector('#pb-color-mode').value;
             const descEl = container.querySelector('#pb-color-mode-desc');
             const descs = {
-                'solid': 'Barra com uma única cor fixa.',
-                'dynamic': 'A barra toda muda de cor baseada no valor atual (ex: de vermelho para verde).',
-                'smooth': 'Transição suave entre as cores ao longo da barra (ex: começa vermelho e termina verde).',
-                'stepped': 'Cores divididas em blocos fixos (ex: 50% vermelho e o restante em amarelo).'
+                'solid-fixed': 'Barra com uma única cor fixa institucional.',
+                'solid-dynamic': 'A barra toda muda de cor baseada na interpolação exata do valor atual.',
+                'solid-thresholds': 'A barra toda muda de cor abruptamente ao cruzar os limites dos quadrantes.',
+                'gradient-smooth': 'Transição suave e contínua entre as cores de ponta a ponta.',
+                'gradient-steps': 'Cores divididas em blocos fixos com transições secas (sem degradê).'
             };
             descEl.textContent = descs[mode] || '';
             
             // Also update internal mode select to match primary modes for consistency
             const internalModeSelect = container.querySelector('#pb-internal-color-mode');
-            if (internalModeSelect.options.length === 3) {
-                 // Update internal bar options to match primary ones
+            if (internalModeSelect) {
                  internalModeSelect.innerHTML = `
-                    <option value="solid" \${state.internalColorMode === 'solid' ? 'selected' : ''}>Sólida (Cor única fixa)</option>
-                    <option value="dynamic" \${state.internalColorMode === 'dynamic' || state.internalColorMode === 'dynamic-gradient' ? 'selected' : ''}>Dinâmica (Barra toda muda com %)</option>
-                    <option value="smooth" \${state.internalColorMode === 'smooth' || state.internalColorMode === 'static-gradient' ? 'selected' : ''}>Gradiente Suave (Multi-cor)</option>
-                    <option value="stepped" \${state.internalColorMode === 'stepped' || state.internalColorMode === 'steps' ? 'selected' : ''}>Gradiente em Blocos (Multi-cor)</option>
+                    <option value="solid-fixed" ${state.internalColorMode === 'solid-fixed' || state.internalColorMode === 'solid' ? 'selected' : ''}>Sólida Estática</option>
+                    <option value="solid-dynamic" ${state.internalColorMode === 'solid-dynamic' || state.internalColorMode === 'dynamic' || state.internalColorMode === 'dynamic-gradient' ? 'selected' : ''}>Sólida Dinâmica</option>
+                    <option value="solid-thresholds" ${state.internalColorMode === 'solid-thresholds' ? 'selected' : ''}>Sólida por Degraus</option>
+                    <option value="gradient-smooth" ${state.internalColorMode === 'gradient-smooth' || state.internalColorMode === 'smooth' || state.internalColorMode === 'static-gradient' || state.internalColorMode === 'gradient' ? 'selected' : ''}>Gradiente Suave</option>
+                    <option value="gradient-steps" ${state.internalColorMode === 'gradient-steps' || state.internalColorMode === 'stepped' || state.internalColorMode === 'steps' ? 'selected' : ''}>Gradiente em Blocos</option>
                  `;
             }
         };

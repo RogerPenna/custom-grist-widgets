@@ -92,7 +92,9 @@ function _updateButtonVisibility() {
 
 async function _handleSave() {
     const changes = {};
-    const formElements = drawerPanel.querySelectorAll('[data-col-id]');
+    // MODIFICAÇÃO CRUCIAL: Seleciona apenas elementos de formulário reais que possuem o ID da coluna.
+    // Isso evita que containers (DIVs) sejam processados e retornem valores '0' ou 'undefined'.
+    const formElements = drawerPanel.querySelectorAll('input[data-col-id], select[data-col-id], textarea[data-col-id]');
     
     formElements.forEach(el => {
         const colId = el.dataset.colId;
@@ -113,7 +115,7 @@ async function _handleSave() {
             } else {
                 value = new Date(el.value).getTime() / 1000;
             }
-        } else if (colSchema.type.startsWith('Ref')) {
+        } else if (colSchema.type.startsWith('Ref:')) { // Apenas Ref simples (não RefList)
             value = el.value ? Number(el.value) : 0;
         } else if (colSchema.type === 'Numeric' || colSchema.type === 'Int') {
             value = el.value !== '' ? Number(el.value) : null;
@@ -237,7 +239,6 @@ async function _renderDrawerContent() {
 
                 const row = document.createElement('div');
                 row.className = 'drawer-field-row';
-                row.dataset.colId = fieldId;
                 row.style.marginBottom = '20px';
                 row.innerHTML = `
                     <label style="display:block; font-weight:800; font-size:11px; color:#94a3b8; text-transform:uppercase; margin-bottom:6px; letter-spacing:0.025em;">
@@ -355,8 +356,12 @@ export async function openDrawer(tableId, recordId, options = {}) {
     }
 
     // --- CORREÇÃO DA LARGURA ---
+    // Priorizamos a largura definida em actions.sidePanel.size (que vem do widget gatilho no configurador)
+    // Se não houver, tentamos styling.width (que vem da config do próprio drawer)
+    // Se não houver nenhum, fallback para '600px'
     const styling = options.styling || options;
-    const width = styling.width || options.width || '600px';
+    const width = options.actions?.sidePanel?.size || options.sidePanel?.size || styling.width || options.width || '600px';
+    
     drawerPanel.style.width = width;
     // Garante que comece fora da tela antes da transição
     drawerPanel.style.right = `-${width}`;
