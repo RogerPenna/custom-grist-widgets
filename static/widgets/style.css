@@ -1,46 +1,525 @@
+/* table-widget/style.css */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+    --glass-bg: rgba(255, 255, 255, 0.4);
+    --glass-border: rgba(255, 255, 255, 0.3);
+    --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.05);
+    --glass-backdrop: blur(10px);
+    
+    --primary: #3b82f6;
+    --primary-hover: #2563eb;
+    --border-color: rgba(226, 232, 240, 0.8);
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background: #f8fafc;
+    font-family: 'Inter', sans-serif;
+    color: #1e293b;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
 #table-container {
-    font-family: sans-serif;
+    height: 100%;
+    padding: 16px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
 }
 
-table {
+/* Container Base */
+.grist-table-widget-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
     width: 100%;
-    border-collapse: collapse;
+    overflow: hidden;
 }
 
-th, td {
-    border: 1px solid #ddd;
-    padding: 8px;
+/* Glassmorphism Theme */
+.grist-table-widget-container.theme-glassmorphism {
+    background: radial-gradient(circle at 10% 20%, rgba(243, 246, 253, 0.8) 0%, rgba(235, 241, 254, 0.8) 90%);
 }
 
-th {
-    background-color: #f2f2f2;
+.theme-glassmorphism .tabulator {
+    background: var(--glass-bg) !important;
+    border: 1px solid var(--glass-border) !important;
+    border-radius: 12px !important;
+    box-shadow: var(--glass-shadow) !important;
+    backdrop-filter: var(--glass-backdrop) !important;
+    -webkit-backdrop-filter: var(--glass-backdrop) !important;
 }
 
-.tabulator-cell {
-    white-space: normal !important;
+.theme-glassmorphism .tabulator-header {
+    background: rgba(255, 255, 255, 0.25) !important;
+    border-bottom: 1px solid var(--glass-border) !important;
 }
 
-/* Tabulator Striped Table Style */
-
-/* When custom-striped-enabled IS present, apply custom stripes */
-.custom-striped-enabled .tabulator-row.tabulator-row-odd {
-    background-color: #f0f0f0; /* Your desired stripe color */
-}
-.custom-striped-enabled .tabulator-row.tabulator-row-even {
-    background-color: transparent; /* Ensure even rows are not striped */
+.theme-glassmorphism .tabulator-row {
+    background: rgba(255, 255, 255, 0.15) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important;
 }
 
-/* When custom-striped-enabled is NOT present, ensure no stripes */
-.tabulator:not(.custom-striped-enabled) .tabulator-row.tabulator-row-odd,
-.tabulator:not(.custom-striped-enabled) .tabulator-row.tabulator-row-even {
-    background-color: transparent; /* Or white, to explicitly remove any default stripes */
+.theme-glassmorphism .tabulator-row:hover {
+    background: rgba(255, 255, 255, 0.3) !important;
 }
 
-.grist-reflist-button {
+/* Grouping Bar */
+.table-group-bar {
+    min-height: 44px;
+    background: rgba(255, 255, 255, 0.5);
+    border: 1px dashed rgba(148, 163, 184, 0.5);
+    border-radius: 8px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    padding: 6px 16px;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+}
+
+.table-group-bar.drag-over-active {
+    border-color: var(--primary);
+    background: rgba(59, 130, 246, 0.05);
+}
+
+.table-group-bar.drag-hover {
+    border-color: #10b981;
+    background: rgba(16, 185, 129, 0.1);
+}
+
+.group-bar-placeholder {
+    font-size: 13px;
+    color: #64748b;
+    font-style: italic;
+}
+
+.group-badge-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.group-bar-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #475569;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.group-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--primary);
+    color: #ffffff;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.2);
+}
+
+.group-badge-remove {
     background: none;
     border: none;
-    color: #007bff;
+    color: rgba(255, 255, 255, 0.8);
     cursor: pointer;
-    text-decoration: underline;
+    font-size: 12px;
     padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s;
+}
+
+.group-badge-remove:hover {
+    color: #ffffff;
+}
+
+/* Save / Action Bar */
+.table-action-bar {
+    border-radius: 8px;
+    margin-bottom: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05) !important;
+}
+
+/* Grid Lines Configurations */
+.grid-none .tabulator,
+.grid-none .tabulator-header,
+.grid-none .tabulator-col,
+.grid-none .tabulator-row,
+.grid-none .tabulator-cell {
+    border: none !important;
+}
+
+.grid-horizontal .tabulator-cell {
+    border-right: none !important;
+    border-left: none !important;
+}
+.grid-horizontal .tabulator-col {
+    border-right: none !important;
+}
+.grid-horizontal .tabulator-row {
+    border-bottom: 1px solid var(--border-color) !important;
+}
+
+.grid-full .tabulator-cell {
+    border-right: 1px solid var(--border-color) !important;
+}
+.grid-full .tabulator-col {
+    border-right: 1px solid var(--border-color) !important;
+}
+.grid-full .tabulator-row {
+    border-bottom: 1px solid var(--border-color) !important;
+}
+
+/* Density Configurations */
+.density-compact .tabulator-row {
+    min-height: 28px !important;
+}
+.density-compact .tabulator-cell {
+    padding: 4px 8px !important;
+    font-size: 12px !important;
+}
+.density-compact .tabulator-col {
+    padding: 4px 8px !important;
+}
+.density-compact .tabulator-col-title {
+    font-size: 12px !important;
+}
+
+.density-comfortable .tabulator-row {
+    min-height: 38px !important;
+}
+.density-comfortable .tabulator-cell {
+    padding: 8px 12px !important;
+    font-size: 13px !important;
+}
+.density-comfortable .tabulator-col {
+    padding: 8px 12px !important;
+}
+.density-comfortable .tabulator-col-title {
+    font-size: 13px !important;
+}
+
+.density-spacious .tabulator-row {
+    min-height: 48px !important;
+}
+.density-spacious .tabulator-cell {
+    padding: 12px 16px !important;
+    font-size: 14px !important;
+}
+.density-spacious .tabulator-col {
+    padding: 12px 16px !important;
+}
+.density-spacious .tabulator-col-title {
+    font-size: 14px !important;
+}
+
+/* Header Styles */
+.header-minimal .tabulator-header {
+    background-color: rgba(241, 245, 249, 0.5) !important;
+    border-bottom: 2px solid var(--border-color) !important;
+    color: #475569 !important;
+    font-weight: 600 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.header-solid .tabulator-header {
+    background-color: #1e293b !important;
+    border-bottom: 2px solid #0f172a !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+}
+.header-solid .tabulator-col {
+    background-color: #1e293b !important;
+    color: #ffffff !important;
+}
+.header-solid .tabulator-col-title {
+    color: #ffffff !important;
+}
+
+/* Hover Effects */
+.hover-row-highlight .tabulator-row:hover {
+    background-color: rgba(59, 130, 246, 0.05) !important;
+}
+
+/* Striped Rows */
+.striped-rows-enabled .tabulator-row.tabulator-row-odd {
+    background-color: rgba(241, 245, 249, 0.4) !important;
+}
+.striped-rows-enabled.theme-glassmorphism .tabulator-row.tabulator-row-odd {
+    background-color: rgba(255, 255, 255, 0.25) !important;
+}
+
+/* Text wrapping / ellipsis classes */
+.tabulator-cell.wrap-text-cell {
+    white-space: normal !important;
+    word-break: break-word !important;
+}
+.tabulator-cell.nowrap-text-cell {
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+/* Paginator / Footer Glassmorphism */
+.tabulator-footer {
+    border-top: 1px solid var(--border-color) !important;
+    background: #ffffff !important;
+}
+.theme-glassmorphism .tabulator-footer {
+    background: rgba(255, 255, 255, 0.2) !important;
+    border-top: 1px solid var(--glass-border) !important;
+}
+
+.tabulator-page {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 6px !important;
+    padding: 4px 8px !important;
+    margin: 0 2px !important;
+    color: #475569 !important;
+    font-weight: 500 !important;
+    transition: all 0.2s ease !important;
+}
+.theme-glassmorphism .tabulator-page {
+    background: rgba(255, 255, 255, 0.3) !important;
+    border: 1px solid var(--glass-border) !important;
+}
+
+.tabulator-page:hover:not(.disabled) {
+    background: var(--primary) !important;
+    color: #ffffff !important;
+    border-color: var(--primary) !important;
+}
+
+.tabulator-page.active {
+    background: var(--primary) !important;
+    color: #ffffff !important;
+    border-color: var(--primary) !important;
+}
+
+/* Add New Button styling */
+.grf-add-new-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--primary);
+    color: #ffffff;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.2);
+    transition: all 0.2s ease;
+    height: 44px;
+    box-sizing: border-box;
+}
+
+.grf-add-new-btn:hover {
+    background-color: var(--primary-hover);
+    transform: translateY(-1px);
+}
+
+.grf-add-new-btn:active {
+    transform: translateY(0);
+}
+
+/* Custom Formatters styling */
+.grf-yesno-text {
+    font-weight: 500;
+}
+
+/* Status Dot Badge */
+.status-dot-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+}
+.status-dot-badge.active {
+    background-color: #dcfce7;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+}
+.status-dot-badge.inactive {
+    background-color: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+}
+.status-dot-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+.status-dot-badge.active .status-dot-indicator {
+    background-color: #22c55e;
+    box-shadow: 0 0 6px #22c55e;
+}
+.status-dot-badge.inactive .status-dot-indicator {
+    background-color: #ef4444;
+    box-shadow: 0 0 6px #ef4444;
+}
+
+/* Interactive Switch Formatter */
+.grf-switch {
+    position: relative;
+    display: inline-block;
+    width: 36px;
+    height: 20px;
+    vertical-align: middle;
+}
+.grf-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.grf-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #cbd5e1;
+    transition: .3s;
+    border-radius: 20px;
+}
+.grf-slider:before {
+    position: absolute;
+    content: "";
+    height: 14px;
+    width: 14px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .3s;
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+.grf-switch input:checked + .grf-slider {
+    background-color: #22c55e;
+}
+.grf-switch input:checked + .grf-slider:before {
+    transform: translateX(16px);
+}
+
+/* Badges & Avatars */
+.grf-badge-pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.2;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.grf-avatar-circle {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 11px;
+    text-shadow: 0 1px 1px rgba(0,0,0,0.15);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Progress bar & Progress ring */
+.grf-progress-bar-container {
+    position: relative;
+    width: 100%;
+    height: 18px;
+    background-color: #e2e8f0;
+    border-radius: 4px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+}
+.grf-progress-bar-fill {
+    height: 100%;
+    background-color: var(--primary);
+    transition: width 0.3s ease;
+}
+.grf-progress-bar-fill.striped {
+    background-image: linear-gradient(
+        45deg,
+        rgba(255, 255, 255, 0.15) 25%,
+        transparent 25%,
+        transparent 50%,
+        rgba(255, 255, 255, 0.15) 50%,
+        rgba(255, 255, 255, 0.15) 75%,
+        transparent 75%,
+        transparent
+    );
+    background-size: 1rem 1rem;
+}
+.grf-progress-bar-fill.animated {
+    animation: progress-bar-stripes 1s linear infinite;
+}
+@keyframes progress-bar-stripes {
+    0% { background-position-x: 1rem; }
+}
+.grf-progress-bar-text {
+    position: absolute;
+    width: 100%;
+    text-align: center;
+    font-size: 10px;
+    font-weight: 700;
+    color: #1e293b;
+    text-shadow: 0 0 2px #ffffff;
+    pointer-events: none;
+}
+
+.grf-progress-ring-wrapper {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.grf-progress-ring {
+    transform: rotate(-90deg);
+}
+.grf-progress-ring-bg {
+    stroke-linecap: round;
+}
+.grf-progress-ring-fill {
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.35s;
+    transform-origin: 50% 50%;
+}
+.grf-progress-ring-text {
+    font-size: 11px;
+    font-weight: 600;
+    color: #475569;
+}
+
+/* Sparklines */
+.grf-sparkline-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+}
+.sparkline-placeholder {
+    color: #94a3b8;
+    font-weight: bold;
 }

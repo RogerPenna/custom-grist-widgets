@@ -4,6 +4,36 @@ export const TableConfigEditor = (() => {
     let currentTableId = null;
     let _mainContainer = null;
     let _allConfigs = [];
+    let _customButtons = [];
+    let _activeButtonIdx = -1;
+    let _iconPickerPopup = null;
+
+    const AVAILABLE_ICONS = [
+        "icon-link", "icon-link-broken", "icon-settings", "icon-edit", "icon-save", "icon-save-alt",
+        "icon-adjustments", "icon-adjustments-vert", "icon-annotation", "icon-badge-check", "icon-barcode",
+        "icon-bars", "icon-bell", "icon-bell-active", "icon-bookmark", "icon-calendar-edit", "icon-chart",
+        "icon-chart-mixed", "icon-chart-pie", "icon-check", "icon-check-circle", "icon-check-circle-alt",
+        "icon-minus-circle", "icon-minus-circle-alt", "icon-plus-circle", "icon-plus-circle-alt", "icon-clipboard",
+        "icon-clipboard-check", "icon-clipboard-list", "icon-clock-arrow", "icon-close-circle", "icon-close-sidebar",
+        "icon-column", "icon-download", "icon-exclamation", "icon-expand", "icon-eye", "icon-file",
+        "icon-file-chart", "icon-file-check", "icon-file-clone", "icon-file-search", "icon-filter", "icon-flag",
+        "icon-folder", "icon-forward", "icon-globe", "icon-grid", "icon-hourglass", "icon-info-circle",
+        "icon-lightbulb", "icon-lifesaver", "icon-lock", "icon-unlock", "icon-microscope", "icon-pen",
+        "icon-printer", "icon-profile-card", "icon-rectangle-list", "icon-tools", "icon-trashbin", "icon-truck",
+        "icon-zoom-in", "icon-zoom-out", "icon-chart-up", "icon-arrow-move", "icon-bar-chart", "icon-bar-chart-line",
+        "icon-bullseye", "icon-card-checklist", "icon-compass", "icon-cone", "icon-cone-striped", "icon-diagram-2",
+        "icon-diagram-3", "icon-exclamation-triangle", "icon-exclamation-diamond", "icon-globe-americas", "icon-lightning",
+        "icon-pen-alt", "icon-speedometer", "icon-traffic-light", "icon-wrench", "icon-search", "icon-process-cogs",
+        "icon-process"
+    ];
+
+    function getFieldCategory(type) {
+        if (!type) return 'text';
+        const t = type.toLowerCase();
+        if (t === 'bool' || t === 'boolean') return 'bool';
+        if (t === 'numeric' || t === 'int' || t === 'integer' || t === 'float' || t === 'double') return 'number';
+        return 'text';
+    }
 
     function updateDebugJson() {
         if (!_mainContainer) return;
@@ -51,10 +81,15 @@ export const TableConfigEditor = (() => {
         const styling = configData.styling || configData;
         const actions = configData.actions || configData;
 
+        _customButtons = actions.customButtons || [];
+        _activeButtonIdx = -1;
+
         // Store refListFieldConfig in container for createColumnCard to access
         container._refListFieldConfig = mapping.refListFieldConfig || {};
 
         const allCols = Object.values(currentSchema).filter(c => !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos');
+        container._allCols = allCols;
+
         // Add virtual columns
         allCols.push({ colId: '_actions', label: '⚙️ Ações (Virtual)', type: 'Virtual' });
 
@@ -68,6 +103,8 @@ export const TableConfigEditor = (() => {
             const tableDisplay = unified.tableId ? ` (${unified.tableId})` : '';
             return `<option value="${d.configId}" ${actions.drawerId === d.configId ? 'selected' : ''}>${d.widgetTitle}${tableDisplay} [${d.configId}]</option>`;
         }).join('');
+
+        const layoutConfig = styling.tableLayoutConfig || {};
 
         container.innerHTML = `
             <style>
@@ -87,6 +124,8 @@ export const TableConfigEditor = (() => {
             <div class="tab-container">
                 <button type="button" class="tab-button active" data-tab="general">Geral</button>
                 <button type="button" class="tab-button" data-tab="fields">Campos</button>
+                <button type="button" class="tab-button" data-tab="appearance">Aparência</button>
+                <button type="button" class="tab-button" data-tab="actions">Ações</button>
             </div>
             <div id="general-tab" class="tab-panel active">
                 <div class="config-section-title">Opções Globais da Tabela</div>
@@ -194,6 +233,71 @@ export const TableConfigEditor = (() => {
                 <div class="config-section-title" style="margin-top: 20px;">Colunas Disponíveis</div>
                 <ul id="available-column-list" class="field-order-list"></ul>
             </div>
+            <div id="appearance-tab" class="tab-panel">
+                <div class="config-section-title">Estilo e Aparência Global</div>
+                <div class="col-config-grid" style="margin-top:10px;">
+                    <div class="col-config-section">
+                        <div class="config-label-with-help">Tema Visual</div>
+                        <select id="theme-style-select" style="width:100%; padding:6px; border-radius:4px; border:1px solid #cbd5e1;">
+                            <option value="default" ${layoutConfig.themeStyle === 'default' ? 'selected' : ''}>Padrão (Clean)</option>
+                            <option value="glassmorphism" ${(layoutConfig.themeStyle || 'glassmorphism') === 'glassmorphism' ? 'selected' : ''}>Glassmorphism (Translúcido)</option>
+                        </select>
+                    </div>
+                    <div class="col-config-section">
+                        <div class="config-label-with-help">Linhas de Grade</div>
+                        <select id="grid-lines-select" style="width:100%; padding:6px; border-radius:4px; border:1px solid #cbd5e1;">
+                            <option value="none" ${layoutConfig.gridLines === 'none' ? 'selected' : ''}>Sem Linhas</option>
+                            <option value="horizontal" ${(layoutConfig.gridLines || 'horizontal') === 'horizontal' ? 'selected' : ''}>Apenas Horizontal</option>
+                            <option value="full" ${layoutConfig.gridLines === 'full' ? 'selected' : ''}>Grade Completa</option>
+                        </select>
+                    </div>
+                    <div class="col-config-section">
+                        <div class="config-label-with-help">Densidade das Linhas</div>
+                        <select id="density-select" style="width:100%; padding:6px; border-radius:4px; border:1px solid #cbd5e1;">
+                            <option value="compact" ${layoutConfig.density === 'compact' ? 'selected' : ''}>Compacto (Pequeno)</option>
+                            <option value="comfortable" ${(layoutConfig.density || 'comfortable') === 'comfortable' ? 'selected' : ''}>Confortável (Médio)</option>
+                            <option value="spacious" ${layoutConfig.density === 'spacious' ? 'selected' : ''}>Espaçoso (Grande)</option>
+                        </select>
+                    </div>
+                    <div class="col-config-section">
+                        <div class="config-label-with-help">Estilo do Cabeçalho</div>
+                        <select id="header-style-select" style="width:100%; padding:6px; border-radius:4px; border:1px solid #cbd5e1;">
+                            <option value="minimal" ${(layoutConfig.headerStyle || 'minimal') === 'minimal' ? 'selected' : ''}>Minimalista (Translúcido)</option>
+                            <option value="solid" ${layoutConfig.headerStyle === 'solid' ? 'selected' : ''}>Sólido</option>
+                        </select>
+                    </div>
+                    <div class="col-config-section">
+                        <div class="config-label-with-help">Efeito Hover</div>
+                        <select id="hover-effect-select" style="width:100%; padding:6px; border-radius:4px; border:1px solid #cbd5e1;">
+                            <option value="none" ${layoutConfig.hoverEffect === 'none' ? 'selected' : ''}>Sem Destaque</option>
+                            <option value="row-highlight" ${(layoutConfig.hoverEffect || 'row-highlight') === 'row-highlight' ? 'selected' : ''}>Destacar Linha</option>
+                        </select>
+                    </div>
+                    <div class="col-config-section">
+                        <div class="config-label-with-help">Linhas Alternadas</div>
+                        <label class="config-toggle" style="margin-top:8px;">
+                            <input type="checkbox" id="striped-rows-checkbox" ${layoutConfig.stripedRows !== false ? 'checked' : ''}>
+                            Zebrar Linhas (Zebra Stripes)
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div id="actions-tab" class="tab-panel">
+                <div class="config-section-title">Ações Customizadas (Botões na Coluna _actions)</div>
+                <p style="font-size: 11px; color: #64748b; margin-bottom: 12px;">Crie botões de ação que serão exibidos na coluna virtual '_actions'.</p>
+                <div class="actions-layout" style="display:flex; height:350px; border:1px solid #cbd5e1; border-radius:4px; overflow:hidden;">
+                    <div class="buttons-list" style="width:200px; border-right:1px solid #cbd5e1; background:#f8fafc; display:flex; flex-direction:column;">
+                        <div style="padding:10px; font-weight:700; border-bottom:1px solid #e2e8f0; font-size:11px; background:#f1f5f9; color:#475569;">BOTÕES</div>
+                        <div id="btn-list-content" style="flex:1; overflow-y:auto;"></div>
+                        <div style="padding:8px; border-top:1px solid #e2e8f0; background:#f1f5f9;">
+                            <button type="button" id="add-btn-btn" style="width:100%; padding:6px; background:#22c55e; color:#fff; border:none; border-radius:4px; cursor:pointer; font-weight:bold; font-size:11px;">+ Adicionar Botão</button>
+                        </div>
+                    </div>
+                    <div id="btn-detail-content" style="flex:1; padding:15px; overflow-y:auto; background:#fff;">
+                        <div style="color:#64748b; font-style:italic; text-align:center; margin-top:50px;">Selecione um botão para editar</div>
+                    </div>
+                </div>
+            </div>
             <details class="config-debugger" style="margin-top: 20px;">
                 <summary>Ver Tripartição JSON (Debug)</summary>
                 <div id="config-json-output"></div>
@@ -249,6 +353,26 @@ export const TableConfigEditor = (() => {
         };
 
         enableDragAndDrop([columnListEl, availableColumnListEl]);
+
+        // Wire Add Button event for actions tab
+        container.querySelector('#add-btn-btn').onclick = (e) => {
+            e.preventDefault();
+            _customButtons.push({
+                id: `btn-${Date.now()}`,
+                text: 'Nova Ação',
+                icon: 'icon-link',
+                color: '#2563eb',
+                actionType: 'navigateToGristPage',
+                buttonStyle: 'both'
+            });
+            _activeButtonIdx = _customButtons.length - 1;
+            renderActionsLayout();
+            updateDebugJson();
+        };
+
+        // Render actions tab layout
+        renderActionsLayout();
+
         container.addEventListener('change', updateDebugJson);
         container.addEventListener('input', updateDebugJson);
         updateDebugJson();
@@ -263,23 +387,23 @@ export const TableConfigEditor = (() => {
 
         const fullConfig = {
             tableId: currentTableId,
-            stripedTable: container.querySelector('#striped-table-checkbox').checked,
-            enableColumnCalcs: container.querySelector('#enable-column-calcs-checkbox').checked,
+            stripedTable: container.querySelector('#striped-table-checkbox')?.checked ?? false,
+            enableColumnCalcs: container.querySelector('#enable-column-calcs-checkbox')?.checked ?? false,
             editMode: container.querySelector('input[name="editMode"]:checked')?.value || 'excel',
             useSaveButton: container.querySelector('#use-save-button-checkbox')?.checked || false,
-            drawerId: container.querySelector('#drawer-id-select').value || null,
-            enableAddNewBtn: container.querySelector('#enable-add-new-btn-checkbox').checked,
-            layout: container.querySelector('#layout-mode-select').value,
-            responsiveLayout: container.querySelector('#responsive-layout-checkbox').checked,
-            resizableColumns: container.querySelector('#resizable-columns-checkbox').checked,
-            headerFilter: container.querySelector('#header-filter-checkbox').checked,
+            drawerId: container.querySelector('#drawer-id-select')?.value || null,
+            enableAddNewBtn: container.querySelector('#enable-add-new-btn-checkbox')?.checked ?? false,
+            layout: container.querySelector('#layout-mode-select')?.value || 'fitColumns',
+            responsiveLayout: container.querySelector('#responsive-layout-checkbox')?.checked ?? false,
+            resizableColumns: container.querySelector('#resizable-columns-checkbox')?.checked ?? true,
+            headerFilter: container.querySelector('#header-filter-checkbox')?.checked ?? true,
             defaultSort: {
-                column: container.querySelector('#default-sort-column').value || null,
-                direction: container.querySelector('#default-sort-dir').value || 'asc'
+                column: container.querySelector('#default-sort-column')?.value || null,
+                direction: container.querySelector('#default-sort-dir')?.value || 'asc'
             },
             pagination: {
-                enabled: container.querySelector('#pagination-mode-select').value === 'false' ? false : container.querySelector('#pagination-mode-select').value,
-                pageSize: parseInt(container.querySelector('#pagination-size-input').value, 10) || 10,
+                enabled: container.querySelector('#pagination-mode-select')?.value === 'false' ? false : (container.querySelector('#pagination-mode-select')?.value || 'local'),
+                pageSize: parseInt(container.querySelector('#pagination-size-input')?.value, 10) || 10,
             },
             columns: visibleItems.map(item => {
                 const colId = item.dataset.colId;
@@ -288,8 +412,8 @@ export const TableConfigEditor = (() => {
                 
                 const colBase = {
                     colId: colId,
-                    width: item.querySelector('.col-width-input').value || null,
-                    align: item.querySelector('.col-align-select').value,
+                    width: item.querySelector('.col-width-input')?.value || null,
+                    align: item.querySelector('.col-align-select')?.value || 'left',
                     wrapText: item.querySelector('.wrap-text-checkbox')?.checked ?? false,
                     maxTextRows: parseInt(item.querySelector('.max-text-rows-input')?.value, 10) || null,
                     bottomCalc: item.querySelector('.col-calc-select')?.value || null,
@@ -302,34 +426,38 @@ export const TableConfigEditor = (() => {
                     ignoreCellStyle: item.querySelector('.ignore-cell-style-checkbox')?.checked ?? false,
                 };
 
-                if (formatter === 'progress') {
+                if (formatter === 'progress' || formatter === 'progressRing') {
                     colBase.formatterParams = {
-                        progressBarPreset: item.querySelector('.progress-preset').value || '',
-                        progressType: item.querySelector('.progress-type').value || 'linear',
-                        labelPosition: item.querySelector('.progress-label-pos').value || 'middle',
-                        min: parseFloat(item.querySelector('.progress-min').value) || 0,
-                        max: parseFloat(item.querySelector('.progress-max').value) || 100,
+                        progressBarPreset: item.querySelector('.progress-preset')?.value || '',
+                        progressType: formatter === 'progressRing' ? 'circular' : (item.querySelector('.progress-type')?.value || 'linear'),
+                        labelPosition: item.querySelector('.progress-label-pos')?.value || 'middle',
+                        min: parseFloat(item.querySelector('.progress-min')?.value) || 0,
+                        max: parseFloat(item.querySelector('.progress-max')?.value) || 100,
                         legend: item.querySelector('.progress-legend')?.checked || false,
-                        mainColor: item.querySelector('.progress-color').value,
-                        bgColor: item.querySelector('.progress-bgcolor').value,
-                        borderRadius: parseInt(item.querySelector('.progress-radius').value, 10),
-                        striped: item.querySelector('.progress-striped').checked,
-                        animated: item.querySelector('.progress-animated').checked,
-                        colorMode: item.querySelector('.progress-mode').value,
+                        mainColor: item.querySelector('.progress-color')?.value || '#4caf50',
+                        bgColor: item.querySelector('.progress-bgcolor')?.value || '#e0e0e0',
+                        borderRadius: parseInt(item.querySelector('.progress-radius')?.value, 10) || 4,
+                        striped: item.querySelector('.progress-striped')?.checked || false,
+                        animated: item.querySelector('.progress-animated')?.checked || false,
+                        colorMode: item.querySelector('.progress-mode')?.value || 'solid',
                         showInternalBar: item.querySelector('.progress-show-internal')?.checked || false,
                         internalBarColId: item.querySelector('.progress-internal-col')?.value || ''
                     };
                 } else if (formatter === 'money') {
                     colBase.formatterParams = {
-                        symbol: item.querySelector('.money-symbol').value || 'R$',
-                        decimal: item.querySelector('.money-decimal').value || ',',
-                        thousand: item.querySelector('.money-thousand').value || '.'
+                        symbol: item.querySelector('.money-symbol')?.value || 'R$',
+                        decimal: item.querySelector('.money-decimal')?.value || ',',
+                        thousand: item.querySelector('.money-thousand')?.value || '.'
                     };
                 } else if (formatter === 'image') {
                     colBase.formatterParams = {
-                        imageSize: parseInt(item.querySelector('.image-size').value, 10) || 50,
-                        objectFit: item.querySelector('.image-fit').value,
-                        borderRadius: item.querySelector('.image-radius').value || '4px'
+                        imageSize: parseInt(item.querySelector('.image-size')?.value, 10) || 50,
+                        objectFit: item.querySelector('.image-fit')?.value || 'cover',
+                        borderRadius: item.querySelector('.image-radius')?.value || '4px'
+                    };
+                } else if (formatter === 'sparkline') {
+                    colBase.formatterParams = {
+                        mainColor: item.querySelector('.sparkline-color')?.value || '#10b981'
                     };
                 }
 
@@ -344,17 +472,17 @@ export const TableConfigEditor = (() => {
                 if (reflistPanel) {
                     const refConfig = {
                         _refListConfig: {
-                            displayAs: reflistPanel.querySelector('.reflist-display-as').value,
-                            collapsible: reflistPanel.querySelector('.reflist-collapsible-checkbox').checked,
-                            zebra: reflistPanel.querySelector('.reflist-zebra-checkbox').checked,
+                            displayAs: reflistPanel.querySelector('.reflist-display-as')?.value || 'none',
+                            collapsible: reflistPanel.querySelector('.reflist-collapsible-checkbox')?.checked ?? false,
+                            zebra: reflistPanel.querySelector('.reflist-zebra-checkbox')?.checked ?? false,
                             cardConfigId: reflistPanel.querySelector('.reflist-card-config-id')?.value.trim() || null,
-                            showAddButton: reflistPanel.querySelector('.reflist-show-add-checkbox').checked,
+                            showAddButton: reflistPanel.querySelector('.reflist-show-add-checkbox')?.checked ?? true,
                             addRecordConfigId: reflistPanel.querySelector('.reflist-add-config-id')?.value.trim() || null,
                             columns: []
                         }
                     };
                     reflistPanel.querySelectorAll('.reflist-config-table tbody tr').forEach(row => {
-                        if (row.querySelector('.ref-col-show-checkbox').checked) {
+                        if (row.querySelector('.ref-col-show-checkbox')?.checked) {
                             refConfig._refListConfig.columns.push(row.dataset.refColId);
                         }
                     });
@@ -365,10 +493,33 @@ export const TableConfigEditor = (() => {
             }),
         };
 
+        const tableLayoutConfig = {
+            themeStyle: container.querySelector('#theme-style-select')?.value || 'glassmorphism',
+            gridLines: container.querySelector('#grid-lines-select')?.value || 'horizontal',
+            density: container.querySelector('#density-select')?.value || 'comfortable',
+            headerStyle: container.querySelector('#header-style-select')?.value || 'minimal',
+            hoverEffect: container.querySelector('#hover-effect-select')?.value || 'row-highlight',
+            stripedRows: container.querySelector('#striped-rows-checkbox')?.checked ?? true
+        };
+
         return {
             mapping: { tableId: fullConfig.tableId, columns: fullConfig.columns, refListFieldConfig },
-            styling: { stripedTable: fullConfig.stripedTable, layout: fullConfig.layout, resizableColumns: fullConfig.resizableColumns, headerFilter: fullConfig.headerFilter, pagination: fullConfig.pagination },
-            actions: { enableColumnCalcs: fullConfig.enableColumnCalcs, editMode: fullConfig.editMode, useSaveButton: fullConfig.useSaveButton, drawerId: fullConfig.drawerId, enableAddNewBtn: fullConfig.enableAddNewBtn }
+            styling: {
+                stripedTable: fullConfig.stripedTable,
+                layout: fullConfig.layout,
+                resizableColumns: fullConfig.resizableColumns,
+                headerFilter: fullConfig.headerFilter,
+                pagination: fullConfig.pagination,
+                tableLayoutConfig: tableLayoutConfig
+            },
+            actions: {
+                enableColumnCalcs: fullConfig.enableColumnCalcs,
+                editMode: fullConfig.editMode,
+                useSaveButton: fullConfig.useSaveButton,
+                drawerId: fullConfig.drawerId,
+                enableAddNewBtn: fullConfig.enableAddNewBtn,
+                customButtons: _customButtons
+            }
         };
     }
 
@@ -382,6 +533,31 @@ export const TableConfigEditor = (() => {
         const align = colConfig?.align || 'left';
         const isActions = col.colId === '_actions';
         const isRefList = col.type && col.type.startsWith('RefList:');
+
+        const category = getFieldCategory(col.type);
+        let formatterOptionsHtml = `<option value="">Padrão</option>`;
+        if (category === 'bool') {
+            formatterOptionsHtml += `
+                <option value="switch" ${colConfig?.formatter === 'switch' ? 'selected' : ''}>Interruptor (Switch)</option>
+                <option value="yesno" ${colConfig?.formatter === 'yesno' ? 'selected' : ''}>Texto Sim/Não</option>
+                <option value="dot" ${colConfig?.formatter === 'dot' ? 'selected' : ''}>Ponto de Status (🟢/🔴)</option>
+            `;
+        } else if (category === 'number') {
+            formatterOptionsHtml += `
+                <option value="money" ${colConfig?.formatter === 'money' ? 'selected' : ''}>Moeda</option>
+                <option value="progress" ${colConfig?.formatter === 'progress' ? 'selected' : ''}>Progresso Linear</option>
+                <option value="progressRing" ${colConfig?.formatter === 'progressRing' ? 'selected' : ''}>Progresso Circular (Ring)</option>
+                <option value="sparkline" ${colConfig?.formatter === 'sparkline' ? 'selected' : ''}>Sparkline</option>
+                <option value="hidden" ${colConfig?.formatter === 'hidden' ? 'selected' : ''}>Oculto</option>
+            `;
+        } else {
+            formatterOptionsHtml += `
+                <option value="badge" ${colConfig?.formatter === 'badge' ? 'selected' : ''}>Badge/Chip</option>
+                <option value="avatar" ${colConfig?.formatter === 'avatar' ? 'selected' : ''}>Avatar Circle</option>
+                <option value="dynamicui" ${colConfig?.formatter === 'dynamicui' ? 'selected' : ''}>Dynamic UI (JSON)</option>
+                <option value="image" ${colConfig?.formatter === 'image' ? 'selected' : ''}>Imagem (URL/Anexo)</option>
+            `;
+        }
 
         let optionsHtml = '';
         if (isActions) {
@@ -523,17 +699,13 @@ export const TableConfigEditor = (() => {
                             <div>
                                 <div class="config-label-with-help" title="Aplica uma visualização especial aos dados (ex: Barra de Progresso).">Formato Especial <span class="help-tip">?</span></div>
                                 <select class="col-formatter-select" style="width:100%; padding:4px;">
-                                    <option value="">Padrão</option>
-                                    <option value="money" ${colConfig?.formatter === 'money' ? 'selected' : ''}>Moeda</option>
-                                    <option value="progress" ${colConfig?.formatter === 'progress' ? 'selected' : ''}>Progresso</option>
-                                    <option value="dynamicui" ${colConfig?.formatter === 'dynamicui' ? 'selected' : ''}>Dynamic UI (JSON)</option>
-                                    <option value="image" ${colConfig?.formatter === 'image' ? 'selected' : ''}>Imagem (URL/Anexo)</option>
+                                    ${formatterOptionsHtml}
                                 </select>
                             </div>
                         </div>
                         
                         <!-- Formatter Params (Progress) -->
-                        <div class="formatter-params progress-params" style="display: ${colConfig?.formatter === 'progress' ? 'block' : 'none'}; margin-top: 5px; border: 1px dashed #cbd5e1; padding: 5px; border-radius: 4px;">
+                        <div class="formatter-params progress-params" style="display: ${(colConfig?.formatter === 'progress' || colConfig?.formatter === 'progressRing') ? 'block' : 'none'}; margin-top: 5px; border: 1px dashed #cbd5e1; padding: 5px; border-radius: 4px;">
                             <div class="form-group" style="margin-bottom: 5px;">
                                 <label style="font-size:10px;">Preset Global:</label>
                                 <select class="progress-preset" style="width:100%; font-size:10px;">
@@ -637,6 +809,14 @@ export const TableConfigEditor = (() => {
                                 <input type="text" class="image-radius" value="${colConfig?.formatterParams?.borderRadius ?? '4px'}" style="width:100%; font-size:10px;">
                             </div>
                         </div>
+
+                        <!-- Formatter Params (Sparkline) -->
+                        <div class="formatter-params sparkline-params" style="display: ${colConfig?.formatter === 'sparkline' ? 'grid' : 'none'}; grid-template-columns: 1fr; gap: 5px; margin-top: 5px; border: 1px dashed #cbd5e1; padding: 5px; border-radius: 4px;">
+                            <div>
+                                <label style="font-size:9px;">Cor da Linha (Trend)</label>
+                                <input type="color" class="sparkline-color" value="${colConfig?.formatterParams?.mainColor ?? '#10b981'}" style="width:100%; height:20px; padding:0;">
+                            </div>
+                        </div>
                     </div>
                     ${refListConfigHtml}
                 </div>
@@ -681,9 +861,11 @@ export const TableConfigEditor = (() => {
                 const pParams = card.querySelector('.progress-params');
                 const mParams = card.querySelector('.money-params');
                 const iParams = card.querySelector('.image-params');
-                if (pParams) pParams.style.display = (val === 'progress') ? 'grid' : 'none';
+                const sParams = card.querySelector('.sparkline-params');
+                if (pParams) pParams.style.display = (val === 'progress' || val === 'progressRing') ? 'block' : 'none';
                 if (mParams) mParams.style.display = (val === 'money') ? 'grid' : 'none';
                 if (iParams) iParams.style.display = (val === 'image') ? 'grid' : 'none';
+                if (sParams) sParams.style.display = (val === 'sparkline') ? 'grid' : 'none';
                 updateDebugJson();
             };
         }
@@ -777,6 +959,357 @@ export const TableConfigEditor = (() => {
             if (offset < 0 && offset > closest.offset) return { offset: offset, element: child };
             else return closest;
         }, { offset: Number.NEGATIVE_INFINITY }).element;
+    }
+
+    function renderActionsLayout() {
+        const listContent = _mainContainer.querySelector('#btn-list-content');
+        const detailContent = _mainContainer.querySelector('#btn-detail-content');
+        if (!listContent || !detailContent) return;
+
+        listContent.innerHTML = '';
+        
+        if (_customButtons.length === 0) {
+            listContent.innerHTML = '<div style="color:#64748b; font-style:italic; text-align:center; padding:20px 10px; font-size:11px;">Nenhum botão criado</div>';
+            detailContent.innerHTML = '<div style="color:#64748b; font-style:italic; text-align:center; margin-top:50px; font-size:12px;">Crie um botão de ação para configurá-lo</div>';
+            return;
+        }
+
+        _customButtons.forEach((btn, idx) => {
+            const item = document.createElement('div');
+            item.style.cssText = `display:flex; align-items:center; padding:8px 10px; border-bottom:1px solid #e2e8f0; cursor:pointer; font-size:11px; justify-content:space-between; ${idx === _activeButtonIdx ? 'background:#e0f2fe; font-weight:bold;' : 'background:#fff;'}`;
+            
+            let iconPreview = '';
+            if (btn.icon) {
+                iconPreview = `<svg style="width:14px; height:14px; margin-right:6px; fill:currentColor; vertical-align:middle;"><use href="#${btn.icon}"></use></svg>`;
+            }
+            
+            item.innerHTML = `
+                <div style="display:flex; align-items:center; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; flex:1;">
+                    ${iconPreview}
+                    <span>${btn.text || 'Botão ' + (idx + 1)}</span>
+                </div>
+                <div style="display:flex; gap:4px; align-items:center;" class="btn-actions-ctrl">
+                    <button type="button" class="btn-move-up" style="background:none; border:none; padding:2px; cursor:pointer;" ${idx === 0 ? 'disabled style="opacity:0.3"' : ''}>↑</button>
+                    <button type="button" class="btn-move-down" style="background:none; border:none; padding:2px; cursor:pointer;" ${idx === _customButtons.length - 1 ? 'disabled style="opacity:0.3"' : ''}>↓</button>
+                    <button type="button" class="btn-delete" style="background:none; border:none; padding:2px; cursor:pointer; color:#ef4444;">✕</button>
+                </div>
+            `;
+            
+            item.addEventListener('click', (e) => {
+                if (e.target.closest('.btn-actions-ctrl')) return;
+                _activeButtonIdx = idx;
+                renderActionsLayout();
+            });
+
+            item.querySelector('.btn-move-up').onclick = (e) => {
+                e.stopPropagation();
+                if (idx > 0) {
+                    const temp = _customButtons[idx];
+                    _customButtons[idx] = _customButtons[idx - 1];
+                    _customButtons[idx - 1] = temp;
+                    if (_activeButtonIdx === idx) _activeButtonIdx = idx - 1;
+                    else if (_activeButtonIdx === idx - 1) _activeButtonIdx = idx;
+                    renderActionsLayout();
+                    updateDebugJson();
+                }
+            };
+
+            item.querySelector('.btn-move-down').onclick = (e) => {
+                e.stopPropagation();
+                if (idx < _customButtons.length - 1) {
+                    const temp = _customButtons[idx];
+                    _customButtons[idx] = _customButtons[idx + 1];
+                    _customButtons[idx + 1] = temp;
+                    if (_activeButtonIdx === idx) _activeButtonIdx = idx + 1;
+                    else if (_activeButtonIdx === idx + 1) _activeButtonIdx = idx;
+                    renderActionsLayout();
+                    updateDebugJson();
+                }
+            };
+
+            item.querySelector('.btn-delete').onclick = (e) => {
+                e.stopPropagation();
+                if (confirm('Deseja excluir este botão?')) {
+                    _customButtons.splice(idx, 1);
+                    if (_activeButtonIdx === idx) _activeButtonIdx = -1;
+                    else if (_activeButtonIdx > idx) _activeButtonIdx--;
+                    renderActionsLayout();
+                    updateDebugJson();
+                }
+            };
+
+            listContent.appendChild(item);
+        });
+
+        if (_activeButtonIdx >= 0 && _activeButtonIdx < _customButtons.length) {
+            renderButtonConfigDetail(detailContent, _customButtons[_activeButtonIdx]);
+        } else {
+            detailContent.innerHTML = '<div style="color:#64748b; font-style:italic; text-align:center; margin-top:50px; font-size:12px;">Selecione um botão para editar</div>';
+        }
+    }
+
+    async function renderButtonConfigDetail(container, btn) {
+        const allGristPages = window.currentLens ? (await window.currentLens.listAllTables() || []) : [];
+        const allGristColumns = (_mainContainer._allCols || []).map(f => f.colId);
+
+        container.innerHTML = `
+            <style>
+                .btn-config-group { margin-bottom: 12px; }
+                .btn-config-group label { display: block; font-weight: bold; font-size: 11px; margin-bottom: 4px; color: #475569; }
+                .btn-config-group input[type="text"], .btn-config-group select { width: 100%; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 11px; }
+                .btn-config-row { display: flex; gap: 10px; margin-bottom: 12px; }
+                .btn-config-col { flex: 1; }
+            </style>
+            <h4 style="margin-top: 0; font-size: 13px; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px; margin-bottom: 15px;">Configurar Botão</h4>
+            
+            <div class="btn-config-row">
+                <div class="btn-config-col" style="flex:2;">
+                    <div class="btn-config-group">
+                        <label>Rótulo (Texto)</label>
+                        <input type="text" id="btn-text-input" value="${btn.text || ''}" placeholder="Texto do botão">
+                    </div>
+                </div>
+                <div class="btn-config-col" style="flex:1;">
+                    <div class="btn-config-group">
+                        <label>Cor do Botão</label>
+                        <input type="color" id="btn-color-input" value="${btn.color || '#2563eb'}" style="width:100%; height:28px; padding:0; cursor:pointer; border:1px solid #cbd5e1; border-radius:4px;">
+                    </div>
+                </div>
+            </div>
+
+            <div class="btn-config-row">
+                <div class="btn-config-col">
+                    <div class="btn-config-group">
+                        <label>Ícone</label>
+                        <div class="icon-picker-display" style="cursor:pointer; padding:6px; border:1px solid #cbd5e1; display:flex; align-items:center; gap:8px; border-radius:4px; background:#fff; font-size:11px;">
+                            <span class="current-icon" style="display:flex; color:#333;">
+                                ${btn.icon ? `<svg style="width:16px; height:16px; fill:currentColor;"><use href="#${btn.icon}"></use></svg>` : '<span style="color:#94a3b8;">Nenhum</span>'}
+                            </span>
+                            <span style="font-weight:bold; color:#64748b;">Alterar</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="btn-config-col">
+                    <div class="btn-config-group">
+                        <label>Estilo do Botão</label>
+                        <select id="btn-style-select">
+                            <option value="both" ${btn.buttonStyle === 'both' || !btn.buttonStyle ? 'selected' : ''}>Ícone e Texto</option>
+                            <option value="icon" ${btn.buttonStyle === 'icon' ? 'selected' : ''}>Apenas Ícone</option>
+                            <option value="text" ${btn.buttonStyle === 'text' ? 'selected' : ''}>Apenas Texto</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="btn-config-group">
+                <label>Tipo de Ação</label>
+                <select id="btn-action-type-select">
+                    <option value="navigateToGristPage" ${btn.actionType === 'navigateToGristPage' ? 'selected' : ''}>Navegar para Página Grist</option>
+                    <option value="openUrlFromColumn" ${btn.actionType === 'openUrlFromColumn' ? 'selected' : ''}>Abrir URL da Coluna</option>
+                    <option value="updateRecord" ${btn.actionType === 'updateRecord' ? 'selected' : ''}>Atualizar Campo do Registro</option>
+                    <option value="triggerWidget" ${btn.actionType === 'triggerWidget' ? 'selected' : ''}>Disparar Outro Widget</option>
+                    <option value="editRecord" ${btn.actionType === 'editRecord' ? 'selected' : ''}>Editar Registro (Gaveta/Drawer)</option>
+                    <option value="deleteRecord" ${btn.actionType === 'deleteRecord' ? 'selected' : ''}>Excluir Registro</option>
+                </select>
+            </div>
+
+            <div id="btn-action-specific-panel"></div>
+        `;
+
+        const specificPanel = container.querySelector('#btn-action-specific-panel');
+        renderActionSpecificConfigPanel(specificPanel, btn, allGristPages, allGristColumns);
+
+        container.querySelector('#btn-text-input').addEventListener('input', (e) => {
+            btn.text = e.target.value;
+            renderActionsLayout();
+        });
+
+        container.querySelector('#btn-color-input').addEventListener('change', (e) => {
+            btn.color = e.target.value;
+            updateDebugJson();
+        });
+
+        container.querySelector('#btn-style-select').addEventListener('change', (e) => {
+            btn.buttonStyle = e.target.value;
+            renderActionsLayout();
+            updateDebugJson();
+        });
+
+        container.querySelector('.icon-picker-display').onclick = () => {
+            const display = container.querySelector('.current-icon');
+            openIconPickerLocal(display, btn);
+        };
+
+        container.querySelector('#btn-action-type-select').addEventListener('change', (e) => {
+            btn.actionType = e.target.value;
+            renderActionSpecificConfigPanel(specificPanel, btn, allGristPages, allGristColumns);
+            updateDebugJson();
+        });
+    }
+
+    function renderActionSpecificConfigPanel(container, btn, allGristPages, allGristColumns) {
+        container.innerHTML = '';
+        
+        if (btn.actionType === 'navigateToGristPage') {
+            container.innerHTML = `
+                <div class="btn-config-group">
+                    <label>Página de Destino (Tabela)</label>
+                    <select class="action-prop-select" data-prop="targetPageId">
+                        <option value="">-- Selecione a Página --</option>
+                        ${allGristPages.map(p => `<option value="${p.id}" ${btn.targetPageId === p.id ? 'selected' : ''}>${p.name}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="btn-config-group">
+                    <label>Coluna Filtro Destino (Coluna na tabela destino)</label>
+                    <input type="text" class="action-prop-input" data-prop="targetFilterColumn" value="${btn.targetFilterColumn || ''}" placeholder="Ex: id">
+                </div>
+                <div class="btn-config-group">
+                    <label>Coluna Valor Origem (Coluna nesta tabela)</label>
+                    <select class="action-prop-select" data-prop="sourceValueColumn">
+                        <option value="">-- Selecione o Campo --</option>
+                        ${allGristColumns.map(col => `<option value="${col}" ${btn.sourceValueColumn === col ? 'selected' : ''}>${col}</option>`).join('')}
+                    </select>
+                </div>
+            `;
+        } 
+        else if (btn.actionType === 'openUrlFromColumn') {
+            container.innerHTML = `
+                <div class="btn-config-group">
+                    <label>Coluna com a URL</label>
+                    <select class="action-prop-select" data-prop="urlColumn">
+                        <option value="">-- Selecione o Campo --</option>
+                        ${allGristColumns.map(col => `<option value="${col}" ${btn.urlColumn === col ? 'selected' : ''}>${col}</option>`).join('')}
+                    </select>
+                </div>
+            `;
+        } 
+        else if (btn.actionType === 'updateRecord') {
+            container.innerHTML = `
+                <div class="btn-config-group">
+                    <label>Coluna a Atualizar</label>
+                    <select class="action-prop-select" data-prop="updateField">
+                        <option value="">-- Selecione o Campo --</option>
+                        ${allGristColumns.map(col => `<option value="${col}" ${btn.updateField === col ? 'selected' : ''}>${col}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="btn-config-group">
+                    <label>Valor da Atualização</label>
+                    <input type="text" class="action-prop-input" data-prop="updateValue" value="${btn.updateValue || ''}" placeholder="Ex: Confirmado ou 123">
+                </div>
+            `;
+        } 
+        else if (btn.actionType === 'triggerWidget') {
+            const wConfigs = _allConfigs.filter(c => c.configId !== currentSchema?.configId);
+            container.innerHTML = `
+                <div class="btn-config-group">
+                    <label>Widget de Destino</label>
+                    <select class="action-prop-select" data-prop="targetConfigId">
+                        <option value="">-- Selecione o Widget --</option>
+                        ${wConfigs.map(c => `<option value="${c.configId}" ${btn.targetConfigId === c.configId ? 'selected' : ''} data-type="${c.componentType || ''}">${c.widgetTitle || c.configId} [${c.configId}]</option>`).join('')}
+                    </select>
+                </div>
+                <div class="btn-config-group">
+                    <label>Coluna Filtro no Destino</label>
+                    <input type="text" class="action-prop-input" data-prop="filterTargetColumn" value="${btn.filterTargetColumn || ''}" placeholder="Ex: ref_parent">
+                </div>
+                <div class="btn-config-group" style="margin-top:8px;">
+                    <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-weight:normal;">
+                        <input type="checkbox" class="action-prop-checkbox" data-prop="disableFiltering" ${btn.disableFiltering ? 'checked' : ''}>
+                        Sem filtrar pelo registro atual (chamar limpo)
+                    </label>
+                </div>
+            `;
+            
+            const targetSelect = container.querySelector('.action-prop-select[data-prop="targetConfigId"]');
+            if (targetSelect) {
+                targetSelect.addEventListener('change', (e) => {
+                    const opt = e.target.options[e.target.selectedIndex];
+                    btn.targetComponentType = opt ? (opt.dataset.type || '') : '';
+                });
+            }
+        } 
+        else if (btn.actionType === 'deleteRecord') {
+            container.innerHTML = `
+                <div class="btn-config-group">
+                    <label>Mensagem de Confirmação</label>
+                    <input type="text" class="action-prop-input" data-prop="confirmationMessage" value="${btn.confirmationMessage || 'Deseja excluir este registro?'}" placeholder="Mensagem de confirmação">
+                </div>
+            `;
+        }
+        
+        container.querySelectorAll('.action-prop-select, .action-prop-input, .action-prop-checkbox').forEach(input => {
+            input.addEventListener('change', (e) => {
+                const prop = e.target.dataset.prop;
+                if (prop) {
+                    if (e.target.type === 'checkbox') {
+                        btn[prop] = e.target.checked;
+                    } else {
+                        btn[prop] = e.target.value;
+                    }
+                    updateDebugJson();
+                }
+            });
+            input.addEventListener('input', (e) => {
+                const prop = e.target.dataset.prop;
+                if (prop && e.target.type === 'text') {
+                    btn[prop] = e.target.value;
+                    updateDebugJson();
+                }
+            });
+        });
+    }
+
+    function openIconPickerLocal(displayElement, btn) {
+        if (_iconPickerPopup && _iconPickerPopup.parentNode) {
+            _iconPickerPopup.parentNode.removeChild(_iconPickerPopup);
+        }
+        
+        _iconPickerPopup = document.createElement("div");
+        _iconPickerPopup.className = 'icon-picker-popup';
+        _iconPickerPopup.style.cssText = `position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); z-index:1080; padding:15px; background:white; border:1px solid #ccc; box-shadow:0 4px 10px rgba(0,0,0,0.15); max-width:600px; max-height:500px; overflow-y:auto; border-radius:5px;`;
+        
+        _iconPickerPopup.innerHTML = `
+            <style>
+                .icon-grid { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+                .icon-option { width: 80px; height: 80px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid #eee; border-radius: 4px; cursor: pointer; transition: all 0.2s; color: #000; padding: 5px; overflow: hidden; }
+                .icon-option:hover { background: #e6f7ff; border-color: #1890ff; transform: scale(1.05); }
+                .icon-option svg { width: 32px; height: 32px; flex-shrink: 0; fill: currentColor; }
+                .icon-id-label { font-size: 9px; margin-top: 5px; text-align: center; word-break: break-all; color: #666; max-height: 24px; overflow: hidden; }
+            </style>
+            <h4 style="margin-top:0; font-size:14px; margin-bottom:12px;">Selecione um Ícone</h4>
+            <div class="icon-grid">
+                ${AVAILABLE_ICONS.map(id => `
+                    <div class="icon-option" data-id="${id}" title="${id}">
+                        <svg><use href="#${id}"></use></svg>
+                        <div class="icon-id-label">${id.replace('icon-', '')}</div>
+                    </div>
+                `).join('')}
+            </div>
+            <div style="text-align: right; margin-top: 15px;">
+                <button id="icon-picker-cancel" type="button" class="btn btn-secondary">Cancelar</button>
+            </div>
+        `;
+        
+        _mainContainer.appendChild(_iconPickerPopup);
+        
+        _iconPickerPopup.querySelectorAll('.icon-option').forEach(iconEl => {
+            iconEl.addEventListener('click', () => {
+                const selectedIcon = iconEl.dataset.id;
+                btn.icon = selectedIcon;
+                if (displayElement) {
+                    displayElement.innerHTML = `<svg style="width:16px; height:16px; fill:currentColor;"><use href="#${selectedIcon}"></use></svg>`;
+                }
+                _iconPickerPopup.parentNode.removeChild(_iconPickerPopup);
+                _iconPickerPopup = null;
+                renderActionsLayout();
+                updateDebugJson();
+            });
+        });
+        
+        _iconPickerPopup.querySelector('#icon-picker-cancel').addEventListener('click', () => {
+            _iconPickerPopup.parentNode.removeChild(_iconPickerPopup);
+            _iconPickerPopup = null;
+        });
     }
 
     return { render, read };

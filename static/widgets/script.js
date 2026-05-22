@@ -50,13 +50,35 @@ document.addEventListener('DOMContentLoaded', async function () {
                 config: currentConfig,
                 tableLens,
                 onRowClick: async (record, mode) => {
-                    if (currentConfig.editMode === 'drawer' && currentConfig.drawerId) {
-                        const drawerCfg = await tableLens.fetchConfig(currentConfig.drawerId);
+                    const actions = currentConfig.actions || currentConfig || {};
+                    const editMode = actions.editMode || 'excel';
+                    const drawerId = actions.drawerId || null;
+                    if (editMode === 'drawer' && drawerId) {
+                        const drawerCfg = await tableLens.fetchConfig(drawerId);
                         openDrawer(currentConfig.tableId, record.id, { 
                             ...drawerCfg, 
                             tableLens, 
                             mode: mode || 'view' 
                         });
+                    }
+                },
+                onAddRecord: async () => {
+                    const actions = currentConfig.actions || currentConfig || {};
+                    const editMode = actions.editMode || 'excel';
+                    const drawerId = actions.drawerId || null;
+                    if (editMode === 'drawer' && drawerId) {
+                        const drawerCfg = await tableLens.fetchConfig(drawerId);
+                        openDrawer(currentConfig.tableId, 'new', { 
+                            ...drawerCfg, 
+                            tableLens, 
+                            mode: 'new' 
+                        });
+                    } else {
+                        try {
+                            await tableLens.addRecord(currentConfig.tableId, {});
+                        } catch (e) {
+                            alert("Erro ao adicionar registro: " + e.message);
+                        }
                     }
                 }
             });
