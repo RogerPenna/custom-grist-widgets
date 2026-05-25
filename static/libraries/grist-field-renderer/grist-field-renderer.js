@@ -32,7 +32,7 @@ import { renderMoney } from './renderers/render-money.js';
  * @param {object} colSchema O objeto de schema para a coluna específica.
  * @returns {object} Um objeto com as propriedades de estilo.
  */
-export function getFieldStyle(record, colSchema, tableSchema) {
+export function getFieldStyle(record, colSchema, tableSchema, ignoreChoiceOptions = false) {
   const mergedStyle = {
     fillColor: null,
     textColor: null,
@@ -55,17 +55,19 @@ export function getFieldStyle(record, colSchema, tableSchema) {
   mergedStyle.alignment = wopts.alignment || null;
 
   // Look up Choice/ChoiceList metadata styles from widgetOptions.choiceOptions
-  const cellValue = record[colSchema.colId];
-  if (cellValue !== undefined && cellValue !== null) {
-    let singleValue = cellValue;
-    if (Array.isArray(cellValue) && cellValue[0] === 'L') {
-      singleValue = cellValue[1];
-    }
-    if (singleValue !== undefined && singleValue !== null && wopts.choiceOptions && wopts.choiceOptions[singleValue]) {
-      const choiceStyle = wopts.choiceOptions[singleValue];
-      if (choiceStyle.fillColor) mergedStyle.fillColor = choiceStyle.fillColor;
-      if (choiceStyle.textColor) mergedStyle.textColor = choiceStyle.textColor;
-      if (choiceStyle.fontBold) mergedStyle.fontBold = choiceStyle.fontBold;
+  if (!ignoreChoiceOptions) {
+    const cellValue = record[colSchema.colId];
+    if (cellValue !== undefined && cellValue !== null) {
+      let singleValue = cellValue;
+      if (Array.isArray(cellValue) && cellValue[0] === 'L') {
+        singleValue = cellValue[1];
+      }
+      if (singleValue !== undefined && singleValue !== null && wopts.choiceOptions && wopts.choiceOptions[singleValue]) {
+        const choiceStyle = wopts.choiceOptions[singleValue];
+        if (choiceStyle.fillColor) mergedStyle.fillColor = choiceStyle.fillColor;
+        if (choiceStyle.textColor) mergedStyle.textColor = choiceStyle.textColor;
+        if (choiceStyle.fontBold) mergedStyle.fontBold = choiceStyle.fontBold;
+      }
     }
   }
 
@@ -175,7 +177,7 @@ export async function renderField(options) {
   if (tableLens && record && record.gristHelper_tableId) {
     tableSchema = await tableLens.getTableSchema(record.gristHelper_tableId);
   }
-  const gristMetadataStyle = getFieldStyle(record, colSchema, tableSchema);
+  const gristMetadataStyle = getFieldStyle(record, colSchema, tableSchema, true);
 
   if (!colSchema) {
     container.textContent = String(record[options.colId] ?? '');
