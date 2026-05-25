@@ -16,6 +16,7 @@ config = {
   "icon-bell": {"fill": False, "stroke": True, "strokeWidth": 1.5},
   "icon-bell-active": {"fill": False, "stroke": True, "strokeWidth": 1.5},
   "icon-bookmark": {"fill": False, "stroke": True, "strokeWidth": 2},
+  "icon-calendar": {"fill": False, "stroke": True, "strokeWidth": 2},
   "icon-calendar-edit": {"fill": False, "stroke": True, "strokeWidth": 2},
   "icon-chart": {"fill": False, "stroke": True, "strokeWidth": 2},
   "icon-chart-mixed": {"fill": False, "stroke": True, "strokeWidth": 2},

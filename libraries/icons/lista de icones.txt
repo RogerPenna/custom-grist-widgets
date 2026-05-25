@@ -31,6 +31,8 @@ icon-bell-active
 
 icon-bookmark
 
+icon-calendar
+
 icon-calendar-edit
 
 icon-chart
