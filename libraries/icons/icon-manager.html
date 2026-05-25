@@ -18,13 +18,20 @@
         .controls-filters input, .controls-filters select { padding: 4px 8px; font-size: 13px; border: 1px solid #ccc; border-radius: 4px; height: 28px; }
         
         .icon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 15px; margin-top: 20px; }
-        .icon-card { background: white; padding: 15px; border-radius: 8px; border: 1px solid #eee; display: flex; align-items: center; gap: 20px; transition: transform 0.2s; }
+        .icon-card { background: white; padding: 15px; border-radius: 8px; border: 1px solid #eee; display: flex; align-items: center; gap: 20px; transition: transform 0.2s; position: relative; }
         .icon-card:hover { border-color: #aaa; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .card-actions { position: absolute; top: 8px; right: 8px; display: flex; gap: 5px; }
+        .btn-mini { padding: 2px 6px; font-size: 10px; border-radius: 3px; border: 1px solid #ccc; background: #fff; cursor: pointer; }
+        .btn-mini.danger:hover { background: #dc3545; color: #fff; border-color: #dc3545; }
+        .btn-mini.primary:hover { background: #007bff; color: #fff; border-color: #007bff; }
+        
+        .path-editor { margin-top: 10px; display: none; width: 100%; flex-direction: column; gap: 5px; grid-column: span 2; }
+        .path-editor textarea { width: 100%; height: 60px; font-family: monospace; font-size: 11px; padding: 5px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
         
         .preview-box { width: 64px; height: 64px; border: 1px solid #ddd; border-radius: 4px; display: flex; align-items: center; justify-content: center; background: #fff; flex-shrink: 0; }
         .preview-box svg { width: 48px; height: 48px; }
         
-        .icon-info { flex-grow: 1; overflow: hidden; }
+        .icon-info { flex-grow: 1; overflow: hidden; display: flex; flex-direction: column; }
         .icon-name { font-weight: bold; font-size: 14px; margin-bottom: 8px; display: block; color: #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px; }
         .control-group { display: flex; align-items: center; gap: 5px; }
@@ -41,15 +48,17 @@
 
 <div class="header">
     <div class="header-top">
-        <h2 style="margin:0;">Grist Icon Manager <span style="font-size: 12px; vertical-align: middle; opacity: 0.6;">v1.2.1 Studio</span></h2>
+        <h2 style="margin:0;">Grist Icon Manager <span style="font-size: 12px; vertical-align: middle; opacity: 0.6;">v1.3 Studio</span></h2>
         <div class="controls-global">
             <button onclick="toggleAddNew()" class="success">+ Add New Icon</button>
             <button onclick="generateJSON()">Generate Config JSON</button>
+            <button onclick="generateSVG()">Generate SVG Symbols</button>
             <button class="secondary" onclick="window.location.reload()">Reset All</button>
         </div>
     </div>
 
     <div id="add-new-panel" class="add-new-section">
+
         <div class="add-new-inputs">
             <input type="text" id="new-icon-id" placeholder="Icon ID (e.g. icon-home) [Auto-detects from SVG class]">
             <textarea id="new-icon-path" placeholder="Paste full <svg> code here..."></textarea>
@@ -127,6 +136,7 @@
         const symbol = document.getElementById(id);
         const allPaths = symbol.querySelectorAll('path');
         const firstPath = allPaths[0];
+        const currentD = Array.from(allPaths).map(p => p.getAttribute('d')).join(' ');
 
         // Initial state analysis
         const hasFill = firstPath ? (firstPath.getAttribute('fill') !== 'none' && firstPath.hasAttribute('fill')) : false;
@@ -141,7 +151,12 @@
 
         const card = document.createElement('div');
         card.className = 'icon-card';
+        card.id = `card-${id}`;
         card.innerHTML = `
+            <div class="card-actions">
+                <button class="btn-mini primary" onclick="togglePathEditor('${id}')" title="Edit Path Data">Edit</button>
+                <button class="btn-mini danger" onclick="deleteIcon('${id}')" title="Remove from Preview">×</button>
+            </div>
             <div class="preview-box" id="preview-${id}">
                 <svg><use href="#${id}"></use></svg>
             </div>
@@ -161,10 +176,48 @@
                         <input type="number" id="width-${id}" value="${iconConfigs[id].strokeWidth}" step="0.1" min="0" oninput="updateIcon('${id}')">
                     </div>
                 </div>
+                <div id="path-editor-${id}" class="path-editor">
+                    <label style="font-size:10px; font-weight:bold;">Path Data (d):</label>
+                    <textarea id="path-data-${id}" oninput="saveManualPath('${id}')">${currentD}</textarea>
+                </div>
             </div>
         `;
         grid.appendChild(card);
         updateIcon(id);
+    }
+
+    function deleteIcon(id) {
+        if (!confirm(`Remove ${id} from preview?`)) return;
+        document.getElementById(`card-${id}`).remove();
+        const symbol = document.getElementById(id);
+        if (symbol) symbol.remove();
+        delete iconConfigs[id];
+    }
+
+    function togglePathEditor(id) {
+        const editor = document.getElementById(`path-editor-${id}`);
+        editor.style.display = (editor.style.display === 'flex' ? 'none' : 'flex');
+    }
+
+    function saveManualPath(id) {
+        const newD = document.getElementById(`path-data-${id}`).value;
+        const symbol = document.getElementById(id);
+        symbol.innerHTML = `<path d="${newD}" />`;
+        updateIcon(id);
+    }
+
+    function generateSVG() {
+        const output = document.getElementById('json-output');
+        let svgMarkup = '';
+        const symbols = document.getElementById('svg-library-container').querySelectorAll('symbol');
+        symbols.forEach(s => {
+            svgMarkup += `  <symbol id="${s.id}" viewBox="0 0 24 24">${s.innerHTML}</symbol>\n`;
+        });
+        output.value = svgMarkup;
+        output.style.display = 'block';
+        output.select();
+        document.execCommand('copy');
+        alert('SVG Symbols copied to clipboard!');
     }
 
     function convertShapeToPath(el) {
@@ -261,6 +314,20 @@
         output.select();
         document.execCommand('copy');
         alert('JSON Config copied to clipboard!');
+    }
+
+    function generateSVG() {
+        const output = document.getElementById('json-output');
+        let svgMarkup = '';
+        const symbols = document.getElementById('svg-library-container').querySelectorAll('symbol');
+        symbols.forEach(s => {
+            svgMarkup += `  <symbol id="${s.id}" viewBox="0 0 24 24">${s.innerHTML}</symbol>\n`;
+        });
+        output.value = svgMarkup;
+        output.style.display = 'block';
+        output.select();
+        document.execCommand('copy');
+        alert('SVG Symbols copied to clipboard!');
     }
 
     function filterIcons() {
