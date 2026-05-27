@@ -662,7 +662,11 @@ export const TableRenderer = (() => {
                 .theme-${currentTheme} .tabulator-row.tabulator-row-even { background-color: ${c.row} !important; }
                 .theme-${currentTheme} .tabulator-row.tabulator-row-odd { background-color: ${oddRowBg} !important; }
                 .theme-${currentTheme} .tabulator-row:hover { background-color: rgba(59, 130, 246, 0.1) !important; }
-                .theme-${currentTheme} .tabulator-cell { border-right-color: ${c.border} !important; }
+                
+                /* Grid line colors should be controlled by theme, but visibility by grid classes */
+                .theme-${currentTheme} .tabulator-cell { border-right-color: ${c.border} !important; border-bottom-color: ${c.border} !important; }
+                .theme-${currentTheme} .tabulator-col { border-right-color: ${c.border} !important; border-bottom-color: ${c.border} !important; }
+
                 .theme-${currentTheme} .table-group-bar { background: ${c.header} !important; border-color: ${c.border} !important; }
                 .theme-${currentTheme} .tabulator-footer { background: ${c.header} !important; color: ${c.text} !important; border-top-color: ${c.border} !important; }
                 .theme-${currentTheme} .tabulator-page { background: ${c.row} !important; color: ${c.text} !important; border-color: ${c.border} !important; }

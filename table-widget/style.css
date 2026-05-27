@@ -239,33 +239,36 @@ body.theme-night { background: #0f172a; color: #f1f5f9; }
     box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05) !important;
 }
 
-/* Grid Lines Configurations */
-.grid-none .tabulator,
-.grid-none .tabulator-header,
-.grid-none .tabulator-col,
-.grid-none .tabulator-row,
-.grid-none .tabulator-cell {
+/* Grid Lines Configurations - Using triple classes to beat theme specificity */
+.grist-table-widget-container.grid-none .tabulator,
+.grist-table-widget-container.grid-none .tabulator-header,
+.grist-table-widget-container.grid-none .tabulator-col,
+.grist-table-widget-container.grid-none .tabulator-row,
+.grist-table-widget-container.grid-none .tabulator-cell {
     border: none !important;
 }
 
-.grid-horizontal .tabulator-cell {
+.grist-table-widget-container.grid-horizontal .tabulator-cell {
     border-right: none !important;
     border-left: none !important;
 }
-.grid-horizontal .tabulator-col {
+.grist-table-widget-container.grid-horizontal .tabulator-col {
     border-right: none !important;
+    border-left: none !important;
 }
-.grid-horizontal .tabulator-row {
+.grist-table-widget-container.grid-horizontal .tabulator-row {
     border-bottom: 1px solid var(--border-color) !important;
 }
 
-.grid-full .tabulator-cell {
+.grist-table-widget-container.grid-full .tabulator-cell {
     border-right: 1px solid var(--border-color) !important;
+    border-bottom: 1px solid var(--border-color) !important;
 }
-.grid-full .tabulator-col {
+.grist-table-widget-container.grid-full .tabulator-col {
     border-right: 1px solid var(--border-color) !important;
+    border-bottom: 1px solid var(--border-color) !important;
 }
-.grid-full .tabulator-row {
+.grist-table-widget-container.grid-full .tabulator-row {
     border-bottom: 1px solid var(--border-color) !important;
 }
 
