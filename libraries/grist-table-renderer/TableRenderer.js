@@ -21,7 +21,10 @@ export const TableRenderer = (() => {
 
         // Tripartite configuration structure support
         const mapping = config.mapping || config || {};
+        // Robustly extract styling and tableLayoutConfig
         const styling = config.styling || config || {};
+        const tableLayoutConfig = styling.tableLayoutConfig || config.tableLayoutConfig || (config.styling && config.styling.tableLayoutConfig) || {};
+        
         const actions = config.actions || config || {};
 
         const tableId = mapping.tableId || config.tableId;
@@ -609,7 +612,6 @@ export const TableRenderer = (() => {
         widgetWrapper.className = 'grist-table-widget-container';
         
         // Apply styling settings
-        const tableLayoutConfig = styling.tableLayoutConfig || {};
         const theme = tableLayoutConfig.themeStyle || 'glassmorphism';
         widgetWrapper.classList.add(`theme-${theme}`);
         

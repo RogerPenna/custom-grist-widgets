@@ -418,13 +418,17 @@ export const GristTableLens = function(gristInstance) {
         return mergedConfig;
     };
 
-    this.fetchConfig = async function(configId) {
+    this.fetchConfig = async function(configId, options = {}) {
         if (!configId) {
             console.error("GTL.fetchConfig: configId não foi fornecido.");
             return null;
         }
-        if (_metaState.configCache[configId]) {
-            return _metaState.configCache[configId];
+        const { bypassCache = false } = options;
+        if (!window.GristConfigCache) {
+            window.GristConfigCache = {};
+        }
+        if (window.GristConfigCache[configId] && !bypassCache) {
+            return window.GristConfigCache[configId];
         }
         const configTableName = 'Grf_config';
         try {
@@ -437,7 +441,7 @@ export const GristTableLens = function(gristInstance) {
             
             const parsedConfig = this.parseConfigRecord(targetConfig);
             parsedConfig.receivedConfigs = configs; // Anexa todas as configs para suporte a presets globais
-            _metaState.configCache[configId] = parsedConfig;
+            window.GristConfigCache[configId] = parsedConfig;
             return parsedConfig;
         } catch (error) {
             console.error(`GTL.fetchConfig: Erro ao buscar ou processar a configuração "${configId}".`, error);
@@ -509,13 +513,16 @@ export const GristTableLens = function(gristInstance) {
     };
 
     this.clearConfigCache = function(configId) {
+        if (!window.GristConfigCache) {
+            window.GristConfigCache = {};
+        }
         if (configId) {
-            if (_metaState.configCache[configId]) {
-                delete _metaState.configCache[configId];
+            if (window.GristConfigCache[configId]) {
+                delete window.GristConfigCache[configId];
                 console.log(`GTL: Cache para '${configId}' foi limpo.`);
             }
         } else {
-            _metaState.configCache = {};
+            window.GristConfigCache = {};
             console.log("GTL: Todo o cache de configurações foi limpo.");
         }
     };

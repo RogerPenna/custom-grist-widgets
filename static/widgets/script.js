@@ -1,11 +1,11 @@
 // table-widget/script.js - Refatorado para usar TableRenderer
-import '../ConfigManager/editors/table-manifest.js';
-import { GristTableLens } from '../libraries/grist-table-lens/grist-table-lens.js';
-import { open as openConfigManager } from '../libraries/grist-config-manager/ConfigManagerComponent.js';
-import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js';
-import { GristLauncherUtils } from '../libraries/grist-launcher-utils.js';
-import { TableRenderer } from '../libraries/grist-table-renderer/TableRenderer.js';
-import { subscribe } from '../libraries/grist-event-bus/grist-event-bus.js';
+import '../libraries/grist-config-manager/editors/table-manifest.js?v=1.0.4';
+import { GristTableLens } from '../libraries/grist-table-lens/grist-table-lens.js?v=1.0.4';
+import { open as openConfigManager } from '../libraries/grist-config-manager/ConfigManagerComponent.js?v=1.0.4';
+import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js?v=1.0.4';
+import { GristLauncherUtils } from '../libraries/grist-launcher-utils.js?v=1.0.4';
+import { TableRenderer } from '../libraries/grist-table-renderer/TableRenderer.js?v=1.0.4';
+import { subscribe } from '../libraries/grist-event-bus/grist-event-bus.js?v=1.0.4';
 
 document.addEventListener('DOMContentLoaded', async function () {
     let currentConfig = null;
@@ -25,9 +25,14 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
     });
 
+    subscribe('data-changed', async () => {
+        console.log("[TableWidget] Dados ou Configurações alterados, recarregando...");
+        await initializeAndUpdate(true);
+    });
+
     grist.ready({ requiredAccess: 'full' });
 
-    async function initializeAndUpdate() {
+    async function initializeAndUpdate(bypassCache = false) {
         const options = await grist.getOptions();
         currentConfigId = options?.configId || null;
 
@@ -38,7 +43,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
 
         try {
-            currentConfig = await tableLens.fetchConfig(currentConfigId);
+            currentConfig = await tableLens.fetchConfig(currentConfigId, { bypassCache });
             if (!currentConfig) throw new Error("Configuração não encontrada.");
 
             const records = await tableLens.fetchTableRecords(currentConfig.tableId);
