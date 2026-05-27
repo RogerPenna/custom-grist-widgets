@@ -12,6 +12,8 @@ import mimetypes
 mimetypes.init()
 mimetypes.add_type('application/javascript', '.js', True)
 mimetypes.add_type('application/javascript', '.mjs', True)
+mimetypes.add_type('text/css', '.css', True)
+mimetypes.add_type('image/svg+xml', '.svg', True)
 
 load_dotenv()
 

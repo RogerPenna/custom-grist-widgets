@@ -1,25 +1,25 @@
 // libraries/grist-field-renderer/grist-field-renderer.js
 
-import { renderText } from './renderers/render-text.js';
-import { renderDate } from './renderers/render-date.js';
-import { renderRef } from './renderers/render-ref.js';
-import { renderChoice } from './renderers/render-choice.js';
-import { renderRefList } from './renderers/render-reflist.js';
-import { renderBool } from './renderers/render-bool.js';
-import { renderColorPicker } from './renderers/render-color-picker.js';
-import { renderProgressBar } from './renderers/render-progress-bar.js';
-import { renderToggle } from './renderers/render-toggle.js';
-import { renderIndicatorJson } from './renderers/render-indicator-json.js';
-import { renderDynamicUI } from './renderers/render-dynamic-ui.js';
-import { renderImage } from './renderers/render-image.js';
-import { renderMoney } from './renderers/render-money.js';
+import { renderText } from './renderers/render-text.js?v=1.0.4';
+import { renderDate } from './renderers/render-date.js?v=1.0.4';
+import { renderRef } from './renderers/render-ref.js?v=1.0.4';
+import { renderChoice } from './renderers/render-choice.js?v=1.0.4';
+import { renderRefList } from './renderers/render-reflist.js?v=1.0.4';
+import { renderBool } from './renderers/render-bool.js?v=1.0.4';
+import { renderColorPicker } from './renderers/render-color-picker.js?v=1.0.4';
+import { renderProgressBar } from './renderers/render-progress-bar.js?v=1.0.4';
+import { renderToggle } from './renderers/render-toggle.js?v=1.0.4';
+import { renderIndicatorJson } from './renderers/render-indicator-json.js?v=1.0.4';
+import { renderDynamicUI } from './renderers/render-dynamic-ui.js?v=1.0.4';
+import { renderImage } from './renderers/render-image.js?v=1.0.4';
+import { renderMoney } from './renderers/render-money.js?v=1.0.4';
 
 (function () {
   if (document.getElementById('grf-styles')) return;
   const link = document.createElement('link');
   link.id = 'grf-styles';
   link.rel = 'stylesheet';
-  link.href = '../libraries/grist-field-renderer/styles/renderer-styles.css';
+  link.href = '../libraries/grist-field-renderer/styles/renderer-styles.css?v=1.0.4';
   document.head.appendChild(link);
 })();
 
@@ -242,8 +242,7 @@ export async function renderField(options) {
     return;
   }
 
-  const isNumeric = ['Int', 'Float', 'Numeric', 'Any'].some(t => type.startsWith(t));
-  if ((customFieldStyle.widgetOptions?.progressBar || widgetType === 'progressbar') && isNumeric) {
+  if (customFieldStyle.widgetOptions?.progressBar || widgetType === 'progressbar') {
     renderProgressBar(callOptions);
     return;
   }

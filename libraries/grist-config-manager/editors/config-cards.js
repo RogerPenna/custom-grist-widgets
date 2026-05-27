@@ -476,6 +476,15 @@ export const CardConfigEditor = (() => {
         mapping.grouping = grouping;
         styling.iconSize = actions.iconSize;
 
+        const layoutTab = container.querySelector("[data-tab-section='fld']");
+        if (layoutTab) {
+            const placementSelect = layoutTab.querySelector("#cs-burger-placement");
+            if (placementSelect) {
+                styling.burgerPlacement = placementSelect.value;
+                state.styling.burgerPlacement = placementSelect.value;
+            }
+        }
+
         return { mapping, styling, actions };
     }
 
@@ -930,10 +939,21 @@ export const CardConfigEditor = (() => {
             <h3>Fields & Layout</h3>
             <div class="layout-controls" style="display: flex; flex-direction: column; gap: 10px; background: #f8f9fa; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px;">
                 <div style="display: flex; align-items: center; gap: 20px;">
-                    <div>
-                        <label>View Mode:</label>
-                        <label><input type="radio" name="cs-viewmode" id="cs-vm-click" value="click" /> Click Card</label>
-                        <label><input type="radio" name="cs-viewmode" id="cs-vm-burger" value="burger" /> Burger Icon</label>
+                    <div style="display: flex; flex-direction: column; gap: 5px;">
+                        <div>
+                            <label>View Mode:</label>
+                            <label><input type="radio" name="cs-viewmode" id="cs-vm-click" value="click" /> Click Card</label>
+                            <label><input type="radio" name="cs-viewmode" id="cs-vm-burger" value="burger" /> Burger Icon</label>
+                        </div>
+                        <div id="cs-burger-placement-container" style="display: none; align-items: center; gap: 5px;">
+                            <label for="cs-burger-placement" style="font-size: 0.9em;">Burger Placement:</label>
+                            <select id="cs-burger-placement" style="width: auto;">
+                                <option value="right-top">Right Top</option>
+                                <option value="right-center">Right Central</option>
+                                <option value="left-top">Left Top</option>
+                                <option value="left-center">Left Central</option>
+                            </select>
+                        </div>
                     </div>
                     <div style="display: flex; align-items: center; gap: 5px;">
                         <label>Number of Rows:</label>
@@ -979,11 +999,79 @@ export const CardConfigEditor = (() => {
             </div>
         `;
         contentArea.appendChild(tabEl);
-        if (state.viewMode === "burger") {
-            tabEl.querySelector("#cs-vm-burger").checked = true;
+        const vmClick = tabEl.querySelector("#cs-vm-click");
+        const vmBurger = tabEl.querySelector("#cs-vm-burger");
+        const placementContainer = tabEl.querySelector("#cs-burger-placement-container");
+        const placementSelect = tabEl.querySelector("#cs-burger-placement");
+
+        const updateVisibility = () => {
+            if (vmBurger.checked) {
+                placementContainer.style.display = "flex";
+                
+                // Automatically create a default burger group if none exists
+                state.iconGroups = state.iconGroups || [];
+                const hasBurger = state.iconGroups.some(g => g.asBurgerMenu);
+                if (!hasBurger) {
+                    state.iconGroups.push({
+                        id: `icon-group-burger-${Date.now()}`,
+                        name: 'Menu',
+                        asBurgerMenu: true,
+                        burgerPlacement: placementSelect.value || 'right-top',
+                        buttons: [
+                            {
+                                id: `btn-edit-${Date.now()}`,
+                                icon: 'icon-edit',
+                                tooltip: 'Editar',
+                                actionType: 'editRecord',
+                                buttonStyle: 'icon'
+                            }
+                        ]
+                    });
+                    
+                    const actionsTab = _mainContainer.querySelector("[data-tab-section='actions']");
+                    if (actionsTab) {
+                        const masterDetail = actionsTab.querySelector('#actions-master-detail');
+                        if (masterDetail) renderActionsLayout(masterDetail);
+                    }
+                    buildAvailableFieldsList(_mainContainer.querySelector("#cs-layout-fields"));
+                }
+            } else {
+                placementContainer.style.display = "none";
+            }
+        };
+
+        vmClick.addEventListener("change", () => {
+            updateVisibility();
+            updateDebugJson();
+        });
+        vmBurger.addEventListener("change", () => {
+            updateVisibility();
+            updateDebugJson();
+        });
+        placementSelect.addEventListener("change", () => {
+            state.styling.burgerPlacement = placementSelect.value;
+            if (state.iconGroups) {
+                state.iconGroups.forEach(g => {
+                    if (g.asBurgerMenu) {
+                        g.burgerPlacement = placementSelect.value;
+                    }
+                });
+            }
+            updateDebugJson();
+        });
+
+        if (state.styling && state.styling.burgerPlacement) {
+            placementSelect.value = state.styling.burgerPlacement;
         } else {
-            tabEl.querySelector("#cs-vm-click").checked = true;
+            placementSelect.value = 'right-top';
         }
+
+        if (state.viewMode === "burger") {
+            vmBurger.checked = true;
+        } else {
+            vmClick.checked = true;
+        }
+        updateVisibility();
         const rowInput = tabEl.querySelector("#cs-num-rows");
         rowInput.addEventListener("change", () => {
             state.numRows = parseInt(rowInput.value, 10) || 1;
@@ -1034,7 +1122,7 @@ export const CardConfigEditor = (() => {
         const usedColIds = state.layout.map(f => f.colId);
         const availableCols = state.fields.filter(f => !usedColIds.includes(f.colId));
         const iconGroups = state.iconGroups || [];
-        const availableIconGroups = iconGroups.filter(g => !usedColIds.includes(g.id));
+        const availableIconGroups = iconGroups.filter(g => !g.asBurgerMenu && !usedColIds.includes(g.id));
         if (availableCols.length === 0 && availableIconGroups.length === 0) { container.innerHTML = "<i>No available fields.</i>"; return; }
         availableIconGroups.forEach(group => {
             const el = document.createElement("div");
@@ -1264,11 +1352,16 @@ export const CardConfigEditor = (() => {
         const backdrop = document.createElement('div'); backdrop.className = 'popup-backdrop'; backdrop.style.cssText = `position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 1050;`;
         _mainContainer.appendChild(backdrop);
         _fieldStylePopup = document.createElement("div"); _fieldStylePopup.className = 'field-style-popup'; _fieldStylePopup.style.cssText = `position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1060; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); width: 320px; max-height: 90vh; overflow-y: auto;`;
-        _fieldStylePopup.innerHTML = `<h3>Edit Group</h3><div class="form-group"><label>Name:</label><input type="text" id="popup-g-name" value="${group.name}"></div><div class="form-group"><label>Align:</label><select id="popup-g-align"><option value="left" ${group.alignment==='left'?'selected':''}>Left</option><option value="center" ${group.alignment==='center'?'selected':''}>Center</option><option value="right" ${group.alignment==='right'?'selected':''}>Right</option></select></div><div class="form-group"><label>Vertical Offset (px):</label><input type="number" id="popup-g-v-offset" value="${group.verticalOffset || 0}" style="width: 60px;"></div><div class="form-group"><label>Visibility:</label><select id="popup-g-visibility"><option value="always" ${group.visibilityMode!=='hover'?'selected':''}>Always Visible</option><option value="hover" ${group.visibilityMode==='hover'?'selected':''}>Show on Hover</option></select></div><hr><h4>Default Button Style</h4><div class="form-group"><label>Shape:</label><select id="popup-g-shape"><option value="square" ${group.shape!=='circle'?'selected':''}>Square</option><option value="circle" ${group.shape==='circle'?'selected':''}>Circle</option></select></div><div class="form-group"><label>Icon/Text Color:</label><input type="color" id="popup-g-fg" value="${group.iconColor||'#000000'}"></div><div class="form-group"><label>Background Mode:</label><select id="popup-g-bgmode"><option value="solid" ${group.bgMode==='solid'?'selected':''}>Solid Color</option><option value="transparent" ${group.bgMode==='transparent'?'selected':''}>Transparent</option><option value="overlay" ${group.bgMode==='overlay'?'selected':''}>Adaptive Overlay</option><option value="match-card" ${group.bgMode==='match-card'?'selected':''}>Match Card Color</option></select></div><div id="popup-g-solid-opts" class="form-group" style="display:none;"><label>Background Color:</label><input type="color" id="popup-g-bg" value="${group.backgroundColor||'#f0f0f0'}"></div><div id="popup-g-overlay-opts" class="form-group" style="display:none;"><label>Effect:</label><select id="popup-g-overlay-effect"><option value="lighten" ${group.overlayEffect==='lighten'?'selected':''}>Lighten</option><option value="darken" ${group.overlayEffect==='darken'?'selected':''}>Darken</option></select><br><label>Opacity (%):</label><input type="number" id="popup-g-overlay-opacity" value="${group.overlayOpacity}" style="width:60px;"></div><div class="form-group"><label>Border Color:</label><input type="color" id="popup-g-border" value="${group.borderColor||'#cccccc'}"></div><div class="form-group"><label>Border Width (px):</label><input type="number" id="popup-g-border-width" value="${group.borderWidth||0}" style="width:60px;"></div><div class="popup-actions"><button id="popup-close" type="button" class="btn btn-primary">Close</button></div>`;
+        _fieldStylePopup.innerHTML = `<h3>Edit Group</h3><div class="form-group"><label>Name:</label><input type="text" id="popup-g-name" value="${group.name}"></div><div class="form-group"><label>Align:</label><select id="popup-g-align"><option value="left" ${group.alignment==='left'?'selected':''}>Left</option><option value="center" ${group.alignment==='center'?'selected':''}>Center</option><option value="right" ${group.alignment==='right'?'selected':''}>Right</option></select></div><div class="form-group"><label>Vertical Offset (px):</label><input type="number" id="popup-g-v-offset" value="${group.verticalOffset || 0}" style="width: 60px;"></div><div class="form-group"><label>Visibility:</label><select id="popup-g-visibility"><option value="always" ${group.visibilityMode!=='hover'?'selected':''}>Always Visible</option><option value="hover" ${group.visibilityMode==='hover'?'selected':''}>Show on Hover</option></select></div><div class="form-group"><label><input type="checkbox" id="popup-g-as-burger" ${group.asBurgerMenu ? 'checked' : ''}> Render as Burger Menu</label></div><div class="form-group" id="popup-g-burger-placement-container" style="display: ${group.asBurgerMenu ? 'block' : 'none'};"><label>Burger Placement:</label><select id="popup-g-burger-placement"><option value="right-top" ${group.burgerPlacement === 'right-top' ? 'selected' : ''}>Right Top</option><option value="right-center" ${group.burgerPlacement === 'right-center' ? 'selected' : ''}>Right Central</option><option value="left-top" ${group.burgerPlacement === 'left-top' ? 'selected' : ''}>Left Top</option><option value="left-center" ${group.burgerPlacement === 'left-center' ? 'selected' : ''}>Left Central</option></select></div><hr><h4>Default Button Style</h4><div class="form-group"><label>Shape:</label><select id="popup-g-shape"><option value="square" ${group.shape!=='circle'?'selected':''}>Square</option><option value="circle" ${group.shape==='circle'?'selected':''}>Circle</option></select></div><div class="form-group"><label>Icon/Text Color:</label><input type="color" id="popup-g-fg" value="${group.iconColor||'#000000'}"></div><div class="form-group"><label>Background Mode:</label><select id="popup-g-bgmode"><option value="solid" ${group.bgMode==='solid'?'selected':''}>Solid Color</option><option value="transparent" ${group.bgMode==='transparent'?'selected':''}>Transparent</option><option value="overlay" ${group.bgMode==='overlay'?'selected':''}>Adaptive Overlay</option><option value="match-card" ${group.bgMode==='match-card'?'selected':''}>Match Card Color</option></select></div><div id="popup-g-solid-opts" class="form-group" style="display:none;"><label>Background Color:</label><input type="color" id="popup-g-bg" value="${group.backgroundColor||'#f0f0f0'}"></div><div id="popup-g-overlay-opts" class="form-group" style="display:none;"><label>Effect:</label><select id="popup-g-overlay-effect"><option value="lighten" ${group.overlayEffect==='lighten'?'selected':''}>Lighten</option><option value="darken" ${group.overlayEffect==='darken'?'selected':''}>Darken</option></select><br><label>Opacity (%):</label><input type="number" id="popup-g-overlay-opacity" value="${group.overlayOpacity}" style="width:60px;"></div><div class="form-group"><label>Border Color:</label><input type="color" id="popup-g-border" value="${group.borderColor||'#cccccc'}"></div><div class="form-group"><label>Border Width (px):</label><input type="number" id="popup-g-border-width" value="${group.borderWidth||0}" style="width:60px;"></div><div class="popup-actions"><button id="popup-close" type="button" class="btn btn-primary">Close</button></div>`;
         _mainContainer.appendChild(_fieldStylePopup);
         const toggleOpts = () => { const mode = _fieldStylePopup.querySelector('#popup-g-bgmode').value; _fieldStylePopup.querySelector('#popup-g-solid-opts').style.display = mode === 'solid' ? 'block' : 'none'; _fieldStylePopup.querySelector('#popup-g-overlay-opts').style.display = (mode === 'overlay' || mode === 'match-card') ? 'block' : 'none'; };
         _fieldStylePopup.querySelector('#popup-g-bgmode').addEventListener('change', toggleOpts); toggleOpts();
-        _fieldStylePopup.querySelector('#popup-close').onclick = () => { group.name = _fieldStylePopup.querySelector('#popup-g-name').value; group.alignment = _fieldStylePopup.querySelector('#popup-g-align').value; group.shape = _fieldStylePopup.querySelector('#popup-g-shape').value; group.iconColor = _fieldStylePopup.querySelector('#popup-g-fg').value; group.bgMode = _fieldStylePopup.querySelector('#popup-g-bgmode').value; group.backgroundColor = _fieldStylePopup.querySelector('#popup-g-bg').value; group.overlayEffect = _fieldStylePopup.querySelector('#popup-g-overlay-effect').value; group.overlayOpacity = parseInt(_fieldStylePopup.querySelector('#popup-g-overlay-opacity').value, 10) || 0; group.borderColor = _fieldStylePopup.querySelector('#popup-g-border').value; group.borderWidth = parseInt(_fieldStylePopup.querySelector('#popup-g-border-width').value, 10) || 0; group.verticalOffset = parseInt(_fieldStylePopup.querySelector('#popup-g-v-offset').value, 10) || 0; group.visibilityMode = _fieldStylePopup.querySelector('#popup-g-visibility').value; backdrop.remove(); _fieldStylePopup.remove(); renderActionsLayout(_mainContainer.querySelector('#actions-master-detail')); updateDebugJson(); };
+        const chkBurger = _fieldStylePopup.querySelector('#popup-g-as-burger');
+        const containerPlacement = _fieldStylePopup.querySelector('#popup-g-burger-placement-container');
+        chkBurger.addEventListener('change', (e) => {
+            containerPlacement.style.display = e.target.checked ? 'block' : 'none';
+        });
+        _fieldStylePopup.querySelector('#popup-close').onclick = () => { group.name = _fieldStylePopup.querySelector('#popup-g-name').value; group.alignment = _fieldStylePopup.querySelector('#popup-g-align').value; group.shape = _fieldStylePopup.querySelector('#popup-g-shape').value; group.iconColor = _fieldStylePopup.querySelector('#popup-g-fg').value; group.bgMode = _fieldStylePopup.querySelector('#popup-g-bgmode').value; group.backgroundColor = _fieldStylePopup.querySelector('#popup-g-bg').value; group.overlayEffect = _fieldStylePopup.querySelector('#popup-g-overlay-effect').value; group.overlayOpacity = parseInt(_fieldStylePopup.querySelector('#popup-g-overlay-opacity').value, 10) || 0; group.borderColor = _fieldStylePopup.querySelector('#popup-g-border').value; group.borderWidth = parseInt(_fieldStylePopup.querySelector('#popup-g-border-width').value, 10) || 0; group.verticalOffset = parseInt(_fieldStylePopup.querySelector('#popup-g-v-offset').value, 10) || 0; group.visibilityMode = _fieldStylePopup.querySelector('#popup-g-visibility').value; group.asBurgerMenu = _fieldStylePopup.querySelector('#popup-g-as-burger').checked; if (group.asBurgerMenu) { group.burgerPlacement = _fieldStylePopup.querySelector('#popup-g-burger-placement').value; state.layout = state.layout.filter(f => f.colId !== group.id); } backdrop.remove(); _fieldStylePopup.remove(); const fldTab = _mainContainer.querySelector("[data-tab-section='fld']"); if (fldTab) { buildGridUI(fldTab.querySelector("#cs-layout-grid"), fldTab); buildAvailableFieldsList(fldTab.querySelector("#cs-layout-fields")); } renderActionsLayout(_mainContainer.querySelector('#actions-master-detail')); updateDebugJson(); };
     }
 
     function openIconPicker(inputElement, displayElement, buttonConfig) {

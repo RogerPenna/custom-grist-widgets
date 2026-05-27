@@ -24,9 +24,12 @@
         .btn-mini { padding: 2px 6px; font-size: 10px; border-radius: 3px; border: 1px solid #ccc; background: #fff; cursor: pointer; }
         .btn-mini.danger:hover { background: #dc3545; color: #fff; border-color: #dc3545; }
         .btn-mini.primary:hover { background: #007bff; color: #fff; border-color: #007bff; }
+        .btn-mini.success:hover { background: #28a745; color: #fff; border-color: #28a745; }
         
-        .path-editor { margin-top: 10px; display: none; width: 100%; flex-direction: column; gap: 5px; grid-column: span 2; }
+        .path-editor { margin-top: 10px; display: none; width: 100%; flex-direction: column; gap: 5px; }
         .path-editor textarea { width: 100%; height: 60px; font-family: monospace; font-size: 11px; padding: 5px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .viewbox-row { display: flex; gap: 10px; align-items: center; margin-top: 5px; }
+        .viewbox-row input { flex-grow: 1; padding: 4px; font-size: 11px; border: 1px solid #ccc; border-radius: 4px; }
         
         .preview-box { width: 64px; height: 64px; border: 1px solid #ddd; border-radius: 4px; display: flex; align-items: center; justify-content: center; background: #fff; flex-shrink: 0; }
         .preview-box svg { width: 48px; height: 48px; }
@@ -48,17 +51,18 @@
 
 <div class="header">
     <div class="header-top">
-        <h2 style="margin:0;">Grist Icon Manager <span style="font-size: 12px; vertical-align: middle; opacity: 0.6;">v1.3 Studio</span></h2>
-        <div class="controls-global">
+        <h2 style="margin:0;">Grist Icon Manager <span style="font-size: 12px; vertical-align: middle; opacity: 0.6;">v1.5 Full Studio</span></h2>
+        <div style="display:flex; align-items:center; gap:10px; margin-left: auto;">
+            <div id="icon-count" style="font-size: 13px; font-weight: bold; background: #eee; padding: 4px 10px; border-radius: 20px;">0 icons</div>
             <button onclick="toggleAddNew()" class="success">+ Add New Icon</button>
-            <button onclick="generateJSON()">Generate Config JSON</button>
-            <button onclick="generateSVG()">Generate SVG Symbols</button>
+            <button onclick="saveToDisk()" style="background: #e67e22; border-color: #e67e22;">💾 SAVE TO DISK</button>
+            <button onclick="generateJSON()" class="secondary">JSON</button>
+            <button onclick="generateSVG()" class="secondary">SVG</button>
             <button class="secondary" onclick="window.location.reload()">Reset All</button>
         </div>
     </div>
 
     <div id="add-new-panel" class="add-new-section">
-
         <div class="add-new-inputs">
             <input type="text" id="new-icon-id" placeholder="Icon ID (e.g. icon-home) [Auto-detects from SVG class]">
             <textarea id="new-icon-path" placeholder="Paste full <svg> code here..."></textarea>
@@ -95,6 +99,8 @@
 </div>
 
 <div id="svg-library-container" style="display:none;"></div>
+<!-- Hidden container for bbox calculation -->
+<div id="temp-bbox-container" style="position:absolute; visibility:hidden; width:0; height:0;"></div>
 
 <script>
     const svgUrl = './icons.svg';
@@ -117,20 +123,22 @@
         grid.innerHTML = '';
 
         symbols.forEach(symbol => {
-            addIconCard(symbol.id, symbol.innerHTML);
+            addIconCard(symbol.id, symbol.innerHTML, false, symbol.getAttribute('viewBox'));
         });
+        document.getElementById('icon-count').innerText = `${symbols.length} icons`;
     }
 
-    function addIconCard(id, innerHTML, isNew = false) {
+    function addIconCard(id, innerHTML, isNew = false, viewBox = "0 0 24 24") {
         const grid = document.getElementById('icon-container');
         
         if (isNew) {
             const library = document.getElementById('svg-library-container').querySelector('svg');
             const newSymbol = document.createElementNS('http://www.w3.org/2000/svg', 'symbol');
             newSymbol.id = id;
-            newSymbol.setAttribute('viewBox', '0 0 24 24');
+            newSymbol.setAttribute('viewBox', viewBox);
             newSymbol.innerHTML = innerHTML;
             library.appendChild(newSymbol);
+            document.getElementById('icon-count').innerText = `${library.querySelectorAll('symbol').length} icons`;
         }
 
         const symbol = document.getElementById(id);
@@ -138,24 +146,19 @@
         const firstPath = allPaths[0];
         const currentD = Array.from(allPaths).map(p => p.getAttribute('d')).join(' ');
 
-        // Initial state analysis
         const hasFill = firstPath ? (firstPath.getAttribute('fill') !== 'none' && firstPath.hasAttribute('fill')) : false;
         const hasStroke = firstPath ? (firstPath.hasAttribute('stroke') && firstPath.getAttribute('stroke') !== 'none') : false;
         const strokeWidth = firstPath ? (firstPath.getAttribute('stroke-width') || 2) : 2;
 
-        iconConfigs[id] = {
-            fill: hasFill,
-            stroke: hasStroke,
-            strokeWidth: parseFloat(strokeWidth)
-        };
+        iconConfigs[id] = { fill: hasFill, stroke: hasStroke, strokeWidth: parseFloat(strokeWidth) };
 
         const card = document.createElement('div');
         card.className = 'icon-card';
         card.id = `card-${id}`;
         card.innerHTML = `
             <div class="card-actions">
-                <button class="btn-mini primary" onclick="togglePathEditor('${id}')" title="Edit Path Data">Edit</button>
-                <button class="btn-mini danger" onclick="deleteIcon('${id}')" title="Remove from Preview">×</button>
+                <button class="btn-mini primary" onclick="togglePathEditor('${id}')">Edit</button>
+                <button class="btn-mini danger" onclick="deleteIcon('${id}')">×</button>
             </div>
             <div class="preview-box" id="preview-${id}">
                 <svg><use href="#${id}"></use></svg>
@@ -177,12 +180,63 @@
                     </div>
                 </div>
                 <div id="path-editor-${id}" class="path-editor">
-                    <label style="font-size:10px; font-weight:bold;">Path Data (d):</label>
+                    <label style="font-size:10px; font-weight:bold;">ViewBox:</label>
+                    <div class="viewbox-row">
+                        <input type="text" id="viewbox-${id}" value="${viewBox || '0 0 24 24'}" oninput="updateViewBox('${id}')">
+                        <button class="btn-mini success" onclick="autoFitIcon('${id}')">AUTO-FIT</button>
+                    </div>
+                    <label style="font-size:10px; font-weight:bold; margin-top:5px;">Path Data (d):</label>
                     <textarea id="path-data-${id}" oninput="saveManualPath('${id}')">${currentD}</textarea>
                 </div>
             </div>
         `;
         grid.appendChild(card);
+        updateIcon(id);
+    }
+
+    function updateViewBox(id) {
+        const vb = document.getElementById(`viewbox-${id}`).value;
+        const symbol = document.getElementById(id);
+        symbol.setAttribute('viewBox', vb);
+        updateIcon(id);
+    }
+
+    function autoFitIcon(id) {
+        const symbol = document.getElementById(id);
+        const tempContainer = document.getElementById('temp-bbox-container');
+        
+        const tempSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        tempSvg.setAttribute('width', '500');
+        tempSvg.setAttribute('height', '500');
+        
+        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        g.innerHTML = symbol.innerHTML;
+        tempSvg.appendChild(g);
+        tempContainer.appendChild(tempSvg);
+        
+        const bbox = g.getBBox();
+        tempContainer.removeChild(tempSvg);
+        
+        if (bbox.width === 0 && bbox.height === 0) {
+            alert("Could not calculate bounding box. Is the path valid?");
+            return;
+        }
+
+        // 1. Find the longest side to make it a perfect square
+        const size = Math.max(bbox.width, bbox.height);
+        
+        // 2. Add 10% padding to the overall size
+        const pad = size * 0.10;
+        const totalSize = size + (pad * 2);
+
+        // 3. Calculate offsets to perfectly center the drawing within this new square
+        const offsetX = bbox.x - (totalSize - bbox.width) / 2;
+        const offsetY = bbox.y - (totalSize - bbox.height) / 2;
+        
+        const newVB = `${offsetX.toFixed(2)} ${offsetY.toFixed(2)} ${totalSize.toFixed(2)} ${totalSize.toFixed(2)}`;
+        
+        document.getElementById(`viewbox-${id}`).value = newVB;
+        symbol.setAttribute('viewBox', newVB);
         updateIcon(id);
     }
 
@@ -206,18 +260,55 @@
         updateIcon(id);
     }
 
+    function generateJSON() {
+        const output = document.getElementById('json-output');
+        output.value = JSON.stringify(iconConfigs, null, 2);
+        output.style.display = 'block';
+        output.select();
+        document.execCommand('copy');
+        alert('JSON Config copied to clipboard!');
+    }
+
     function generateSVG() {
         const output = document.getElementById('json-output');
         let svgMarkup = '';
         const symbols = document.getElementById('svg-library-container').querySelectorAll('symbol');
         symbols.forEach(s => {
-            svgMarkup += `  <symbol id="${s.id}" viewBox="0 0 24 24">${s.innerHTML}</symbol>\n`;
+            const vb = s.getAttribute('viewBox') || "0 0 24 24";
+            svgMarkup += `  <symbol id="${s.id}" viewBox="${vb}">${s.innerHTML}</symbol>\n`;
         });
         output.value = svgMarkup;
         output.style.display = 'block';
         output.select();
         document.execCommand('copy');
         alert('SVG Symbols copied to clipboard!');
+    }
+
+    async function saveToDisk() {
+        let svgMarkup = '';
+        const symbols = document.getElementById('svg-library-container').querySelectorAll('symbol');
+        symbols.forEach(s => {
+            const vb = s.getAttribute('viewBox') || "0 0 24 24";
+            svgMarkup += `  <symbol id="${s.id}" viewBox="${vb}">${s.innerHTML}</symbol>\n`;
+        });
+
+        const payload = { svgMarkup, iconConfigs };
+
+        try {
+            const response = await fetch('/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (response.ok) {
+                alert('✅ SUCCESS! Project files updated.\n- icons.svg\n- apply_icon_config.py\n- lista de icones.txt');
+            } else {
+                alert('❌ Error saving: Make sure icon_studio.py is running!');
+            }
+        } catch (err) {
+            alert('❌ Connection failed: Run "python icon_studio.py" in your terminal first.');
+        }
     }
 
     function convertShapeToPath(el) {
@@ -254,6 +345,8 @@
 
         if (!svgEl) return alert('Invalid SVG code.');
 
+        const originalViewBox = svgEl.getAttribute('viewBox') || "0 0 24 24";
+
         if (!id) {
             const classes = svgEl.getAttribute('class');
             const match = classes ? classes.match(/(?:lucide|feather)-([a-z0-9-]+)/) : null;
@@ -262,7 +355,6 @@
         }
         if (!id.startsWith('icon-')) id = 'icon-' + id;
 
-        // Process all renderable elements (preserving their separation)
         const elements = svgEl.querySelectorAll('path, rect, circle, line, polyline, polygon');
         let combinedinnerHTML = '';
         elements.forEach(el => {
@@ -272,7 +364,7 @@
 
         if (iconConfigs[id]) return alert('Icon ID already exists!');
 
-        addIconCard(id, combinedinnerHTML, true);
+        addIconCard(id, combinedinnerHTML, true, originalViewBox);
         
         idInput.value = '';
         document.getElementById('new-icon-path').value = '';
@@ -281,7 +373,10 @@
     }
 
     function updateIcon(id) {
-        const fill = document.getElementById(`fill-${id}`).checked;
+        const fillEl = document.getElementById(`fill-${id}`);
+        if(!fillEl) return;
+        
+        const fill = fillEl.checked;
         const stroke = document.getElementById(`stroke-${id}`).checked;
         const width = document.getElementById(`width-${id}`).value;
 
@@ -304,30 +399,7 @@
         });
 
         const preview = document.getElementById(`preview-${id}`);
-        preview.innerHTML = `<svg><use href="#${id}"></use></svg>`;
-    }
-
-    function generateJSON() {
-        const output = document.getElementById('json-output');
-        output.value = JSON.stringify(iconConfigs, null, 2);
-        output.style.display = 'block';
-        output.select();
-        document.execCommand('copy');
-        alert('JSON Config copied to clipboard!');
-    }
-
-    function generateSVG() {
-        const output = document.getElementById('json-output');
-        let svgMarkup = '';
-        const symbols = document.getElementById('svg-library-container').querySelectorAll('symbol');
-        symbols.forEach(s => {
-            svgMarkup += `  <symbol id="${s.id}" viewBox="0 0 24 24">${s.innerHTML}</symbol>\n`;
-        });
-        output.value = svgMarkup;
-        output.style.display = 'block';
-        output.select();
-        document.execCommand('copy');
-        alert('SVG Symbols copied to clipboard!');
+        if(preview) preview.innerHTML = `<svg viewBox="${symbol.getAttribute('viewBox')}"><use href="#${id}"></use></svg>`;
     }
 
     function filterIcons() {
@@ -337,19 +409,29 @@
         const widthFilter = document.getElementById('filter-width').value;
 
         const cards = document.querySelectorAll('.icon-card');
+        let visibleCount = 0;
         cards.forEach(card => {
             const id = card.querySelector('.icon-name').innerText.toLowerCase();
-            const fill = document.getElementById(`fill-${id}`).checked;
-            const stroke = document.getElementById(`stroke-${id}`).checked;
-            const width = document.getElementById(`width-${id}`).value;
+            const fillEl = document.getElementById(`fill-${id}`);
+            const strokeEl = document.getElementById(`stroke-${id}`);
+            const widthEl = document.getElementById(`width-${id}`);
+            
+            if(!fillEl || !strokeEl || !widthEl) return;
+
+            const fill = fillEl.checked;
+            const stroke = strokeEl.checked;
+            const width = widthEl.value;
 
             const matchesQuery = id.includes(query);
             const matchesFill = fillFilter === 'all' || (fillFilter === 'on' && fill) || (fillFilter === 'off' && !fill);
             const matchesStroke = strokeFilter === 'all' || (strokeFilter === 'on' && stroke) || (strokeFilter === 'off' && !stroke);
             const matchesWidth = !widthFilter || parseFloat(width) === parseFloat(widthFilter);
 
-            card.style.display = (matchesQuery && matchesFill && matchesStroke && matchesWidth) ? 'flex' : 'none';
+            const isVisible = matchesQuery && matchesFill && matchesStroke && matchesWidth;
+            card.style.display = isVisible ? 'flex' : 'none';
+            if (isVisible) visibleCount++;
         });
+        document.getElementById('icon-count').innerText = `${visibleCount} icons`;
     }
 
     loadIcons();
@@ -357,3 +439,4 @@
 
 </body>
 </html>
+

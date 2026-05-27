@@ -1,17 +1,8 @@
 Lista de Ícones (IDs)
-A lista contém 50 ícones extraídos dos atributos id dos elementos <symbol>:
 
-icon-link
+icon-CompassRose
 
-icon-link-broken
-
-icon-settings
-
-icon-edit
-
-icon-save
-
-icon-save-alt
+icon-activity-icon
 
 icon-adjustments
 
@@ -19,7 +10,31 @@ icon-adjustments-vert
 
 icon-annotation
 
+icon-arrow-down-icon
+
+icon-arrow-down-left-icon
+
+icon-arrow-down-right-icon
+
+icon-arrow-left-icon
+
+icon-arrow-move
+
+icon-arrow-right-icon
+
+icon-arrow-up-icon
+
+icon-arrow-up-left-icon
+
+icon-arrow-up-right-icon
+
+icon-backhoe
+
 icon-badge-check
+
+icon-bar-chart
+
+icon-bar-chart-line
 
 icon-barcode
 
@@ -31,15 +46,27 @@ icon-bell-active
 
 icon-bookmark
 
+icon-bulldozer
+
+icon-bullseye
+
+icon-calculator-icon
+
 icon-calendar
 
 icon-calendar-edit
 
+icon-card-checklist
+
 icon-chart
+
+icon-chart-gantt-icon
 
 icon-chart-mixed
 
 icon-chart-pie
+
+icon-chart-up
 
 icon-check
 
@@ -47,13 +74,13 @@ icon-check-circle
 
 icon-check-circle-alt
 
-icon-minus-circle
+icon-checklist
 
-icon-minus-circle-alt
+icon-chess-knight-icon
 
-icon-plus-circle
+icon-chess-pawn-icon
 
-icon-plus-circle-alt
+icon-chess-rook-icon
 
 icon-clipboard
 
@@ -69,9 +96,27 @@ icon-close-sidebar
 
 icon-column
 
+icon-compass
+
+icon-cone
+
+icon-cone-striped
+
+icon-crosshair-icon
+
+icon-diagram-2
+
+icon-diagram-3
+
 icon-download
 
+icon-edit
+
 icon-exclamation
+
+icon-exclamation-diamond
+
+icon-exclamation-triangle
 
 icon-expand
 
@@ -91,86 +136,116 @@ icon-filter
 
 icon-flag
 
+icon-flag-icon
+
 icon-folder
 
 icon-forward
 
 icon-globe
 
+icon-globe-americas
+
 icon-grid
+
+icon-hard-hat
 
 icon-hourglass
 
 icon-info-circle
 
-icon-lightbulb
+icon-kanban
+
+icon-land-plot-icon
+
+icon-landmark-icon
+
+icon-life-buoy-icon
 
 icon-lifesaver
 
-icon-lock
+icon-lightbulb
 
-icon-unlock
+icon-lightning
+
+icon-link
+
+icon-link-broken
+
+icon-lock
 
 icon-microscope
 
+icon-minus-circle
+
+icon-minus-circle-alt
+
 icon-pen
 
+icon-pen-alt
+
+icon-plus-circle
+
+icon-plus-circle-alt
+
+icon-pocket-knife-icon
+
 icon-printer
+
+icon-printer-icon
+
+icon-process
+
+icon-process-cogs
 
 icon-profile-card
 
 icon-rectangle-list
 
+icon-risk
+
+icon-save
+
+icon-save-alt
+
+icon-search
+
+icon-settings
+
+icon-sheet-icon
+
+icon-shield-alert-icon
+
+icon-shovel-icon
+
+icon-speedometer
+
+icon-strategy
+
+icon-target-arrow
+
+icon-tool-case-icon
+
 icon-tools
+
+icon-tools2
+
+icon-traffic-cone-icon
+
+icon-traffic-light
 
 icon-trashbin
 
+icon-trophy-icon
+
 icon-truck
+
+icon-unlock
+
+icon-user-round-icon
+
+icon-wrench
 
 icon-zoom-in
 
 icon-zoom-out
-
-icon-chart-up
-
-icon-arrow-move
-
-icon-bar-chart
-
-icon-bar-chart-line
-
-icon-bullseye
-
-icon-card-checklist
-
-icon-compass
-
-icon-cone
-
-icon-cone-striped
-
-icon-diagram-2
-
-icon-diagram-3
-
-icon-exclamation-triangle
-
-icon-exclamation-diamond
-
-icon-globe-americas
-
-icon-lightning
-
-icon-pen-alt
-
-icon-speedometer
-
-icon-traffic-light
-
-icon-wrench
-
-icon-search
-
-icon-process-cogs
-
-icon-process

@@ -81,6 +81,7 @@ export const CardSystem = (() => {
   // 2) Public renderCards(container, records, options, schema)
   //--------------------------------------------------------------------
   async function renderCards(container, records, options, schema) {
+    _removeActiveBurgerMenus();
     _injectTooltipStyles();
     _injectGroupingStyles();
 
@@ -772,8 +773,37 @@ export const CardSystem = (() => {
       const internalPadding = parseInt(styling.internalCardPadding, 10) || 10;
       const handleWidth = parseInt(styling.handleAreaWidth, 10);
 
+      // Collect all action groups configured as burger menu
+      const actions = currentOptions.actions || {};
+      const allIconGroups = currentOptions.iconGroups || actions.iconGroups || styling.iconGroups || [];
+      const burgerGroups = allIconGroups.filter(g => g.asBurgerMenu && g.buttons && g.buttons.length > 0);
+      const hasBurgerMenu = burgerGroups.length > 0 || viewMode === "burger";
+
+      let placement = 'left-top';
+      const firstGroup = burgerGroups[0] || {};
+      if (firstGroup && firstGroup.burgerPlacement) {
+          placement = firstGroup.burgerPlacement;
+      } else if (styling.burgerPlacement) {
+          placement = styling.burgerPlacement;
+      } else if (viewMode === 'burger') {
+          placement = 'left-top';
+      }
+
       cardEl.style.padding = `${internalPadding}px`;
-      cardEl.style.paddingLeft = `${internalPadding + handleWidth}px`;
+      if (hasBurgerMenu) {
+          const iconSize = styling.iconSize || 1.0;
+          const burgerSpace = Math.ceil(30 * iconSize) + 8;
+          if (placement.startsWith('left')) {
+              cardEl.style.paddingLeft = `${internalPadding + handleWidth + burgerSpace}px`;
+              cardEl.style.paddingRight = `${internalPadding}px`;
+          } else {
+              cardEl.style.paddingLeft = `${internalPadding + handleWidth}px`;
+              cardEl.style.paddingRight = `${internalPadding + burgerSpace}px`;
+          }
+      } else {
+          cardEl.style.paddingLeft = `${internalPadding + handleWidth}px`;
+          cardEl.style.paddingRight = `${internalPadding}px`;
+      }
 
       let finalCardColor = styling.cardsColorSolidColor;
 
@@ -905,12 +935,60 @@ export const CardSystem = (() => {
         handleEl.style.display = "none";
       }
 
+      if (hasBurgerMenu) {
+        // Render unified burger button
+        const burgerBtn = document.createElement("button");
+        burgerBtn.className = "cs-action-button cs-burger-group-btn";
+        burgerBtn.innerHTML = `☰`;
+        
+        const fgColor = firstGroup.iconColor || '#333333';
+        const iconSize = styling.iconSize || 1.0;
+        burgerBtn.style.position = "absolute";
+        burgerBtn.style.zIndex = "10";
+        burgerBtn.style.width = `${30 * iconSize}px`;
+        burgerBtn.style.height = `${30 * iconSize}px`;
+        burgerBtn.style.border = "none";
+        burgerBtn.style.background = "transparent";
+        burgerBtn.style.color = fgColor;
+        burgerBtn.style.borderRadius = "4px";
+        burgerBtn.style.cursor = "pointer";
+        burgerBtn.style.display = "flex";
+        burgerBtn.style.justifyContent = "center";
+        burgerBtn.style.alignItems = "center";
+        burgerBtn.style.fontSize = `${16 * iconSize}px`;
+        burgerBtn.style.transition = "opacity 0.2s";
+        
+        burgerBtn.addEventListener('mouseenter', () => burgerBtn.style.opacity = '0.7');
+        burgerBtn.addEventListener('mouseleave', () => burgerBtn.style.opacity = '1');
+        
+        burgerBtn.title = firstGroup.name || "Menu";
+        
+        if (placement === 'left-top') {
+            burgerBtn.style.left = `${internalPadding + handleWidth}px`;
+            burgerBtn.style.top = `${internalPadding}px`;
+        } else if (placement === 'left-center') {
+            burgerBtn.style.left = `${internalPadding + handleWidth}px`;
+            burgerBtn.style.top = "50%";
+            burgerBtn.style.transform = "translateY(-50%)";
+        } else if (placement === 'right-top') {
+            burgerBtn.style.right = `${internalPadding}px`;
+            burgerBtn.style.top = `${internalPadding}px`;
+        } else if (placement === 'right-center') {
+            burgerBtn.style.right = `${internalPadding}px`;
+            burgerBtn.style.top = "50%";
+            burgerBtn.style.transform = "translateY(-50%)";
+        }
+        
+        burgerBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          _showBurgerMenu(burgerBtn, burgerGroups, record, currentOptions, finalCardColor);
+        });
+        
+        cardEl.appendChild(burgerBtn);
+      }
+
       if (viewMode === "burger") {
-        const burger = document.createElement("span");
-        burger.innerHTML = "☰";
-        burger.style.cssText = "position: absolute; left: 8px; top: 8px; font-size: 18px; color: #555; cursor: pointer; z-index: 2;";
-        handleEl.appendChild(burger);
-        burger.addEventListener("click", (e) => { e.stopPropagation(); handleCardClick(record, currentOptions); });
         cardEl.style.cursor = "default";
       } else {
         cardEl.style.cursor = "pointer";
@@ -992,7 +1070,7 @@ export const CardSystem = (() => {
         if (f.isIconGroup) {
           const actions = currentOptions.actions || {};
           const groupConfig = (currentOptions.iconGroups || actions.iconGroups || styling.iconGroups || []).find(g => g.id === f.colId);
-          if (!groupConfig || !groupConfig.buttons || groupConfig.buttons.length === 0) continue;
+          if (!groupConfig || !groupConfig.buttons || groupConfig.buttons.length === 0 || groupConfig.asBurgerMenu) continue;
 
           const groupContainer = document.createElement("div");
           groupContainer.style.gridRow = `${f.row + 1} / span ${f.rowSpan || 1}`;
@@ -1027,15 +1105,13 @@ export const CardSystem = (() => {
           if (groupConfig.alignment === 'right') justifyContent = "flex-end";
           groupContainer.style.justifyContent = justifyContent;
 
-          groupConfig.buttons.forEach(buttonConfig => {
-            const actionButton = document.createElement("button");
-            actionButton.className = "cs-action-button";
+          if (groupConfig.asBurgerMenu) {
+            const burgerBtn = document.createElement("button");
+            burgerBtn.className = "cs-action-button cs-burger-group-btn";
+            burgerBtn.innerHTML = `☰`;
             
-            const isText = buttonConfig.buttonStyle === 'text';
-            const shape = groupConfig.shape || 'square';
             const fgColor = groupConfig.iconColor || '#000000';
             const borderWidth = groupConfig.borderWidth !== undefined ? groupConfig.borderWidth : 1;
-            
             let bgColor = '#f0f0f0';
             if (groupConfig.bgMode === 'transparent') {
                 bgColor = 'transparent';
@@ -1052,136 +1128,190 @@ export const CardSystem = (() => {
             } else {
                 bgColor = groupConfig.transparentBackground ? 'transparent' : (groupConfig.backgroundColor || '#f0f0f0');
             }
-
-            if (isText) {
-                actionButton.textContent = (buttonConfig.text || 'Tx').substring(0, 3);
-                actionButton.style.fontFamily = 'sans-serif';
-                actionButton.style.fontWeight = 'bold';
-                actionButton.style.fontSize = '20px';
-            } else {
-                actionButton.innerHTML = getIcon(buttonConfig.icon || 'icon-link');
-            }
-
-            if (buttonConfig.actionType === 'showTooltipField' && buttonConfig.tooltipField) {
-                const val = record[buttonConfig.tooltipField];
-                if (val !== undefined && val !== null) {
-                    actionButton.title = `${buttonConfig.tooltip || ''}\n\n${String(val)}`;
-                }
-            } else {
-                actionButton.title = buttonConfig.tooltip || '';
-            }
-
-            const shouldShowCount = (buttonConfig.actionType === 'triggerWidget' || buttonConfig.actionType === 'navigate') && 
-                                    buttonConfig.targetTable && tableLens;
             
-            if (shouldShowCount) {
-                const baseTooltip = buttonConfig.tooltip || '';
-                (async () => {
-                    try {
-                        const targetTableId = buttonConfig.targetTable;
-                        const sourceTableId = record.gristHelper_tableId;
-                        const relationColId = await tableLens.findRelationField(targetTableId, sourceTableId);
-                        if (relationColId) {
-                            const allTargetRecords = await tableLens.fetchTableRecords(targetTableId);
-                            const relatedCount = allTargetRecords.filter(r => {
-                                const val = r[relationColId];
-                                if (Array.isArray(val)) return val.includes(record.id);
-                                return val === record.id;
-                            }).length;
-                            const countText = ` (${relatedCount})`;
-                            actionButton.title = baseTooltip ? `${baseTooltip}${countText}` : `${relatedCount} itens`;
-                        }
-                    } catch (err) {
-                        console.error("[CardSystem] Error fetching related count for tooltip:", err);
-                    }
-                })();
-            }
-
             const iconSize = styling.iconSize || 1.0;
-            actionButton.style.width = `${32 * iconSize}px`;
-            actionButton.style.height = `${32 * iconSize}px`;
-            actionButton.style.border = groupConfig.borderColor ? `${borderWidth}px solid ${groupConfig.borderColor}` : `${borderWidth}px solid #ccc`;
-            actionButton.style.background = bgColor;
-            actionButton.style.color = fgColor;
-            actionButton.style.borderRadius = shape === 'circle' ? "50%" : "5px";
+            burgerBtn.style.width = `${32 * iconSize}px`;
+            burgerBtn.style.height = `${32 * iconSize}px`;
+            burgerBtn.style.border = groupConfig.borderColor ? `${borderWidth}px solid ${groupConfig.borderColor}` : `${borderWidth}px solid #ccc`;
+            burgerBtn.style.background = bgColor;
+            burgerBtn.style.color = fgColor;
+            burgerBtn.style.borderRadius = groupConfig.shape === 'circle' ? "50%" : "5px";
+            burgerBtn.style.cursor = "pointer";
+            burgerBtn.style.display = "flex";
+            burgerBtn.style.justifyContent = "center";
+            burgerBtn.style.alignItems = "center";
+            burgerBtn.style.fontSize = `${18 * iconSize}px`;
+            burgerBtn.style.transition = "opacity 0.2s";
             
-            const svgIcon = actionButton.querySelector('svg.icon');
-            if (svgIcon) {
-                svgIcon.style.color = fgColor;
-                svgIcon.setAttribute('fill', 'currentColor');
-                svgIcon.setAttribute('stroke', 'currentColor');
-                svgIcon.style.width = '85%';
-                svgIcon.style.height = '85%';
-            }
-
-            actionButton.style.cursor = "pointer";
-            actionButton.style.padding = "4px";
-            actionButton.style.display = "flex";
-            actionButton.style.justifyContent = "center";
-            actionButton.style.alignItems = "center";
-            actionButton.style.transition = "opacity 0.2s";
-
-            actionButton.addEventListener('mouseenter', () => actionButton.style.opacity = '0.8');
-            actionButton.addEventListener('mouseleave', () => actionButton.style.opacity = '1');
+            burgerBtn.addEventListener('mouseenter', () => burgerBtn.style.opacity = '0.8');
+            burgerBtn.addEventListener('mouseleave', () => burgerBtn.style.opacity = '1');
             
-            if (buttonConfig.actionType === 'moveRecord') {
-                actionButton.classList.add('cs-move-handle');
-                actionButton.style.cursor = 'grab';
-                if (!isText && (!buttonConfig.icon || buttonConfig.icon === 'icon-link')) {
-                    buttonConfig.icon = 'icon-arrow-move';
-                    actionButton.innerHTML = getIcon(buttonConfig.icon);
-                    const svg = actionButton.querySelector('svg');
-                    if (svg) {
-                        svg.style.color = fgColor;
-                        svg.setAttribute('fill', 'currentColor');
-                        svg.setAttribute('stroke', 'currentColor');
-                        svg.style.width = '85%';
-                        svg.style.height = '85%';
-                    }
-                }
-            }
-
-            if (buttonConfig.actionType === 'editRecord') {
-                actionButton.classList.add('cs-edit-handle');
-            }
-
-            actionButton.addEventListener("click", (e) => {
+            burgerBtn.title = groupConfig.name || "Menu";
+            
+            burgerBtn.addEventListener("click", (e) => {
               e.stopPropagation();
-              if (buttonConfig.actionType === 'moveRecord') return;
-
-              if (buttonConfig.actionType === 'triggerWidget') {
-                const configIdToPublish = buttonConfig.targetConfigId || currentOptions.configId;
-                if (!configIdToPublish) return;
-                let rowIdsToPublish = [];
-                let filterValueToPublish = record.id;
-
-                if (buttonConfig.sourceRefListColumn) {
-                  const refListValue = record[buttonConfig.sourceRefListColumn];
-                  if (Array.isArray(refListValue) && refListValue[0] === 'L') {
-                    rowIdsToPublish = refListValue.slice(1);
-                    filterValueToPublish = rowIdsToPublish;
-                  }
-                }
-
-                publish('grf-trigger-widget', {
-                  configId: configIdToPublish,
-                  sourceRecord: record,
-                  rowIds: rowIdsToPublish,
-                  filterValue: filterValueToPublish,
-                  componentType: buttonConfig.targetComponentType,
-                  filterTargetColumn: buttonConfig.filterTargetColumn,
-                  disableFiltering: buttonConfig.disableFiltering
-                });
-              } else {
-                publish('grf-navigation-action-triggered', {
-                  config: buttonConfig,
-                  sourceRecord: record,
-                  tableId: currentOptions.tableId
-                });
-              }
+              e.preventDefault();
+              _showBurgerMenu(burgerBtn, groupConfig, record, currentOptions, finalCardColor);
             });
-            groupContainer.appendChild(actionButton);
-          });
+            
+            groupContainer.appendChild(burgerBtn);
+          } else {
+            groupConfig.buttons.forEach(buttonConfig => {
+              const actionButton = document.createElement("button");
+              actionButton.className = "cs-action-button";
+              
+              const isText = buttonConfig.buttonStyle === 'text';
+              const shape = groupConfig.shape || 'square';
+              const fgColor = groupConfig.iconColor || '#000000';
+              const borderWidth = groupConfig.borderWidth !== undefined ? groupConfig.borderWidth : 1;
+              
+              let bgColor = '#f0f0f0';
+              if (groupConfig.bgMode === 'transparent') {
+                  bgColor = 'transparent';
+              } else if (groupConfig.bgMode === 'solid') {
+                  bgColor = groupConfig.backgroundColor || '#f0f0f0';
+              } else if (groupConfig.bgMode === 'overlay') {
+                  const op = (parseInt(groupConfig.overlayOpacity, 10) || 20) / 100;
+                  const rgb = groupConfig.overlayEffect === 'darken' ? '0,0,0' : '255,255,255';
+                  bgColor = `rgba(${rgb}, ${op})`;
+              } else if (groupConfig.bgMode === 'match-card') {
+                  const effect = groupConfig.overlayEffect || 'lighten';
+                  const opacity = groupConfig.overlayOpacity || 20;
+                  bgColor = adjustColor(finalCardColor, opacity, effect);
+              } else {
+                  bgColor = groupConfig.transparentBackground ? 'transparent' : (groupConfig.backgroundColor || '#f0f0f0');
+              }
+
+              if (isText) {
+                  actionButton.textContent = (buttonConfig.text || 'Tx').substring(0, 3);
+                  actionButton.style.fontFamily = 'sans-serif';
+                  actionButton.style.fontWeight = 'bold';
+                  actionButton.style.fontSize = '20px';
+              } else {
+                  actionButton.innerHTML = getIcon(buttonConfig.icon || 'icon-link');
+              }
+
+              if (buttonConfig.actionType === 'showTooltipField' && buttonConfig.tooltipField) {
+                  const val = record[buttonConfig.tooltipField];
+                  if (val !== undefined && val !== null) {
+                      actionButton.title = `${buttonConfig.tooltip || ''}\n\n${String(val)}`;
+                  }
+              } else {
+                  actionButton.title = buttonConfig.tooltip || '';
+              }
+
+              const shouldShowCount = (buttonConfig.actionType === 'triggerWidget' || buttonConfig.actionType === 'navigate') && 
+                                      buttonConfig.targetTable && tableLens;
+              
+              if (shouldShowCount) {
+                  const baseTooltip = buttonConfig.tooltip || '';
+                  (async () => {
+                      try {
+                          const targetTableId = buttonConfig.targetTable;
+                          const sourceTableId = record.gristHelper_tableId;
+                          const relationColId = await tableLens.findRelationField(targetTableId, sourceTableId);
+                          if (relationColId) {
+                              const allTargetRecords = await tableLens.fetchTableRecords(targetTableId);
+                              const relatedCount = allTargetRecords.filter(r => {
+                                  const val = r[relationColId];
+                                  if (Array.isArray(val)) return val.includes(record.id);
+                                  return val === record.id;
+                              }).length;
+                              const countText = ` (${relatedCount})`;
+                              actionButton.title = baseTooltip ? `${baseTooltip}${countText}` : `${relatedCount} itens`;
+                          }
+                      } catch (err) {
+                          console.error("[CardSystem] Error fetching related count for tooltip:", err);
+                      }
+                  })();
+              }
+
+              const iconSize = styling.iconSize || 1.0;
+              actionButton.style.width = `${32 * iconSize}px`;
+              actionButton.style.height = `${32 * iconSize}px`;
+              actionButton.style.border = groupConfig.borderColor ? `${borderWidth}px solid ${groupConfig.borderColor}` : `${borderWidth}px solid #ccc`;
+              actionButton.style.background = bgColor;
+              actionButton.style.color = fgColor;
+              actionButton.style.borderRadius = shape === 'circle' ? "50%" : "5px";
+              
+              const svgIcon = actionButton.querySelector('svg.icon');
+              if (svgIcon) {
+                  svgIcon.style.color = fgColor;
+                  svgIcon.setAttribute('fill', 'currentColor');
+                  svgIcon.setAttribute('stroke', 'currentColor');
+                  svgIcon.style.width = '85%';
+                  svgIcon.style.height = '85%';
+              }
+
+              actionButton.style.cursor = "pointer";
+              actionButton.style.padding = "4px";
+              actionButton.style.display = "flex";
+              actionButton.style.justifyContent = "center";
+              actionButton.style.alignItems = "center";
+              actionButton.style.transition = "opacity 0.2s";
+
+              actionButton.addEventListener('mouseenter', () => actionButton.style.opacity = '0.8');
+              actionButton.addEventListener('mouseleave', () => actionButton.style.opacity = '1');
+              
+              if (buttonConfig.actionType === 'moveRecord') {
+                  actionButton.classList.add('cs-move-handle');
+                  actionButton.style.cursor = 'grab';
+                  if (!isText && (!buttonConfig.icon || buttonConfig.icon === 'icon-link')) {
+                      buttonConfig.icon = 'icon-arrow-move';
+                      actionButton.innerHTML = getIcon(buttonConfig.icon);
+                      const svg = actionButton.querySelector('svg');
+                      if (svg) {
+                          svg.style.color = fgColor;
+                          svg.setAttribute('fill', 'currentColor');
+                          svg.setAttribute('stroke', 'currentColor');
+                          svg.style.width = '85%';
+                          svg.style.height = '85%';
+                      }
+                  }
+              }
+
+              if (buttonConfig.actionType === 'editRecord') {
+                  actionButton.classList.add('cs-edit-handle');
+              }
+
+              actionButton.addEventListener("click", (e) => {
+                e.stopPropagation();
+                if (buttonConfig.actionType === 'moveRecord') return;
+
+                if (buttonConfig.actionType === 'triggerWidget') {
+                  const configIdToPublish = buttonConfig.targetConfigId || currentOptions.configId;
+                  if (!configIdToPublish) return;
+                  let rowIdsToPublish = [];
+                  let filterValueToPublish = record.id;
+
+                  if (buttonConfig.sourceRefListColumn) {
+                    const refListValue = record[buttonConfig.sourceRefListColumn];
+                    if (Array.isArray(refListValue) && refListValue[0] === 'L') {
+                      rowIdsToPublish = refListValue.slice(1);
+                      filterValueToPublish = rowIdsToPublish;
+                    }
+                  }
+
+                  publish('grf-trigger-widget', {
+                    configId: configIdToPublish,
+                    sourceRecord: record,
+                    rowIds: rowIdsToPublish,
+                    filterValue: filterValueToPublish,
+                    componentType: buttonConfig.targetComponentType,
+                    filterTargetColumn: buttonConfig.filterTargetColumn,
+                    disableFiltering: buttonConfig.disableFiltering
+                  });
+                } else {
+                  publish('grf-navigation-action-triggered', {
+                    config: buttonConfig,
+                    sourceRecord: record,
+                    tableId: currentOptions.tableId
+                  });
+                }
+              });
+              groupContainer.appendChild(actionButton);
+            });
+          }
 
           cardEl.appendChild(groupContainer);
           continue;
@@ -1995,6 +2125,213 @@ export const CardSystem = (() => {
     }
     
     return headerCard;
+  }
+
+  function _removeActiveBurgerMenus() {
+    document.querySelectorAll(".cs-burger-dropdown-menu").forEach(el => el.remove());
+  }
+
+  function _showBurgerMenu(anchorEl, burgerGroups, record, currentOptions, finalCardColor) {
+    _removeActiveBurgerMenus();
+    
+    const menu = document.createElement("div");
+    menu.className = "cs-burger-dropdown-menu";
+    
+    menu.style.position = "fixed";
+    menu.style.backgroundColor = "#ffffff";
+    menu.style.border = "1px solid #cbd5e1";
+    menu.style.borderRadius = "8px";
+    menu.style.boxShadow = "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)";
+    menu.style.padding = "6px";
+    menu.style.zIndex = "10000";
+    menu.style.display = "flex";
+    menu.style.flexDirection = "column";
+    menu.style.gap = "4px";
+    menu.style.minWidth = "160px";
+    
+    const createItemRow = (icon, isText, text, tooltip, fgColor, shape, bgMode, backgroundColor, transparentBackground, onClick) => {
+      const itemRow = document.createElement("div");
+      itemRow.className = "cs-burger-dropdown-item";
+      itemRow.style.display = "flex";
+      itemRow.style.alignItems = "center";
+      itemRow.style.gap = "10px";
+      itemRow.style.padding = "8px 12px";
+      itemRow.style.borderRadius = "6px";
+      itemRow.style.cursor = "pointer";
+      itemRow.style.transition = "background-color 0.15s ease";
+      itemRow.style.color = "#1e293b";
+      itemRow.style.fontSize = "13px";
+      
+      itemRow.addEventListener("mouseenter", () => {
+        itemRow.style.backgroundColor = "#f1f5f9";
+      });
+      itemRow.addEventListener("mouseleave", () => {
+        itemRow.style.backgroundColor = "transparent";
+      });
+      
+      const iconContainer = document.createElement("div");
+      iconContainer.style.width = "24px";
+      iconContainer.style.height = "24px";
+      iconContainer.style.display = "flex";
+      iconContainer.style.alignItems = "center";
+      iconContainer.style.justifyContent = "center";
+      iconContainer.style.borderRadius = "4px";
+      iconContainer.style.flexShrink = "0";
+      
+      let itemBg = '#f0f0f0';
+      if (bgMode === 'transparent') {
+          itemBg = 'transparent';
+      } else if (bgMode === 'solid') {
+          itemBg = backgroundColor || '#f0f0f0';
+      } else if (bgMode === 'overlay') {
+          itemBg = 'rgba(0,0,0,0.05)';
+      } else {
+          itemBg = transparentBackground ? 'transparent' : '#f1f5f9';
+      }
+      
+      iconContainer.style.background = "transparent";
+      iconContainer.style.color = fgColor;
+      iconContainer.style.border = "none";
+      if (shape === 'circle') iconContainer.style.borderRadius = "50%";
+      
+      if (isText) {
+        iconContainer.textContent = (text || 'Tx').substring(0, 3);
+        iconContainer.style.fontFamily = 'sans-serif';
+        iconContainer.style.fontWeight = 'bold';
+        iconContainer.style.fontSize = '12px';
+      } else {
+        iconContainer.innerHTML = getIcon(icon || 'icon-link');
+        const svg = iconContainer.querySelector('svg.icon');
+        if (svg) {
+            svg.style.color = fgColor;
+            svg.setAttribute('fill', 'currentColor');
+            svg.setAttribute('stroke', 'currentColor');
+            svg.style.width = '75%';
+            svg.style.height = '75%';
+        }
+      }
+      itemRow.appendChild(iconContainer);
+      
+      const labelSpan = document.createElement("span");
+      labelSpan.style.fontWeight = "500";
+      labelSpan.textContent = tooltip || text || "Ação";
+      itemRow.appendChild(labelSpan);
+      
+      itemRow.addEventListener("click", (e) => {
+        e.stopPropagation();
+        _removeActiveBurgerMenus();
+        onClick();
+      });
+      
+      return itemRow;
+    };
+
+    if (!burgerGroups || burgerGroups.length === 0) {
+      // Default Edit Action
+      const editRow = createItemRow(
+        'icon-edit',
+        false,
+        'Editar',
+        'Editar',
+        '#1e293b',
+        'square',
+        'solid',
+        '#f1f5f9',
+        false,
+        () => {
+          handleCardClick(record, currentOptions);
+        }
+      );
+      menu.appendChild(editRow);
+    } else {
+      burgerGroups.forEach((groupConfig, gIdx) => {
+        if (gIdx > 0) {
+          const divider = document.createElement("div");
+          divider.style.height = "1px";
+          divider.style.background = "#e2e8f0";
+          divider.style.margin = "4px 0";
+          menu.appendChild(divider);
+        }
+        
+        groupConfig.buttons.forEach(buttonConfig => {
+          const fgColor = buttonConfig.iconColor || groupConfig.iconColor || '#000000';
+          const shape = groupConfig.shape || 'square';
+          const isText = buttonConfig.buttonStyle === 'text';
+          
+          const row = createItemRow(
+            buttonConfig.icon,
+            isText,
+            buttonConfig.text,
+            buttonConfig.tooltip,
+            fgColor,
+            shape,
+            buttonConfig.bgMode,
+            buttonConfig.backgroundColor,
+            groupConfig.transparentBackground,
+            () => {
+              if (buttonConfig.actionType === 'triggerWidget') {
+                const configIdToPublish = buttonConfig.targetConfigId || currentOptions.configId;
+                if (!configIdToPublish) return;
+                let rowIdsToPublish = [];
+                let filterValueToPublish = record.id;
+
+                if (buttonConfig.sourceRefListColumn) {
+                  const refListValue = record[buttonConfig.sourceRefListColumn];
+                  if (Array.isArray(refListValue) && refListValue[0] === 'L') {
+                    rowIdsToPublish = refListValue.slice(1);
+                    filterValueToPublish = rowIdsToPublish;
+                  }
+                }
+
+                publish('grf-trigger-widget', {
+                  configId: configIdToPublish,
+                  sourceRecord: record,
+                  rowIds: rowIdsToPublish,
+                  filterValue: filterValueToPublish,
+                  componentType: buttonConfig.targetComponentType,
+                  filterTargetColumn: buttonConfig.filterTargetColumn,
+                  disableFiltering: buttonConfig.disableFiltering
+                });
+              } else {
+                publish('grf-navigation-action-triggered', {
+                  config: buttonConfig,
+                  sourceRecord: record,
+                  tableId: currentOptions.tableId
+                });
+              }
+            }
+          );
+          menu.appendChild(row);
+        });
+      });
+    }
+    
+    document.body.appendChild(menu);
+    const rect = anchorEl.getBoundingClientRect();
+    
+    let top = rect.bottom + window.scrollY;
+    let left = rect.left + window.scrollX;
+    
+    const menuRect = menu.getBoundingClientRect();
+    if (left + menuRect.width > window.innerWidth) {
+      left = rect.right + window.scrollX - menuRect.width;
+    }
+    if (rect.bottom + menuRect.height > window.innerHeight && rect.top - menuRect.height > 0) {
+      top = rect.top + window.scrollY - menuRect.height;
+    }
+    
+    menu.style.top = `${top}px`;
+    menu.style.left = `${left}px`;
+    
+    const dismissHandler = (e) => {
+      if (!menu.contains(e.target) && !anchorEl.contains(e.target)) {
+        _removeActiveBurgerMenus();
+        document.removeEventListener("click", dismissHandler);
+      }
+    };
+    setTimeout(() => {
+      document.addEventListener("click", dismissHandler);
+    }, 50);
   }
 
   return { renderCards, filterRecords };

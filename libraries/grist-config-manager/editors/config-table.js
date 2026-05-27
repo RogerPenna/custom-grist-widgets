@@ -1,523 +1,431 @@
-
 export const TableConfigEditor = (() => {
-    let currentSchema = null;
-    let currentTableId = null;
     let _mainContainer = null;
-    let _allConfigs = [];
-    let _customButtons = [];
+    let _allCols = [];
     let _activeButtonIdx = -1;
+    let _customButtons = [];
     let _iconPickerPopup = null;
+    let _allConfigs = [];
+    let _currentTableId = null;
 
     const AVAILABLE_ICONS = [
-        "icon-link", "icon-link-broken", "icon-settings", "icon-edit", "icon-save", "icon-save-alt",
-        "icon-adjustments", "icon-adjustments-vert", "icon-annotation", "icon-badge-check", "icon-barcode",
-        "icon-bars", "icon-bell", "icon-bell-active", "icon-bookmark", "icon-calendar-edit", "icon-chart",
-        "icon-chart-mixed", "icon-chart-pie", "icon-check", "icon-check-circle", "icon-check-circle-alt",
-        "icon-minus-circle", "icon-minus-circle-alt", "icon-plus-circle", "icon-plus-circle-alt", "icon-clipboard",
-        "icon-clipboard-check", "icon-clipboard-list", "icon-clock-arrow", "icon-close-circle", "icon-close-sidebar",
-        "icon-column", "icon-download", "icon-exclamation", "icon-expand", "icon-eye", "icon-file",
-        "icon-file-chart", "icon-file-check", "icon-file-clone", "icon-file-search", "icon-filter", "icon-flag",
-        "icon-folder", "icon-forward", "icon-globe", "icon-grid", "icon-hourglass", "icon-info-circle",
-        "icon-lightbulb", "icon-lifesaver", "icon-lock", "icon-unlock", "icon-microscope", "icon-pen",
-        "icon-printer", "icon-profile-card", "icon-rectangle-list", "icon-tools", "icon-trashbin", "icon-truck",
-        "icon-zoom-in", "icon-zoom-out", "icon-chart-up", "icon-arrow-move", "icon-bar-chart", "icon-bar-chart-line",
-        "icon-bullseye", "icon-card-checklist", "icon-compass", "icon-cone", "icon-cone-striped", "icon-diagram-2",
-        "icon-diagram-3", "icon-exclamation-triangle", "icon-exclamation-diamond", "icon-globe-americas", "icon-lightning",
-        "icon-pen-alt", "icon-speedometer", "icon-traffic-light", "icon-wrench", "icon-search", "icon-process-cogs",
-        "icon-process"
+        "icon-CompassRose",
+        "icon-activity-icon",
+        "icon-adjustments",
+        "icon-adjustments-vert",
+        "icon-annotation",
+        "icon-arrow-down-icon",
+        "icon-arrow-down-left-icon",
+        "icon-arrow-down-right-icon",
+        "icon-arrow-left-icon",
+        "icon-arrow-move",
+        "icon-arrow-right-icon",
+        "icon-arrow-up-icon",
+        "icon-arrow-up-left-icon",
+        "icon-arrow-up-right-icon",
+        "icon-backhoe",
+        "icon-badge-check",
+        "icon-bar-chart",
+        "icon-bar-chart-line",
+        "icon-barcode",
+        "icon-bars",
+        "icon-bell",
+        "icon-bell-active",
+        "icon-bookmark",
+        "icon-bulldozer",
+        "icon-bullseye",
+        "icon-calculator-icon",
+        "icon-calendar",
+        "icon-calendar-edit",
+        "icon-card-checklist",
+        "icon-chart",
+        "icon-chart-gantt-icon",
+        "icon-chart-mixed",
+        "icon-chart-pie",
+        "icon-chart-up",
+        "icon-check",
+        "icon-check-circle",
+        "icon-check-circle-alt",
+        "icon-checklist",
+        "icon-chess-knight-icon",
+        "icon-chess-pawn-icon",
+        "icon-chess-rook-icon",
+        "icon-clipboard",
+        "icon-clipboard-check",
+        "icon-clipboard-list",
+        "icon-clock-arrow",
+        "icon-close-circle",
+        "icon-close-sidebar",
+        "icon-column",
+        "icon-compass",
+        "icon-cone",
+        "icon-cone-striped",
+        "icon-crosshair-icon",
+        "icon-diagram-2",
+        "icon-diagram-3",
+        "icon-download",
+        "icon-edit",
+        "icon-exclamation",
+        "icon-exclamation-diamond",
+        "icon-exclamation-triangle",
+        "icon-expand",
+        "icon-eye",
+        "icon-file",
+        "icon-file-chart",
+        "icon-file-check",
+        "icon-file-clone",
+        "icon-file-search",
+        "icon-filter",
+        "icon-flag",
+        "icon-flag-icon",
+        "icon-folder",
+        "icon-forward",
+        "icon-globe",
+        "icon-globe-americas",
+        "icon-grid",
+        "icon-hard-hat",
+        "icon-hourglass",
+        "icon-info-circle",
+        "icon-kanban",
+        "icon-land-plot-icon",
+        "icon-landmark-icon",
+        "icon-life-buoy-icon",
+        "icon-lifesaver",
+        "icon-lightbulb",
+        "icon-lightning",
+        "icon-link",
+        "icon-link-broken",
+        "icon-lock",
+        "icon-microscope",
+        "icon-minus-circle",
+        "icon-minus-circle-alt",
+        "icon-pen",
+        "icon-pen-alt",
+        "icon-plus-circle",
+        "icon-plus-circle-alt",
+        "icon-pocket-knife-icon",
+        "icon-printer",
+        "icon-printer-icon",
+        "icon-process",
+        "icon-process-cogs",
+        "icon-profile-card",
+        "icon-rectangle-list",
+        "icon-risk",
+        "icon-save",
+        "icon-save-alt",
+        "icon-search",
+        "icon-settings",
+        "icon-sheet-icon",
+        "icon-shield-alert-icon",
+        "icon-shovel-icon",
+        "icon-speedometer",
+        "icon-strategy",
+        "icon-target-arrow",
+        "icon-tool-case-icon",
+        "icon-tools",
+        "icon-tools2",
+        "icon-traffic-cone-icon",
+        "icon-traffic-light",
+        "icon-trashbin",
+        "icon-trophy-icon",
+        "icon-truck",
+        "icon-unlock",
+        "icon-user-round-icon",
+        "icon-wrench",
+        "icon-zoom-in",
+        "icon-zoom-out"
     ];
 
-    function getFieldCategory(type) {
-        if (!type) return 'text';
-        const t = type.toLowerCase();
-        if (t === 'bool' || t === 'boolean') return 'bool';
-        if (t === 'numeric' || t === 'int' || t === 'integer' || t === 'float' || t === 'double') return 'number';
-        return 'text';
-    }
-
-    function updateDebugJson() {
-        if (!_mainContainer) return;
-        const outputEl = _mainContainer.querySelector('#config-json-output');
-        if (!outputEl) return;
-        try {
-            const config = read(_mainContainer);
-            outputEl.innerHTML = `
-                <div class="debug-tri-section">
-                    <div class="debug-label mapping">mappingJson (O "Onde")</div>
-                    <pre><code>${JSON.stringify(config.mapping, null, 2)}</code></pre>
-                </div>
-                <div class="debug-tri-section">
-                    <div class="debug-label styling">stylingJson (O "Como")</div>
-                    <pre><code>${JSON.stringify(config.styling, null, 2)}</code></pre>
-                </div>
-                <div class="debug-tri-section">
-                    <div class="debug-label actions">actionsJson (O "O que faz")</div>
-                    <pre><code>${JSON.stringify(config.actions, null, 2)}</code></pre>
-                </div>
-            `;
-        } catch (e) {
-            outputEl.textContent = "Erro ao ler a configuração: " + e.message;
-        }
-    }
-
-    async function render(container, configData, lens, tableId, allConfigs) {
+    async function render(container, config, lens, tableId, allConfigs = []) {
         _mainContainer = container;
-        currentTableId = tableId;
-        _allConfigs = allConfigs || [];
-        window.currentLens = lens; // Expose for sub-column rendering
-
+        _allConfigs = allConfigs;
+        _currentTableId = tableId;
         if (!tableId) {
-            container.innerHTML = '<p class="editor-placeholder">Selecione uma Tabela de Dados no menu acima para começar a configurar.</p>';
-            return;
-        }
-        currentSchema = await lens.getTableSchema(tableId);
-        if (!currentSchema) {
-            container.innerHTML = '<p class="editor-placeholder">Erro ao carregar o schema da tabela. Verifique o console.</p>';
+            container.innerHTML = '<p class="editor-placeholder">Selecione uma Tabela de Dados no menu acima.</p>';
             return;
         }
 
-        // Robust reading of config sections (tripartite support)
-        const mapping = configData.mapping || configData;
-        const styling = configData.styling || configData;
-        const actions = configData.actions || configData;
+        const schema = await lens.getTableSchema(tableId);
+        if (!schema) {
+            container.innerHTML = '<p class="editor-placeholder">Erro ao carregar o schema da tabela.</p>';
+            return;
+        }
 
-        _customButtons = actions.customButtons || [];
+        const fullConfig = config || {};
+        const mapping = fullConfig.mapping || fullConfig;
+        const styling = fullConfig.styling || fullConfig;
+        const actions = fullConfig.actions || fullConfig;
+
+        _customButtons = Array.isArray(actions.customButtons) ? actions.customButtons : [];
         _activeButtonIdx = -1;
 
-        // Store refListFieldConfig in container for createColumnCard to access
-        container._refListFieldConfig = mapping.refListFieldConfig || {};
-
-        const allCols = Object.values(currentSchema).filter(c => !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos');
-        container._allCols = allCols;
-
-        // Add virtual columns
-        allCols.push({ colId: '_actions', label: '⚙️ Ações (Virtual)', type: 'Virtual' });
-
-        const visibleColumns = mapping.columns || allCols.filter(c => c.colId !== '_actions').map(c => ({ colId: c.colId, width: null, align: 'left' }));
-        const visibleColIds = new Set(visibleColumns.map(c => c.colId));
-
-        // Filter and format Drawer configs for the dropdown
-        const drawerConfigs = _allConfigs.filter(cfg => (cfg.componentType || '').replace(/\s+/g, '').toLowerCase() === 'drawer');
-        const drawerOptionsHtml = drawerConfigs.map(d => {
-            const unified = lens.parseConfigRecord(d);
-            const tableDisplay = unified.tableId ? ` (${unified.tableId})` : '';
-            return `<option value="${d.configId}" ${actions.drawerId === d.configId ? 'selected' : ''}>${d.widgetTitle}${tableDisplay} [${d.configId}]</option>`;
-        }).join('');
-
-        const layoutConfig = styling.tableLayoutConfig || {};
+        const cols = Object.values(schema).filter(c => !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos');
+        _allCols = cols;
+        const currentCols = mapping.columns || [];
 
         container.innerHTML = `
             <style>
-                .tab-container { display: flex; border-bottom: 1px solid #ccc; }
-                .tab-button { background: #f1f1f1; border: 1px solid #ccc; border-bottom: none; padding: 10px 15px; cursor: pointer; margin-bottom: -1px; }
-                .tab-button.active { background: #fff; border-bottom: 1px solid #fff; }
-                .tab-panel { display: none; padding: 20px; border: 1px solid #ccc; border-top: none; }
-                .tab-panel.active { display: block; }
-                .debug-tri-section { margin-bottom: 15px; border-left: 4px solid #ddd; padding-left: 10px; }
-                .debug-label { font-weight: bold; font-size: 11px; margin-bottom: 4px; text-transform: uppercase; }
-                .debug-label.mapping { color: #0d6efd; }
-                .debug-label.styling { color: #198754; }
-                .debug-label.actions { color: #fd7e14; }
-                .config-debugger pre { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 4px; max-height: 200px; overflow: auto; }
-                .help-tip { cursor: help; color: #64748b; font-size: 12px; margin-left: 4px; border: 1px solid #cbd5e1; border-radius: 50%; width: 14px; height: 14px; display: inline-flex; align-items: center; justify-content: center; }
+                .config-section { margin-bottom: 25px; padding: 15px; background: #fff; border-radius: 8px; border: 1px solid #e2e8f0; }
+                .config-section h3 { margin-top: 0; font-size: 15px; color: #1e293b; border-bottom: 2px solid #f1f5f9; padding-bottom: 8px; margin-bottom: 15px; }
+                .field-list { list-style: none; padding: 0; margin: 0; min-height: 50px; }
+                .field-card { display: flex; flex-direction: column; background: #fff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 10px; cursor: grab; transition: all 0.2s; position: relative; }
+                .field-card:hover { border-color: #cbd5e1; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+                .field-card.dragging { opacity: 0.5; border-style: dashed; }
+                .field-card-label { font-weight: 600; font-size: 13px; color: #334155; }
+                .field-card-type { font-weight: normal; font-size: 11px; color: #94a3b8; margin-left: 5px; }
+                .field-card-controls { display: flex; gap: 10px; align-items: center; margin-top: 8px; }
+                .config-toggle { display: flex; align-items: center; gap: 5px; font-size: 12px; cursor: pointer; }
+                .config-tabs { display: flex; gap: 5px; margin-bottom: 20px; border-bottom: 1px solid #e2e8f0; }
+                .config-tab-btn { padding: 8px 16px; border: none; background: none; cursor: pointer; font-size: 13px; color: #64748b; border-bottom: 2px solid transparent; }
+                .config-tab-btn.active { color: #2563eb; border-bottom-color: #2563eb; font-weight: 600; }
+                .available-cols-container { background: #f8fafc; padding: 15px; border-radius: 8px; margin-top: 20px; border: 1px dashed #cbd5e1; }
+                .custom-btn-layout { display: flex; height: 350px; border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden; margin-top: 10px; }
+                .btn-list-side { width: 180px; border-right: 1px solid #e2e8f0; background: #f8fafc; display: flex; flex-direction: column; }
+                .btn-detail-side { flex: 1; padding: 15px; overflow-y: auto; background: #fff; }
+                .btn-list-header { padding: 8px 12px; font-weight: bold; font-size: 11px; text-transform: uppercase; color: #64748b; background: #f1f5f9; border-bottom: 1px solid #e2e8f0; }
             </style>
-            <div class="tab-container">
-                <button type="button" class="tab-button active" data-tab="general">Geral</button>
-                <button type="button" class="tab-button" data-tab="fields">Campos</button>
-                <button type="button" class="tab-button" data-tab="appearance">Aparência</button>
-                <button type="button" class="tab-button" data-tab="actions">Ações</button>
+            <div class="config-tabs">
+                <button class="config-tab-btn active" data-tab="mapping">Mapeamento e Colunas</button>
+                <button class="config-tab-btn" data-tab="styling">Visual da Tabela</button>
+                <button class="config-tab-btn" data-tab="actions">Ações e Botões</button>
             </div>
-            <div id="general-tab" class="tab-panel active">
-                <div class="config-section-title">Opções Globais da Tabela</div>
-                <div class="form-group">
-                    <label class="config-toggle">
-                        <input type="checkbox" id="striped-table-checkbox" ${styling.stripedTable ? 'checked' : ''}>
-                        Tabela Zebrada
-                    </label>
-                </div>
-                <div class="form-group">
-                    <label class="config-toggle">
-                        <input type="checkbox" id="enable-column-calcs-checkbox" ${actions.enableColumnCalcs ? 'checked' : ''}>
-                        Habilitar Cálculos de Coluna
-                    </label>
-                </div>
-                
-                <div class="config-section-title" style="margin-top: 20px;">Modo de Edição</div>
-                <div class="form-group">
-                    <label><input type="radio" name="editMode" value="excel" ${(actions.editMode || 'excel') === 'excel' ? 'checked' : ''}> Excel Style (Edição Inline)</label>
-                    
-                    <div id="excel-options" style="display: ${(actions.editMode || 'excel') === 'excel' ? 'block' : 'none'}; margin-left: 25px; border-left: 2px solid #ddd; padding-left: 10px; margin-top: 5px; margin-bottom: 10px;">
-                        <label class="config-toggle" title="Se marcado, as mudanças só são enviadas ao Grist após clicar em um botão 'Salvar' no topo da tabela.">
-                            <input type="checkbox" id="use-save-button-checkbox" ${actions.useSaveButton ? 'checked' : ''}>
-                            Usar Botão 'Salvar' (Edição em Lote) <span class="help-tip">?</span>
-                        </label>
+            <div id="table-config-content">
+                <div class="tab-pane active" id="pane-mapping">
+                    <div class="config-section">
+                        <h3>Colunas Visíveis</h3>
+                        <p class="help-text">Arraste para reordenar as colunas exibidas na tabela.</p>
+                        <ul id="column-list" class="field-list"></ul>
                     </div>
-
-                    <label><input type="radio" name="editMode" value="drawer" ${actions.editMode === 'drawer' ? 'checked' : ''}> Drawer Style (Edição por Formulário)</label>
-                </div>
-
-                <div class="form-group">
-                    <label for="drawer-id-select">ID do Drawer (para Modo Drawer)</label>
-                    <select id="drawer-id-select">
-                        <option value="">-- Selecione um Drawer --</option>
-                        ${drawerOptionsHtml}
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label class="config-toggle">
-                        <input type="checkbox" id="enable-add-new-btn-checkbox" ${actions.enableAddNewBtn ? 'checked' : ''}>
-                        Habilitar Botão 'Adicionar Novo'
-                    </label>
-                </div>
-
-                <div class="config-section-title" style="margin-top: 20px;">Layout & Interatividade</div>
-                <div class="form-group">
-                    <label for="layout-mode-select">Modo de Layout</label>
-                    <select id="layout-mode-select">
-                        <option value="fitColumns" ${styling.layout === 'fitColumns' ? 'selected' : ''}>Fit Columns</option>
-                        <option value="fitData" ${styling.layout === 'fitData' ? 'selected' : ''}>Fit Data</option>
-                        <option value="fitDataFill" ${styling.layout === 'fitDataFill' ? 'selected' : ''}>Fit Data Fill</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label class="config-toggle">
-                        <input type="checkbox" id="responsive-layout-checkbox" ${styling.responsiveLayout ? 'checked' : ''}>
-                        Layout Responsivo (Tabulator)
-                    </label>
-                </div>
-                <div class="form-group">
-                    <label class="config-toggle">
-                        <input type="checkbox" id="resizable-columns-checkbox" ${styling.resizableColumns !== false ? 'checked' : ''}>
-                        Colunas Redimensionáveis
-                    </label>
-                </div>
-                <div class="form-group">
-                    <label class="config-toggle">
-                        <input type="checkbox" id="header-filter-checkbox" ${styling.headerFilter !== false ? 'checked' : ''}>
-                        Filtros no Cabeçalho
-                    </label>
-                </div>
-
-                <div class="config-section-title" style="margin-top: 20px;">Ordenação Inicial</div>
-                <div class="form-group" style="display:flex; gap:10px;">
-                    <select id="default-sort-column" style="flex:2;">
-                        <option value="">-- Nenhuma --</option>
-                        ${allCols.filter(c => c.colId !== '_actions').map(c => `<option value="${c.colId}" ${styling.defaultSort?.column === c.colId ? 'selected' : ''}>${c.label}</option>`).join('')}
-                    </select>
-                    <select id="default-sort-dir" style="flex:1;">
-                        <option value="asc" ${styling.defaultSort?.direction === 'asc' ? 'selected' : ''}>ASC</option>
-                        <option value="desc" ${styling.defaultSort?.direction === 'desc' ? 'selected' : ''}>DESC</option>
-                    </select>
-                </div>
-
-                <div class="config-section-title" style="margin-top: 20px;">Paginação</div>
-                <div class="form-group">
-                    <label for="pagination-mode-select">Modo de Paginação</label>
-                    <select id="pagination-mode-select">
-                        <option value="false" ${!styling.pagination?.enabled ? 'selected' : ''}>Desativada</option>
-                        <option value="local" ${styling.pagination?.enabled === 'local' ? 'selected' : ''}>Local</option>
-                        <option value="remote" ${styling.pagination?.enabled === 'remote' ? 'selected' : ''}>Remota</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="pagination-size-input">Itens por Página</label>
-                    <input type="number" id="pagination-size-input" value="${styling.pagination?.pageSize || 10}" min="1">
-                </div>
-            </div>
-            <div id="fields-tab" class="tab-panel">
-                <div class="column-bulk-actions">
-                    <button type="button" id="select-all-cols-btn" class="btn btn-secondary btn-sm">Selecionar Todas</button>
-                    <button type="button" id="deselect-all-cols-btn" class="btn btn-secondary btn-sm">Deselecionar Todas</button>
-                </div>
-                <ul id="column-list" class="field-order-list"></ul>
-                <div class="config-section-title" style="margin-top: 20px;">Colunas Disponíveis</div>
-                <ul id="available-column-list" class="field-order-list"></ul>
-            </div>
-            <div id="appearance-tab" class="tab-panel">
-                <div class="config-section-title">Estilo e Aparência Global</div>
-                <div class="col-config-grid" style="margin-top:10px;">
-                    <div class="col-config-section">
-                        <div class="config-label-with-help">Tema Visual</div>
-                        <select id="theme-style-select" style="width:100%; padding:6px; border-radius:4px; border:1px solid #cbd5e1;">
-                            <option value="default" ${layoutConfig.themeStyle === 'default' ? 'selected' : ''}>Padrão (Clean)</option>
-                            <option value="glassmorphism" ${(layoutConfig.themeStyle || 'glassmorphism') === 'glassmorphism' ? 'selected' : ''}>Glassmorphism (Translúcido)</option>
-                        </select>
-                    </div>
-                    <div class="col-config-section">
-                        <div class="config-label-with-help">Linhas de Grade</div>
-                        <select id="grid-lines-select" style="width:100%; padding:6px; border-radius:4px; border:1px solid #cbd5e1;">
-                            <option value="none" ${layoutConfig.gridLines === 'none' ? 'selected' : ''}>Sem Linhas</option>
-                            <option value="horizontal" ${(layoutConfig.gridLines || 'horizontal') === 'horizontal' ? 'selected' : ''}>Apenas Horizontal</option>
-                            <option value="full" ${layoutConfig.gridLines === 'full' ? 'selected' : ''}>Grade Completa</option>
-                        </select>
-                    </div>
-                    <div class="col-config-section">
-                        <div class="config-label-with-help">Densidade das Linhas</div>
-                        <select id="density-select" style="width:100%; padding:6px; border-radius:4px; border:1px solid #cbd5e1;">
-                            <option value="compact" ${layoutConfig.density === 'compact' ? 'selected' : ''}>Compacto (Pequeno)</option>
-                            <option value="comfortable" ${(layoutConfig.density || 'comfortable') === 'comfortable' ? 'selected' : ''}>Confortável (Médio)</option>
-                            <option value="spacious" ${layoutConfig.density === 'spacious' ? 'selected' : ''}>Espaçoso (Grande)</option>
-                        </select>
-                    </div>
-                    <div class="col-config-section">
-                        <div class="config-label-with-help">Estilo do Cabeçalho</div>
-                        <select id="header-style-select" style="width:100%; padding:6px; border-radius:4px; border:1px solid #cbd5e1;">
-                            <option value="minimal" ${(layoutConfig.headerStyle || 'minimal') === 'minimal' ? 'selected' : ''}>Minimalista (Translúcido)</option>
-                            <option value="solid" ${layoutConfig.headerStyle === 'solid' ? 'selected' : ''}>Sólido</option>
-                        </select>
-                    </div>
-                    <div class="col-config-section">
-                        <div class="config-label-with-help">Efeito Hover</div>
-                        <select id="hover-effect-select" style="width:100%; padding:6px; border-radius:4px; border:1px solid #cbd5e1;">
-                            <option value="none" ${layoutConfig.hoverEffect === 'none' ? 'selected' : ''}>Sem Destaque</option>
-                            <option value="row-highlight" ${(layoutConfig.hoverEffect || 'row-highlight') === 'row-highlight' ? 'selected' : ''}>Destacar Linha</option>
-                        </select>
-                    </div>
-                    <div class="col-config-section">
-                        <div class="config-label-with-help">Linhas Alternadas</div>
-                        <label class="config-toggle" style="margin-top:8px;">
-                            <input type="checkbox" id="striped-rows-checkbox" ${layoutConfig.stripedRows !== false ? 'checked' : ''}>
-                            Zebrar Linhas (Zebra Stripes)
-                        </label>
+                    <div class="available-cols-container">
+                        <h3>Colunas Disponíveis</h3>
+                        <p class="help-text">Marque "Visível" ou arraste para cima para incluir na tabela.</p>
+                        <ul id="available-column-list" class="field-list"></ul>
                     </div>
                 </div>
-            </div>
-            <div id="actions-tab" class="tab-panel">
-                <div class="config-section-title">Ações Customizadas (Botões na Coluna _actions)</div>
-                <p style="font-size: 11px; color: #64748b; margin-bottom: 12px;">Crie botões de ação que serão exibidos na coluna virtual '_actions'.</p>
-                <div class="actions-layout" style="display:flex; height:350px; border:1px solid #cbd5e1; border-radius:4px; overflow:hidden;">
-                    <div class="buttons-list" style="width:200px; border-right:1px solid #cbd5e1; background:#f8fafc; display:flex; flex-direction:column;">
-                        <div style="padding:10px; font-weight:700; border-bottom:1px solid #e2e8f0; font-size:11px; background:#f1f5f9; color:#475569;">BOTÕES</div>
-                        <div id="btn-list-content" style="flex:1; overflow-y:auto;"></div>
-                        <div style="padding:8px; border-top:1px solid #e2e8f0; background:#f1f5f9;">
-                            <button type="button" id="add-btn-btn" style="width:100%; padding:6px; background:#22c55e; color:#fff; border:none; border-radius:4px; cursor:pointer; font-weight:bold; font-size:11px;">+ Adicionar Botão</button>
+                <div class="tab-pane" id="pane-styling" style="display:none;">
+                    <div class="config-section">
+                        <h3>Layout e Estilo</h3>
+                        <div class="col-config-grid">
+                            <div class="col-config-section">
+                                <label class="config-toggle"><input type="checkbox" id="striped-rows-checkbox" ${styling.tableLayoutConfig?.stripedRows !== false ? 'checked' : ''}> Linhas Zebradas</label>
+                                <label class="config-toggle"><input type="checkbox" id="resizable-cols-checkbox" ${styling.resizableColumns !== false ? 'checked' : ''}> Colunas Redimensionáveis</label>
+                                <label class="config-toggle"><input type="checkbox" id="header-filter-checkbox" ${styling.headerFilter ? 'checked' : ''}> Filtros no Cabeçalho</label>
+                            </div>
+                            <div class="col-config-section">
+                                <div>
+                                    <div class="config-label-with-help">Tema Visual</div>
+                                    <select id="theme-style-select" style="width:100%; padding:4px;">
+                                        <option value="glassmorphism" ${styling.tableLayoutConfig?.themeStyle === 'glassmorphism' ? 'selected' : ''}>Glassmorphism (Moderno)</option>
+                                        <option value="minimal" ${styling.tableLayoutConfig?.themeStyle === 'minimal' ? 'selected' : ''}>Minimalista (Limpo)</option>
+                                        <option value="corporate" ${styling.tableLayoutConfig?.themeStyle === 'corporate' ? 'selected' : ''}>Corporativo (Grist Style)</option>
+                                        <option value="night" ${styling.tableLayoutConfig?.themeStyle === 'night' ? 'selected' : ''}>Night Mode</option>
+                                    </select>
+                                </div>
+                                <div style="margin-top:8px;">
+                                    <div class="config-label-with-help">Densidade</div>
+                                    <select id="density-select" style="width:100%; padding:4px;">
+                                        <option value="compact" ${styling.tableLayoutConfig?.density === 'compact' ? 'selected' : ''}>Compacto</option>
+                                        <option value="comfortable" ${styling.tableLayoutConfig?.density === 'comfortable' ? 'selected' : ''}>Confortável</option>
+                                        <option value="spacious" ${styling.tableLayoutConfig?.density === 'spacious' ? 'selected' : ''}>Espaçoso</option>
+                                    </select>
+                                </div>
+                                <div style="margin-top:8px;">
+                                    <div class="config-label-with-help">Linhas de Grade / Bordas</div>
+                                    <select id="grid-lines-select" style="width:100%; padding:4px;">
+                                        <option value="horizontal" ${styling.tableLayoutConfig?.gridLines === 'horizontal' ? 'selected' : ''}>Apenas Horizontais (Padrão)</option>
+                                        <option value="full" ${styling.tableLayoutConfig?.gridLines === 'full' ? 'selected' : ''}>Todas as Bordas (Grade Completa)</option>
+                                        <option value="none" ${styling.tableLayoutConfig?.gridLines === 'none' ? 'selected' : ''}>Sem Bordas</option>
+                                    </select>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <div id="btn-detail-content" style="flex:1; padding:15px; overflow-y:auto; background:#fff;">
-                        <div style="color:#64748b; font-style:italic; text-align:center; margin-top:50px;">Selecione um botão para editar</div>
+                </div>
+                <div class="tab-pane" id="pane-actions" style="display:none;">
+                    <div class="config-section">
+                        <h3>Comportamento</h3>
+                        <div class="col-config-grid">
+                            <div>
+                                <label class="config-toggle"><input type="checkbox" id="edit-mode-checkbox" ${actions.editMode ? 'checked' : ''}> Habilitar Edição Direta</label>
+                                <label class="config-toggle"><input type="checkbox" id="use-save-btn-checkbox" ${actions.useSaveButton ? 'checked' : ''}> Usar Botão "Salvar Alterações"</label>
+                                <label class="config-toggle"><input type="checkbox" id="enable-add-btn-checkbox" ${actions.enableAddNewBtn ? 'checked' : ''}> Mostrar Botão "Novo Registro"</label>
+                            </div>
+                            <div>
+                                <div class="config-label-with-help">Gaveta de Edição (Drawer)</div>
+                                <select id="drawer-config-select" style="width:100%; padding:4px;">
+                                    <option value="">-- Sem Gaveta --</option>
+                                    ${allConfigs.filter(c => c.componentType === 'Drawer').map(c => `<option value="${c.configId}" ${actions.drawerId === c.configId ? 'selected' : ''}>${c.widgetTitle || c.configId}</option>`).join('')}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="config-section">
+                        <h3>Botões de Ação Customizados</h3>
+                        <p class="help-text">Estes botões aparecerão na coluna de Ações.</p>
+                        <div class="custom-btn-layout">
+                            <div class="btn-list-side">
+                                <div class="btn-list-header">Lista de Botões</div>
+                                <div id="btn-list-content" style="flex:1; overflow-y:auto;"></div>
+                                <button type="button" id="add-custom-btn" class="btn btn-primary btn-sm" style="margin:8px;">+ Adicionar Botão</button>
+                            </div>
+                            <div class="btn-detail-side" id="btn-detail-content"></div>
+                        </div>
                     </div>
                 </div>
             </div>
-            <details class="config-debugger" style="margin-top: 20px;">
-                <summary>Ver Tripartição JSON (Debug)</summary>
-                <div id="config-json-output"></div>
-            </details>
         `;
 
-        // Tab Logic
-        const tabButtons = container.querySelectorAll('.tab-button');
-        const tabPanels = container.querySelectorAll('.tab-panel');
-        tabButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                tabButtons.forEach(btn => btn.classList.remove('active'));
-                button.classList.add('active');
-                tabPanels.forEach(panel => panel.classList.remove('active'));
-                container.querySelector(`#${button.dataset.tab}-tab`).classList.add('active');
-            });
-        });
+        const visibleList = container.querySelector('#column-list');
+        const availableList = container.querySelector('#available-column-list');
 
-        // Adiciona listener para mostrar/ocultar opções do Excel dinamicamente
-        container.querySelectorAll('input[name="editMode"]').forEach(radio => {
-            radio.addEventListener('change', (e) => {
-                container.querySelector('#excel-options').style.display = (e.target.value === 'excel') ? 'block' : 'none';
-                updateDebugJson();
-            });
-        });
-
-        const columnListEl = container.querySelector('#column-list');
-        const availableColumnListEl = container.querySelector('#available-column-list');
-
-        for (const colConfig of visibleColumns) {
-            const col = allCols.find(c => c.colId === colConfig.colId);
-            if (col) columnListEl.appendChild(createColumnCard(col, colConfig));
+        // Adiciona coluna especial de Ações se não existir
+        if (!cols.find(c => c.colId === '_actions')) {
+            cols.unshift({ colId: '_actions', label: '⚡ Ações', type: 'Actions' });
         }
 
-        for (const col of allCols) {
-            if (!visibleColIds.has(col.colId)) availableColumnListEl.appendChild(createColumnCard(col, null));
-        }
+        cols.forEach(col => {
+            const config = currentCols.find(c => c.colId === col.colId);
+            const card = createColumnCard(col, config);
+            if (config) visibleList.appendChild(card);
+            else availableList.appendChild(card);
+        });
 
-        container.querySelector('#select-all-cols-btn').onclick = () => {
-            Array.from(availableColumnListEl.querySelectorAll('.field-card')).forEach(card => {
-                columnListEl.appendChild(card);
-                card.querySelector('.is-visible-checkbox').checked = true;
-            });
-            updateDebugJson();
-        };
+        enableDragAndDrop([visibleList, availableList]);
 
-        container.querySelector('#deselect-all-cols-btn').onclick = () => {
-            Array.from(columnListEl.querySelectorAll('.field-card')).forEach(card => {
-                availableColumnListEl.appendChild(card);
-                card.querySelector('.is-visible-checkbox').checked = false;
-            });
-            updateDebugJson();
-        };
+        container.querySelectorAll('.config-tab-btn').forEach(btn => {
+            btn.onclick = () => {
+                container.querySelectorAll('.config-tab-btn').forEach(b => b.classList.remove('active'));
+                container.querySelectorAll('.tab-pane').forEach(p => p.style.display = 'none');
+                btn.classList.add('active');
+                container.querySelector(`#pane-${btn.dataset.tab}`).style.display = 'block';
+            };
+        });
 
-        enableDragAndDrop([columnListEl, availableColumnListEl]);
-
-        // Wire Add Button event for actions tab
-        container.querySelector('#add-btn-btn').onclick = (e) => {
-            e.preventDefault();
-            _customButtons.push({
-                id: `btn-${Date.now()}`,
-                text: 'Nova Ação',
-                icon: 'icon-link',
-                color: '#2563eb',
-                actionType: 'navigateToGristPage',
-                buttonStyle: 'both'
-            });
+        container.querySelector('#add-custom-btn').onclick = () => {
+            _customButtons.push({ text: 'Nova Ação', icon: 'icon-star', color: '#2563eb', actionType: 'navigateToGristPage' });
             _activeButtonIdx = _customButtons.length - 1;
             renderActionsLayout();
             updateDebugJson();
         };
 
-        // Render actions tab layout
         renderActionsLayout();
-
-        container.addEventListener('change', updateDebugJson);
-        container.addEventListener('input', updateDebugJson);
-        updateDebugJson();
     }
 
     function read(container) {
-        if (!currentSchema) return {};
+        const fullConfig = {};
+        const visibleCards = [...container.querySelectorAll('#column-list .field-card')];
+        
+        fullConfig.tableId = _currentTableId;
+        fullConfig.columns = visibleCards.map(card => {
+            const colId = card.dataset.colId;
+            const panel = card.querySelector('.col-config-panel');
+            const colBase = {
+                colId: colId,
+                width: panel.querySelector('.col-width-input')?.value || 'auto',
+                align: panel.querySelector('.col-align-select')?.value || 'left'
+            };
 
-        const columnListEl = container.querySelector('#column-list');
-        const visibleItems = Array.from(columnListEl.querySelectorAll('.field-card'));
+            if (colId === '_actions') {
+                colBase.showView = panel.querySelector('.action-btn-view-checkbox')?.checked;
+                colBase.showEdit = panel.querySelector('.action-btn-edit-checkbox')?.checked;
+                colBase.showDelete = panel.querySelector('.action-btn-delete-checkbox')?.checked;
+            } else {
+                colBase.locked = panel.querySelector('.is-locked-checkbox')?.checked || false;
+                colBase.required = panel.querySelector('.is-required-checkbox')?.checked || false;
+                colBase.ignoreConditionalFormatting = panel.querySelector('.ignore-conditional-formatting-checkbox')?.checked || false;
+                colBase.ignoreHeaderStyle = panel.querySelector('.ignore-header-style-checkbox')?.checked || false;
+                colBase.ignoreCellStyle = panel.querySelector('.ignore-cell-style-checkbox')?.checked || false;
+                colBase.wrapText = panel.querySelector('.wrap-text-checkbox')?.checked !== false;
+                colBase.maxTextRows = parseInt(panel.querySelector('.max-text-rows-input')?.value, 10) || null;
+                colBase.bottomCalc = panel.querySelector('.col-calc-select')?.value || null;
+                colBase.formatter = panel.querySelector('.col-formatter-select')?.value || null;
+
+                if (colBase.formatter === 'progress' || colBase.formatter === 'progressRing') {
+                    const preset = panel.querySelector('.progress-preset')?.value;
+                    if (preset) {
+                        colBase.formatterParams = { progressBarPreset: preset };
+                    } else {
+                        colBase.formatterParams = {
+                            progressType: panel.querySelector('.progress-type')?.value || 'linear',
+                            labelPosition: panel.querySelector('.progress-label-pos')?.value || 'middle',
+                            showInternalBar: panel.querySelector('.progress-show-internal')?.checked || false,
+                            internalBarColId: panel.querySelector('.progress-internal-col')?.value || '',
+                            min: parseFloat(panel.querySelector('.progress-min')?.value ?? 0),
+                            max: parseFloat(panel.querySelector('.progress-max')?.value ?? 100),
+                            mainColor: panel.querySelector('.progress-color')?.value || '#4caf50',
+                            bgColor: panel.querySelector('.progress-bgcolor')?.value || '#e0e0e0',
+                            borderRadius: parseInt(panel.querySelector('.progress-radius')?.value ?? 4, 10),
+                            colorMode: panel.querySelector('.progress-mode')?.value || 'solid',
+                            striped: panel.querySelector('.progress-striped')?.checked || false,
+                            animated: panel.querySelector('.progress-animated')?.checked || false
+                        };
+                    }
+                } else if (colBase.formatter === 'money') {
+                    colBase.formatterParams = {
+                        symbol: panel.querySelector('.money-symbol')?.value || 'R$',
+                        decimal: panel.querySelector('.money-decimal')?.value || ',',
+                        thousand: panel.querySelector('.money-thousand')?.value || '.'
+                    };
+                } else if (colBase.formatter === 'image') {
+                    colBase.formatterParams = {
+                        imageSize: parseInt(panel.querySelector('.image-size')?.value ?? 50, 10),
+                        objectFit: panel.querySelector('.image-fit')?.value || 'cover',
+                        borderRadius: panel.querySelector('.image-radius')?.value || '4px'
+                    };
+                } else if (colBase.formatter === 'sparkline') {
+                    colBase.formatterParams = {
+                        mainColor: panel.querySelector('.sparkline-color')?.value || '#10b981'
+                    };
+                }
+            }
+
+            return colBase;
+        });
+
         const refListFieldConfig = {};
+        visibleCards.forEach(card => {
+            const colId = card.dataset.colId;
+            const reflistPanel = card.querySelector('.reflist-config-panel');
+            if (reflistPanel) {
+                const cols = [];
+                reflistPanel.querySelectorAll('.reflist-config-table tbody tr').forEach(tr => {
+                    if (tr.querySelector('.ref-col-show-checkbox')?.checked) {
+                        cols.push(tr.dataset.refColId);
+                    }
+                });
 
-        const fullConfig = {
-            tableId: currentTableId,
-            stripedTable: container.querySelector('#striped-table-checkbox')?.checked ?? false,
-            enableColumnCalcs: container.querySelector('#enable-column-calcs-checkbox')?.checked ?? false,
-            editMode: container.querySelector('input[name="editMode"]:checked')?.value || 'excel',
-            useSaveButton: container.querySelector('#use-save-button-checkbox')?.checked || false,
-            drawerId: container.querySelector('#drawer-id-select')?.value || null,
-            enableAddNewBtn: container.querySelector('#enable-add-new-btn-checkbox')?.checked ?? false,
-            layout: container.querySelector('#layout-mode-select')?.value || 'fitColumns',
-            responsiveLayout: container.querySelector('#responsive-layout-checkbox')?.checked ?? false,
-            resizableColumns: container.querySelector('#resizable-columns-checkbox')?.checked ?? true,
-            headerFilter: container.querySelector('#header-filter-checkbox')?.checked ?? true,
-            defaultSort: {
-                column: container.querySelector('#default-sort-column')?.value || null,
-                direction: container.querySelector('#default-sort-dir')?.value || 'asc'
-            },
-            pagination: {
-                enabled: container.querySelector('#pagination-mode-select')?.value === 'false' ? false : (container.querySelector('#pagination-mode-select')?.value || 'local'),
-                pageSize: parseInt(container.querySelector('#pagination-size-input')?.value, 10) || 10,
-            },
-            columns: visibleItems.map(item => {
-                const colId = item.dataset.colId;
-                const formatter = item.querySelector('.col-formatter-select')?.value || null;
-                const isActions = colId === '_actions';
-                
-                const colBase = {
-                    colId: colId,
-                    width: item.querySelector('.col-width-input')?.value || null,
-                    align: item.querySelector('.col-align-select')?.value || 'left',
-                    wrapText: item.querySelector('.wrap-text-checkbox')?.checked ?? false,
-                    maxTextRows: parseInt(item.querySelector('.max-text-rows-input')?.value, 10) || null,
-                    bottomCalc: item.querySelector('.col-calc-select')?.value || null,
-                    locked: item.querySelector('.is-locked-checkbox')?.checked ?? false,
-                    required: item.querySelector('.is-required-checkbox')?.checked ?? false,
-                    formatter: formatter,
-                    formatterParams: {},
-                    ignoreConditionalFormatting: item.querySelector('.ignore-conditional-formatting-checkbox')?.checked ?? false,
-                    ignoreHeaderStyle: item.querySelector('.ignore-header-style-checkbox')?.checked ?? false,
-                    ignoreCellStyle: item.querySelector('.ignore-cell-style-checkbox')?.checked ?? false,
+                refListFieldConfig[colId] = {
+                    _refListConfig: {
+                        displayAs: reflistPanel.querySelector('.reflist-display-as')?.value || 'none',
+                        collapsible: reflistPanel.querySelector('.reflist-collapsible-checkbox')?.checked || false,
+                        zebra: reflistPanel.querySelector('.reflist-zebra-checkbox')?.checked || false,
+                        cardConfigId: reflistPanel.querySelector('.reflist-card-config-id')?.value || '',
+                        showAddButton: reflistPanel.querySelector('.reflist-show-add-checkbox')?.checked || false,
+                        addRecordConfigId: reflistPanel.querySelector('.reflist-add-config-id')?.value || '',
+                        columns: cols
+                    }
                 };
-
-                if (formatter === 'progress' || formatter === 'progressRing') {
-                    colBase.formatterParams = {
-                        progressBarPreset: item.querySelector('.progress-preset')?.value || '',
-                        progressType: formatter === 'progressRing' ? 'circular' : (item.querySelector('.progress-type')?.value || 'linear'),
-                        labelPosition: item.querySelector('.progress-label-pos')?.value || 'middle',
-                        min: parseFloat(item.querySelector('.progress-min')?.value) || 0,
-                        max: parseFloat(item.querySelector('.progress-max')?.value) || 100,
-                        legend: item.querySelector('.progress-legend')?.checked || false,
-                        mainColor: item.querySelector('.progress-color')?.value || '#4caf50',
-                        bgColor: item.querySelector('.progress-bgcolor')?.value || '#e0e0e0',
-                        borderRadius: parseInt(item.querySelector('.progress-radius')?.value, 10) || 4,
-                        striped: item.querySelector('.progress-striped')?.checked || false,
-                        animated: item.querySelector('.progress-animated')?.checked || false,
-                        colorMode: item.querySelector('.progress-mode')?.value || 'solid',
-                        showInternalBar: item.querySelector('.progress-show-internal')?.checked || false,
-                        internalBarColId: item.querySelector('.progress-internal-col')?.value || ''
-                    };
-                } else if (formatter === 'money') {
-                    colBase.formatterParams = {
-                        symbol: item.querySelector('.money-symbol')?.value || 'R$',
-                        decimal: item.querySelector('.money-decimal')?.value || ',',
-                        thousand: item.querySelector('.money-thousand')?.value || '.'
-                    };
-                } else if (formatter === 'image') {
-                    colBase.formatterParams = {
-                        imageSize: parseInt(item.querySelector('.image-size')?.value, 10) || 50,
-                        objectFit: item.querySelector('.image-fit')?.value || 'cover',
-                        borderRadius: item.querySelector('.image-radius')?.value || '4px'
-                    };
-                } else if (formatter === 'sparkline') {
-                    colBase.formatterParams = {
-                        mainColor: item.querySelector('.sparkline-color')?.value || '#10b981'
-                    };
-                }
-
-                if (isActions) {
-                    colBase.showView = item.querySelector('.action-btn-view-checkbox')?.checked;
-                    colBase.showEdit = item.querySelector('.action-btn-edit-checkbox')?.checked;
-                    colBase.showDelete = item.querySelector('.action-btn-delete-checkbox')?.checked;
-                }
-
-                // Gather RefList Config
-                const reflistPanel = item.querySelector('.reflist-config-panel');
-                if (reflistPanel) {
-                    const refConfig = {
-                        _refListConfig: {
-                            displayAs: reflistPanel.querySelector('.reflist-display-as')?.value || 'none',
-                            collapsible: reflistPanel.querySelector('.reflist-collapsible-checkbox')?.checked ?? false,
-                            zebra: reflistPanel.querySelector('.reflist-zebra-checkbox')?.checked ?? false,
-                            cardConfigId: reflistPanel.querySelector('.reflist-card-config-id')?.value.trim() || null,
-                            showAddButton: reflistPanel.querySelector('.reflist-show-add-checkbox')?.checked ?? true,
-                            addRecordConfigId: reflistPanel.querySelector('.reflist-add-config-id')?.value.trim() || null,
-                            columns: []
-                        }
-                    };
-                    reflistPanel.querySelectorAll('.reflist-config-table tbody tr').forEach(row => {
-                        if (row.querySelector('.ref-col-show-checkbox')?.checked) {
-                            refConfig._refListConfig.columns.push(row.dataset.refColId);
-                        }
-                    });
-                    refListFieldConfig[colId] = refConfig;
-                }
-
-                return colBase;
-            }),
-        };
+            }
+        });
 
         const tableLayoutConfig = {
             themeStyle: container.querySelector('#theme-style-select')?.value || 'glassmorphism',
-            gridLines: container.querySelector('#grid-lines-select')?.value || 'horizontal',
             density: container.querySelector('#density-select')?.value || 'comfortable',
-            headerStyle: container.querySelector('#header-style-select')?.value || 'minimal',
-            hoverEffect: container.querySelector('#hover-effect-select')?.value || 'row-highlight',
+            gridLines: container.querySelector('#grid-lines-select')?.value || 'horizontal',
             stripedRows: container.querySelector('#striped-rows-checkbox')?.checked ?? true
         };
 
         return {
             mapping: { tableId: fullConfig.tableId, columns: fullConfig.columns, refListFieldConfig },
             styling: {
-                stripedTable: fullConfig.stripedTable,
-                layout: fullConfig.layout,
-                resizableColumns: fullConfig.resizableColumns,
-                headerFilter: fullConfig.headerFilter,
-                pagination: fullConfig.pagination,
+                resizableColumns: container.querySelector('#resizable-cols-checkbox').checked,
+                headerFilter: container.querySelector('#header-filter-checkbox').checked,
                 tableLayoutConfig: tableLayoutConfig
             },
             actions: {
-                enableColumnCalcs: fullConfig.enableColumnCalcs,
-                editMode: fullConfig.editMode,
-                useSaveButton: fullConfig.useSaveButton,
-                drawerId: fullConfig.drawerId,
-                enableAddNewBtn: fullConfig.enableAddNewBtn,
+                editMode: container.querySelector('#edit-mode-checkbox').checked,
+                useSaveButton: container.querySelector('#use-save-btn-checkbox').checked,
+                drawerId: container.querySelector('#drawer-config-select').value,
+                enableAddNewBtn: container.querySelector('#enable-add-btn-checkbox').checked,
                 customButtons: _customButtons
             }
         };
@@ -586,25 +494,14 @@ export const TableConfigEditor = (() => {
                             <option value="right" ${align === 'right' ? 'selected' : ''}>Direita</option>
                         </select>
                     </div>
-                    <div style="display:none;">
-                        <input type="checkbox" class="is-locked-checkbox">
-                        <input type="checkbox" class="is-required-checkbox">
-                        <input type="checkbox" class="ignore-conditional-formatting-checkbox">
-                        <input type="checkbox" class="wrap-text-checkbox">
-                        <input type="number" class="max-text-rows-input">
-                        <select class="col-calc-select"><option value=""></option></select>
-                        <select class="col-formatter-select"><option value=""></option></select>
-                    </div>
                 </div>
             `;
         } else {
             let refListConfigHtml = '';
             if (isRefList) {
                 const refConfig = (_mainContainer._refListFieldConfig?.[col.colId]?._refListConfig) || {};
-                
                 const cardConfigs = _allConfigs.filter(c => (c.componentType || '').replace(/\s+/g, '').toLowerCase() === 'cardsystem');
                 const drawerConfigs = _allConfigs.filter(c => (c.componentType || '').replace(/\s+/g, '').toLowerCase() === 'drawer');
-
                 const cardOptionsHtml = cardConfigs.map(c => `<option value="${c.configId}" ${refConfig.cardConfigId === c.configId ? 'selected' : ''}>${c.widgetTitle} [${c.configId}]</option>`).join('');
                 const drawerOptionsHtml = drawerConfigs.map(c => `<option value="${c.configId}" ${refConfig.addRecordConfigId === c.configId ? 'selected' : ''}>${c.widgetTitle} [${c.configId}]</option>`).join('');
 
@@ -644,9 +541,7 @@ export const TableConfigEditor = (() => {
                             </select>
                         </div>
                         <button type="button" class="btn btn-secondary btn-sm toggle-reflist-columns" style="margin-top:8px; width:100%;">Configurar Colunas da Sub-Tabela</button>
-                        <div class="reflist-column-config" style="display:none; margin-top:8px; max-height:200px; overflow:auto; background:#fff; border:1px solid #ddd; padding:8px; border-radius:4px;">
-                            <p style="font-size:11px; color:#666;">Carregando colunas...</p>
-                        </div>
+                        <div class="reflist-column-config" style="display:none; margin-top:8px; max-height:200px; overflow:auto; background:#fff; border:1px solid #ddd; padding:8px; border-radius:4px;"></div>
                     </div>
                 `;
             }
@@ -655,40 +550,36 @@ export const TableConfigEditor = (() => {
                 <div class="col-config-grid">
                     <div class="col-config-section">
                         <div class="config-label-with-help">Regras</div>
-                        <label title="Impede a edição deste campo na tabela."><input type="checkbox" class="is-locked-checkbox" ${colConfig?.locked ? 'checked' : ''}> Travado <span class="help-tip">?</span></label>
-                        <label title="Exige que o campo seja preenchido no modo de edição inline."><input type="checkbox" class="is-required-checkbox" ${colConfig?.required ? 'checked' : ''}> Obrigatório <span class="help-tip">?</span></label>
-                        <label title="Ignora as regras de cores de formatação condicional que vêm do Grist."><input type="checkbox" class="ignore-conditional-formatting-checkbox" ${colConfig?.ignoreConditionalFormatting ? 'checked' : ''}> S/ Format. Condic. <span class="help-tip">?</span></label>
-                        <label title="Ignora o estilo de cabeçalho do Grist."><input type="checkbox" class="ignore-header-style-checkbox" ${colConfig?.ignoreHeaderStyle ? 'checked' : ''}> S/ Estilo Cabecalho <span class="help-tip">?</span></label>
-                        <label title="Ignora o estilo de célula do Grist."><input type="checkbox" class="ignore-cell-style-checkbox" ${colConfig?.ignoreCellStyle ? 'checked' : ''}> S/ Estilo Celula <span class="help-tip">?</span></label>
+                        <label><input type="checkbox" class="is-locked-checkbox" ${colConfig?.locked ? 'checked' : ''}> Travado</label>
+                        <label><input type="checkbox" class="is-required-checkbox" ${colConfig?.required ? 'checked' : ''}> Obrigatório</label>
+                        <label><input type="checkbox" class="ignore-conditional-formatting-checkbox" ${colConfig?.ignoreConditionalFormatting ? 'checked' : ''}> S/ Format. Condic.</label>
+                        <label><input type="checkbox" class="ignore-header-style-checkbox" ${colConfig?.ignoreHeaderStyle ? 'checked' : ''}> S/ Estilo Cabecalho</label>
+                        <label><input type="checkbox" class="ignore-cell-style-checkbox" ${colConfig?.ignoreCellStyle ? 'checked' : ''}> S/ Estilo Celula</label>
                     </div>
-
                     <div class="col-config-section">
                         <div class="config-label-with-help">Visual</div>
-                        <label title="Permite que o texto ocupe múltiplas linhas."><input type="checkbox" class="wrap-text-checkbox" ${colConfig?.wrapText !== false ? 'checked' : ''}> Quebrar Linha <span class="help-tip">?</span></label>
+                        <label><input type="checkbox" class="wrap-text-checkbox" ${colConfig?.wrapText !== false ? 'checked' : ''}> Quebrar Linha</label>
                         <div>
-                            <div class="config-label-with-help" title="Largura em pixels (ex: 150) ou 'auto'.">Largura <span class="help-tip">?</span></div>
+                            <div class="config-label-with-help">Largura (px)</div>
                             <input type="text" class="col-width-input" value="${colConfig?.width || ''}" placeholder="auto" style="width:100%; padding:4px;">
                         </div>
                     </div>
-
                     <div class="col-config-section">
-                        <div class="config-label-with-help" title="Alinhamento horizontal do conteúdo.">Alinhamento <span class="help-tip">?</span></div>
+                        <div class="config-label-with-help">Alinhamento</div>
                         <select class="col-align-select" style="width:100%; padding:4px;">
                             <option value="left" ${align === 'left' ? 'selected' : ''}>Esquerda</option>
                             <option value="center" ${align === 'center' ? 'selected' : ''}>Centro</option>
                             <option value="right" ${align === 'right' ? 'selected' : ''}>Direita</option>
                         </select>
                     </div>
-
                     <div class="col-config-section">
-                        <div class="config-label-with-help" title="Número máximo de linhas visíveis (se Quebrar Linha estiver ativo).">Máx. Linhas <span class="help-tip">?</span></div>
+                        <div class="config-label-with-help">Máx. Linhas</div>
                         <input type="number" class="max-text-rows-input" value="${colConfig?.maxTextRows || ''}" min="1" style="width:100%; padding:4px;">
                     </div>
-
                     <div class="col-config-section full-width">
                         <div class="col-config-grid">
                             <div>
-                                <div class="config-label-with-help" title="Adiciona um cálculo automático no rodapé da tabela.">Cálculo Rodapé <span class="help-tip">?</span></div>
+                                <div class="config-label-with-help">Cálculo Rodapé</div>
                                 <select class="col-calc-select" style="width:100%; padding:4px;">
                                     <option value="">Nenhum</option>
                                     <option value="sum" ${colConfig?.bottomCalc === 'sum' ? 'selected' : ''}>Soma</option>
@@ -697,14 +588,10 @@ export const TableConfigEditor = (() => {
                                 </select>
                             </div>
                             <div>
-                                <div class="config-label-with-help" title="Aplica uma visualização especial aos dados (ex: Barra de Progresso).">Formato Especial <span class="help-tip">?</span></div>
-                                <select class="col-formatter-select" style="width:100%; padding:4px;">
-                                    ${formatterOptionsHtml}
-                                </select>
+                                <div class="config-label-with-help">Formato Especial</div>
+                                <select class="col-formatter-select" style="width:100%; padding:4px;">${formatterOptionsHtml}</select>
                             </div>
                         </div>
-                        
-                        <!-- Formatter Params (Progress) -->
                         <div class="formatter-params progress-params" style="display: ${(colConfig?.formatter === 'progress' || colConfig?.formatter === 'progressRing') ? 'block' : 'none'}; margin-top: 5px; border: 1px dashed #cbd5e1; padding: 5px; border-radius: 4px;">
                             <div class="form-group" style="margin-bottom: 5px;">
                                 <label style="font-size:10px;">Preset Global:</label>
@@ -714,108 +601,28 @@ export const TableConfigEditor = (() => {
                                 </select>
                             </div>
                             <div class="progress-manual-options" style="display: ${colConfig?.formatterParams?.progressBarPreset ? 'none' : 'grid'}; grid-template-columns: 1fr 1fr 1fr; gap: 5px;">
-                                <div style="grid-column: span 1.5;">
-                                    <label style="font-size:9px;">Tipo</label>
-                                    <select class="progress-type" style="width:100%; font-size:10px;">
-                                        <option value="linear" ${colConfig?.formatterParams?.progressType === 'linear' ? 'selected' : ''}>Linear</option>
-                                        <option value="circular" ${colConfig?.formatterParams?.progressType === 'circular' ? 'selected' : ''}>Circular</option>
-                                    </select>
-                                </div>
-                                <div class="progress-label-pos-container" style="display: ${colConfig?.formatterParams?.progressType === 'circular' ? 'block' : 'none'}; grid-column: span 1.5;">
-                                    <label style="font-size:9px;">Pos. Valor</label>
-                                    <select class="progress-label-pos" style="width:100%; font-size:10px;">
-                                        <option value="middle" ${colConfig?.formatterParams?.labelPosition === 'middle' ? 'selected' : ''}>Centro</option>
-                                        <option value="above" ${colConfig?.formatterParams?.labelPosition === 'above' ? 'selected' : ''}>Acima</option>
-                                        <option value="left" ${colConfig?.formatterParams?.labelPosition === 'left' ? 'selected' : ''}>Esquerda</option>
-                                        <option value="right" ${colConfig?.formatterParams?.labelPosition === 'right' ? 'selected' : ''}>Direita</option>
-                                    </select>
-                                </div>
-                                <div class="progress-internal-container" style="display: ${colConfig?.formatterParams?.progressType === 'circular' ? 'block' : 'none'}; grid-column: span 3; padding: 4px; background: #f1f5f9; border-radius: 4px; margin-top: 5px;">
-                                    <label style="font-size:9px; cursor: pointer;">
-                                        <input type="checkbox" class="progress-show-internal" ${colConfig?.formatterParams?.showInternalBar ? 'checked' : ''}> Barra Interna
-                                    </label>
-                                    <select class="progress-internal-col" style="width: 100%; font-size: 10px; display: ${colConfig?.formatterParams?.showInternalBar ? 'block' : 'none'}; margin-top: 2px;">
-                                        <option value="">-- Coluna Interna --</option>
-                                        ${currentSchema ? Object.values(currentSchema).filter(c => ['Numeric', 'Int', 'Any'].includes(c.type)).map(c => `<option value="${c.colId}" ${colConfig?.formatterParams?.internalBarColId === c.colId ? 'selected' : ''}>${c.label}</option>`).join('') : ''}
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label style="font-size:9px;">Min</label>
-                                    <input type="number" class="progress-min" value="${colConfig?.formatterParams?.min ?? 0}" style="width:100%; font-size:10px;">
-                                </div>                                <div>
-                                    <label style="font-size:9px;">Max</label>
-                                    <input type="number" class="progress-max" value="${colConfig?.formatterParams?.max ?? 100}" style="width:100%; font-size:10px;">
-                                </div>
-                                <div>
-                                    <label style="font-size:9px;">Cor Barra</label>
-                                    <input type="color" class="progress-color" value="${colConfig?.formatterParams?.mainColor ?? '#4caf50'}" style="width:100%; height:20px; padding:0;">
-                                </div>
-                                <div>
-                                    <label style="font-size:9px;">Cor Fundo</label>
-                                    <input type="color" class="progress-bgcolor" value="${colConfig?.formatterParams?.bgColor ?? '#e0e0e0'}" style="width:100%; height:20px; padding:0;">
-                                </div>
-                                <div>
-                                    <label style="font-size:9px;">Raio (px)</label>
-                                    <input type="number" class="progress-radius" value="${colConfig?.formatterParams?.borderRadius ?? 4}" style="width:100%; font-size:10px;">
-                                </div>
-                                <div>
-                                    <label style="font-size:9px;">Modo Cor</label>
-                                    <select class="progress-mode" style="width:100%; font-size:10px;">
-                                        <option value="solid" ${colConfig?.formatterParams?.colorMode === 'solid' ? 'selected' : ''}>Sólido</option>
-                                        <option value="dynamic-gradient" ${colConfig?.formatterParams?.colorMode === 'dynamic-gradient' || colConfig?.formatterParams?.colorMode === 'gradient' ? 'selected' : ''}>Gradiente Dinâmico</option>
-                                        <option value="static-gradient" ${colConfig?.formatterParams?.colorMode === 'static-gradient' ? 'selected' : ''}>Gradiente Estático</option>
-                                        <option value="steps" ${colConfig?.formatterParams?.colorMode === 'steps' ? 'selected' : ''}>Degraus</option>
-                                    </select>
-                                </div>
-                                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px; align-items:flex-end; grid-column: span 3;">
-                                    <label style="font-size:9px; display:flex; align-items:center; gap:2px;"><input type="checkbox" class="progress-striped" ${colConfig?.formatterParams?.striped ? 'checked' : ''}> Zebrado</label>
-                                    <label style="font-size:9px; display:flex; align-items:center; gap:2px;"><input type="checkbox" class="progress-animated" ${colConfig?.formatterParams?.animated ? 'checked' : ''}> Animado</label>
-                                </div>
+                                <div style="grid-column: span 1.5;"><label style="font-size:9px;">Tipo</label><select class="progress-type" style="width:100%; font-size:10px;"><option value="linear" ${colConfig?.formatterParams?.progressType === 'linear' ? 'selected' : ''}>Linear</option><option value="circular" ${colConfig?.formatterParams?.progressType === 'circular' ? 'selected' : ''}>Circular</option></select></div>
+                                <div class="progress-label-pos-container" style="display: ${colConfig?.formatterParams?.progressType === 'circular' ? 'block' : 'none'}; grid-column: span 1.5;"><label style="font-size:9px;">Pos. Valor</label><select class="progress-label-pos" style="width:100%; font-size:10px;"><option value="middle" ${colConfig?.formatterParams?.labelPosition === 'middle' ? 'selected' : ''}>Centro</option><option value="above" ${colConfig?.formatterParams?.labelPosition === 'above' ? 'selected' : ''}>Acima</option><option value="left" ${colConfig?.formatterParams?.labelPosition === 'left' ? 'selected' : ''}>Esquerda</option><option value="right" ${colConfig?.formatterParams?.labelPosition === 'right' ? 'selected' : ''}>Direita</option></select></div>
+                                <div class="progress-internal-container" style="display: ${colConfig?.formatterParams?.progressType === 'circular' ? 'block' : 'none'}; grid-column: span 3; padding: 4px; background: #f1f5f9; border-radius: 4px; margin-top: 5px;"><label style="font-size:9px; cursor: pointer;"><input type="checkbox" class="progress-show-internal" ${colConfig?.formatterParams?.showInternalBar ? 'checked' : ''}> Barra Interna</label><select class="progress-internal-col" style="width: 100%; font-size: 10px; display: ${colConfig?.formatterParams?.showInternalBar ? 'block' : 'none'}; margin-top: 2px;"><option value="">-- Coluna Interna --</option>${_allCols.filter(c => ['Numeric', 'Int', 'Any'].includes(c.type)).map(c => `<option value="${c.colId}" ${colConfig?.formatterParams?.internalBarColId === c.colId ? 'selected' : ''}>${c.label}</option>`).join('')}</select></div>
+                                <div><label style="font-size:9px;">Min</label><input type="number" class="progress-min" value="${colConfig?.formatterParams?.min ?? 0}" style="width:100%; font-size:10px;"></div>
+                                <div><label style="font-size:9px;">Max</label><input type="number" class="progress-max" value="${colConfig?.formatterParams?.max ?? 100}" style="width:100%; font-size:10px;"></div>
+                                <div><label style="font-size:9px;">Cor Barra</label><input type="color" class="progress-color" value="${colConfig?.formatterParams?.mainColor ?? '#4caf50'}" style="width:100%; height:20px; padding:0;"></div>
+                                <div><label style="font-size:9px;">Cor Fundo</label><input type="color" class="progress-bgcolor" value="${colConfig?.formatterParams?.bgColor ?? '#e0e0e0'}" style="width:100%; height:20px; padding:0;"></div>
+                                <div><label style="font-size:9px;">Raio (px)</label><input type="number" class="progress-radius" value="${colConfig?.formatterParams?.borderRadius ?? 4}" style="width:100%; font-size:10px;"></div>
+                                <div><label style="font-size:9px;">Modo Cor</label><select class="progress-mode" style="width:100%; font-size:10px;"><option value="solid" ${colConfig?.formatterParams?.colorMode === 'solid' ? 'selected' : ''}>Sólido</option><option value="dynamic-gradient" ${colConfig?.formatterParams?.colorMode === 'dynamic-gradient' ? 'selected' : ''}>Dinâmico</option></select></div>
+                                <div style="display: flex; align-items: center; gap: 4px; margin-top: 10px; grid-column: span 1.5;"><label style="font-size:9px; cursor: pointer; display: flex; align-items: center; gap: 2px;"><input type="checkbox" class="progress-striped" ${colConfig?.formatterParams?.striped ? 'checked' : ''}> Listrado</label></div>
+                                <div style="display: flex; align-items: center; gap: 4px; margin-top: 10px; grid-column: span 1.5;"><label style="font-size:9px; cursor: pointer; display: flex; align-items: center; gap: 2px;"><input type="checkbox" class="progress-animated" ${colConfig?.formatterParams?.animated ? 'checked' : ''}> Animado</label></div>
                             </div>
                         </div>
-
-                        <!-- Formatter Params (Money) -->
-                        <div class="formatter-params money-params" style="display: ${colConfig?.formatter === 'money' ? 'grid' : 'none'}; grid-template-columns: 1fr 1fr 1fr; gap: 5px; margin-top: 5px; border: 1px dashed #cbd5e1; padding: 5px; border-radius: 4px;">
-                            <div>
-                                <label style="font-size:9px;">Símbolo</label>
-                                <input type="text" class="money-symbol" value="${colConfig?.formatterParams?.symbol ?? 'R$'}" style="width:100%; font-size:10px;">
-                            </div>
-                            <div>
-                                <label style="font-size:9px;">Decimal</label>
-                                <input type="text" class="money-decimal" value="${colConfig?.formatterParams?.decimal ?? ','}" style="width:100%; font-size:10px;">
-                            </div>
-                            <div>
-                                <label style="font-size:9px;">Milhar</label>
-                                <input type="text" class="money-thousand" value="${colConfig?.formatterParams?.thousand ?? '.'}" style="width:100%; font-size:10px;">
-                            </div>
+                        <div class="formatter-params money-params" style="display: ${colConfig?.formatter === 'money' ? 'grid' : 'none'}; grid-template-columns: 1fr 1fr 1fr; gap: 5px; margin-top: 5px;">
+                            <div><label style="font-size:9px;">Símbolo</label><input type="text" class="money-symbol" value="${colConfig?.formatterParams?.symbol ?? 'R$'}" style="width:100%; font-size:10px;"></div>
+                            <div><label style="font-size:9px;">Decimal</label><input type="text" class="money-decimal" value="${colConfig?.formatterParams?.decimal ?? ','}" style="width:100%; font-size:10px;"></div>
+                            <div><label style="font-size:9px;">Milhar</label><input type="text" class="money-thousand" value="${colConfig?.formatterParams?.thousand ?? '.'}" style="width:100%; font-size:10px;"></div>
                         </div>
-
-                        <!-- Formatter Params (Image) -->
-                        <div class="formatter-params image-params" style="display: ${colConfig?.formatter === 'image' ? 'grid' : 'none'}; grid-template-columns: 1fr 1fr 1fr; gap: 5px; margin-top: 5px; border: 1px dashed #cbd5e1; padding: 5px; border-radius: 4px;">
-                            <div>
-                                <label style="font-size:9px;">Tamanho (px)</label>
-                                <input type="number" class="image-size" value="${colConfig?.formatterParams?.imageSize ?? 50}" style="width:100%; font-size:10px;">
-                            </div>
-                            <div>
-                                <label style="font-size:9px;">Fit</label>
-                                <select class="image-fit" style="width:100%; font-size:10px;">
-                                    <option value="cover" ${colConfig?.formatterParams?.objectFit === 'cover' ? 'selected' : ''}>Cover</option>
-                                    <option value="contain" ${colConfig?.formatterParams?.objectFit === 'contain' ? 'selected' : ''}>Contain</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label style="font-size:9px;">Raio</label>
-                                <input type="text" class="image-radius" value="${colConfig?.formatterParams?.borderRadius ?? '4px'}" style="width:100%; font-size:10px;">
-                            </div>
-                        </div>
-
-                        <!-- Formatter Params (Sparkline) -->
-                        <div class="formatter-params sparkline-params" style="display: ${colConfig?.formatter === 'sparkline' ? 'grid' : 'none'}; grid-template-columns: 1fr; gap: 5px; margin-top: 5px; border: 1px dashed #cbd5e1; padding: 5px; border-radius: 4px;">
-                            <div>
-                                <label style="font-size:9px;">Cor da Linha (Trend)</label>
-                                <input type="color" class="sparkline-color" value="${colConfig?.formatterParams?.mainColor ?? '#10b981'}" style="width:100%; height:20px; padding:0;">
-                            </div>
+                        <div class="formatter-params image-params" style="display: ${colConfig?.formatter === 'image' ? 'grid' : 'none'}; grid-template-columns: 1fr 1fr 1fr; gap: 5px; margin-top: 5px;">
+                            <div><label style="font-size:9px;">Tam (px)</label><input type="number" class="image-size" value="${colConfig?.formatterParams?.imageSize ?? 50}" style="width:100%; font-size:10px;"></div>
+                            <div><label style="font-size:9px;">Fit</label><select class="image-fit" style="width:100%; font-size:10px;"><option value="cover" ${colConfig?.formatterParams?.objectFit === 'cover' ? 'selected' : ''}>Cover</option><option value="contain" ${colConfig?.formatterParams?.objectFit === 'contain' ? 'selected' : ''}>Contain</option></select></div>
+                            <div><label style="font-size:9px;">Raio</label><input type="text" class="image-radius" value="${colConfig?.formatterParams?.borderRadius ?? '4px'}" style="width:100%; font-size:10px;"></div>
                         </div>
                     </div>
                     ${refListConfigHtml}
@@ -835,9 +642,6 @@ export const TableConfigEditor = (() => {
                     .col-config-section { display: flex; flex-direction: column; gap: 8px; }
                     .col-config-section.full-width { grid-column: span 2; border-top: 1px solid #e2e8f0; padding-top: 10px; margin-top: 5px; }
                     .config-label-with-help { display: flex; align-items: center; font-weight: 700; font-size: 11px; color: #475569; text-transform: uppercase; margin-bottom: 2px; }
-                    .reflist-config-table { width: 100%; border-collapse: collapse; font-size: 10px; }
-                    .reflist-config-table th, .reflist-config-table td { padding: 4px; border: 1px solid #eee; text-align: center; }
-                    .reflist-config-table th { background: #f1f5f9; }
                 </style>
                 ${optionsHtml}
             </div>
@@ -853,82 +657,6 @@ export const TableConfigEditor = (() => {
             targetList.appendChild(card);
             updateDebugJson();
         };
-
-        const formatterSelect = card.querySelector('.col-formatter-select');
-        if (formatterSelect) {
-            formatterSelect.onchange = () => {
-                const val = formatterSelect.value;
-                const pParams = card.querySelector('.progress-params');
-                const mParams = card.querySelector('.money-params');
-                const iParams = card.querySelector('.image-params');
-                const sParams = card.querySelector('.sparkline-params');
-                if (pParams) pParams.style.display = (val === 'progress' || val === 'progressRing') ? 'block' : 'none';
-                if (mParams) mParams.style.display = (val === 'money') ? 'grid' : 'none';
-                if (iParams) iParams.style.display = (val === 'image') ? 'grid' : 'none';
-                if (sParams) sParams.style.display = (val === 'sparkline') ? 'grid' : 'none';
-                updateDebugJson();
-            };
-        }
-
-        const progressTypeSelect = card.querySelector('.progress-type');
-        if (progressTypeSelect) {
-            progressTypeSelect.onchange = () => {
-                const labelPosContainer = card.querySelector('.progress-label-pos-container');
-                if (labelPosContainer) labelPosContainer.style.display = (progressTypeSelect.value === 'circular') ? 'block' : 'none';
-                updateDebugJson();
-            };
-        }
-
-        const presetSelect = card.querySelector('.progress-preset');
-        if (presetSelect) {
-            presetSelect.onchange = () => {
-                const manualOptions = card.querySelector('.progress-manual-options');
-                if (manualOptions) manualOptions.style.display = presetSelect.value ? 'none' : 'grid';
-                updateDebugJson();
-            };
-        }
-
-        if (isRefList) {
-            const displaySelect = card.querySelector('.reflist-display-as');
-            if (displaySelect) {
-                displaySelect.onchange = () => {
-                    card.querySelector('.reflist-card-options').style.display = displaySelect.value === 'cards' ? 'block' : 'none';
-                    updateDebugJson();
-                };
-            }
-
-            const toggleColsBtn = card.querySelector('.toggle-reflist-columns');
-            if (toggleColsBtn) {
-                toggleColsBtn.onclick = async () => {
-                    const panel = card.querySelector('.reflist-column-config');
-                    if (panel.style.display === 'none') {
-                        const referencedTableId = col.type.split(':')[1];
-                        const referencedSchema = await window.currentLens.getTableSchema(referencedTableId);
-                        const fieldConfig = (_mainContainer._refListFieldConfig?.[col.colId]) || {};
-                        const configCols = fieldConfig._refListConfig?.columns || [];
-                        
-                        if (referencedSchema) {
-                            panel.innerHTML = `
-                                <table class="reflist-config-table">
-                                    <thead><tr><th>Campo</th><th>Exibir</th></tr></thead>
-                                    <tbody>
-                                        ${Object.values(referencedSchema).filter(c => !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos').map(refCol => {
-                                            const isShow = configCols.length === 0 || configCols.includes(refCol.colId);
-                                            return `<tr data-ref-col-id="${refCol.colId}">
-                                                <td style="text-align:left;">${refCol.label}</td>
-                                                <td><input type="checkbox" class="ref-col-show-checkbox" ${isShow ? 'checked' : ''}></td>
-                                            </tr>`;
-                                        }).join('')}
-                                    </tbody>
-                                </table>`;
-                        }
-                        panel.style.display = 'block';
-                    } else {
-                        panel.style.display = 'none';
-                    }
-                };
-            }
-        }
 
         return card;
     }
@@ -965,352 +693,121 @@ export const TableConfigEditor = (() => {
         const listContent = _mainContainer.querySelector('#btn-list-content');
         const detailContent = _mainContainer.querySelector('#btn-detail-content');
         if (!listContent || !detailContent) return;
-
         listContent.innerHTML = '';
-        
         if (_customButtons.length === 0) {
             listContent.innerHTML = '<div style="color:#64748b; font-style:italic; text-align:center; padding:20px 10px; font-size:11px;">Nenhum botão criado</div>';
-            detailContent.innerHTML = '<div style="color:#64748b; font-style:italic; text-align:center; margin-top:50px; font-size:12px;">Crie um botão de ação para configurá-lo</div>';
+            detailContent.innerHTML = '<div style="color:#64748b; font-style:italic; text-align:center; margin-top:50px; font-size:12px;">Selecione um botão</div>';
             return;
         }
-
         _customButtons.forEach((btn, idx) => {
             const item = document.createElement('div');
             item.style.cssText = `display:flex; align-items:center; padding:8px 10px; border-bottom:1px solid #e2e8f0; cursor:pointer; font-size:11px; justify-content:space-between; ${idx === _activeButtonIdx ? 'background:#e0f2fe; font-weight:bold;' : 'background:#fff;'}`;
-            
-            let iconPreview = '';
-            if (btn.icon) {
-                iconPreview = `<svg style="width:14px; height:14px; margin-right:6px; fill:currentColor; vertical-align:middle;"><use href="#${btn.icon}"></use></svg>`;
-            }
-            
-            item.innerHTML = `
-                <div style="display:flex; align-items:center; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; flex:1;">
-                    ${iconPreview}
-                    <span>${btn.text || 'Botão ' + (idx + 1)}</span>
-                </div>
-                <div style="display:flex; gap:4px; align-items:center;" class="btn-actions-ctrl">
-                    <button type="button" class="btn-move-up" style="background:none; border:none; padding:2px; cursor:pointer;" ${idx === 0 ? 'disabled style="opacity:0.3"' : ''}>↑</button>
-                    <button type="button" class="btn-move-down" style="background:none; border:none; padding:2px; cursor:pointer;" ${idx === _customButtons.length - 1 ? 'disabled style="opacity:0.3"' : ''}>↓</button>
-                    <button type="button" class="btn-delete" style="background:none; border:none; padding:2px; cursor:pointer; color:#ef4444;">✕</button>
-                </div>
-            `;
-            
-            item.addEventListener('click', (e) => {
-                if (e.target.closest('.btn-actions-ctrl')) return;
-                _activeButtonIdx = idx;
-                renderActionsLayout();
-            });
-
-            item.querySelector('.btn-move-up').onclick = (e) => {
-                e.stopPropagation();
-                if (idx > 0) {
-                    const temp = _customButtons[idx];
-                    _customButtons[idx] = _customButtons[idx - 1];
-                    _customButtons[idx - 1] = temp;
-                    if (_activeButtonIdx === idx) _activeButtonIdx = idx - 1;
-                    else if (_activeButtonIdx === idx - 1) _activeButtonIdx = idx;
-                    renderActionsLayout();
-                    updateDebugJson();
-                }
-            };
-
-            item.querySelector('.btn-move-down').onclick = (e) => {
-                e.stopPropagation();
-                if (idx < _customButtons.length - 1) {
-                    const temp = _customButtons[idx];
-                    _customButtons[idx] = _customButtons[idx + 1];
-                    _customButtons[idx + 1] = temp;
-                    if (_activeButtonIdx === idx) _activeButtonIdx = idx + 1;
-                    else if (_activeButtonIdx === idx + 1) _activeButtonIdx = idx;
-                    renderActionsLayout();
-                    updateDebugJson();
-                }
-            };
-
-            item.querySelector('.btn-delete').onclick = (e) => {
-                e.stopPropagation();
-                if (confirm('Deseja excluir este botão?')) {
-                    _customButtons.splice(idx, 1);
-                    if (_activeButtonIdx === idx) _activeButtonIdx = -1;
-                    else if (_activeButtonIdx > idx) _activeButtonIdx--;
-                    renderActionsLayout();
-                    updateDebugJson();
-                }
-            };
-
+            item.innerHTML = `<div style="display:flex; align-items:center; flex:1;">${btn.icon ? `<svg style="width:14px; height:14px; margin-right:6px; fill:currentColor;"><use href="#${btn.icon}"></use></svg>` : ''}<span>${btn.text || 'Botão ' + (idx + 1)}</span></div><button type="button" class="btn-delete" style="background:none; border:none; color:#ef4444; cursor:pointer;">✕</button>`;
+            item.onclick = (e) => { if (!e.target.classList.contains('btn-delete')) { _activeButtonIdx = idx; renderActionsLayout(); } };
+            item.querySelector('.btn-delete').onclick = () => { _customButtons.splice(idx, 1); if (_activeButtonIdx === idx) _activeButtonIdx = -1; renderActionsLayout(); updateDebugJson(); };
             listContent.appendChild(item);
         });
-
-        if (_activeButtonIdx >= 0 && _activeButtonIdx < _customButtons.length) {
-            renderButtonConfigDetail(detailContent, _customButtons[_activeButtonIdx]);
-        } else {
-            detailContent.innerHTML = '<div style="color:#64748b; font-style:italic; text-align:center; margin-top:50px; font-size:12px;">Selecione um botão para editar</div>';
-        }
+        if (_activeButtonIdx >= 0) renderButtonConfigDetail(detailContent, _customButtons[_activeButtonIdx]);
     }
 
     async function renderButtonConfigDetail(container, btn) {
         const allGristPages = window.currentLens ? (await window.currentLens.listAllTables() || []) : [];
-        const allGristColumns = (_mainContainer._allCols || []).map(f => f.colId);
-
+        const allGristColumns = _allCols.map(f => f.colId);
         container.innerHTML = `
-            <style>
-                .btn-config-group { margin-bottom: 12px; }
-                .btn-config-group label { display: block; font-weight: bold; font-size: 11px; margin-bottom: 4px; color: #475569; }
-                .btn-config-group input[type="text"], .btn-config-group select { width: 100%; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 11px; }
-                .btn-config-row { display: flex; gap: 10px; margin-bottom: 12px; }
-                .btn-config-col { flex: 1; }
-            </style>
-            <h4 style="margin-top: 0; font-size: 13px; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px; margin-bottom: 15px;">Configurar Botão</h4>
-            
-            <div class="btn-config-row">
-                <div class="btn-config-col" style="flex:2;">
-                    <div class="btn-config-group">
-                        <label>Rótulo (Texto)</label>
-                        <input type="text" id="btn-text-input" value="${btn.text || ''}" placeholder="Texto do botão">
-                    </div>
-                </div>
-                <div class="btn-config-col" style="flex:1;">
-                    <div class="btn-config-group">
-                        <label>Cor do Botão</label>
-                        <input type="color" id="btn-color-input" value="${btn.color || '#2563eb'}" style="width:100%; height:28px; padding:0; cursor:pointer; border:1px solid #cbd5e1; border-radius:4px;">
-                    </div>
-                </div>
+            <h4 style="margin-top:0; font-size:13px; border-bottom:1px solid #e2e8f0; padding-bottom:8px; margin-bottom:12px;">Editar Botão</h4>
+            <div style="display:flex; gap:10px; margin-bottom:10px;">
+                <div style="flex:2;"><label style="display:block; font-size:11px; font-weight:bold;">Texto</label><input type="text" id="btn-text" value="${btn.text||''}" style="width:100%; padding:4px; font-size:11px;"></div>
+                <div style="flex:1;"><label style="display:block; font-size:11px; font-weight:bold;">Cor</label><input type="color" id="btn-color" value="${btn.color||'#2563eb'}" style="width:100%; height:24px; padding:0;"></div>
             </div>
-
-            <div class="btn-config-row">
-                <div class="btn-config-col">
-                    <div class="btn-config-group">
-                        <label>Ícone</label>
-                        <div class="icon-picker-display" style="cursor:pointer; padding:6px; border:1px solid #cbd5e1; display:flex; align-items:center; gap:8px; border-radius:4px; background:#fff; font-size:11px;">
-                            <span class="current-icon" style="display:flex; color:#333;">
-                                ${btn.icon ? `<svg style="width:16px; height:16px; fill:currentColor;"><use href="#${btn.icon}"></use></svg>` : '<span style="color:#94a3b8;">Nenhum</span>'}
-                            </span>
-                            <span style="font-weight:bold; color:#64748b;">Alterar</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="btn-config-col">
-                    <div class="btn-config-group">
-                        <label>Estilo do Botão</label>
-                        <select id="btn-style-select">
-                            <option value="both" ${btn.buttonStyle === 'both' || !btn.buttonStyle ? 'selected' : ''}>Ícone e Texto</option>
-                            <option value="icon" ${btn.buttonStyle === 'icon' ? 'selected' : ''}>Apenas Ícone</option>
-                            <option value="text" ${btn.buttonStyle === 'text' ? 'selected' : ''}>Apenas Texto</option>
-                        </select>
-                    </div>
-                </div>
+            <div style="display:flex; gap:10px; margin-bottom:10px;">
+                <div style="flex:1;"><label style="display:block; font-size:11px; font-weight:bold;">Ícone</label><div class="icon-picker-display" style="cursor:pointer; padding:6px; border:1px solid #cbd5e1; display:flex; align-items:center; gap:8px; border-radius:4px; background:#fff; font-size:11px;"><span class="current-icon" style="display:flex;">${btn.icon ? `<svg style="width:16px; height:16px; fill:currentColor;"><use href="#${btn.icon}"></use></svg>` : '...'}</span> <span style="font-weight:bold;">Alterar</span></div></div>
+                <div style="flex:1;"><label style="display:block; font-size:11px; font-weight:bold;">Ação</label><select id="btn-action" style="width:100%; padding:4px; font-size:11px;"><option value="navigateToGristPage" ${btn.actionType==='navigateToGristPage'?'selected':''}>Página Grist</option><option value="openUrlFromColumn" ${btn.actionType==='openUrlFromColumn'?'selected':''}>Abrir URL</option></select></div>
             </div>
-
-            <div class="btn-config-group">
-                <label>Tipo de Ação</label>
-                <select id="btn-action-type-select">
-                    <option value="navigateToGristPage" ${btn.actionType === 'navigateToGristPage' ? 'selected' : ''}>Navegar para Página Grist</option>
-                    <option value="openUrlFromColumn" ${btn.actionType === 'openUrlFromColumn' ? 'selected' : ''}>Abrir URL da Coluna</option>
-                    <option value="updateRecord" ${btn.actionType === 'updateRecord' ? 'selected' : ''}>Atualizar Campo do Registro</option>
-                    <option value="triggerWidget" ${btn.actionType === 'triggerWidget' ? 'selected' : ''}>Disparar Outro Widget</option>
-                    <option value="editRecord" ${btn.actionType === 'editRecord' ? 'selected' : ''}>Editar Registro (Gaveta/Drawer)</option>
-                    <option value="deleteRecord" ${btn.actionType === 'deleteRecord' ? 'selected' : ''}>Excluir Registro</option>
-                </select>
-            </div>
-
-            <div id="btn-action-specific-panel"></div>
+            <div id="btn-action-panel"></div>
         `;
-
-        const specificPanel = container.querySelector('#btn-action-specific-panel');
-        renderActionSpecificConfigPanel(specificPanel, btn, allGristPages, allGristColumns);
-
-        container.querySelector('#btn-text-input').addEventListener('input', (e) => {
-            btn.text = e.target.value;
-            renderActionsLayout();
-        });
-
-        container.querySelector('#btn-color-input').addEventListener('change', (e) => {
-            btn.color = e.target.value;
-            updateDebugJson();
-        });
-
-        container.querySelector('#btn-style-select').addEventListener('change', (e) => {
-            btn.buttonStyle = e.target.value;
-            renderActionsLayout();
-            updateDebugJson();
-        });
-
-        container.querySelector('.icon-picker-display').onclick = () => {
-            const display = container.querySelector('.current-icon');
-            openIconPickerLocal(display, btn);
+        const actionPanel = container.querySelector('#btn-action-panel');
+        const updatePanel = () => {
+            if (btn.actionType === 'navigateToGristPage') {
+                actionPanel.innerHTML = `<div style="margin-bottom:8px;"><label style="display:block; font-size:11px;">Tabela Destino</label><select class="act-prop" data-prop="targetPageId" style="width:100%; padding:4px;">${allGristPages.map(p => `<option value="${p.id}" ${btn.targetPageId===p.id?'selected':''}>${p.name}</option>`).join('')}</select></div>`;
+            } else { actionPanel.innerHTML = ''; }
         };
-
-        container.querySelector('#btn-action-type-select').addEventListener('change', (e) => {
-            btn.actionType = e.target.value;
-            renderActionSpecificConfigPanel(specificPanel, btn, allGristPages, allGristColumns);
-            updateDebugJson();
-        });
+        updatePanel();
+        container.querySelector('#btn-text').oninput = e => { btn.text = e.target.value; renderActionsLayout(); };
+        container.querySelector('#btn-color').onchange = e => { btn.color = e.target.value; updateDebugJson(); };
+        container.querySelector('.icon-picker-display').onclick = () => openIconPicker(null, container.querySelector('.current-icon'), btn);
+        container.querySelector('#btn-action').onchange = e => { btn.actionType = e.target.value; updatePanel(); updateDebugJson(); };
     }
 
-    function renderActionSpecificConfigPanel(container, btn, allGristPages, allGristColumns) {
-        container.innerHTML = '';
-        
-        if (btn.actionType === 'navigateToGristPage') {
-            container.innerHTML = `
-                <div class="btn-config-group">
-                    <label>Página de Destino (Tabela)</label>
-                    <select class="action-prop-select" data-prop="targetPageId">
-                        <option value="">-- Selecione a Página --</option>
-                        ${allGristPages.map(p => `<option value="${p.id}" ${btn.targetPageId === p.id ? 'selected' : ''}>${p.name}</option>`).join('')}
-                    </select>
-                </div>
-                <div class="btn-config-group">
-                    <label>Coluna Filtro Destino (Coluna na tabela destino)</label>
-                    <input type="text" class="action-prop-input" data-prop="targetFilterColumn" value="${btn.targetFilterColumn || ''}" placeholder="Ex: id">
-                </div>
-                <div class="btn-config-group">
-                    <label>Coluna Valor Origem (Coluna nesta tabela)</label>
-                    <select class="action-prop-select" data-prop="sourceValueColumn">
-                        <option value="">-- Selecione o Campo --</option>
-                        ${allGristColumns.map(col => `<option value="${col}" ${btn.sourceValueColumn === col ? 'selected' : ''}>${col}</option>`).join('')}
-                    </select>
-                </div>
-            `;
-        } 
-        else if (btn.actionType === 'openUrlFromColumn') {
-            container.innerHTML = `
-                <div class="btn-config-group">
-                    <label>Coluna com a URL</label>
-                    <select class="action-prop-select" data-prop="urlColumn">
-                        <option value="">-- Selecione o Campo --</option>
-                        ${allGristColumns.map(col => `<option value="${col}" ${btn.urlColumn === col ? 'selected' : ''}>${col}</option>`).join('')}
-                    </select>
-                </div>
-            `;
-        } 
-        else if (btn.actionType === 'updateRecord') {
-            container.innerHTML = `
-                <div class="btn-config-group">
-                    <label>Coluna a Atualizar</label>
-                    <select class="action-prop-select" data-prop="updateField">
-                        <option value="">-- Selecione o Campo --</option>
-                        ${allGristColumns.map(col => `<option value="${col}" ${btn.updateField === col ? 'selected' : ''}>${col}</option>`).join('')}
-                    </select>
-                </div>
-                <div class="btn-config-group">
-                    <label>Valor da Atualização</label>
-                    <input type="text" class="action-prop-input" data-prop="updateValue" value="${btn.updateValue || ''}" placeholder="Ex: Confirmado ou 123">
-                </div>
-            `;
-        } 
-        else if (btn.actionType === 'triggerWidget') {
-            const wConfigs = _allConfigs.filter(c => c.configId !== currentSchema?.configId);
-            container.innerHTML = `
-                <div class="btn-config-group">
-                    <label>Widget de Destino</label>
-                    <select class="action-prop-select" data-prop="targetConfigId">
-                        <option value="">-- Selecione o Widget --</option>
-                        ${wConfigs.map(c => `<option value="${c.configId}" ${btn.targetConfigId === c.configId ? 'selected' : ''} data-type="${c.componentType || ''}">${c.widgetTitle || c.configId} [${c.configId}]</option>`).join('')}
-                    </select>
-                </div>
-                <div class="btn-config-group">
-                    <label>Coluna Filtro no Destino</label>
-                    <input type="text" class="action-prop-input" data-prop="filterTargetColumn" value="${btn.filterTargetColumn || ''}" placeholder="Ex: ref_parent">
-                </div>
-                <div class="btn-config-group" style="margin-top:8px;">
-                    <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-weight:normal;">
-                        <input type="checkbox" class="action-prop-checkbox" data-prop="disableFiltering" ${btn.disableFiltering ? 'checked' : ''}>
-                        Sem filtrar pelo registro atual (chamar limpo)
-                    </label>
-                </div>
-            `;
-            
-            const targetSelect = container.querySelector('.action-prop-select[data-prop="targetConfigId"]');
-            if (targetSelect) {
-                targetSelect.addEventListener('change', (e) => {
-                    const opt = e.target.options[e.target.selectedIndex];
-                    btn.targetComponentType = opt ? (opt.dataset.type || '') : '';
-                });
-            }
-        } 
-        else if (btn.actionType === 'deleteRecord') {
-            container.innerHTML = `
-                <div class="btn-config-group">
-                    <label>Mensagem de Confirmação</label>
-                    <input type="text" class="action-prop-input" data-prop="confirmationMessage" value="${btn.confirmationMessage || 'Deseja excluir este registro?'}" placeholder="Mensagem de confirmação">
-                </div>
-            `;
-        }
-        
-        container.querySelectorAll('.action-prop-select, .action-prop-input, .action-prop-checkbox').forEach(input => {
-            input.addEventListener('change', (e) => {
-                const prop = e.target.dataset.prop;
-                if (prop) {
-                    if (e.target.type === 'checkbox') {
-                        btn[prop] = e.target.checked;
-                    } else {
-                        btn[prop] = e.target.value;
-                    }
-                    updateDebugJson();
-                }
-            });
-            input.addEventListener('input', (e) => {
-                const prop = e.target.dataset.prop;
-                if (prop && e.target.type === 'text') {
-                    btn[prop] = e.target.value;
-                    updateDebugJson();
-                }
-            });
-        });
-    }
-
-    function openIconPickerLocal(displayElement, btn) {
-        if (_iconPickerPopup && _iconPickerPopup.parentNode) {
-            _iconPickerPopup.parentNode.removeChild(_iconPickerPopup);
-        }
-        
-        _iconPickerPopup = document.createElement("div");
-        _iconPickerPopup.className = 'icon-picker-popup';
-        _iconPickerPopup.style.cssText = `position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); z-index:1080; padding:15px; background:white; border:1px solid #ccc; box-shadow:0 4px 10px rgba(0,0,0,0.15); max-width:600px; max-height:500px; overflow-y:auto; border-radius:5px;`;
+    function openIconPicker(inputElement, displayElement, buttonConfig) {
+        if (_iconPickerPopup && _iconPickerPopup.parentNode) { _iconPickerPopup.parentNode.removeChild(_iconPickerPopup); }
+        _iconPickerPopup = document.createElement("div"); _iconPickerPopup.className = 'icon-picker-popup'; 
+        _iconPickerPopup.style.cssText = `position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1080; padding: 15px; background: white; border: 1px solid #ccc; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 600px; max-height: 500px; overflow-y: auto; border-radius: 5px;`;
         
         _iconPickerPopup.innerHTML = `
             <style>
-                .icon-grid { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
-                .icon-option { width: 80px; height: 80px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid #eee; border-radius: 4px; cursor: pointer; transition: all 0.2s; color: #000; padding: 5px; overflow: hidden; }
-                .icon-option:hover { background: #e6f7ff; border-color: #1890ff; transform: scale(1.05); }
-                .icon-option svg { width: 32px; height: 32px; flex-shrink: 0; fill: currentColor; }
-                .icon-id-label { font-size: 9px; margin-top: 5px; text-align: center; word-break: break-all; color: #666; max-height: 24px; overflow: hidden; }
+                .picker-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; position: sticky; top: 0; background: white; z-index: 1; padding-bottom: 10px; border-bottom: 1px solid #eee; }
+                .icon-grid { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-start; } 
+                .icon-option { width: 75px; height: 75px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid #eee; border-radius: 4px; cursor: pointer; transition: all 0.2s; color: #000; padding: 5px; overflow: hidden; } 
+                .icon-option:hover { background: #e6f7ff; border-color: #1890ff; transform: scale(1.05); } 
+                .icon-option svg { width: 24px; height: 24px; flex-shrink: 0; fill: currentColor; stroke: currentColor; stroke-width: 0.5px; } 
+                .icon-id-label { font-size: 8px; margin-top: 5px; text-align: center; word-break: break-all; color: #666; max-height: 24px; overflow: hidden; }
+                #picker-search { padding: 5px 10px; border: 1px solid #ccc; border-radius: 4px; flex-grow: 1; margin-right: 15px; }
             </style>
-            <h4 style="margin-top:0; font-size:14px; margin-bottom:12px;">Selecione um Ícone</h4>
+            <div class="picker-header">
+                <h4 style="margin: 0; white-space: nowrap; margin-right: 15px;">Pick Icon</h4>
+                <input type="text" id="picker-search" placeholder="Search icons...">
+                <div id="picker-count" style="font-size: 11px; font-weight: bold; background: #eee; padding: 2px 8px; border-radius: 10px; white-space: nowrap;">${AVAILABLE_ICONS.length}</div>
+            </div>
             <div class="icon-grid">
-                ${AVAILABLE_ICONS.map(id => `
-                    <div class="icon-option" data-id="${id}" title="${id}">
-                        <svg><use href="#${id}"></use></svg>
-                        <div class="icon-id-label">${id.replace('icon-', '')}</div>
-                    </div>
-                `).join('')}
+                ${AVAILABLE_ICONS.map(id => `<div class="icon-option" data-id="${id}" title="${id}"><svg><use href="#${id}"></use></svg><div class="icon-id-label">${id.replace('icon-', '')}</div></div>`).join('')}
             </div>
             <div style="text-align: right; margin-top: 15px;">
-                <button id="icon-picker-cancel" type="button" class="btn btn-secondary">Cancelar</button>
-            </div>
-        `;
+                <button id="icon-picker-cancel" type="button" class="btn btn-secondary">Cancel</button>
+            </div>`;
         
         _mainContainer.appendChild(_iconPickerPopup);
-        
-        _iconPickerPopup.querySelectorAll('.icon-option').forEach(iconEl => {
-            iconEl.addEventListener('click', () => {
-                const selectedIcon = iconEl.dataset.id;
-                btn.icon = selectedIcon;
-                if (displayElement) {
-                    displayElement.innerHTML = `<svg style="width:16px; height:16px; fill:currentColor;"><use href="#${selectedIcon}"></use></svg>`;
+
+        const searchInput = _iconPickerPopup.querySelector('#picker-search');
+        const countDisplay = _iconPickerPopup.querySelector('#picker-count');
+        const options = _iconPickerPopup.querySelectorAll('.icon-option');
+
+        searchInput.focus();
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase();
+            let visibleCount = 0;
+            options.forEach(opt => {
+                const id = opt.dataset.id.toLowerCase();
+                if (id.includes(query)) {
+                    opt.style.display = 'flex';
+                    visibleCount++;
+                } else {
+                    opt.style.display = 'none';
                 }
-                _iconPickerPopup.parentNode.removeChild(_iconPickerPopup);
-                _iconPickerPopup = null;
-                renderActionsLayout();
-                updateDebugJson();
             });
+            countDisplay.innerText = visibleCount;
         });
-        
-        _iconPickerPopup.querySelector('#icon-picker-cancel').addEventListener('click', () => {
-            _iconPickerPopup.parentNode.removeChild(_iconPickerPopup);
-            _iconPickerPopup = null;
+
+        options.forEach(iconEl => { 
+            iconEl.addEventListener('click', () => { 
+                const selectedIcon = iconEl.dataset.id; 
+                buttonConfig.icon = selectedIcon; 
+                if(inputElement) inputElement.value = selectedIcon; 
+                if(displayElement) displayElement.innerHTML = `<svg class="icon" style="width:20px; height:20px; fill:currentColor; stroke:currentColor; stroke-width:0.5px;"><use href="#${selectedIcon}"></use></svg>`; 
+                _iconPickerPopup.remove(); 
+                _iconPickerPopup = null; 
+                if (typeof renderActionsLayout === 'function') renderActionsLayout();
+                updateDebugJson(); 
+            }); 
+        });
+
+        _iconPickerPopup.querySelector('#icon-picker-cancel').addEventListener('click', () => { 
+            _iconPickerPopup.remove(); 
+            _iconPickerPopup = null; 
         });
     }
+
+    function getFieldCategory(type) { if (!type) return 'text'; const t = type.toLowerCase(); if (t === 'bool') return 'bool'; if (['int', 'float', 'numeric'].some(x => t.startsWith(x))) return 'number'; return 'text'; }
+    function updateDebugJson() { } // Placeholder
 
     return { render, read };
 })();

@@ -1,93 +1,635 @@
 import re, os, json
 
 config = {
-  "icon-link": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-link-broken": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-settings": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-edit": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-save": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-save-alt": {"fill": False, "stroke": True, "strokeWidth": 1.5},
-  "icon-adjustments": {"fill": False, "stroke": True, "strokeWidth": 1.5},
-  "icon-adjustments-vert": {"fill": False, "stroke": True, "strokeWidth": 1.5},
-  "icon-annotation": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-badge-check": {"fill": False, "stroke": True, "strokeWidth": 1.5},
-  "icon-barcode": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-bars": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-bell": {"fill": False, "stroke": True, "strokeWidth": 1.5},
-  "icon-bell-active": {"fill": False, "stroke": True, "strokeWidth": 1.5},
-  "icon-bookmark": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-calendar": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-calendar-edit": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-chart": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-chart-mixed": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-chart-pie": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-check": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-check-circle": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-check-circle-alt": {"fill": True, "stroke": False, "strokeWidth": 1.5},
-  "icon-minus-circle": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-minus-circle-alt": {"fill": True, "stroke": False, "strokeWidth": 1.5},
-  "icon-plus-circle": {"fill": True, "stroke": False, "strokeWidth": 1.5},
-  "icon-plus-circle-alt": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-clipboard": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-clipboard-check": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-clipboard-list": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-clock-arrow": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-close-circle": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-close-sidebar": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-column": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-download": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-exclamation": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-expand": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-eye": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-file": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-file-chart": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-file-check": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-file-clone": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-file-search": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-filter": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-flag": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-folder": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-forward": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-globe": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-grid": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-hourglass": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-info-circle": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-lightbulb": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-lifesaver": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-lock": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-unlock": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-microscope": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-pen": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-printer": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-profile-card": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-rectangle-list": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-tools": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-trashbin": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-truck": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-zoom-in": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-zoom-out": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-chart-up": {"fill": False, "stroke": True, "strokeWidth": 2},
-  "icon-arrow-move": {"fill": True, "stroke": True, "strokeWidth": 0.5},
-  "icon-bar-chart": {"fill": True, "stroke": False, "strokeWidth": 0.5},
-  "icon-bar-chart-line": {"fill": True, "stroke": True, "strokeWidth": 0.5},
-  "icon-bullseye": {"fill": True, "stroke": True, "strokeWidth": 0.1},
-  "icon-card-checklist": {"fill": False, "stroke": True, "strokeWidth": 1},
-  "icon-compass": {"fill": True, "stroke": False, "strokeWidth": 0},
-  "icon-cone": {"fill": False, "stroke": True, "strokeWidth": 1.2},
-  "icon-cone-striped": {"fill": False, "stroke": True, "strokeWidth": 1.5},
-  "icon-diagram-2": {"fill": True, "stroke": False, "strokeWidth": 0},
-  "icon-diagram-3": {"fill": True, "stroke": False, "strokeWidth": 0},
-  "icon-exclamation-triangle": {"fill": True, "stroke": False, "strokeWidth": 0},
-  "icon-exclamation-diamond": {"fill": True, "stroke": False, "strokeWidth": 0},
-  "icon-globe-americas": {"fill": True, "stroke": False, "strokeWidth": 0.4},
-  "icon-lightning": {"fill": True, "stroke": False, "strokeWidth": 0.9},
-  "icon-pen-alt": {"fill": True, "stroke": False, "strokeWidth": 0},
-  "icon-speedometer": {"fill": True, "stroke": False, "strokeWidth": 0},
-  "icon-traffic-light": {"fill": True, "stroke": False, "strokeWidth": 0},
-  "icon-wrench": {"fill": True, "stroke": False, "strokeWidth": 0},
-  "icon-search": {"fill": True, "stroke": True, "strokeWidth": 0.3},
-  "icon-process-cogs": {"fill": True, "stroke": False, "strokeWidth": 0},
-  "icon-process": {"fill": True, "stroke": True, "strokeWidth": 1}
+  "icon-link": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-link-broken": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-settings": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-edit": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-save": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-save-alt": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 1.5
+  },
+  "icon-adjustments": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 1.5
+  },
+  "icon-adjustments-vert": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 1.5
+  },
+  "icon-annotation": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-badge-check": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 1.5
+  },
+  "icon-barcode": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-bars": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-bell": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 1.5
+  },
+  "icon-bell-active": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 1.5
+  },
+  "icon-bookmark": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-calendar": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-calendar-edit": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-chart": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-chart-mixed": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-chart-pie": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-check": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-check-circle": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-check-circle-alt": {
+    "fill": true,
+    "stroke": false,
+    "strokeWidth": 2
+  },
+  "icon-minus-circle": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-minus-circle-alt": {
+    "fill": true,
+    "stroke": false,
+    "strokeWidth": 2
+  },
+  "icon-plus-circle": {
+    "fill": true,
+    "stroke": false,
+    "strokeWidth": 2
+  },
+  "icon-plus-circle-alt": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-clipboard": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-clipboard-check": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-clipboard-list": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-clock-arrow": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-close-circle": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-close-sidebar": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-column": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-download": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-exclamation": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-expand": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-eye": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-file": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-file-chart": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-file-check": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-file-clone": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-file-search": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-filter": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-flag": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-folder": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-forward": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-globe": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-grid": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-hourglass": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-info-circle": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-lightbulb": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-lifesaver": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-lock": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-unlock": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-microscope": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-pen": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-printer": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-profile-card": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-rectangle-list": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-tools": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-trashbin": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-truck": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-zoom-in": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-zoom-out": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-chart-up": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-arrow-move": {
+    "fill": true,
+    "stroke": true,
+    "strokeWidth": 0.5
+  },
+  "icon-bar-chart": {
+    "fill": true,
+    "stroke": false,
+    "strokeWidth": 2
+  },
+  "icon-bar-chart-line": {
+    "fill": true,
+    "stroke": true,
+    "strokeWidth": 0.5
+  },
+  "icon-bullseye": {
+    "fill": true,
+    "stroke": true,
+    "strokeWidth": 0.1
+  },
+  "icon-card-checklist": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 1
+  },
+  "icon-compass": {
+    "fill": true,
+    "stroke": false,
+    "strokeWidth": 2
+  },
+  "icon-cone": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 1.5
+  },
+  "icon-cone-striped": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 1.5
+  },
+  "icon-diagram-2": {
+    "fill": true,
+    "stroke": false,
+    "strokeWidth": 2
+  },
+  "icon-diagram-3": {
+    "fill": true,
+    "stroke": true,
+    "strokeWidth": 0.3
+  },
+  "icon-exclamation-triangle": {
+    "fill": true,
+    "stroke": true,
+    "strokeWidth": 0.3
+  },
+  "icon-exclamation-diamond": {
+    "fill": true,
+    "stroke": true,
+    "strokeWidth": 0.3
+  },
+  "icon-globe-americas": {
+    "fill": true,
+    "stroke": false,
+    "strokeWidth": 2
+  },
+  "icon-lightning": {
+    "fill": true,
+    "stroke": true,
+    "strokeWidth": 0.2
+  },
+  "icon-pen-alt": {
+    "fill": true,
+    "stroke": true,
+    "strokeWidth": 0.3
+  },
+  "icon-speedometer": {
+    "fill": true,
+    "stroke": true,
+    "strokeWidth": 0.3
+  },
+  "icon-traffic-light": {
+    "fill": true,
+    "stroke": true,
+    "strokeWidth": 0.3
+  },
+  "icon-wrench": {
+    "fill": true,
+    "stroke": false,
+    "strokeWidth": 2
+  },
+  "icon-search": {
+    "fill": true,
+    "stroke": true,
+    "strokeWidth": 0.3
+  },
+  "icon-process-cogs": {
+    "fill": true,
+    "stroke": true,
+    "strokeWidth": 0.5
+  },
+  "icon-process": {
+    "fill": true,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-sheet-icon": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-chess-knight-icon": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-chess-pawn-icon": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-chess-rook-icon": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-traffic-cone-icon": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-printer-icon": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-kanban": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-chart-gantt-icon": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-land-plot-icon": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-landmark-icon": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-calculator-icon": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-tools2": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-tool-case-icon": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-pocket-knife-icon": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-shovel-icon": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-crosshair-icon": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-target-arrow": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-backhoe": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 1.8
+  },
+  "icon-bulldozer": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 1.8
+  },
+  "icon-CompassRose": {
+    "fill": true,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-hard-hat": {
+    "fill": true,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-arrow-down-icon": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-arrow-down-left-icon": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-arrow-left-icon": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-arrow-up-left-icon": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-arrow-up-icon": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-arrow-up-right-icon": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-arrow-right-icon": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-arrow-down-right-icon": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-strategy": {
+    "fill": true,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-checklist": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-risk": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-trophy-icon": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-activity-icon": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-flag-icon": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-user-round-icon": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-shield-alert-icon": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-life-buoy-icon": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  }
+}
+}
+}
+}
 }
 
 def apply_config(path):

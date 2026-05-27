@@ -1,14 +1,13 @@
-// widgets/CardViewer.js - VERSÃO UNIVERSAL DEFINITIVA (FIX: THEME & PERSISTENCE)
-import { GristTableLens } from '../libraries/grist-table-lens/grist-table-lens.js';
-import { open as openConfigManager } from '../libraries/grist-config-manager/ConfigManagerComponent.js';
-import { CardSystem } from '../libraries/grist-card-system/CardSystem.js';
-import { subscribe } from '../libraries/grist-event-bus/grist-event-bus.js';
-import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js';
-import { GristRestAdapter } from '../libraries/headless-rest-adapter.js';
-import { HeadlessTableLens } from '../libraries/headless-table-lens.js';
-import { GristFilterBar } from '../libraries/grist-filter-bar/grist-filter-bar.js';
+import { GristTableLens } from '../libraries/grist-table-lens/grist-table-lens.js?v=1.0.4';
+import { open as openConfigManager } from '../libraries/grist-config-manager/ConfigManagerComponent.js?v=1.0.4';
+import { CardSystem } from '../libraries/grist-card-system/CardSystem.js?v=1.0.4';
+import { subscribe } from '../libraries/grist-event-bus/grist-event-bus.js?v=1.0.4';
+import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js?v=1.0.4';
+import { GristRestAdapter } from '../libraries/headless-rest-adapter.js?v=1.0.4';
+import { HeadlessTableLens } from '../libraries/headless-table-lens.js?v=1.0.4';
+import { GristFilterBar } from '../libraries/grist-filter-bar/grist-filter-bar.js?v=1.0.4';
 
-import { GristLauncherUtils } from '../libraries/grist-launcher-utils.js';
+import { GristLauncherUtils } from '../libraries/grist-launcher-utils.js?v=1.0.4';
 
 document.addEventListener('DOMContentLoaded', async () => {
     console.log("[CardViewer] DOMContentLoaded - Inicializando...");
@@ -308,7 +307,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
             else if (type === 'table') {
-                const { TableRenderer } = await import('../libraries/grist-table-renderer/TableRenderer.js');
+                const { TableRenderer } = await import('../libraries/grist-table-renderer/TableRenderer.js?v=1.0.4');
                 let tableRecords = await tableLens.fetchTableRecords(tableId);
 
                 // Aplicar Filtro Externo (Drill-down)
@@ -342,7 +341,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
             }
             else if (type === 'bsc') {
-                const { BSCRenderer } = await import('../libraries/grist-bsc-renderer/BSCRenderer.js');
+                const { BSCRenderer } = await import('../libraries/grist-bsc-renderer/BSCRenderer.js?v=1.0.4');
                 const mapping = currentConfig.mapping || currentConfig || {};
                 const tableNames = {
                     modelsTable: mapping.modelsTable || 'Modelos',
@@ -379,7 +378,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
             }
             else if (type === 'indicators') {
-                const { IndicatorsRenderer } = await import('../libraries/grist-indicators-renderer/IndicatorsRenderer.js');
+                const { IndicatorsRenderer } = await import('../libraries/grist-indicators-renderer/IndicatorsRenderer.js?v=1.0.4');
                 const [indRecords, configs] = await Promise.all([
                     tableLens.fetchTableRecords(tableId),
                     tableLens.fetchTableRecords('Grf_config')

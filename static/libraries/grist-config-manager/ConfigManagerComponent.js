@@ -1,5 +1,6 @@
 import { GristTableLens } from '../grist-table-lens/grist-table-lens.js';
 import { GristDataWriter } from '../grist-data-writer.js';
+import { publish } from '../grist-event-bus/grist-event-bus.js';
 
 // Import editor modules
 import { CardConfigEditor } from './editors/config-cards.js?v=1.0.3';
@@ -519,12 +520,22 @@ export async function renderMainUI(grist, container, initialConfigId, componentT
                 } else {
                     await dataWriter.addRecord(CONFIG_TABLE, recordData);
                 }
+                
+                // Limpa o cache global da configuração para que o widget a recarregue imediatamente
+                if (typeof tableLens.clearConfigCache === 'function') {
+                    tableLens.clearConfigCache(recordData.configId || selectedConfig.configId);
+                }
+                
                 allConfigs = await tableLens.fetchTableRecords(CONFIG_TABLE);
                 loadList(filterTypeSelectorEl.value);
                 alert(`Configuração \"${recordData.widgetTitle}\" salva!`);
                 if (_grist && initialConfigId === recordData.configId) {
                     _grist.setOptions({ configId: recordData.configId });
                 }
+                
+                // Notifica o barramento de eventos sobre a mudança da configuração
+                publish('data-changed', { tableId: CONFIG_TABLE, action: 'update' });
+                
                 close();
             } catch(err) {
                  alert(`Erro ao salvar: ${err.message}`);
