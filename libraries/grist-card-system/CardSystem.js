@@ -757,8 +757,17 @@ export const CardSystem = (() => {
       cardEl.style.borderRadius = "8px";
       cardEl.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)";
       cardEl.style.position = "relative";
-      cardEl.style.minHeight = "60px";
+      cardEl.style.minHeight = "32px"; // Reduced from 60px to allow compact cards
       cardEl.style.transition = "all 0.2s ease-in-out";
+
+      // --- VISUAL SPACING DEBUGGER (TEMPORARY) ---
+      const debugMode = true; // Set to false to disable
+      if (debugMode) {
+          cardEl.style.outline = "1px dashed rgba(0,0,0,0.1)";
+          // Color the card padding area (Blue tint)
+          cardEl.style.backgroundColor = "rgba(0, 0, 255, 0.05)"; 
+      }
+      // --------------------------------------------
 
       const internalPadding = parseInt(styling.internalCardPadding, 10) || 10;
       const handleWidth = parseInt(styling.handleAreaWidth, 10);
