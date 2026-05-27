@@ -634,6 +634,19 @@ export const TableRenderer = (() => {
             widgetWrapper.classList.add('striped-rows-enabled');
         }
 
+        // --- VISUAL DEBUG OVERLAY (REMOVE AFTER FIXING) ---
+        const debugOverlay = document.createElement('div');
+        debugOverlay.style.cssText = "position:fixed; top:5px; right:5px; background:rgba(0,0,0,0.7); color:#fff; padding:5px 10px; font-size:10px; z-index:10000; border-radius:4px; pointer-events:none; border:1px solid #555;";
+        debugOverlay.innerHTML = `
+            <b>DEBUG:</b><br>
+            Theme: ${theme}<br>
+            StripedCfg: ${tableLayoutConfig.stripedRows}<br>
+            StripedComputed: ${striped}<br>
+            Classes: ${Array.from(widgetWrapper.classList).join(', ')}
+        `;
+        widgetWrapper.appendChild(debugOverlay);
+        // --------------------------------------------------
+
         // Add top bar containing Group bar & Add New Button
         const topBar = document.createElement('div');
         topBar.className = 'table-top-header-bar';
