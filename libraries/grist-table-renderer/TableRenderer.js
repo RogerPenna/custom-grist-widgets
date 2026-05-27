@@ -634,20 +634,43 @@ export const TableRenderer = (() => {
             widgetWrapper.classList.add('striped-rows-enabled');
         }
 
-        // --- VISUAL DEBUG OVERLAY (REMOVE AFTER FIXING) ---
-        const debugOverlay = document.createElement('div');
-        debugOverlay.style.cssText = "position:fixed; top:5px; right:5px; background:rgba(0,0,0,0.7); color:#fff; padding:5px 10px; font-size:10px; z-index:10000; border-radius:4px; pointer-events:none; border:1px solid #555;";
-        debugOverlay.innerHTML = `
-            <b>DEBUG:</b><br>
-            Theme: ${theme}<br>
-            StripedCfg: ${tableLayoutConfig.stripedRows}<br>
-            StripedComputed: ${striped}<br>
-            Classes: ${Array.from(widgetWrapper.classList).join(', ')}
-        `;
-        widgetWrapper.appendChild(debugOverlay);
-        // --------------------------------------------------
+        // --- INTERNAL THEME INJECTION ---
+        function injectThemeStyles(currentTheme, isStriped) {
+            const styleId = 'grf-dynamic-table-styles';
+            let styleEl = document.getElementById(styleId);
+            if (!styleEl) {
+                styleEl = document.createElement('style');
+                styleEl.id = styleId;
+                document.head.appendChild(styleEl);
+            }
 
-        // Add top bar containing Group bar & Add New Button
+            const themeColors = {
+                night: { bg: '#0f172a', row: '#1e293b', rowOdd: '#0f172a', text: '#f1f5f9', header: '#0f172a', border: '#334155' },
+                glassmorphism: { bg: 'transparent', row: 'rgba(255, 255, 255, 0.15)', rowOdd: 'rgba(255, 255, 255, 0.25)', text: '#1e293b', header: 'rgba(255, 255, 255, 0.25)', border: 'rgba(255, 255, 255, 0.2)' },
+                minimal: { bg: '#ffffff', row: '#ffffff', rowOdd: '#f8fafc', text: '#1e293b', header: '#f8fafc', border: '#e2e8f0' },
+                corporate: { bg: '#f1f5f9', row: '#ffffff', rowOdd: '#f8fafc', text: '#334155', header: '#f1f5f9', border: '#cbd5e1' }
+            };
+
+            const c = themeColors[currentTheme] || themeColors.minimal;
+            const oddRowBg = isStriped ? c.rowOdd : c.row;
+
+            styleEl.innerHTML = `
+                body.theme-${currentTheme} { background: ${c.bg} !important; color: ${c.text} !important; }
+                .theme-${currentTheme} .tabulator { background: ${c.row} !important; color: ${c.text} !important; border-color: ${c.border} !important; }
+                .theme-${currentTheme} .tabulator-header { background: ${c.header} !important; border-bottom-color: ${c.border} !important; color: ${c.text} !important; }
+                .theme-${currentTheme} .tabulator-row { background-color: ${c.row} !important; color: ${c.text} !important; border-bottom-color: ${c.border} !important; }
+                .theme-${currentTheme} .tabulator-row.tabulator-row-even { background-color: ${c.row} !important; }
+                .theme-${currentTheme} .tabulator-row.tabulator-row-odd { background-color: ${oddRowBg} !important; }
+                .theme-${currentTheme} .tabulator-row:hover { background-color: rgba(59, 130, 246, 0.1) !important; }
+                .theme-${currentTheme} .tabulator-cell { border-right-color: ${c.border} !important; }
+                .theme-${currentTheme} .table-group-bar { background: ${c.header} !important; border-color: ${c.border} !important; }
+                .theme-${currentTheme} .tabulator-footer { background: ${c.header} !important; color: ${c.text} !important; border-top-color: ${c.border} !important; }
+                .theme-${currentTheme} .tabulator-page { background: ${c.row} !important; color: ${c.text} !important; border-color: ${c.border} !important; }
+            `;
+        }
+
+        injectThemeStyles(theme, striped);
+        // --------------------------------
         const topBar = document.createElement('div');
         topBar.className = 'table-top-header-bar';
         topBar.style.cssText = 'display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; width: 100%;';
