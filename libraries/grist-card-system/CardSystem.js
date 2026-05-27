@@ -37,7 +37,8 @@ export const CardSystem = (() => {
     widgetPadding: "10px", cardsSpacing: "15px",
     fieldRowGap: "4px", fieldColGap: "4px", fieldPadding: "4px",
     cardTitleTopBarApplyText: false,
-    selectedCard: { enabled: false, scale: 1.05, colorEffect: "none" }
+    selectedCard: { enabled: false, scale: 1.05, colorEffect: "none" },
+    showFrozenHeader: false
   };
 
   const DEFAULT_NUM_ROWS = 1;
@@ -513,6 +514,7 @@ export const CardSystem = (() => {
 
     _applyWidgetBackground(container, styling, currentOptions);
     container.style.padding = currentOptions.isRefList ? '0px' : styling.widgetPadding;
+    container._csRecords = processedRecords;
 
     const colLimit = styling.cardsColumnLimit || 1;
     const colMode = styling.cardsColumnMode || 'fixed';
@@ -704,6 +706,11 @@ export const CardSystem = (() => {
             
             body.appendChild(cardsGrid);
             accordion.appendChild(body);
+
+            if (styling.showFrozenHeader && colLimit === 1) {
+                const headerCard = _createHeaderCard(layout, schema, styling, currentOptions);
+                cardsGrid.appendChild(headerCard);
+            }
             
             header.addEventListener("click", () => {
                 const isCollapsed = body.style.display === "none";
@@ -722,17 +729,26 @@ export const CardSystem = (() => {
         }
     }
 
+    if (styling.showFrozenHeader && colLimit === 1 && !isGrouped) {
+        const headerCard = _createHeaderCard(layout, schema, styling, currentOptions);
+        container.appendChild(headerCard);
+    }
+
     for (const record of processedRecords) {
       const cardEl = document.createElement("div");
       cardEl.className = "cs-card";
       
       const idPrefix = currentOptions.tableId ? `${currentOptions.tableId}-` : '';
+      // Determine number of rows used from layout
+      const occupiedRows = layout.length > 0 ? Math.max(...layout.map(f => (f.row || 0) + (f.rowSpan || 1))) : 0;
+      const finalRows = Math.max(1, occupiedRows); // At least one row
+      
       cardEl.id = `record-${idPrefix}${record.id}`;
       
       cardEl.dataset.recordId = record.id;
       cardEl.dataset.tableId = currentOptions.tableId || '';
       cardEl.style.display = "grid";
-      cardEl.style.gridTemplateRows = `repeat(${numRows}, auto)`;
+      cardEl.style.gridTemplateRows = `repeat(${finalRows}, auto)`;
       
       cardEl.style.gridTemplateColumns = `repeat(${NUM_COLS}, 1fr)`;
       cardEl.style.rowGap = styling.fieldRowGap !== undefined ? styling.fieldRowGap : "4px";
@@ -930,7 +946,8 @@ export const CardSystem = (() => {
           tContainer.style.display = "flex";
           tContainer.style.flexDirection = (fieldStyle.labelPosition === 'left' ? "row" : "column");
           tContainer.style.gap = "4px";
-          if (fieldStyle.labelVisible) {
+          const labelVisible = styling.showFrozenHeader ? false : fieldStyle.labelVisible;
+          if (labelVisible) {
             const lblEl = document.createElement("div");
             const fieldSchema = schema ? schema[f.colId] : null;
             lblEl.textContent = fieldSchema ? (fieldSchema.label || f.colId) : f.colId;
@@ -1179,10 +1196,11 @@ export const CardSystem = (() => {
 
           fieldBox.style.display = "flex";
           fieldBox.style.flexDirection = (fieldStyle.labelPosition === 'left' ? "row" : "column");
-          fieldBox.style.gap = fieldStyle.labelVisible ? (fieldStyle.labelPosition === 'left' ? "8px" : "2px") : "0px";
+          const labelVisible = styling.showFrozenHeader ? false : fieldStyle.labelVisible;
+          fieldBox.style.gap = labelVisible ? (fieldStyle.labelPosition === 'left' ? "8px" : "2px") : "0px";
           fieldBox.style.alignItems = (fieldStyle.labelPosition === 'left' ? "center" : "stretch");
 
-          if (fieldStyle.labelVisible) {
+          if (labelVisible) {
             const labelEl = document.createElement("div");
             const fieldSchema = schema ? schema[f.colId] : null;
             let labelText = fieldSchema ? (fieldSchema.label || f.colId) : f.colId;
@@ -1394,7 +1412,7 @@ export const CardSystem = (() => {
                 const prevEl = itemEl.previousElementSibling;
                 const nextEl = itemEl.nextElementSibling;
 
-                const prevRecord = prevEl ? records.find(r => r.id === parseInt(prevEl.dataset.recordId, 10)) : null;
+                const prevRecord = prevEl && prevEl.classList.contains('cs-card') ? records.find(r => r.id === parseInt(prevEl.dataset.recordId, 10)) : null;
                 const nextRecord = nextEl ? records.find(r => r.id === parseInt(nextEl.dataset.recordId, 10)) : null;
 
                 let newPos;
@@ -1855,6 +1873,119 @@ export const CardSystem = (() => {
         }
     `;
     document.head.appendChild(style);
+  }
+
+  function _injectHeaderStyles() {
+    if (document.getElementById('cs-header-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'cs-header-styles';
+    style.textContent = `
+        .cs-header-card {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background-color: #f8fafc;
+            border-bottom: 2px solid #cbd5e1;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            display: grid;
+            box-sizing: border-box;
+            align-self: start;
+        }
+        .cs-header-cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 12px;
+            color: #475569;
+            text-align: center;
+            box-sizing: border-box;
+            background-color: #e2e8f0;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            padding: 6px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .cs-header-cell.column-group {
+            background-color: #cbd5e1;
+            color: #1e293b;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function _createHeaderCard(layout, schema, styling, currentOptions) {
+    _injectHeaderStyles();
+    
+    const headerCard = document.createElement("div");
+    headerCard.className = "cs-header-card cs-card-header-sticky";
+    
+    // Determine number of rows used from layout
+    const occupiedRows = layout.length > 0 ? Math.max(...layout.map(f => (f.row || 0) + (f.rowSpan || 1))) : 0;
+    const finalRows = Math.max(1, occupiedRows); // At least one row
+
+    headerCard.style.display = "grid";
+    headerCard.style.gridTemplateRows = `repeat(${finalRows}, auto)`;
+    headerCard.style.gridTemplateColumns = `repeat(${NUM_COLS}, 1fr)`;
+    headerCard.style.rowGap = styling.fieldRowGap !== undefined ? styling.fieldRowGap : "4px";
+    headerCard.style.columnGap = styling.fieldColGap !== undefined ? styling.fieldColGap : "4px";
+    headerCard.style.alignSelf = "start";
+    
+    const internalPadding = parseInt(styling.internalCardPadding, 10) || 10;
+    const handleWidth = parseInt(styling.handleAreaWidth, 10);
+    headerCard.style.padding = `${internalPadding}px`;
+    headerCard.style.paddingLeft = `${internalPadding + handleWidth}px`;
+    
+    if (styling.cardsSpacing) {
+      headerCard.style.marginBottom = styling.cardsSpacing;
+    } else {
+      headerCard.style.marginBottom = "15px";
+    }
+    
+    const maxRow = layout.reduce((max, f) => Math.max(max, f.row), 0);
+    
+    for (const f of layout) {
+      if (!schema && !f.isIconGroup) continue;
+      
+      const fieldStyle = { ...DEFAULT_FIELD_STYLE, ...f.style };
+      
+      let labelText = "";
+      if (f.isIconGroup) {
+        const actions = currentOptions.actions || {};
+        const groupConfig = (currentOptions.iconGroups || actions.iconGroups || styling.iconGroups || []).find(g => g.id === f.colId);
+        labelText = groupConfig ? (groupConfig.name || "Ações") : "Ações";
+      } else {
+        const fieldSchema = schema ? schema[f.colId] : null;
+        labelText = fieldSchema ? (fieldSchema.label || f.colId) : f.colId;
+      }
+      
+      const cell = document.createElement("div");
+      cell.className = "cs-header-cell";
+      
+      if (maxRow > 0 && f.row === 0) {
+        cell.classList.add("column-group");
+      }
+      
+      cell.style.gridRow = `${f.row + 1} / span ${f.rowSpan || 1}`;
+      cell.style.gridColumn = `${f.col + 1} / span ${f.colSpan || 1}`;
+      cell.textContent = labelText;
+      
+      if (styling.labelStyle?.font) cell.style.fontFamily = styling.labelStyle.font;
+      if (styling.labelStyle?.bold) cell.style.fontWeight = "bold";
+      
+      if (styling.labelStyle?.allCaps || fieldStyle.labelAllCaps) {
+        cell.style.textTransform = "uppercase";
+      }
+      
+      headerCard.appendChild(cell);
+    }
+    
+    return headerCard;
   }
 
   return { renderCards, filterRecords };

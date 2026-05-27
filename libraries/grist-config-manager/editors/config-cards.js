@@ -7,23 +7,132 @@ export const CardConfigEditor = (() => {
 
     // Lista de ícones extraída de icons.svg para uso no seletor 
     const AVAILABLE_ICONS = [
-        "icon-link", "icon-link-broken", "icon-settings", "icon-edit", "icon-save", "icon-save-alt",
-        "icon-adjustments", "icon-adjustments-vert", "icon-annotation", "icon-badge-check", "icon-barcode",
-        "icon-bars", "icon-bell", "icon-bell-active", "icon-bookmark", "icon-calendar-edit", "icon-chart",
-        "icon-chart-mixed", "icon-chart-pie", "icon-check", "icon-check-circle", "icon-check-circle-alt",
-        "icon-minus-circle", "icon-minus-circle-alt", "icon-plus-circle", "icon-plus-circle-alt", "icon-clipboard",
-        "icon-clipboard-check", "icon-clipboard-list", "icon-clock-arrow", "icon-close-circle", "icon-close-sidebar",
-        "icon-column", "icon-download", "icon-exclamation", "icon-expand", "icon-eye", "icon-file",
-        "icon-file-chart", "icon-file-check", "icon-file-clone", "icon-file-search", "icon-filter", "icon-flag",
-        "icon-folder", "icon-forward", "icon-globe", "icon-grid", "icon-hourglass", "icon-info-circle",
-        "icon-lightbulb", "icon-lifesaver", "icon-lock", "icon-unlock", "icon-microscope", "icon-pen",
-        "icon-printer", "icon-profile-card", "icon-rectangle-list", "icon-tools", "icon-trashbin", "icon-truck",
-        "icon-zoom-in", "icon-zoom-out", "icon-chart-up", "icon-arrow-move", "icon-bar-chart", "icon-bar-chart-line",
-        "icon-bullseye", "icon-card-checklist", "icon-compass", "icon-cone", "icon-cone-striped", "icon-diagram-2",
-        "icon-diagram-3", "icon-exclamation-triangle", "icon-exclamation-diamond", "icon-globe-americas", "icon-lightning",
-        "icon-pen-alt", "icon-speedometer", "icon-traffic-light", "icon-wrench", "icon-search", "icon-process-cogs",
-        "icon-process"
-    ];
+        "icon-CompassRose",
+        "icon-activity-icon",
+        "icon-adjustments",
+        "icon-adjustments-vert",
+        "icon-annotation",
+        "icon-arrow-down-icon",
+        "icon-arrow-down-left-icon",
+        "icon-arrow-down-right-icon",
+        "icon-arrow-left-icon",
+        "icon-arrow-move",
+        "icon-arrow-right-icon",
+        "icon-arrow-up-icon",
+        "icon-arrow-up-left-icon",
+        "icon-arrow-up-right-icon",
+        "icon-backhoe",
+        "icon-badge-check",
+        "icon-bar-chart",
+        "icon-bar-chart-line",
+        "icon-barcode",
+        "icon-bars",
+        "icon-bell",
+        "icon-bell-active",
+        "icon-bookmark",
+        "icon-bulldozer",
+        "icon-bullseye",
+        "icon-calculator-icon",
+        "icon-calendar",
+        "icon-calendar-edit",
+        "icon-card-checklist",
+        "icon-chart",
+        "icon-chart-gantt-icon",
+        "icon-chart-mixed",
+        "icon-chart-pie",
+        "icon-chart-up",
+        "icon-check",
+        "icon-check-circle",
+        "icon-check-circle-alt",
+        "icon-checklist",
+        "icon-chess-knight-icon",
+        "icon-chess-pawn-icon",
+        "icon-chess-rook-icon",
+        "icon-clipboard",
+        "icon-clipboard-check",
+        "icon-clipboard-list",
+        "icon-clock-arrow",
+        "icon-close-circle",
+        "icon-close-sidebar",
+        "icon-column",
+        "icon-compass",
+        "icon-cone",
+        "icon-cone-striped",
+        "icon-crosshair-icon",
+        "icon-diagram-2",
+        "icon-diagram-3",
+        "icon-download",
+        "icon-edit",
+        "icon-exclamation",
+        "icon-exclamation-diamond",
+        "icon-exclamation-triangle",
+        "icon-expand",
+        "icon-eye",
+        "icon-file",
+        "icon-file-chart",
+        "icon-file-check",
+        "icon-file-clone",
+        "icon-file-search",
+        "icon-filter",
+        "icon-flag",
+        "icon-flag-icon",
+        "icon-folder",
+        "icon-forward",
+        "icon-globe",
+        "icon-globe-americas",
+        "icon-grid",
+        "icon-hard-hat",
+        "icon-hourglass",
+        "icon-info-circle",
+        "icon-kanban",
+        "icon-land-plot-icon",
+        "icon-landmark-icon",
+        "icon-life-buoy-icon",
+        "icon-lifesaver",
+        "icon-lightbulb",
+        "icon-lightning",
+        "icon-link",
+        "icon-link-broken",
+        "icon-lock",
+        "icon-microscope",
+        "icon-minus-circle",
+        "icon-minus-circle-alt",
+        "icon-pen",
+        "icon-pen-alt",
+        "icon-plus-circle",
+        "icon-plus-circle-alt",
+        "icon-pocket-knife-icon",
+        "icon-printer",
+        "icon-printer-icon",
+        "icon-process",
+        "icon-process-cogs",
+        "icon-profile-card",
+        "icon-rectangle-list",
+        "icon-risk",
+        "icon-save",
+        "icon-save-alt",
+        "icon-search",
+        "icon-settings",
+        "icon-sheet-icon",
+        "icon-shield-alert-icon",
+        "icon-shovel-icon",
+        "icon-speedometer",
+        "icon-strategy",
+        "icon-target-arrow",
+        "icon-tool-case-icon",
+        "icon-tools",
+        "icon-tools2",
+        "icon-traffic-cone-icon",
+        "icon-traffic-light",
+        "icon-trashbin",
+        "icon-trophy-icon",
+        "icon-truck",
+        "icon-unlock",
+        "icon-user-round-icon",
+        "icon-wrench",
+        "icon-zoom-in",
+        "icon-zoom-out"
+        ];
 
     function updateDebugJson() {
         if (!_mainContainer) return;
@@ -267,6 +376,10 @@ export const CardConfigEditor = (() => {
             s.cardsColumnMode = tabEl.querySelector('input[name="cs-st-col-mode"]:checked')?.value || 'fixed';
         }
 
+        if (tabEl.querySelector("#cs-st-show-frozen-header")) {
+            s.showFrozenHeader = tabEl.querySelector("#cs-st-show-frozen-header").checked;
+        }
+
         if (tabEl.querySelector("#cs-st-spacing")) s.cardsSpacing = `${parseInt(tabEl.querySelector("#cs-st-spacing").value, 10) || 0}px`;
         if (tabEl.querySelector("#cs-st-internal-padding")) s.internalCardPadding = `${parseInt(tabEl.querySelector("#cs-st-internal-padding").value, 10) || 10}px`;
         if (tabEl.querySelector("#cs-st-field-rowgap")) {
@@ -367,7 +480,7 @@ export const CardConfigEditor = (() => {
     }
 
     const DEFAULT_FIELD_STYLE = { useGristStyle: true, labelVisible: true, labelPosition: 'above', labelFont: 'inherit', labelFontSize: 'inherit', labelColor: 'inherit', labelAllCaps: false, labelOutline: false, labelOutlineColor: '#ffffff', dataJustify: 'left', dataAllCaps: false, heightLimited: false, maxHeightRows: 1, isTitleField: false };
-    const DEFAULT_STYLING = { iconSize: 1.0, internalCardPadding: '10px', fieldBox: { borderEnabled: false, borderColor: '#cccccc', borderWidth: 1, borderRadius: 4, backgroundColor: '#ffffff', effect: 'none' }, labelStyle: { bold: false, allCaps: false, color: '#333333', font: 'Calibri', size: '12px' }, dataStyle: { font: 'Calibri', size: '14px', color: '#000000' }, fieldBackground: { enabled: false, lightenPercentage: 15 }, iconGroups: [], groupBoxes: [], widgetBackgroundMode: "solid", widgetBackgroundSolidColor: "#f9f9f9", widgetBackgroundGradientType: "linear-gradient(to right, {c1}, {c2})", widgetBackgroundGradientColor1: "#f9f9f9", widgetBackgroundGradientColor2: "#e9e9e9", cardsColorMode: "solid", cardsColorSolidColor: "#ffffff", cardsColorGradientType: "linear-gradient(to right, {c1}, {c2})", cardsColorGradientColor1: "#ffffff", cardsColorGradientColor2: "#f0f0f0", cardsColorApplyText: false, cardsColorTextField: null, cardsColorFontField: null, cardsColorOverlayEffect: 'darken', cardsColorOverlayOpacity: 10, cardBorderThickness: 0, cardBorderMode: "solid", cardBorderSolidColor: "#cccccc", cardTitleFontColor: "#000000", cardTitleFontStyle: "Calibri", cardTitleFontSize: "20px", cardTitleAllCaps: false, cardTitleTopBarEnabled: false, cardTitleTopBarMode: "solid", cardTitleTopBarSolidColor: "#dddddd", cardTitleTopBarGradientType: "linear-gradient(to right, {c1}, {c2})", cardTitleTopBarGradientColor1: "#dddddd", cardTitleTopBarGradientColor2: "#cccccc", cardTitleTopBarLabelFontColor: "#000000", cardTitleTopBarLabelFontStyle: "Calibri", cardTitleTopBarLabelFontSize: "16px", cardTitleTopBarLabelAllCaps: false, cardTitleTopBarDataFontColor: "#333333", cardTitleTopBarDataFontStyle: "Calibri", cardTitleTopBarDataFontSize: "16px", cardTitleTopBarDataAllCaps: false, handleAreaWidth: "8px", handleAreaMode: "solid", handleAreaSolidColor: "#40E0D0", handleAreaOverlayEffect: "darken", handleAreaOverlayOpacity: 10, handleAreaField: null, handleAreaTitleField: null, handleAreaTitleColor: "#ffffff", handleAreaTitleFontSize: "10px", handleAreaTitleAllCaps: false, widgetPadding: "10px", cardsSpacing: "15px", fieldRowGap: "4px", fieldColGap: "4px", fieldPadding: "4px", selectedCard: { enabled: false, scale: 1.05, colorEffect: "none" } };
+    const DEFAULT_STYLING = { iconSize: 1.0, internalCardPadding: '10px', fieldBox: { borderEnabled: false, borderColor: '#cccccc', borderWidth: 1, borderRadius: 4, backgroundColor: '#ffffff', effect: 'none' }, labelStyle: { bold: false, allCaps: false, color: '#333333', font: 'Calibri', size: '12px' }, dataStyle: { font: 'Calibri', size: '14px', color: '#000000' }, fieldBackground: { enabled: false, lightenPercentage: 15 }, iconGroups: [], groupBoxes: [], widgetBackgroundMode: "solid", widgetBackgroundSolidColor: "#f9f9f9", widgetBackgroundGradientType: "linear-gradient(to right, {c1}, {c2})", widgetBackgroundGradientColor1: "#f9f9f9", widgetBackgroundGradientColor2: "#e9e9e9", cardsColorMode: "solid", cardsColorSolidColor: "#ffffff", cardsColorGradientType: "linear-gradient(to right, {c1}, {c2})", cardsColorGradientColor1: "#ffffff", cardsColorGradientColor2: "#f0f0f0", cardsColorApplyText: false, cardsColorTextField: null, cardsColorFontField: null, cardsColorOverlayEffect: 'darken', cardsColorOverlayOpacity: 10, cardBorderThickness: 0, cardBorderMode: "solid", cardBorderSolidColor: "#cccccc", cardTitleFontColor: "#000000", cardTitleFontStyle: "Calibri", cardTitleFontSize: "20px", cardTitleAllCaps: false, cardTitleTopBarEnabled: false, cardTitleTopBarMode: "solid", cardTitleTopBarSolidColor: "#dddddd", cardTitleTopBarGradientType: "linear-gradient(to right, {c1}, {c2})", cardTitleTopBarGradientColor1: "#dddddd", cardTitleTopBarGradientColor2: "#cccccc", cardTitleTopBarLabelFontColor: "#000000", cardTitleTopBarLabelFontStyle: "Calibri", cardTitleTopBarLabelFontSize: "16px", cardTitleTopBarLabelAllCaps: false, cardTitleTopBarDataFontColor: "#333333", cardTitleTopBarDataFontStyle: "Calibri", cardTitleTopBarDataFontSize: "16px", cardTitleTopBarDataAllCaps: false, handleAreaWidth: "8px", handleAreaMode: "solid", handleAreaSolidColor: "#40E0D0", handleAreaOverlayEffect: "darken", handleAreaOverlayOpacity: 10, handleAreaField: null, handleAreaTitleField: null, handleAreaTitleColor: "#ffffff", handleAreaTitleFontSize: "10px", handleAreaTitleAllCaps: false, widgetPadding: "10px", cardsSpacing: "15px", fieldRowGap: "4px", fieldColGap: "4px", fieldPadding: "4px", selectedCard: { enabled: false, scale: 1.05, colorEffect: "none" }, showFrozenHeader: false };
     const DEFAULT_NUM_ROWS = 1; const NUM_COLS = 10; const CONFIG_WIDTH = 700; const COL_WIDTH = CONFIG_WIDTH / NUM_COLS;
 
     function createTabButton(label, tabId, container) { const btn = document.createElement("button"); btn.type = "button"; btn.textContent = label; btn.className = 'config-tab-button'; btn.addEventListener("click", () => switchTab(tabId, container)); btn.dataset.tabId = tabId; return btn; }
@@ -444,6 +557,10 @@ export const CardConfigEditor = (() => {
                         <label title="If fewer cards than Max Cols, cards expand to fill row."><input type="radio" name="cs-st-col-mode" value="responsive"> Responsive Fill</label><br>
                         <label title="Cards occupy 50% if 1 or 2, 33% if 3, up to Max Columns. Extra rows match first row size."><input type="radio" name="cs-st-col-mode" value="balanced"> Balanced Grid</label>
                     </div>
+                </fieldset>
+                <fieldset id="cs-st-header-fieldset">
+                    <legend><b>Table-like Header</b></legend>
+                    <label title="Show table-like frozen header showing field names/labels at the top of the cards list. Only available when Max Columns is 1."><input type="checkbox" id="cs-st-show-frozen-header"> Enable Frozen Header</label>
                 </fieldset>
                 <fieldset><legend><b>Layout Spacing</b></legend>Widget Padding (px): <input type="number" id="cs-st-padding" min="0" style="width:60px"> <br>Card Spacing (px): <input type="number" id="cs-st-spacing" min="0" style="width:60px"> <br>Internal Card Padding (px): <input type="number" id="cs-st-internal-padding" min="0" style="width:60px"> <br>Field Vertical Gap (px): <input type="number" id="cs-st-field-rowgap" min="0" style="width:60px"> <br>Field Horizontal Gap (px): <input type="number" id="cs-st-field-colgap" min="0" style="width:60px"> <br>Field Internal Padding (px): <input type="number" id="cs-st-field-padding" min="0" style="width:60px"></fieldset>
                 <fieldset>
@@ -597,12 +714,36 @@ export const CardConfigEditor = (() => {
         populateFieldSelect(tabEl.querySelector("#cs-st-handle-field-value"), allFields);
         populateFieldSelect(tabEl.querySelector("#cs-st-handle-title-field"), allFields);
 
+        const colLimitInput = tabEl.querySelector("#cs-st-col-limit");
+        const showFrozenHeaderCheckbox = tabEl.querySelector("#cs-st-show-frozen-header");
+        const updateHeaderCheckboxState = () => {
+            if (!colLimitInput || !showFrozenHeaderCheckbox) return;
+            const cols = parseInt(colLimitInput.value, 10) || 1;
+            if (cols > 1) {
+                showFrozenHeaderCheckbox.checked = false;
+                showFrozenHeaderCheckbox.disabled = true;
+                if (showFrozenHeaderCheckbox.closest('label')) {
+                    showFrozenHeaderCheckbox.closest('label').style.opacity = 0.5;
+                }
+            } else {
+                showFrozenHeaderCheckbox.disabled = false;
+                if (showFrozenHeaderCheckbox.closest('label')) {
+                    showFrozenHeaderCheckbox.closest('label').style.opacity = 1;
+                }
+            }
+        };
+        if (colLimitInput && showFrozenHeaderCheckbox) {
+            colLimitInput.addEventListener('input', updateHeaderCheckboxState);
+            colLimitInput.addEventListener('change', updateHeaderCheckboxState);
+        }
+
         populateStylingTab(tabEl);
 
         toggleTopBarControls();
         toggleFieldBgControls();
         toggleFieldBoxControls();
         updateTopBarColorInputsState();
+        updateHeaderCheckboxState();
         tabEl.querySelectorAll('input[type="radio"]:checked').forEach(radio => { if (radio) radio.dispatchEvent(new Event('change')) });
 
         const saveStyleBtn = tabEl.querySelector('#cs-save-style-btn');
@@ -744,6 +885,9 @@ export const CardConfigEditor = (() => {
         tabEl.querySelector("#cs-st-padding").value = parseInt(s.widgetPadding, 10); 
         tabEl.querySelector("#cs-st-spacing").value = parseInt(s.cardsSpacing, 10);
         tabEl.querySelector("#cs-st-col-limit").value = s.cardsColumnLimit || 1;
+        if (tabEl.querySelector("#cs-st-show-frozen-header")) {
+            tabEl.querySelector("#cs-st-show-frozen-header").checked = s.showFrozenHeader === true;
+        }
         const colMode = s.cardsColumnMode || 'fixed';
         const colModeRadio = tabEl.querySelector(`input[name="cs-st-col-mode"][value="${colMode}"]`);
         if (colModeRadio) colModeRadio.checked = true;
@@ -1012,7 +1156,7 @@ export const CardConfigEditor = (() => {
         let fieldLabel; let fieldSchema;
         if (fieldDef.isIconGroup) { const group = (state.iconGroups || []).find(g => g.id === fieldDef.colId); fieldLabel = `[Group] ${group ? group.name : fieldDef.colId}`; } 
         else { fieldSchema = state.fields.find(field => field.colId === fieldDef.colId); fieldLabel = fieldSchema ? (fieldSchema.label || fieldSchema.colId) : fieldDef.colId; }
-        const box = document.createElement("div"); box.className = 'layout-field-box'; box.textContent = fieldLabel; box.style.left = (fieldDef.col * COL_WIDTH) + "px"; box.style.width = (fieldDef.colSpan * COL_WIDTH) + "px"; box.style.height = (((fieldDef.rowSpan || 1) * 40) - 8) + "px";
+        const box = document.createElement("div"); box.className = 'layout-field-box'; box.textContent = fieldLabel; box.style.left = (fieldDef.col * COL_WIDTH) + "px"; box.style.width = (fieldDef.colSpan * COL_WIDTH) + "px"; box.style.height = (((fieldDef.rowSpan || 1) * 40) - 6) + "px"; box.style.top = "3px";
         box.draggable = true; box.addEventListener("dragstart", e => { e.dataTransfer.setData("text/colid", fieldDef.colId); if (fieldDef.isIconGroup) e.dataTransfer.setData("text/isIconGroup", "true"); });
         const gearIcon = document.createElement("div"); gearIcon.innerHTML = "⚙️"; gearIcon.className = 'field-box-icon gear'; gearIcon.addEventListener("click", e => { e.stopPropagation(); openFieldStylePopup(fieldDef, fieldSchema, gridEl, tabEl); }); box.appendChild(gearIcon);
         const removeIcon = document.createElement("div"); removeIcon.innerHTML = "✕"; removeIcon.className = 'field-box-icon remove'; removeIcon.addEventListener("click", e => { e.stopPropagation(); const idx = state.layout.indexOf(fieldDef); if (idx > -1) { state.layout.splice(idx, 1); buildGridUI(gridEl, tabEl); buildAvailableFieldsList(_mainContainer.querySelector("#cs-layout-fields")); updateDebugJson(); } }); box.appendChild(removeIcon);
@@ -1129,11 +1273,70 @@ export const CardConfigEditor = (() => {
 
     function openIconPicker(inputElement, displayElement, buttonConfig) {
         if (_iconPickerPopup && _iconPickerPopup.parentNode) { _iconPickerPopup.parentNode.removeChild(_iconPickerPopup); }
-        _iconPickerPopup = document.createElement("div"); _iconPickerPopup.className = 'icon-picker-popup'; _iconPickerPopup.style.cssText = `position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1080; padding: 15px; background: white; border: 1px solid #ccc; box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-width: 600px; max-height: 500px; overflow-y: auto; border-radius: 5px;`;
-        _iconPickerPopup.innerHTML = `<style>.icon-grid { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; } .icon-option { width: 80px; height: 80px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid #eee; border-radius: 4px; cursor: pointer; transition: all 0.2s; color: #000; padding: 5px; overflow: hidden; } .icon-option:hover { background: #e6f7ff; border-color: #1890ff; transform: scale(1.05); } .icon-option svg { width: 32px; height: 32px; flex-shrink: 0; fill: currentColor; } .icon-id-label { font-size: 9px; margin-top: 5px; text-align: center; word-break: break-all; color: #666; max-height: 24px; overflow: hidden; }</style><h4 style="margin-top: 0;">Select an Icon</h4><div class="icon-grid">${AVAILABLE_ICONS.map(id => `<div class="icon-option" data-id="${id}" title="${id}"><svg><use href="#${id}"></use></svg><div class="icon-id-label">${id.replace('icon-', '')}</div></div>`).join('')}</div><div style="text-align: right; margin-top: 15px;"><button id="icon-picker-cancel" type="button" class="btn btn-secondary">Cancel</button></div>`;
+        _iconPickerPopup = document.createElement("div"); _iconPickerPopup.className = 'icon-picker-popup'; 
+        _iconPickerPopup.style.cssText = `position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1080; padding: 15px; background: white; border: 1px solid #ccc; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 600px; max-height: 500px; overflow-y: auto; border-radius: 5px;`;
+        
+        _iconPickerPopup.innerHTML = `
+            <style>
+                .picker-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; position: sticky; top: 0; background: white; z-index: 1; padding-bottom: 10px; border-bottom: 1px solid #eee; }
+                .icon-grid { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-start; } 
+                .icon-option { width: 75px; height: 75px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid #eee; border-radius: 4px; cursor: pointer; transition: all 0.2s; color: #000; padding: 5px; overflow: hidden; } 
+                .icon-option:hover { background: #e6f7ff; border-color: #1890ff; transform: scale(1.05); } 
+                .icon-option svg { width: 24px; height: 24px; flex-shrink: 0; fill: currentColor; stroke: currentColor; stroke-width: 0.5px; } 
+                .icon-id-label { font-size: 8px; margin-top: 5px; text-align: center; word-break: break-all; color: #666; max-height: 24px; overflow: hidden; }
+                #picker-search { padding: 5px 10px; border: 1px solid #ccc; border-radius: 4px; flex-grow: 1; margin-right: 15px; }
+            </style>
+            <div class="picker-header">
+                <h4 style="margin: 0; white-space: nowrap; margin-right: 15px;">Pick Icon</h4>
+                <input type="text" id="picker-search" placeholder="Search icons...">
+                <div id="picker-count" style="font-size: 11px; font-weight: bold; background: #eee; padding: 2px 8px; border-radius: 10px; white-space: nowrap;">${AVAILABLE_ICONS.length}</div>
+            </div>
+            <div class="icon-grid">
+                ${AVAILABLE_ICONS.map(id => `<div class="icon-option" data-id="${id}" title="${id}"><svg><use href="#${id}"></use></svg><div class="icon-id-label">${id.replace('icon-', '')}</div></div>`).join('')}
+            </div>
+            <div style="text-align: right; margin-top: 15px;">
+                <button id="icon-picker-cancel" type="button" class="btn btn-secondary">Cancel</button>
+            </div>`;
+        
         _mainContainer.appendChild(_iconPickerPopup);
-        _iconPickerPopup.querySelectorAll('.icon-option').forEach(iconEl => { iconEl.addEventListener('click', () => { const selectedIcon = iconEl.dataset.id; buttonConfig.icon = selectedIcon; if(inputElement) inputElement.value = selectedIcon; if(displayElement) displayElement.innerHTML = `<svg class="icon"><use href="#${selectedIcon}"></use></svg>`; _iconPickerPopup.parentNode.removeChild(_iconPickerPopup); _iconPickerPopup = null; renderActionsLayout(_mainContainer.querySelector('#actions-master-detail')); updateDebugJson(); }); });
-        _iconPickerPopup.querySelector('#icon-picker-cancel').addEventListener('click', () => { _iconPickerPopup.parentNode.removeChild(_iconPickerPopup); _iconPickerPopup = null; });
+
+        const searchInput = _iconPickerPopup.querySelector('#picker-search');
+        const countDisplay = _iconPickerPopup.querySelector('#picker-count');
+        const options = _iconPickerPopup.querySelectorAll('.icon-option');
+
+        searchInput.focus();
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase();
+            let visibleCount = 0;
+            options.forEach(opt => {
+                const id = opt.dataset.id.toLowerCase();
+                if (id.includes(query)) {
+                    opt.style.display = 'flex';
+                    visibleCount++;
+                } else {
+                    opt.style.display = 'none';
+                }
+            });
+            countDisplay.innerText = visibleCount;
+        });
+
+        options.forEach(iconEl => { 
+            iconEl.addEventListener('click', () => { 
+                const selectedIcon = iconEl.dataset.id; 
+                buttonConfig.icon = selectedIcon; 
+                if(inputElement) inputElement.value = selectedIcon; 
+                if(displayElement) displayElement.innerHTML = `<svg class="icon" style="width:20px; height:20px; fill:currentColor; stroke:currentColor; stroke-width:0.5px;"><use href="#${selectedIcon}"></use></svg>`; 
+                _iconPickerPopup.remove(); 
+                _iconPickerPopup = null; 
+                if (typeof renderActionsLayout === 'function') renderActionsLayout(_mainContainer.querySelector('#actions-master-detail')); 
+                updateDebugJson(); 
+            }); 
+        });
+
+        _iconPickerPopup.querySelector('#icon-picker-cancel').addEventListener('click', () => { 
+            _iconPickerPopup.remove(); 
+            _iconPickerPopup = null; 
+        });
     }
 
     function renderActionHelp(actionType) { const helpMap = { 'navigateToGristPage': 'Navega para outra página/seção do Grist.', 'openUrlFromColumn': 'Abre um link contido em uma coluna.', 'updateRecord': 'Atualiza um campo do registro.', 'triggerWidget': 'Dispara outro widget.', 'editRecord': 'Abre a gaveta lateral.', 'deleteRecord': 'Exclui o registro.', 'addSubRecord': 'Cria um novo registro vinculado.', 'showTooltipField': 'Exibe um campo como tooltip.', 'moveRecord': 'Alça de arraste manual.', 'SHOW_INDICATOR_CHART': 'Exibe o gráfico detalhado do indicador.', 'EDIT_INDICATOR_DATA': 'Abre o editor de valores mensais do indicador.' }; return helpMap[actionType] ? `<p class="help-text" style="margin-top: 5px; color: #64748b; font-size: 0.85em;">${helpMap[actionType]}</p>` : ''; }
