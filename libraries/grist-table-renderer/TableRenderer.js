@@ -1,6 +1,6 @@
 // libraries/grist-table-renderer/TableRenderer.js
-import { renderField } from '../grist-field-renderer/grist-field-renderer.js';
-import { publish } from '../grist-event-bus/grist-event-bus.js';
+import { renderField } from '../grist-field-renderer/grist-field-renderer.js?v=1.0.4';
+import { publish } from '../grist-event-bus/grist-event-bus.js?v=1.0.4';
 
 export const TableRenderer = (() => {
 
@@ -336,6 +336,7 @@ export const TableRenderer = (() => {
                 tempContainer.style.display = 'flex';
                 tempContainer.style.alignItems = 'center';
                 tempContainer.style.height = '100%';
+                tempContainer.style.minHeight = '24px'; // Ensure visibility for progress bars
             } else if (colConfig && colConfig.formatter === 'image') {
                 fieldOptions.widget = 'image';
                 fieldOptions.widgetOptions = colConfig.formatterParams;
@@ -350,6 +351,19 @@ export const TableRenderer = (() => {
             }
 
             onRendered(async () => {
+                const isProgress = colConfig?.formatter === 'progress' || colConfig?.formatter === 'progressRing';
+                const isColor = colConfig?.formatter === 'color';
+                
+                const widgetOptions = {
+                    progressBar: isProgress,
+                    colorPicker: isColor,
+                    ...(colConfig?.formatterParams || {})
+                };
+                
+                if (colConfig?.formatter === 'progressRing') {
+                    widgetOptions.progressType = 'circular';
+                }
+
                 await renderField({
                     container: tempContainer,
                     colSchema: colSchema,
@@ -361,9 +375,10 @@ export const TableRenderer = (() => {
                     },
                     fieldStyle: {
                         useGristStyle: !colConfig?.ignoreConditionalFormatting,
-                        widgetOptions: colConfig?.formatterParams
+                        widget: isProgress ? 'progressbar' : colConfig?.formatter,
+                        widgetOptions: widgetOptions
                     },
-                    fieldOptions: colConfig?.formatterParams,
+                    fieldOptions: widgetOptions,
                     receivedConfigs: config.receivedConfigs
                 });
             });
@@ -567,12 +582,14 @@ export const TableRenderer = (() => {
                 }
             }
 
+            const colWidth = (colConfig.width === 'auto' || colConfig.width === '') ? undefined : colConfig.width;
+
             return {
                 title: gristCol.label || gristCol.colId,
                 field: gristCol.colId,
                 hozAlign: colConfig.align || 'left',
                 headerFilter: styling.headerFilter !== false,
-                width: colConfig.width || undefined,
+                width: colWidth,
                 bottomCalc: actions.enableColumnCalcs ? (colConfig.bottomCalc || undefined) : undefined,
                 editable: isEditable,
                 editor: editor,
@@ -750,6 +767,10 @@ export const TableRenderer = (() => {
             widgetWrapper.querySelectorAll('.tabulator-col').forEach(colEl => {
                 colEl.setAttribute('draggable', 'true');
             });
+            // Force redraw after a short delay to ensure correct column alignment and width calculation
+            setTimeout(() => {
+                tabulatorTable.redraw(true);
+            }, 100);
         });
 
         // Apply stripes backward compatibility class
