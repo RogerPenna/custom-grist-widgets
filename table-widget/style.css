@@ -12,24 +12,10 @@
     --border-color: rgba(226, 232, 240, 0.8);
 }
 
-body {
-    margin: 0;
-    padding: 0;
-    background: #f8fafc;
-    font-family: 'Inter', sans-serif;
-    color: #1e293b;
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-}
-
-#table-container {
-    height: 100%;
-    padding: 16px;
-    box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-}
+body.theme-glassmorphism { background: radial-gradient(circle at 10% 20%, rgba(243, 246, 253, 0.8) 0%, rgba(235, 241, 254, 0.8) 90%); }
+body.theme-minimal { background: #ffffff; }
+body.theme-corporate { background: #f1f5f9; }
+body.theme-night { background: #0f172a; color: #f1f5f9; }
 
 /* Container Base */
 .grist-table-widget-container {
@@ -38,16 +24,12 @@ body {
     height: 100%;
     width: 100%;
     overflow: hidden;
+    background: transparent !important; /* Let body theme handle background */
 }
 
 /* Themes CSS Styles */
 
 /* 1. Glassmorphism Theme (Moderno) */
-.grist-table-widget-container.theme-glassmorphism {
-    background: radial-gradient(circle at 10% 20%, rgba(243, 246, 253, 0.8) 0%, rgba(235, 241, 254, 0.8) 90%);
-    --border-color: rgba(255, 255, 255, 0.25);
-}
-
 .theme-glassmorphism .tabulator {
     background: var(--glass-bg) !important;
     border: 1px solid var(--glass-border) !important;
@@ -72,11 +54,6 @@ body {
 }
 
 /* 2. Minimal Theme (Minimalista - Limpo) */
-.grist-table-widget-container.theme-minimal {
-    background: #ffffff;
-    --border-color: #cbd5e1;
-}
-
 .theme-minimal .tabulator {
     background: #ffffff !important;
     border: 1px solid #e2e8f0 !important;
@@ -99,11 +76,6 @@ body {
 }
 
 /* 3. Corporate Theme (Corporativo - Grist Style) */
-.grist-table-widget-container.theme-corporate {
-    background: #f1f5f9;
-    --border-color: #cbd5e1;
-}
-
 .theme-corporate .tabulator {
     background: #ffffff !important;
     border: 1px solid #cbd5e1 !important;
@@ -127,12 +99,6 @@ body {
 }
 
 /* 4. Night Mode Theme (Night Mode) */
-.grist-table-widget-container.theme-night {
-    background: #0f172a;
-    color: #f1f5f9;
-    --border-color: #334155;
-}
-
 .theme-night .tabulator {
     background: #1e293b !important;
     border: 1px solid #334155 !important;
@@ -375,42 +341,42 @@ body {
     background-color: rgba(59, 130, 246, 0.05) !important;
 }
 
-/* Striped Rows */
-.striped-rows-enabled .tabulator-row.tabulator-row-odd {
+/* Striped Rows - Simplified logic using custom-striped-enabled on .tabulator */
+.custom-striped-enabled .tabulator-row.tabulator-row-odd {
     background-color: rgba(241, 245, 249, 0.4) !important;
 }
-.striped-rows-enabled.theme-glassmorphism .tabulator-row.tabulator-row-odd {
+.theme-glassmorphism .custom-striped-enabled .tabulator-row.tabulator-row-odd {
     background-color: rgba(255, 255, 255, 0.25) !important;
 }
-.striped-rows-enabled.theme-minimal .tabulator-row.tabulator-row-odd {
+.theme-minimal .custom-striped-enabled .tabulator-row.tabulator-row-odd {
     background-color: #f8fafc !important;
 }
-.striped-rows-enabled.theme-corporate .tabulator-row.tabulator-row-odd {
+.theme-corporate .custom-striped-enabled .tabulator-row.tabulator-row-odd {
     background-color: #f8fafc !important;
 }
-.striped-rows-enabled.theme-night .tabulator-row.tabulator-row-odd {
+.theme-night .custom-striped-enabled .tabulator-row.tabulator-row-odd {
     background-color: #0f172a !important;
 }
 
-/* Force identical background colors when striped rows are disabled only if not in a specific theme that defines its own row colors */
-.grist-table-widget-container:not(.striped-rows-enabled):not(.theme-glassmorphism):not(.theme-minimal):not(.theme-corporate):not(.theme-night) .tabulator-row.tabulator-row-even,
-.grist-table-widget-container:not(.striped-rows-enabled):not(.theme-glassmorphism):not(.theme-minimal):not(.theme-corporate):not(.theme-night) .tabulator-row.tabulator-row-odd {
+/* Force identical background colors when striped rows are disabled */
+.tabulator:not(.custom-striped-enabled) .tabulator-row.tabulator-row-even,
+.tabulator:not(.custom-striped-enabled) .tabulator-row.tabulator-row-odd {
     background-color: #ffffff !important;
 }
-.grist-table-widget-container:not(.striped-rows-enabled).theme-glassmorphism .tabulator-row.tabulator-row-even,
-.grist-table-widget-container:not(.striped-rows-enabled).theme-glassmorphism .tabulator-row.tabulator-row-odd {
+.theme-glassmorphism .tabulator:not(.custom-striped-enabled) .tabulator-row.tabulator-row-even,
+.theme-glassmorphism .tabulator:not(.custom-striped-enabled) .tabulator-row.tabulator-row-odd {
     background-color: rgba(255, 255, 255, 0.15) !important;
 }
-.grist-table-widget-container:not(.striped-rows-enabled).theme-minimal .tabulator-row.tabulator-row-even,
-.grist-table-widget-container:not(.striped-rows-enabled).theme-minimal .tabulator-row.tabulator-row-odd {
+.theme-minimal .tabulator:not(.custom-striped-enabled) .tabulator-row.tabulator-row-even,
+.theme-minimal .tabulator:not(.custom-striped-enabled) .tabulator-row.tabulator-row-odd {
     background-color: #ffffff !important;
 }
-.grist-table-widget-container:not(.striped-rows-enabled).theme-corporate .tabulator-row.tabulator-row-even,
-.grist-table-widget-container:not(.striped-rows-enabled).theme-corporate .tabulator-row.tabulator-row-odd {
+.theme-corporate .tabulator:not(.custom-striped-enabled) .tabulator-row.tabulator-row-even,
+.theme-corporate .tabulator:not(.custom-striped-enabled) .tabulator-row.tabulator-row-odd {
     background-color: #ffffff !important;
 }
-.grist-table-widget-container:not(.striped-rows-enabled).theme-night .tabulator-row.tabulator-row-even,
-.grist-table-widget-container:not(.striped-rows-enabled).theme-night .tabulator-row.tabulator-row-odd {
+.theme-night .tabulator:not(.custom-striped-enabled) .tabulator-row.tabulator-row-even,
+.theme-night .tabulator:not(.custom-striped-enabled) .tabulator-row.tabulator-row-odd {
     background-color: #1e293b !important;
 }
 

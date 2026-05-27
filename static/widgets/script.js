@@ -49,6 +49,12 @@ document.addEventListener('DOMContentLoaded', async function () {
             const records = await tableLens.fetchTableRecords(currentConfig.tableId);
             
             tableContainer.innerHTML = '';
+            
+            // Apply theme to body for global background consistency
+            const tableLayoutConfig = currentConfig.styling?.tableLayoutConfig || currentConfig.tableLayoutConfig || {};
+            const theme = tableLayoutConfig.themeStyle || 'glassmorphism';
+            document.body.className = `theme-${theme}`;
+            
             await TableRenderer.renderTable({
                 container: tableContainer,
                 records,
