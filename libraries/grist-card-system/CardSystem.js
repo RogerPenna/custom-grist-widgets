@@ -27,7 +27,7 @@ export const CardSystem = (() => {
     widgetBackgroundMode: "solid", widgetBackgroundSolidColor: "#f9f9f9", widgetBackgroundGradientType: "linear-gradient(to right, {c1}, {c2})", widgetBackgroundGradientColor1: "#f9f9f9", widgetBackgroundGradientColor2: "#e9e9e9",
     cardsColorMode: "solid", cardsColorSolidColor: "#ffffff", cardsColorGradientType: "linear-gradient(to right, {c1}, {c2})", cardsColorGradientColor1: "#ffffff", cardsColorGradientColor2: "#f0f0f0",
     cardsColorApplyText: false, cardsColorTextField: null, cardsColorFontField: null, cardsColorOverlayEffect: 'darken', cardsColorOverlayOpacity: 10,
-    cardBorderThickness: 0, cardBorderMode: "solid", cardBorderSolidColor: "#cccccc",
+    cardBorderThickness: 0, cardBorderMode: "solid", cardBorderSolidColor: "#cccccc", cardBorderRadius: 8,
     cardTitleFontColor: "#000000", cardTitleFontStyle: "Calibri", cardTitleFontSize: "20px", cardTitleAllCaps: false,
     cardTitleTopBarEnabled: false, cardTitleTopBarMode: "solid", cardTitleTopBarSolidColor: "#dddddd", cardTitleTopBarGradientType: "linear-gradient(to right, {c1}, {c2})", cardTitleTopBarGradientColor1: "#dddddd", cardTitleTopBarGradientColor2: "#cccccc", cardTitleTopBarLabelFontColor: "#000000", cardTitleTopBarLabelFontStyle: "Calibri", cardTitleTopBarLabelFontSize: "16px", cardTitleTopBarLabelAllCaps: false, cardTitleTopBarDataFontColor: "#333333", cardTitleTopBarDataFontStyle: "Calibri", cardTitleTopBarDataFontSize: "16px", cardTitleTopBarDataAllCaps: false,
     handleAreaWidth: "8px", handleAreaMode: "solid", handleAreaSolidColor: "#40E0D0",
@@ -748,36 +748,50 @@ export const CardSystem = (() => {
       
       cardEl.dataset.recordId = record.id;
       cardEl.dataset.tableId = currentOptions.tableId || '';
-      cardEl.style.display = "grid";
-      cardEl.style.gridTemplateRows = `repeat(${finalRows}, auto)`;
-      
-      cardEl.style.gridTemplateColumns = `repeat(${NUM_COLS}, 1fr)`;
-      cardEl.style.rowGap = styling.fieldRowGap !== undefined ? styling.fieldRowGap : "4px";
-      cardEl.style.columnGap = styling.fieldColGap !== undefined ? styling.fieldColGap : "4px";
-      cardEl.style.alignSelf = "start";
-      cardEl.style.borderRadius = "8px";
-      cardEl.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)";
+      cardEl.style.display = "block";
       cardEl.style.position = "relative";
+      cardEl.style.alignSelf = "start";
       cardEl.style.minHeight = "32px"; // Reduced from 60px to allow compact cards
       cardEl.style.transition = "all 0.2s ease-in-out";
+      cardEl.style.background = "transparent";
+      cardEl.style.border = "none";
+      cardEl.style.boxShadow = "none";
+      cardEl.style.padding = "0";
+      cardEl.style.overflow = "visible";
 
-      // --- VISUAL SPACING DEBUGGER (TEMPORARY) ---
-      const debugMode = true; // Set to false to disable
-      if (debugMode) {
-          cardEl.style.outline = "1px dashed rgba(0,0,0,0.1)";
-          // Color the card padding area (Blue tint)
-          cardEl.style.backgroundColor = "rgba(0, 0, 255, 0.05)"; 
-      }
-      // --------------------------------------------
-
-      const internalPadding = parseInt(styling.internalCardPadding, 10) || 10;
-      const handleWidth = parseInt(styling.handleAreaWidth, 10);
+      const cardBodyEl = document.createElement("div");
+      cardBodyEl.className = "cs-card-body";
+      cardBodyEl.style.display = "grid";
+      cardBodyEl.style.gridTemplateRows = `repeat(${finalRows}, auto)`;
+      cardBodyEl.style.gridTemplateColumns = `repeat(${NUM_COLS}, 1fr)`;
+      const cardBorderRadius = styling.cardBorderRadius !== undefined ? styling.cardBorderRadius : 8;
+      cardBodyEl.style.rowGap = styling.fieldRowGap !== undefined ? styling.fieldRowGap : "4px";
+      cardBodyEl.style.columnGap = styling.fieldColGap !== undefined ? styling.fieldColGap : "4px";
+      cardBodyEl.style.borderRadius = `${cardBorderRadius}px`;
+      cardBodyEl.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)";
+      cardBodyEl.style.position = "relative";
+      cardBodyEl.style.minHeight = "32px";
+      cardBodyEl.style.transition = "box-shadow 0.2s ease-in-out";
+      cardBodyEl.style.zIndex = "2";
 
       // Collect all action groups configured as burger menu
       const actions = currentOptions.actions || {};
       const allIconGroups = currentOptions.iconGroups || actions.iconGroups || styling.iconGroups || [];
       const burgerGroups = allIconGroups.filter(g => g.asBurgerMenu && g.buttons && g.buttons.length > 0);
       const hasBurgerMenu = burgerGroups.length > 0 || viewMode === "burger";
+
+      const internalPadding = parseInt(styling.internalCardPadding, 10) || 10;
+      let handleWidth = parseInt(styling.handleAreaWidth, 10);
+      if (isNaN(handleWidth)) {
+        handleWidth = 8;
+      }
+      const effectiveHandleWidth = handleWidth;
+
+      if (effectiveHandleWidth > 0) {
+        cardBodyEl.style.marginLeft = `${effectiveHandleWidth}px`;
+      } else {
+        cardBodyEl.style.marginLeft = "0";
+      }
 
       let placement = 'left-top';
       const firstGroup = burgerGroups[0] || {};
@@ -789,20 +803,20 @@ export const CardSystem = (() => {
           placement = 'left-top';
       }
 
-      cardEl.style.padding = `${internalPadding}px`;
+      cardBodyEl.style.padding = `${internalPadding}px`;
       if (hasBurgerMenu) {
           const iconSize = styling.iconSize || 1.0;
           const burgerSpace = Math.ceil(30 * iconSize) + 8;
           if (placement.startsWith('left')) {
-              cardEl.style.paddingLeft = `${internalPadding + handleWidth + burgerSpace}px`;
-              cardEl.style.paddingRight = `${internalPadding}px`;
+              cardBodyEl.style.paddingLeft = `${internalPadding + burgerSpace}px`;
+              cardBodyEl.style.paddingRight = `${internalPadding}px`;
           } else {
-              cardEl.style.paddingLeft = `${internalPadding + handleWidth}px`;
-              cardEl.style.paddingRight = `${internalPadding + burgerSpace}px`;
+              cardBodyEl.style.paddingLeft = `${internalPadding}px`;
+              cardBodyEl.style.paddingRight = `${internalPadding + burgerSpace}px`;
           }
       } else {
-          cardEl.style.paddingLeft = `${internalPadding + handleWidth}px`;
-          cardEl.style.paddingRight = `${internalPadding}px`;
+          cardBodyEl.style.paddingLeft = `${internalPadding}px`;
+          cardBodyEl.style.paddingRight = `${internalPadding}px`;
       }
 
       let finalCardColor = styling.cardsColorSolidColor;
@@ -822,44 +836,44 @@ export const CardSystem = (() => {
               trimmed.startsWith('hsla(')
             ) {
               finalCardColor = trimmed;
-              cardEl.style.background = finalCardColor;
+              cardBodyEl.style.background = finalCardColor;
               resolved = true;
             }
           }
           if (!resolved) {
             const fieldStyle = getFieldStyle(record, colSchema, schema);
             finalCardColor = fieldStyle.fillColor || styling.cardsColorSolidColor;
-            cardEl.style.background = finalCardColor;
+            cardBodyEl.style.background = finalCardColor;
             if (styling.cardsColorApplyText && fieldStyle.textColor) {
-              cardEl.style.color = fieldStyle.textColor;
+              cardBodyEl.style.color = fieldStyle.textColor;
             }
           }
         } else {
-          cardEl.style.background = styling.cardsColorSolidColor;
+          cardBodyEl.style.background = styling.cardsColorSolidColor;
         }
       } else if (styling.cardsColorMode === 'text-value') {
         if (styling.cardsColorTextField) {
              const bgVal = record[styling.cardsColorTextField];
              if (bgVal) {
                  finalCardColor = bgVal;
-                 cardEl.style.background = bgVal;
+                 cardBodyEl.style.background = bgVal;
              }
         }
         if (styling.cardsColorFontField) {
              const fontVal = record[styling.cardsColorFontField];
-             if (fontVal) cardEl.style.color = fontVal;
-        }
+             if (fontVal) cardBodyEl.style.color = fontVal;
+         }
       } else if (styling.cardsColorMode === 'solid' && styling.cardsColorField) {
           const bgVal = record[styling.cardsColorField];
           if (bgVal) {
               finalCardColor = bgVal;
-              cardEl.style.background = bgVal;
+              cardBodyEl.style.background = bgVal;
           } else {
-              cardEl.style.background = styling.cardsColorSolidColor;
+              cardBodyEl.style.background = styling.cardsColorSolidColor;
           }
           if (styling.cardsColorApplyText && styling.cardsColorFontField) {
                const fontVal = record[styling.cardsColorFontField];
-               if (fontVal) cardEl.style.color = fontVal;
+               if (fontVal) cardBodyEl.style.color = fontVal;
           }
       }
       else if (styling.cardsColorMode === 'overlay') {
@@ -867,38 +881,46 @@ export const CardSystem = (() => {
           const isDarken = styling.cardsColorOverlayEffect === 'darken';
           const rgb = isDarken ? '0, 0, 0' : '255, 255, 255';
           finalCardColor = `rgba(${rgb}, ${opacity})`;
-          cardEl.style.background = finalCardColor;
+          cardBodyEl.style.background = finalCardColor;
       } else {
         finalCardColor = resolveStyle(record, schema, styling.cardsColorMode, styling.cardsColorSolidColor, { type: styling.cardsColorGradientType, c1: styling.cardsColorGradientColor1, c2: styling.cardsColorGradientColor2 }, styling.cardsColorField);
-        cardEl.style.background = finalCardColor;
+        cardBodyEl.style.background = finalCardColor;
       }
 
       if (styling.cardBorderThickness > 0) {
         const borderColor = resolveStyle(record, schema, styling.cardBorderMode, styling.cardBorderSolidColor, null, styling.cardBorderField);
-        cardEl.style.border = `${styling.cardBorderThickness}px solid ${borderColor}`;
+        cardBodyEl.style.border = `${styling.cardBorderThickness}px solid ${borderColor}`;
       } else {
-        cardEl.style.border = "none";
+        cardBodyEl.style.border = "none";
       }
 
+
+
       const handleEl = document.createElement("div");
+      handleEl.className = "cs-card-handle";
       handleEl.style.position = "absolute";
       handleEl.style.left = "0";
       handleEl.style.top = "0";
       handleEl.style.bottom = "0";
-      handleEl.style.width = styling.handleAreaWidth;
+      // Extend 24px under the cardBodyEl to avoid white gaps during transitions
+      handleEl.style.width = `${effectiveHandleWidth + 24}px`;
+      handleEl.style.zIndex = "1";
       
       let handleBg;
       if (styling.handleAreaMode === 'overlay') {
           const opacity = (parseInt(styling.handleAreaOverlayOpacity, 10) || 0) / 100;
           const isDarken = styling.handleAreaOverlayEffect === 'darken';
           const rgb = isDarken ? '0, 0, 0' : '255, 255, 255';
-          handleBg = `rgba(${rgb}, ${opacity})`;
+          const overlayColor = `rgba(${rgb}, ${opacity})`;
+          handleBg = `linear-gradient(${overlayColor}, ${overlayColor}), ${finalCardColor}`;
       } else {
           handleBg = resolveStyle(record, schema, styling.handleAreaMode, styling.handleAreaSolidColor, null, styling.handleAreaField);
       }
       handleEl.style.background = handleBg;
-      handleEl.style.borderTopLeftRadius = "8px";
-      handleEl.style.borderBottomLeftRadius = "8px";
+      handleEl.style.borderTopLeftRadius = `${cardBorderRadius}px`;
+      handleEl.style.borderBottomLeftRadius = `${cardBorderRadius}px`;
+      handleEl.style.borderTopRightRadius = "0px";
+      handleEl.style.borderBottomRightRadius = "0px";
 
       if (styling.handleAreaTitleField && record[styling.handleAreaTitleField] !== undefined && record[styling.handleAreaTitleField] !== null) {
           const titleText = String(record[styling.handleAreaTitleField]);
@@ -909,7 +931,7 @@ export const CardSystem = (() => {
               titleEl.style.position = "absolute";
               titleEl.style.left = "0";
               titleEl.style.top = "0";
-              titleEl.style.width = "100%";
+              titleEl.style.width = `${effectiveHandleWidth}px`;
               titleEl.style.height = "100%";
               titleEl.style.display = "flex";
               titleEl.style.alignItems = "center";
@@ -930,8 +952,9 @@ export const CardSystem = (() => {
       }
 
       cardEl.appendChild(handleEl);
+      cardEl.appendChild(cardBodyEl);
       
-      if (handleWidth === 0) {
+      if (effectiveHandleWidth === 0) {
         handleEl.style.display = "none";
       }
 
@@ -964,10 +987,10 @@ export const CardSystem = (() => {
         burgerBtn.title = firstGroup.name || "Menu";
         
         if (placement === 'left-top') {
-            burgerBtn.style.left = `${internalPadding + handleWidth}px`;
+            burgerBtn.style.left = `${internalPadding}px`;
             burgerBtn.style.top = `${internalPadding}px`;
         } else if (placement === 'left-center') {
-            burgerBtn.style.left = `${internalPadding + handleWidth}px`;
+            burgerBtn.style.left = `${internalPadding}px`;
             burgerBtn.style.top = "50%";
             burgerBtn.style.transform = "translateY(-50%)";
         } else if (placement === 'right-top') {
@@ -985,7 +1008,7 @@ export const CardSystem = (() => {
           _showBurgerMenu(burgerBtn, burgerGroups, record, currentOptions, finalCardColor);
         });
         
-        cardEl.appendChild(burgerBtn);
+        cardBodyEl.appendChild(burgerBtn);
       }
 
       if (viewMode === "burger") {
@@ -996,8 +1019,8 @@ export const CardSystem = (() => {
       }
 
       if (styling.selectedCard?.enabled) {
-        cardEl.addEventListener("mouseenter", () => { cardEl.style.transform = `scale(${styling.selectedCard.scale})`; cardEl.style.boxShadow = "0 6px 12px rgba(0,0,0,0.2)"; });
-        cardEl.addEventListener("mouseleave", () => { cardEl.style.transform = "scale(1)"; cardEl.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)"; });
+        cardEl.addEventListener("mouseenter", () => { cardEl.style.transform = `scale(${styling.selectedCard.scale})`; cardBodyEl.style.boxShadow = "0 6px 12px rgba(0,0,0,0.2)"; });
+        cardEl.addEventListener("mouseleave", () => { cardEl.style.transform = "scale(1)"; cardBodyEl.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)"; });
       }
 
       const titleFields = layout.filter(f => f.style?.isTitleField);
@@ -1023,9 +1046,9 @@ export const CardSystem = (() => {
         } else {
           topBarEl.style.background = resolveStyle(record, schema, styling.cardTitleTopBarMode, styling.cardTitleTopBarSolidColor, { type: styling.cardTitleTopBarGradientType, c1: styling.cardTitleTopBarGradientColor1, c2: styling.cardTitleTopBarGradientColor2 }, styling.cardTitleTopBarField);
         }
-        topBarEl.style.borderTopLeftRadius = "8px";
-        topBarEl.style.borderTopRightRadius = "8px";
-        cardEl.appendChild(topBarEl);
+        topBarEl.style.borderTopLeftRadius = `${cardBorderRadius}px`;
+        topBarEl.style.borderTopRightRadius = `${cardBorderRadius}px`;
+        cardBodyEl.appendChild(topBarEl);
 
         for (const f of titleFields) {
           const fieldStyle = { ...DEFAULT_FIELD_STYLE, ...f.style };
@@ -1313,7 +1336,7 @@ export const CardSystem = (() => {
             });
           }
 
-          cardEl.appendChild(groupContainer);
+          cardBodyEl.appendChild(groupContainer);
           continue;
         }
 
@@ -1427,7 +1450,7 @@ export const CardSystem = (() => {
             receivedConfigs: currentOptions.receivedConfigs, tableSchema: schema
           });
           if (container._csRenderId !== currentRenderId) return;
-          cardEl.appendChild(fieldBox);
+          cardBodyEl.appendChild(fieldBox);
         }
       }
       if (isGrouped) {
@@ -1527,7 +1550,7 @@ export const CardSystem = (() => {
     const behavior = mapping.orderBehavior || 'free';
     let handle = ".cs-card";
     let filter = ".cs-action-button:not(.cs-move-handle)";
-    if (behavior === 'strict') handle = ".cs-move-handle";
+    if (behavior === 'strict') handle = ".cs-move-handle, .cs-card-handle";
     
     if (typeof Sortable !== 'undefined') {
         // Limpa instância anterior se existir para evitar conflitos
@@ -2076,9 +2099,20 @@ export const CardSystem = (() => {
     headerCard.style.alignSelf = "start";
     
     const internalPadding = parseInt(styling.internalCardPadding, 10) || 10;
-    const handleWidth = parseInt(styling.handleAreaWidth, 10);
+    let handleWidth = parseInt(styling.handleAreaWidth, 10);
+    if (isNaN(handleWidth)) {
+      handleWidth = 8;
+    }
+    const effectiveHandleWidth = handleWidth;
+
     headerCard.style.padding = `${internalPadding}px`;
-    headerCard.style.paddingLeft = `${internalPadding + handleWidth}px`;
+    if (effectiveHandleWidth > 0) {
+      headerCard.style.marginLeft = `${effectiveHandleWidth}px`;
+      headerCard.style.paddingLeft = `${internalPadding}px`;
+    } else {
+      headerCard.style.marginLeft = "0";
+      headerCard.style.paddingLeft = `${internalPadding}px`;
+    }
     
     if (styling.cardsSpacing) {
       headerCard.style.marginBottom = styling.cardsSpacing;
