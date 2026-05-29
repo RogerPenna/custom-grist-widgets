@@ -102,29 +102,37 @@ export function openModal(options) {
     modalTitle.textContent = title;
     currentOnSave = onSave;
     currentOnCancel = onCancel;
-    currentSchema = schema;
+    currentSchema = schema || {};
     
     // Injeção de motor para o Modal
     activeTableLens = tableLens || new GristTableLens(window.grist);
     
     modalBody.innerHTML = '';
     
-    Object.values(schema)
-        .filter(col => col && !col.isFormula && !col.colId.startsWith('gristHelper_') && !hiddenFields.includes(col.colId))
-        .forEach(col => {
-            const row = document.createElement('div');
-            row.style.marginBottom = '15px';
-            row.innerHTML = `<label style="display:block;font-weight:bold;font-size:12px;color:#666;margin-bottom:5px;">${col.label || col.colId}</label><div class="val"></div>`;
-            modalBody.appendChild(row);
-            
-            renderField({
-                container: row.querySelector('.val'),
-                colSchema: col,
-                record: record,
-                isEditing: true,
-                tableLens: activeTableLens
+    if (options.customBody) {
+        if (typeof options.customBody === 'function') {
+            options.customBody(modalBody);
+        } else if (options.customBody instanceof HTMLElement) {
+            modalBody.appendChild(options.customBody);
+        }
+    } else if (schema) {
+        Object.values(schema)
+            .filter(col => col && !col.isFormula && !col.colId.startsWith('gristHelper_') && !hiddenFields.includes(col.colId))
+            .forEach(col => {
+                const row = document.createElement('div');
+                row.style.marginBottom = '15px';
+                row.innerHTML = `<label style="display:block;font-weight:bold;font-size:12px;color:#666;margin-bottom:5px;">${col.label || col.colId}</label><div class="val"></div>`;
+                modalBody.appendChild(row);
+                
+                renderField({
+                    container: row.querySelector('.val'),
+                    colSchema: col,
+                    record: record,
+                    isEditing: true,
+                    tableLens: activeTableLens
+                });
             });
-        });
+    }
 
     modalOverlay.style.display = 'flex';
 }

@@ -112,6 +112,15 @@ export async function renderRefList(options) {
         }
 
         if (options.isEditing || rawRefConfig.showAddButton === true || fieldConfig.showAddButton === true) {
+            const btnsContainer = document.createElement('div');
+            btnsContainer.className = 'grf-reflist-actions-wrapper';
+            btnsContainer.style.cssText = `
+                display: flex;
+                gap: 8px;
+                margin-bottom: 12px;
+                align-items: center;
+            `;
+
             const addBtn = document.createElement('button');
             addBtn.className = "grf-inline-add-btn";
             addBtn.title = "Adicionar Registro";
@@ -120,7 +129,7 @@ export async function renderRefList(options) {
                 display: flex; align-items: center; justify-content: center;
                 width: 28px; height: 28px; border-radius: 50%;
                 border: 1px solid #cbd5e1; background: #ffffff; color: #475569;
-                cursor: pointer; margin-bottom: 12px; transition: all 0.2s;
+                cursor: pointer; transition: all 0.2s;
                 box-shadow: 0 1px 2px rgba(0,0,0,0.05);
             `;
             addBtn.onmouseover = () => { addBtn.style.background = '#f8fafc'; addBtn.style.borderColor = '#94a3b8'; addBtn.style.color = '#1e293b'; };
@@ -140,7 +149,178 @@ export async function renderRefList(options) {
                     fieldConfig 
                 });
             };
-            container.appendChild(addBtn);
+            btnsContainer.appendChild(addBtn);
+
+            // Botão Vincular
+            const linkBtn = document.createElement('button');
+            linkBtn.className = "grf-inline-link-btn";
+            linkBtn.title = "Vincular Registros Existentes";
+            linkBtn.innerHTML = `<svg viewBox="0 0 24 24" style="width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:2.5;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg>`;
+            linkBtn.style.cssText = `
+                display: flex; align-items: center; justify-content: center;
+                width: 28px; height: 28px; border-radius: 50%;
+                border: 1px solid #cbd5e1; background: #ffffff; color: #475569;
+                cursor: pointer; transition: all 0.2s;
+                box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            `;
+            linkBtn.onmouseover = () => { linkBtn.style.background = '#f8fafc'; linkBtn.style.borderColor = '#94a3b8'; linkBtn.style.color = '#1e293b'; };
+            linkBtn.onmouseout = () => { linkBtn.style.background = '#ffffff'; linkBtn.style.borderColor = '#cbd5e1'; linkBtn.style.color = '#475569'; };
+            
+            linkBtn.onclick = async (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                
+                // 1. Carrega o schema e registros da tabela referenciada
+                const [refSchema, allRefRecords] = await Promise.all([
+                    tableLens.getTableSchema(referencedTableId),
+                    tableLens.fetchTableRecords(referencedTableId)
+                ]);
+
+                // 2. Lógica para descobrir a Display Column
+                let finalDisplayColId = null;
+                const displayColIdNum = colSchema.displayCol;
+                if (displayColIdNum) {
+                    const sourceTableId = record.gristHelper_tableId;
+                    if (sourceTableId) {
+                        const sourceSchema = await tableLens.getTableSchema(sourceTableId);
+                        const displayColHelperSchema = Object.values(sourceSchema).find(c => c.id === displayColIdNum);
+                        if (displayColHelperSchema) {
+                            if (displayColHelperSchema.isFormula && displayColHelperSchema.formula?.includes('.')) {
+                                finalDisplayColId = displayColHelperSchema.formula.split('.').pop();
+                            } else {
+                                finalDisplayColId = displayColHelperSchema.colId;
+                            }
+                        }
+                    }
+                }
+                if (!finalDisplayColId) {
+                    const firstSensibleColumn = Object.values(refSchema).find(c => c && c.type === 'Text' && !c.isFormula);
+                    finalDisplayColId = firstSensibleColumn ? firstSensibleColumn.colId : 'id';
+                }
+
+                // 3. Obtém registros já vinculados
+                const refListValue = record[colSchema.colId];
+                const existingChildIds = (Array.isArray(refListValue) && refListValue[0] === 'L') ? refListValue.slice(1) : [];
+                const selectedIds = new Set(existingChildIds);
+
+                // 4. Constrói o corpo do modal com a checklist e busca
+                const customBody = (body) => {
+                    body.style.display = 'flex';
+                    body.style.flexDirection = 'column';
+                    body.style.gap = '12px';
+                    body.style.maxHeight = '60vh';
+                    body.style.overflowY = 'auto';
+                    body.style.padding = '8px 4px';
+
+                    const searchInput = document.createElement('input');
+                    searchInput.type = 'text';
+                    searchInput.placeholder = 'Buscar registros...';
+                    searchInput.style.cssText = `
+                        padding: 8px 12px;
+                        border: 1px solid #cbd5e1;
+                        border-radius: 6px;
+                        font-size: 14px;
+                        width: 100%;
+                        box-sizing: border-box;
+                        margin-bottom: 8px;
+                    `;
+                    body.appendChild(searchInput);
+
+                    const listContainer = document.createElement('div');
+                    listContainer.style.cssText = `
+                        display: flex;
+                        flex-direction: column;
+                        gap: 8px;
+                    `;
+                    body.appendChild(listContainer);
+
+                    const rowElements = [];
+
+                    allRefRecords.forEach(rec => {
+                        const labelText = rec[finalDisplayColId] || `ID: ${rec.id}`;
+                        const isChecked = selectedIds.has(rec.id);
+
+                        const itemRow = document.createElement('label');
+                        itemRow.style.cssText = `
+                            display: flex;
+                            align-items: center;
+                            gap: 10px;
+                            padding: 8px 12px;
+                            border-radius: 6px;
+                            border: 1px solid #e2e8f0;
+                            cursor: pointer;
+                            transition: background 0.15s;
+                        `;
+                        itemRow.onmouseover = () => { itemRow.style.background = '#f8fafc'; };
+                        itemRow.onmouseout = () => { itemRow.style.background = 'transparent'; };
+
+                        const checkbox = document.createElement('input');
+                        checkbox.type = 'checkbox';
+                        checkbox.checked = isChecked;
+                        checkbox.style.cssText = `
+                            width: 16px;
+                            height: 16px;
+                            cursor: pointer;
+                        `;
+
+                        checkbox.onclick = () => {
+                            if (checkbox.checked) {
+                                selectedIds.add(rec.id);
+                            } else {
+                                selectedIds.delete(rec.id);
+                            }
+                        };
+
+                        const textSpan = document.createElement('span');
+                        textSpan.textContent = labelText;
+                        textSpan.style.cssText = `
+                            font-size: 14px;
+                            color: #1e293b;
+                        `;
+
+                        itemRow.appendChild(checkbox);
+                        itemRow.appendChild(textSpan);
+                        listContainer.appendChild(itemRow);
+
+                        rowElements.push({
+                            element: itemRow,
+                            text: labelText.toLowerCase()
+                        });
+                    });
+
+                    searchInput.oninput = () => {
+                        const query = searchInput.value.toLowerCase();
+                        rowElements.forEach(item => {
+                            if (item.text.includes(query)) {
+                                item.element.style.display = 'flex';
+                            } else {
+                                item.element.style.display = 'none';
+                            }
+                        });
+                    };
+                };
+
+                // 5. Abre o modal de vínculo
+                openModal({
+                    title: `Vincular em ${colSchema.label || colSchema.colId}`,
+                    customBody: customBody,
+                    onSave: async () => {
+                        const updatedChildIds = ['L', ...Array.from(selectedIds)];
+                        const parentTableId = record.gristHelper_tableId;
+                        const parentRecId = record.id;
+                        
+                        await dataWriter.updateRecord(parentTableId, parentRecId, { [colSchema.colId]: updatedChildIds });
+                        publish('data-changed', { tableId: parentTableId, recordId: parentRecId, action: 'update' });
+                        
+                        // Atualiza localmente o record para refletir a nova lista nos renders seguintes
+                        record[colSchema.colId] = updatedChildIds;
+                        
+                        renderContent();
+                    }
+                });
+            };
+            btnsContainer.appendChild(linkBtn);
+            container.appendChild(btnsContainer);
         }
 
         // --- RENDERIZAR TABULATOR ---

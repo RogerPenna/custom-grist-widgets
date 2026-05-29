@@ -1,5 +1,6 @@
 // libraries/grist-field-renderer/renderers/render-ref.js
-// VERSÃO FINAL E CORRIGIDA (MODO DE EDIÇÃO CONSERTADO)
+import { openModal } from '../../grist-modal-component/modal-component.js';
+import { GristDataWriter } from '../../grist-data-writer.js';
 
 export async function renderRef(options) {
     // MODIFICADO: Adicionado 'isLocked' à desestruturação das opções
@@ -32,9 +33,19 @@ export async function renderRef(options) {
 
     // --- MODO DE EDIÇÃO (LÓGICA ORIGINAL PRESERVADA) ---
     if (isEditing) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'grf-ref-edit-wrapper';
+        wrapper.style.cssText = `
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+        `;
+
         const select = document.createElement('select');
         select.className = 'grf-form-input';
         select.dataset.colId = colSchema.colId;
+        select.style.flex = '1';
         select.add(new Option('-- Selecione --', ''));
 
         // Busca o schema e os registros da tabela de destino
@@ -81,7 +92,56 @@ export async function renderRef(options) {
             option.selected = cellValue != null && String(cellValue) === String(optionValue);
             select.add(option);
         });
-        container.appendChild(select);
+
+        // Botão para criar novo registro
+        const addBtn = document.createElement('button');
+        addBtn.className = 'grf-ref-add-btn';
+        addBtn.type = 'button';
+        addBtn.title = 'Criar novo registro';
+        addBtn.innerHTML = `<svg viewBox="0 0 24 24" style="width:16px; height:16px;"><path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2.5" fill="none"/></svg>`;
+        addBtn.style.cssText = `
+            display: flex; align-items: center; justify-content: center;
+            width: 28px; height: 28px; border-radius: 50%;
+            border: 1px solid #cbd5e1; background: #ffffff; color: #475569;
+            cursor: pointer; transition: all 0.2s; flex-shrink: 0;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        `;
+        addBtn.onmouseover = () => { addBtn.style.background = '#f8fafc'; addBtn.style.borderColor = '#94a3b8'; addBtn.style.color = '#1e293b'; };
+        addBtn.onmouseout = () => { addBtn.style.background = '#ffffff'; addBtn.style.borderColor = '#cbd5e1'; addBtn.style.color = '#475569'; };
+
+        addBtn.onclick = async (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            
+            const dataWriter = (tableLens && tableLens.docApi) ? new GristDataWriter(tableLens.docApi) : new GristDataWriter(window.grist);
+            const rSchema = await tableLens.getTableSchema(refTableId);
+            
+            openModal({
+                title: `Criar em ${refTableId}`,
+                tableId: refTableId,
+                record: {},
+                schema: rSchema,
+                tableLens,
+                onSave: async (newRecordFromForm) => {
+                    const result = await dataWriter.addRecord(refTableId, newRecordFromForm);
+                    const newRecordId = result.retValues[0];
+                    
+                    const newRecord = await tableLens.fetchRecordById(refTableId, newRecordId);
+                    const optionText = (newRecord && newRecord[finalDisplayColId]) || `ID: ${newRecordId}`;
+                    
+                    const option = new Option(optionText, newRecordId);
+                    option.selected = true;
+                    select.add(option);
+                    select.value = newRecordId;
+                    
+                    select.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            });
+        };
+
+        wrapper.appendChild(select);
+        wrapper.appendChild(addBtn);
+        container.appendChild(wrapper);
         return;
     }
 
