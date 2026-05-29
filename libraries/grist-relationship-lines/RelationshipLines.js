@@ -41,6 +41,9 @@ export const RelationshipLines = (() => {
     if (_scrollContainer && _onScrollHandler) {
       _scrollContainer.removeEventListener('scroll', _onScrollHandler);
     }
+    if (_onScrollHandler) {
+      window.removeEventListener('scroll', _onScrollHandler, { capture: true });
+    }
     
     _scrollContainer = scrollContainer;
     if (!_scrollContainer) {
@@ -57,6 +60,9 @@ export const RelationshipLines = (() => {
       }
     };
     _scrollContainer.addEventListener('scroll', _onScrollHandler, { passive: true });
+    // Listen to scroll events in the capture phase on window so that scroll events from
+    // any scrolling elements (including the iframe window or nested wrappers) will update line positions.
+    window.addEventListener('scroll', _onScrollHandler, { capture: true, passive: true });
 
     let rafPending = false;
     _resizeObserver = new ResizeObserver(() => {
@@ -282,6 +288,9 @@ export const RelationshipLines = (() => {
     }
     if (_scrollContainer && _onScrollHandler) {
       _scrollContainer.removeEventListener('scroll', _onScrollHandler);
+    }
+    if (_onScrollHandler) {
+      window.removeEventListener('scroll', _onScrollHandler, { capture: true });
     }
     _scrollContainer = null;
     _lastBscData = null;
