@@ -154,8 +154,15 @@ function renderLinearProgress(container, value, extLabel, extOpts, intLabel, int
         
         if (style.isGradient) {
             bar.style.backgroundImage = style.background;
+            bar.style.backgroundSize = norm > 0 ? `${(100 / norm) * 100}% 100%` : '100% 100%';
+            bar.style.backgroundPosition = 'left center';
+            bar.style.backgroundRepeat = 'no-repeat';
         } else {
             bar.style.backgroundColor = style.background;
+            bar.style.backgroundImage = '';
+            bar.style.backgroundSize = '';
+            bar.style.backgroundPosition = '';
+            bar.style.backgroundRepeat = '';
         }
         
         if (opts.striped) bar.classList.add('grf-progress-bar-striped');
