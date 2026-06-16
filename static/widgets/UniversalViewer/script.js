@@ -1,13 +1,13 @@
 // UniversalViewer/script.js
 
-import { GristTableLens } from '../../libraries/grist-table-lens/grist-table-lens.js';
-import { HeadlessTableLens } from '../../libraries/headless-table-lens.js';
-import { GristRestAdapter } from '../../libraries/headless-rest-adapter.js';
-import { GristLauncherUtils } from '../../libraries/grist-launcher-utils.js';
-import { subscribe } from '../../libraries/grist-event-bus/grist-event-bus.js';
-import { open as openConfigManager } from '../../libraries/grist-config-manager/ConfigManagerComponent.js';
-import { openDrawer } from '../../libraries/grist-drawer-component/drawer-component.js';
-import { GristFilterBar } from '../../libraries/grist-filter-bar/grist-filter-bar.js';
+import { GristTableLens } from '../libraries/grist-table-lens/grist-table-lens.js?v=1.0.4';
+import { HeadlessTableLens } from '../libraries/headless-table-lens.js?v=1.0.4';
+import { GristRestAdapter } from '../libraries/headless-rest-adapter.js?v=1.0.4';
+import { GristLauncherUtils } from '../libraries/grist-launcher-utils.js?v=1.0.4';
+import { subscribe } from '../libraries/grist-event-bus/grist-event-bus.js?v=1.0.4';
+import { open as openConfigManager } from '../libraries/grist-config-manager/ConfigManagerComponent.js?v=1.0.4';
+import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js?v=1.0.4';
+import { GristFilterBar } from '../libraries/grist-filter-bar/grist-filter-bar.js?v=1.0.4';
 
 document.addEventListener('DOMContentLoaded', async () => {
     const rendererContainer = document.getElementById('renderer-container');
@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- 0. CARREGAMENTO DE ÍCONES ---
     async function loadIcons() {
         try {
-            const response = await fetch('../../libraries/icons/icons.svg');
+            const response = await fetch('../libraries/icons/icons.svg');
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const svgText = await response.text();
             const div = document.createElement('div');
@@ -85,7 +85,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
 
-            if (targetType === 'cardsystem' || targetType === 'table' || targetType === 'bsc' || targetType === 'indicators') {
+            if (targetType === 'cardsystem' || targetType === 'table' || targetType === 'bsc' || targetType === 'indicators' || targetType === 'timeline' || targetType === 'gantt') {
                 console.log("[UniversalViewer] Carregando widget dinamicamente:", data.configId);
                 await loadDynamicWidget(data.configId, {
                     value: data.filterValue,
@@ -212,7 +212,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.log(`[UniversalViewer] Identificado tipo: "${type}" para a config: ${currentConfigId}`);
 
             if (type === 'cardsystem') {
-                const { CardSystem } = await import('../../libraries/grist-card-system/CardSystem.js');
+                const { CardSystem } = await import('../libraries/grist-card-system/CardSystem.js?v=1.0.4');
                 let [records, schema] = await Promise.all([
                     tableLens.fetchTableRecords(tableId),
                     tableLens.getTableSchema(tableId)
@@ -235,7 +235,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 rendererContainer.appendChild(wrapper);
             } 
             else if (type === 'table') {
-                const { TableRenderer } = await import('../../libraries/grist-table-renderer/TableRenderer.js');
+                const { TableRenderer } = await import('../libraries/grist-table-renderer/TableRenderer.js?v=1.0.4');
                 let records = await tableLens.fetchTableRecords(tableId);
 
                 // Aplicar Filtro Externo (Drill-down)
@@ -269,7 +269,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
             }
             else if (type === 'bsc') {
-                const { BSCRenderer } = await import('../../libraries/grist-bsc-renderer/BSCRenderer.js');
+                const { BSCRenderer } = await import('../libraries/grist-bsc-renderer/BSCRenderer.js?v=1.0.4');
                 const mapping = currentConfig.mapping || currentConfig || {};
                 const tableNames = {
                     modelsTable: mapping.modelsTable || 'Modelos',
@@ -306,7 +306,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
             }
             else if (type === 'indicators') {
-                const { IndicatorsRenderer } = await import('../../libraries/grist-indicators-renderer/IndicatorsRenderer.js');
+                const { IndicatorsRenderer } = await import('../libraries/grist-indicators-renderer/IndicatorsRenderer.js?v=1.0.4');
                 const [records, configs] = await Promise.all([
                     tableLens.fetchTableRecords(tableId),
                     tableLens.fetchTableRecords('Grf_config')
@@ -322,6 +322,46 @@ document.addEventListener('DOMContentLoaded', async () => {
                 for (const rec of records) {
                     await IndicatorsRenderer.renderIndicatorRow(wrapper, rec, currentConfig, currentYear, styling, configs, tableLens);
                 }
+            }
+            else if (type === 'timeline') {
+                const { TimelineRenderer } = await import('../libraries/grist-timeline-renderer/TimelineRenderer.js');
+                let records = await tableLens.fetchTableRecords(tableId);
+
+                if (currentFilter && currentFilter.column && currentFilter.value && !currentFilter.disableFiltering) {
+                    records = records.filter(r => {
+                        const val = r[currentFilter.column];
+                        if (Array.isArray(val)) return val.includes(currentFilter.value);
+                        return val == currentFilter.value;
+                    });
+                }
+
+                rendererContainer.innerHTML = '';
+                await TimelineRenderer.renderTimeline({
+                    container: rendererContainer,
+                    records,
+                    config: currentConfig,
+                    tableLens
+                });
+            }
+            else if (type === 'gantt') {
+                const { GanttRenderer } = await import('../libraries/grist-gantt-renderer/GanttRenderer.js');
+                let records = await tableLens.fetchTableRecords(tableId);
+
+                if (currentFilter && currentFilter.column && currentFilter.value && !currentFilter.disableFiltering) {
+                    records = records.filter(r => {
+                        const val = r[currentFilter.column];
+                        if (Array.isArray(val)) return val.includes(currentFilter.value);
+                        return val == currentFilter.value;
+                    });
+                }
+
+                rendererContainer.innerHTML = '';
+                await GanttRenderer.renderGantt({
+                    container: rendererContainer,
+                    records,
+                    config: currentConfig,
+                    tableLens
+                });
             }
             else {
                 rendererContainer.innerHTML = `<div class="status-placeholder">Tipo de componente "${currentConfig.componentType}" não suportado pelo Visualizador Universal. Por favor, use o widget específico ou uma configuração de Cards/Tabela.</div>`;

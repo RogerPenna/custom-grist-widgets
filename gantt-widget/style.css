@@ -1,0 +1,24 @@
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #f8fafc;
+}
+
+#gantt-container {
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+}
+
+.status-placeholder {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    font-size: 16px;
+    color: #64748b;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}

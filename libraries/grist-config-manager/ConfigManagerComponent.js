@@ -1,6 +1,7 @@
 import { GristTableLens } from '../grist-table-lens/grist-table-lens.js';
 import { GristDataWriter } from '../grist-data-writer.js';
 import { publish } from '../grist-event-bus/grist-event-bus.js';
+import { GristRestApi } from '../grist-rest-api.js';
 
 // Import editor modules
 import { CardConfigEditor } from './editors/config-cards.js?v=1.0.3';
@@ -11,6 +12,8 @@ import { BscConfigEditor } from './editors/config-bsc.js?v=1.0.3';
 import { IndicatorsConfigEditor } from './editors/config-indicators.js?v=1.0.3';
 import { ProgressBarConfigEditor } from './editors/config-progress-bar.js?v=1.0.3';
 import { ColorOptionsConfigEditor } from './editors/config-color-options.js?v=1.0.3';
+import { TimelineConfigEditor } from './editors/config-timeline.js';
+import { GanttConfigEditor } from './editors/config-gantt.js';
 
 let overlay = null;
 let _grist = null;
@@ -25,6 +28,8 @@ const COMPONENT_TYPE_COLORS = {
     'ProgressBar': '#20c997', // teal
     'ColorOptions': '#adb5bd', // secondary
     'StatusIcons': '#ffc107', // warning
+    'Timeline': '#0dcaf0', // cyan
+    'Gantt': '#ffc107', // gold
     'default': '#6c757d' // grey
 };
 
@@ -36,32 +41,98 @@ function copyToClipboard(text, element) {
     }).catch(err => console.error('Falha ao copiar texto: ', err));
 }
 
-function renderSetupInstructions(container) {
+function renderSetupInstructions(container, missingColumns = []) {
+    const isUpdate = missingColumns.length > 0;
+    const title = isUpdate ? "Atualização Necessária no Banco" : "Bem-vindo ao Setup Inicial";
+    const desc = isUpdate 
+        ? `<p>A sua tabela <code>Grf_config</code> é de uma versão antiga e precisa de novas colunas.</p>`
+        : `<p>A tabela de sistema <code>Grf_config</code> não foi encontrada neste documento.</p>`;
+
     container.innerHTML = `
-        <div class="grf-cm-setup-guide">
-            <h2>Configuração Necessária do Framework</h2>
-            <p>A tabela <code>Grf_config</code> precisa existir com a estrutura correta.</p>
-            <h4>Passo 1: Crie a Tabela</h4>
-            <p>Crie uma nova tabela com o nome exato: <code>Grf_config</code> <button class="grf-copy-btn">Copiar</button></p>
-            <h4>Passo 2: Crie as Colunas</h4>
-            <table class="grf-setup-table">
-                <thead><tr><th>Nome da Coluna</th><th>Tipo no Grist</th></tr></thead>
-                <tbody>
-                    <tr><td>configId</td><td>Text</td></tr>
-                    <tr><td>widgetTitle</td><td>Text</td></tr>
-                    <tr><td>description</td><td>Text</td></tr>
-                    <tr><td>componentType</td><td>Text</td></tr>
-                    <tr><td>mappingJson</td><td>Text (O "Onde")</td></tr>
-                    <tr><td>stylingJson</td><td>Text (O "Como")</td></tr>
-                    <tr><td>actionsJson</td><td>Text (O "O que faz")</td></tr>
-                    <tr><td>configJson</td><td>Text (Legado)</td></tr>
-                    <tr><td>pageId</td><td>Numeric</td></tr>
-                </tbody>
-            </table>
-            <p class="grf-setup-footer">Após criar, feche e reabra o configurador.</p>
+        <div class="grf-cm-setup-guide" style="padding: 30px; text-align: center; max-width: 500px; margin: 0 auto; margin-top: 50px;">
+            <h2 style="font-size: 22px; color: #1e293b; margin-bottom: 10px;">✨ ${title}</h2>
+            ${desc}
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                <p style="font-size: 13px; color: #475569; margin-bottom: 20px;">
+                    O widget pode criar e configurar tudo automaticamente para você usando a API do Grist.
+                </p>
+                <button id="grf-auto-setup-btn" class="btn btn-primary" style="font-size: 14px; padding: 12px 24px; font-weight: bold;">
+                    🚀 Fazer Setup Automático Agora
+                </button>
+            </div>
+            <p style="font-size: 12px; color: #94a3b8;">
+                Ao clicar, solicitaremos sua API Key temporariamente para realizar as alterações estruturais.
+            </p>
+            
+            <details style="margin-top: 30px; text-align: left; font-size: 12px; color: #64748b;">
+                <summary style="cursor: pointer; padding: 5px;">Preferir criar manualmente?</summary>
+                <div style="margin-top: 10px; padding-left: 15px; border-left: 2px solid #cbd5e1;">
+                    <p>Crie uma tabela chamada <code>Grf_config</code> com as colunas Text/Numeric exatas:</p>
+                    <p><code>configId, widgetTitle, description, componentType, mappingJson, stylingJson, actionsJson, configJson, pageId</code></p>
+                </div>
+            </details>
         </div>
     `;
-    container.querySelector('.grf-copy-btn').addEventListener('click', (e) => copyToClipboard('Grf_config', e.target));
+
+    container.querySelector('#grf-auto-setup-btn').onclick = async (e) => {
+        const btn = e.target;
+        btn.textContent = "⏳ Autorizando...";
+        btn.disabled = true;
+
+        try {
+            await GristRestApi.init(window.grist);
+            const apiKey = await GristRestApi.requireApiKey(); // Will prompt if not in memory
+            
+            btn.textContent = "⚙️ Construindo Banco...";
+            
+            // The required schema for Grf_config
+            const requiredSchema = [
+                { id: "configId", fields: { type: "Text" } },
+                { id: "widgetTitle", fields: { type: "Text" } },
+                { id: "description", fields: { type: "Text" } },
+                { id: "componentType", fields: { type: "Text" } },
+                { id: "mappingJson", fields: { type: "Text" } },
+                { id: "stylingJson", fields: { type: "Text" } },
+                { id: "actionsJson", fields: { type: "Text" } },
+                { id: "configJson", fields: { type: "Text" } },
+                { id: "pageId", fields: { type: "Numeric" } }
+            ];
+
+            if (isUpdate) {
+                // We just need to add the missing columns
+                const columnsToAdd = requiredSchema.filter(col => missingColumns.includes(col.id));
+                await GristRestApi.request(`/tables/Grf_config/columns`, {
+                    method: 'POST',
+                    body: JSON.stringify({ columns: columnsToAdd })
+                });
+            } else {
+                // We need to create the whole table
+                await GristRestApi.request(`/tables`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        tables: [{
+                            id: "Grf_config",
+                            columns: requiredSchema
+                        }]
+                    })
+                });
+            }
+
+            btn.textContent = "✅ Sucesso! Recarregando...";
+            btn.style.background = "#10b981";
+            
+            // Reload the widget to load the new schema
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+
+        } catch (err) {
+            alert(`Erro no Setup Automático: ${err.message}`);
+            btn.textContent = "❌ Tentar Novamente";
+            btn.disabled = false;
+            btn.style.background = "#ef4444";
+        }
+    };
 }
 
 function close() {
@@ -88,7 +159,7 @@ export async function renderMainUI(grist, container, initialConfigId, componentT
         }
 
         // --- MASTER LISTS ---
-        const MASTER_WIDGET_TYPES = ['Card System', 'Drawer', 'Table', 'BSC', 'Indicators'];
+        const MASTER_WIDGET_TYPES = ['Card System', 'Drawer', 'Table', 'BSC', 'Indicators', 'Timeline', 'Gantt'];
         const MASTER_COMPONENT_TYPES = ['Progress Bar', 'Color Options', 'Card Style', 'Status Icons'];
 
         // --- NOVA VERIFICAÇÃO DE COLUNAS (TRIPARTIÇÃO) ---
@@ -98,7 +169,7 @@ export async function renderMainUI(grist, container, initialConfigId, componentT
 
         if (missingColumns.length > 0) {
             console.warn("ConfigManager: Colunas de tripartição ausentes:", missingColumns);
-            renderSetupInstructions(container);
+            renderSetupInstructions(container, missingColumns);
             return;
         }
 
@@ -247,6 +318,8 @@ export async function renderMainUI(grist, container, initialConfigId, componentT
             'BSC': BscConfigEditor, 
             'StrategicPlanning': BscConfigEditor,
             'Indicators': IndicatorsConfigEditor,
+            'Timeline': TimelineConfigEditor,
+            'Gantt': GanttConfigEditor,
             // Design System Components
             'ProgressBar': ProgressBarConfigEditor,
             'ColorOptions': ColorOptionsConfigEditor,

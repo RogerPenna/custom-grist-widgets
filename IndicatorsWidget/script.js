@@ -3,14 +3,14 @@ console.log("IndicatorsWidget v1.0.2 loading...");
 const debugEl = document.getElementById('debug-log');
 if (debugEl) debugEl.textContent = "Script loading...";
 
-import { GristTableLens } from '../libraries/grist-table-lens/grist-table-lens.js?v=1.0.12';
-import { GristDataWriter } from '../libraries/grist-data-writer.js?v=1.0.12';
-import { GristLauncherUtils } from '../libraries/grist-launcher-utils.js?v=1.0.12';
-import { IndicatorsRenderer } from '../libraries/grist-indicators-renderer/IndicatorsRenderer.js?v=1.0.12';
-import { IndicatorsEditor } from '../libraries/grist-indicators-renderer/IndicatorsEditor.js?v=1.0.12';
-import { open as openConfigManager } from '../libraries/grist-config-manager/ConfigManagerComponent.js?v=1.0.12';
-import { subscribe } from '../libraries/grist-event-bus/grist-event-bus.js?v=1.0.12';
-import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js?v=1.0.12'; 
+import { GristTableLens } from '../libraries/grist-table-lens/grist-table-lens.js?v=1.0.14';
+import { GristDataWriter } from '../libraries/grist-data-writer.js?v=1.0.14';
+import { GristLauncherUtils } from '../libraries/grist-launcher-utils.js?v=1.0.14';
+import { IndicatorsRenderer } from '../libraries/grist-indicators-renderer/IndicatorsRenderer.js?v=1.0.14';
+import { IndicatorsEditor } from '../libraries/grist-indicators-renderer/IndicatorsEditor.js?v=1.0.14';
+import { open as openConfigManager } from '../libraries/grist-config-manager/ConfigManagerComponent.js?v=1.0.14';
+import { subscribe } from '../libraries/grist-event-bus/grist-event-bus.js?v=1.0.14';
+import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js?v=1.0.14'; 
 
 if (debugEl) debugEl.textContent = "Imports done.";
 

@@ -1,0 +1,106 @@
+// timeline-widget/script.js
+import { GristTableLens } from '../libraries/grist-table-lens/grist-table-lens.js';
+import { open as openConfigManager } from '../libraries/grist-config-manager/ConfigManagerComponent.js';
+import { TimelineRenderer } from '../libraries/grist-timeline-renderer/TimelineRenderer.js';
+import { GristLauncherUtils } from '../libraries/grist-launcher-utils.js';
+import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js';
+import { subscribe } from '../libraries/grist-event-bus/grist-event-bus.js';
+
+document.addEventListener('DOMContentLoaded', async () => {
+    const container = document.getElementById('timeline-container');
+    const tableLens = new GristTableLens(window.grist);
+    
+    let currentConfigId = null;
+    let widgetConfig = null;
+    let currentRecords = [];
+    let isInitialized = false;
+
+    // Expose openDrawer globally
+    window.GristDrawer = { open: openDrawer };
+
+    async function initializeAndUpdate() {
+        if (!tableLens) {
+            try { tableLens = new GristTableLens(window.grist); } catch (e) { console.warn("[Timeline Widget] Grist not ready yet"); return; }
+        }
+        const options = await window.grist.getOptions() || {};
+        const newConfigId = options.configId;
+
+        if (!newConfigId) {
+            container.innerHTML = '<div class="status-placeholder">Widget de Linha do Tempo não configurado. Use a engrenagem ⚙️ para vincular um ID de configuração.</div>';
+            return;
+        }
+
+        try {
+            // Fetch configuration if changed
+            if (!widgetConfig || currentConfigId !== newConfigId) {
+                currentConfigId = newConfigId;
+                const configRecord = await tableLens.findRecord('Grf_config', { configId: currentConfigId });
+                if (!configRecord) throw new Error(`Configuração "${currentConfigId}" não encontrada.`);
+                widgetConfig = tableLens.parseConfigRecord(configRecord);
+            }
+
+            // Render timeline
+            if (currentRecords && currentRecords.length > 0) {
+                await TimelineRenderer.renderTimeline({
+                    container,
+                    records: currentRecords,
+                    config: widgetConfig,
+                    tableLens
+                });
+            } else {
+                container.innerHTML = '<div class="status-placeholder">Nenhum dado encontrado para exibir.</div>';
+            }
+        } catch (e) {
+            console.error("[Timeline Widget] Erro:", e);
+            container.innerHTML = `<div class="status-placeholder" style="color:red">Erro: ${e.message}</div>`;
+        }
+    }
+
+    // Settings Gear configuration
+    const settingsIcon = document.createElement('div');
+    settingsIcon.id = 'settings-gear-btn';
+    settingsIcon.innerHTML = '⚙️';
+    settingsIcon.style.cssText = "position:fixed; top:10px; right:10px; font-size:24px; cursor:pointer; z-index:1000; background:rgba(255,255,255,0.8); border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 5px rgba(0,0,0,0.2);";
+    document.body.appendChild(settingsIcon);
+
+    settingsIcon.onclick = () => GristLauncherUtils.renderSettingsPopover({
+        grist: window.grist,
+        tableLens,
+        currentConfigId,
+        currentConfig: widgetConfig,
+        onLink: async (newId) => {
+            const options = await window.grist.getOptions() || {};
+            await window.grist.setOptions({ ...options, configId: newId });
+            currentConfigId = newId;
+            await initializeAndUpdate();
+        },
+        onOpenManager: () => openConfigManager(window.grist, { initialConfigId: currentConfigId, componentTypes: ['Timeline'] })
+    });
+
+    window.grist.ready({ requiredAccess: 'full' });
+
+    window.grist.onOptions(async (options) => {
+        const newId = options?.configId;
+        if (!isInitialized || (newId && newId !== currentConfigId)) {
+            isInitialized = true;
+            currentConfigId = newId;
+            await initializeAndUpdate();
+        }
+    });
+
+    window.grist.onRecords(async (records) => {
+        currentRecords = records;
+        if (isInitialized) await initializeAndUpdate();
+    });
+
+    // Drawer click subscription
+    subscribe('grf-card-clicked', async (data) => {
+        const drawerConfigId = data.drawerConfigId || widgetConfig?.actions?.sidePanel?.drawerConfigId;
+        let drawerOptions = { ...widgetConfig, tableLens };
+        if (drawerConfigId) {
+            const fetched = await tableLens.fetchConfig(drawerConfigId);
+            if (fetched) drawerOptions = { ...fetched, tableLens };
+        }
+        openDrawer(data.tableId, data.recordId, drawerOptions);
+    });
+});

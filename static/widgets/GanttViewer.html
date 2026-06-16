@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Gantt Viewer - Modo Robusto</title>
+    <script src="https://grist.getgrist.com/grist-plugin-api.js?v=1.0.4"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../libraries/grist-config-manager/ConfigManagerComponent.css?v=1.0.4">
+    
+    <style>
+        html, body { height: 100%; width: 100%; margin: 0; padding: 0; font-family: 'Manrope', sans-serif; background-color: #f8fafc; overflow: hidden; }
+        #app-container { width: 100%; height: 100%; overflow: hidden; display: flex; flex-direction: column; }
+        .status-placeholder { display: flex; justify-content: center; align-items: center; height: 100%; font-size: 18px; font-weight: bold; color: #64748b; }
+        
+        #settings-gear-btn { position: fixed; top: 10px; right: 10px; width: 32px; height: 32px; background: rgba(255,255,255,0.8); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 10000; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: all 0.2s; font-size: 20px; }
+        #settings-gear-btn:hover { background: white; transform: rotate(45deg); scale: 1.1; }
+        
+        .config-popover { position: fixed; top: 50px; right: 10px; width: 250px; background: white; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); z-index: 10001; padding: 15px; font-family: 'Manrope', sans-serif; }
+        .popover-section { margin-bottom: 12px; }
+        .popover-section label { display: block; font-size: 11px; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px; }
+        .popover-section input { width: 100%; padding: 6px 10px; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 13px; box-sizing: border-box; }
+        .config-popover-btn { width: 100%; padding: 8px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 700; margin-top: 8px; font-size: 12px; }
+        .config-popover-btn:hover { background: #2563eb; }
+        
+        #gantt-content-area { flex: 1; height: 100%; overflow: hidden; }
+    </style>
+</head>
+<body>
+    <div id="app-container">
+        <div id="nav-bar-container" style="display:none; padding: 10px 15px; background: #fff; border-bottom: 1px solid #e2e8f0; align-items: center; gap: 10px;">
+            <button id="back-button" style="display: flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 6px; cursor: pointer; font-weight: 700; font-size: 12px; border: 1px solid #cbd5e1; background: #fff; color: #475569;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                Voltar
+            </button>
+            <div id="breadcrumb-area" style="font-size: 12px; font-weight: 600; color: #64748b;"></div>
+        </div>
+        <div id="gantt-content-area">
+            <div class="status-placeholder">Aguardando inicialização do Grist...</div>
+        </div>
+    </div>
+
+    <script type="module" src="GanttViewer.js"></script>
+</body>
+</html>

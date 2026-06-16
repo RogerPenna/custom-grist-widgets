@@ -11,6 +11,8 @@ import { BscConfigEditor } from './editors/config-bsc.js?v=1.0.3';
 import { IndicatorsConfigEditor } from './editors/config-indicators.js?v=1.0.3';
 import { ProgressBarConfigEditor } from './editors/config-progress-bar.js?v=1.0.3';
 import { ColorOptionsConfigEditor } from './editors/config-color-options.js?v=1.0.3';
+import { TimelineConfigEditor } from './editors/config-timeline.js';
+import { GanttConfigEditor } from './editors/config-gantt.js';
 
 let overlay = null;
 let _grist = null;
@@ -25,6 +27,8 @@ const COMPONENT_TYPE_COLORS = {
     'ProgressBar': '#20c997', // teal
     'ColorOptions': '#adb5bd', // secondary
     'StatusIcons': '#ffc107', // warning
+    'Timeline': '#0dcaf0', // cyan
+    'Gantt': '#ffc107', // gold
     'default': '#6c757d' // grey
 };
 
@@ -88,7 +92,7 @@ export async function renderMainUI(grist, container, initialConfigId, componentT
         }
 
         // --- MASTER LISTS ---
-        const MASTER_WIDGET_TYPES = ['Card System', 'Drawer', 'Table', 'BSC', 'Indicators'];
+        const MASTER_WIDGET_TYPES = ['Card System', 'Drawer', 'Table', 'BSC', 'Indicators', 'Timeline', 'Gantt'];
         const MASTER_COMPONENT_TYPES = ['Progress Bar', 'Color Options', 'Card Style', 'Status Icons'];
 
         // --- NOVA VERIFICAÇÃO DE COLUNAS (TRIPARTIÇÃO) ---
@@ -247,6 +251,8 @@ export async function renderMainUI(grist, container, initialConfigId, componentT
             'BSC': BscConfigEditor, 
             'StrategicPlanning': BscConfigEditor,
             'Indicators': IndicatorsConfigEditor,
+            'Timeline': TimelineConfigEditor,
+            'Gantt': GanttConfigEditor,
             // Design System Components
             'ProgressBar': ProgressBarConfigEditor,
             'ColorOptions': ColorOptionsConfigEditor,
@@ -470,7 +476,15 @@ export async function renderMainUI(grist, container, initialConfigId, componentT
             if (!selectedConfig || !currentEditorModule) return;
             const specializedEditorContainer = editorContentEl.querySelector('#cm-specialized-editor');
             const newConfigData = currentEditorModule.read(specializedEditorContainer);
-            
+            const tableSelector = editorContentEl.querySelector('#cm-table-selector');
+            if (tableSelector && tableSelector.value) {
+                if (newConfigData.mapping) {
+                    newConfigData.mapping.tableId = tableSelector.value;
+                } else {
+                    newConfigData.tableId = tableSelector.value;
+                }
+            }
+
             // --- Lógica de Tripartição no Salvamento ---
             let mappingJson = "";
             let stylingJson = "";

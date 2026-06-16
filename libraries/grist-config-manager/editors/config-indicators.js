@@ -1,4 +1,5 @@
 // libraries/grist-config-manager/editors/config-indicators.js
+import { GristRestApi } from '../../grist-rest-api.js';
 
 export const IndicatorsConfigEditor = (() => {
     let state = {};
@@ -61,6 +62,26 @@ export const IndicatorsConfigEditor = (() => {
 
         tableLens.getTableSchema(tableId).then(schema => {
             const columns = Object.keys(schema);
+
+            function createFieldRow(id, label, selected, gristType, defaultColName) {
+                return `
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label style="display:block; margin-bottom:5px;">${label}:</label>
+                        <div style="display: flex; gap: 8px;">
+                            <select id="${id}" class="form-control" style="flex: 1;">${createColumnOptions(columns, selected)}</select>
+                            <button type="button" class="btn btn-secondary grf-auto-create-col-btn" 
+                                data-target-id="${id}" 
+                                data-col-type="${gristType}" 
+                                data-col-name="${defaultColName}"
+                                style="padding: 4px 8px; font-size: 11px; height: 28px; white-space: nowrap;"
+                                title="Criar coluna automaticamente na tabela">
+                                ✨ Criar
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+
             container.innerHTML = `
                 <div class="config-tabs">
                     <button type="button" class="config-tab-button active" data-tab-id="mapping">Mapeamento</button>
@@ -98,26 +119,11 @@ export const IndicatorsConfigEditor = (() => {
                         </div>
                         <hr>
                         <h4>Persistência Estática (Salvar de volta no Grist)</h4>
-                        <div class="form-group">
-                            <label>Valor Consolidado (SinalResult):</label>
-                            <select id="ind-static-consolidated-field" class="form-control">${createColumnOptions(columns, state.staticConsolidatedValueField)}</select>
-                        </div>
-                        <div class="form-group">
-                            <label>Atingimento (Performance2):</label>
-                            <select id="ind-static-achievement-field" class="form-control">${createColumnOptions(columns, state.staticAchievementField)}</select>
-                        </div>
-                        <div class="form-group">
-                            <label>Semáforo (Emoji):</label>
-                            <select id="ind-static-status-field" class="form-control">${createColumnOptions(columns, state.staticStatusField)}</select>
-                        </div>
-                        <div class="form-group">
-                            <label>Dias de Atraso (Numérico):</label>
-                            <select id="ind-static-days-delayed-field" class="form-control">${createColumnOptions(columns, state.staticDaysDelayedField)}</select>
-                        </div>
-                        <div class="form-group">
-                            <label>Status de Atraso (Texto):</label>
-                            <select id="ind-static-delay-status-field" class="form-control">${createColumnOptions(columns, state.staticDelayStatusField)}</select>
-                        </div>
+                        ${createFieldRow('ind-static-consolidated-field', 'Valor Consolidado (SinalResult)', state.staticConsolidatedValueField, 'Numeric', 'Valor_Consolidado')}
+                        ${createFieldRow('ind-static-achievement-field', 'Atingimento (Performance2)', state.staticAchievementField, 'Numeric', 'Atingimento_Perc')}
+                        ${createFieldRow('ind-static-status-field', 'Semáforo (Emoji)', state.staticStatusField, 'Text', 'Semaforo_Status')}
+                        ${createFieldRow('ind-static-days-delayed-field', 'Dias de Atraso (Numérico)', state.staticDaysDelayedField, 'Numeric', 'Dias_Atraso')}
+                        ${createFieldRow('ind-static-delay-status-field', 'Status de Atraso (Texto)', state.staticDelayStatusField, 'Text', 'Status_Atraso')}
                         <hr>
                         <h4>Limites da Meta (% da Meta)</h4>
                         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
@@ -223,6 +229,56 @@ export const IndicatorsConfigEditor = (() => {
                     </div>
                 </div>
             `;
+
+            setupTabNavigation(container);
+            setupLogicMapping(container, schema);
+
+            // Setup Auto-Create Buttons
+            container.querySelectorAll('.grf-auto-create-col-btn').forEach(btn => {
+                btn.onclick = async (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const targetId = btn.getAttribute('data-target-id');
+                    const colType = btn.getAttribute('data-col-type');
+                    const defaultName = btn.getAttribute('data-col-name');
+                    
+                    const colName = prompt("Nome da nova coluna a ser criada no Grist:", defaultName);
+                    if (!colName) return;
+                    
+                    btn.textContent = "⏳...";
+                    btn.disabled = true;
+                    
+                    try {
+                        await GristRestApi.init(window.grist);
+                        
+                        // Sanitize column ID (Grist accepts alphanumerics)
+                        let cleanColId = colName.replace(/[^a-zA-Z0-9]/g, '');
+                        if (!cleanColId) cleanColId = "Nova_Coluna_" + Math.floor(Math.random()*1000);
+                        
+                        await GristRestApi.createColumn(_targetTableId, cleanColId, {
+                            label: colName,
+                            type: colType
+                        });
+                        
+                        // Update UI dropdown
+                        const selectEl = container.querySelector(`#${targetId}`);
+                        const opt = document.createElement('option');
+                        opt.value = cleanColId;
+                        opt.textContent = cleanColId;
+                        selectEl.appendChild(opt);
+                        selectEl.value = cleanColId;
+                        
+                        // Trigger change event to notify ConfigManager
+                        selectEl.dispatchEvent(new CustomEvent('change', { bubbles: true }));
+                        
+                    } catch (err) {
+                        alert(err.message);
+                    } finally {
+                        btn.textContent = "✨ Criar";
+                        btn.disabled = false;
+                    }
+                };
+            });
 
             setupTabNavigation(container);
             setupLogicMapping(container, schema);

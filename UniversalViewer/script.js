@@ -85,7 +85,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
 
-            if (targetType === 'cardsystem' || targetType === 'table' || targetType === 'bsc' || targetType === 'indicators') {
+            if (targetType === 'cardsystem' || targetType === 'table' || targetType === 'bsc' || targetType === 'indicators' || targetType === 'timeline' || targetType === 'gantt') {
                 console.log("[UniversalViewer] Carregando widget dinamicamente:", data.configId);
                 await loadDynamicWidget(data.configId, {
                     value: data.filterValue,
@@ -322,6 +322,46 @@ document.addEventListener('DOMContentLoaded', async () => {
                 for (const rec of records) {
                     await IndicatorsRenderer.renderIndicatorRow(wrapper, rec, currentConfig, currentYear, styling, configs, tableLens);
                 }
+            }
+            else if (type === 'timeline') {
+                const { TimelineRenderer } = await import('../libraries/grist-timeline-renderer/TimelineRenderer.js');
+                let records = await tableLens.fetchTableRecords(tableId);
+
+                if (currentFilter && currentFilter.column && currentFilter.value && !currentFilter.disableFiltering) {
+                    records = records.filter(r => {
+                        const val = r[currentFilter.column];
+                        if (Array.isArray(val)) return val.includes(currentFilter.value);
+                        return val == currentFilter.value;
+                    });
+                }
+
+                rendererContainer.innerHTML = '';
+                await TimelineRenderer.renderTimeline({
+                    container: rendererContainer,
+                    records,
+                    config: currentConfig,
+                    tableLens
+                });
+            }
+            else if (type === 'gantt') {
+                const { GanttRenderer } = await import('../libraries/grist-gantt-renderer/GanttRenderer.js');
+                let records = await tableLens.fetchTableRecords(tableId);
+
+                if (currentFilter && currentFilter.column && currentFilter.value && !currentFilter.disableFiltering) {
+                    records = records.filter(r => {
+                        const val = r[currentFilter.column];
+                        if (Array.isArray(val)) return val.includes(currentFilter.value);
+                        return val == currentFilter.value;
+                    });
+                }
+
+                rendererContainer.innerHTML = '';
+                await GanttRenderer.renderGantt({
+                    container: rendererContainer,
+                    records,
+                    config: currentConfig,
+                    tableLens
+                });
             }
             else {
                 rendererContainer.innerHTML = `<div class="status-placeholder">Tipo de componente "${currentConfig.componentType}" não suportado pelo Visualizador Universal. Por favor, use o widget específico ou uma configuração de Cards/Tabela.</div>`;
