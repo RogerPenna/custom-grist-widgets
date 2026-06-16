@@ -8,32 +8,50 @@ export const IndicatorsEditor = (() => {
     let _onSaveCallback = null;
     let _currentRecord = null;
     let _currentConfig = null;
-    let _currentYear = null;
+    let _startYear = null;
+    let _endYear = null;
+    let _periodicity = null;
 
     function open(options) {
         const { record, config, selectedYear, periodicity, onSave } = options;
         _onSaveCallback = onSave;
         _currentRecord = record;
         _currentConfig = config;
-        _currentYear = selectedYear;
+        _startYear = parseInt(selectedYear);
+        _endYear = parseInt(selectedYear);
+        _periodicity = periodicity;
 
-        _createModalDOM(record.Nome, selectedYear);
-        _initTabulator(record, config, selectedYear, periodicity);
+        _createModalDOM(record.Nome);
+        _initTabulator();
         
         _modalOverlay.style.display = 'flex';
     }
 
-    function _createModalDOM(name, year) {
+    function _createModalDOM(name) {
         if (_modalOverlay) {
             document.body.removeChild(_modalOverlay);
         }
 
         _modalOverlay = document.createElement('div');
         _modalOverlay.className = 'grf-editor-overlay';
+        
+        // Generate year options
+        const currentYear = new Date().getFullYear();
+        const yearOptions = [];
+        for (let y = currentYear - 5; y <= currentYear + 5; y++) {
+            yearOptions.push(`<option value="${y}">${y}</option>`);
+        }
+
         _modalOverlay.innerHTML = `
             <div class="grf-editor-modal">
                 <div class="grf-editor-header">
-                    <h2>Editar Dados: ${name} (${year})</h2>
+                    <div class="title-area">
+                        <h2>Editar Dados: ${name}</h2>
+                        <div class="year-range-selector">
+                            <label>De: <select id="editor-start-year">${yearOptions.join('')}</select></label>
+                            <label>Até: <select id="editor-end-year">${yearOptions.join('')}</select></label>
+                        </div>
+                    </div>
                     <button class="grf-editor-close">&times;</button>
                 </div>
                 <div class="grf-editor-body">
@@ -51,12 +69,40 @@ export const IndicatorsEditor = (() => {
 
         document.body.appendChild(_modalOverlay);
 
+        const startSelect = _modalOverlay.querySelector('#editor-start-year');
+        const endSelect = _modalOverlay.querySelector('#editor-end-year');
+        
+        startSelect.value = _startYear;
+        endSelect.value = _endYear;
+
+        startSelect.onchange = (e) => {
+            _startYear = parseInt(e.target.value);
+            if (_endYear < _startYear) {
+                _endYear = _startYear;
+                endSelect.value = _endYear;
+            }
+            _initTabulator();
+        };
+
+        endSelect.onchange = (e) => {
+            _endYear = parseInt(e.target.value);
+            if (_startYear > _endYear) {
+                _startYear = _endYear;
+                startSelect.value = _startYear;
+            }
+            _initTabulator();
+        };
+
         _modalOverlay.querySelector('.grf-editor-close').onclick = _close;
         _modalOverlay.querySelector('#editor-cancel-btn').onclick = _close;
         _modalOverlay.querySelector('#editor-save-btn').onclick = _handleSave;
     }
 
-    function _initTabulator(record, config, year, periodicity) {
+    function _initTabulator() {
+        const record = _currentRecord;
+        const config = _currentConfig;
+        const periodicity = _periodicity;
+
         const mapping = config.mapping || config || {};
         const resultsField = mapping.resultsField || config.resultsField;
         const targetField = mapping.targetField || config.targetField;
@@ -72,40 +118,45 @@ export const IndicatorsEditor = (() => {
 
         const resultsMaster = _parseJson(rawResultsJson);
         const targetsMaster = _parseJson(rawTargetsJson);
-
-        const yearResultsNode = resultsMaster[year] || {};
-        const results = yearResultsNode.results || ( (yearResultsNode.jan !== undefined) ? yearResultsNode : (resultsMaster.jan !== undefined ? resultsMaster : {}) );
-        
-        const yearTargetsNode = targetsMaster[year] || {};
-
-        // Get full calculated target line for the year
-        const progressiveTargets = IndicatorsRenderer.calculateProgressiveTargets(targetsMaster, year);
-        const fullTargetLine = progressiveTargets[year] || new Array(12).fill(0);
         const monthKeys = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 
-        const tableData = periodicity.months.map(m => {
-            const resEntry = results[m];
-            const tarEntry = yearTargetsNode[m];
-            const monthIdx = monthKeys.indexOf(m);
-            const isManual = (tarEntry && typeof tarEntry === 'object' && tarEntry.m === true);
-            
-            return {
-                id: m,
-                month: m.toUpperCase(),
-                target: fullTargetLine[monthIdx],
-                isManualTarget: isManual,
-                result: (resEntry && typeof resEntry === 'object') ? resEntry.v : (resEntry ?? null),
-                updatedAt: (resEntry && typeof resEntry === 'object') ? resEntry.d : ""
-            };
-        });
+        const tableData = [];
+        for (let year = _startYear; year <= _endYear; year++) {
+            const yearStr = year.toString();
+            const yearResultsNode = resultsMaster[yearStr] || {};
+            const results = yearResultsNode.results || ( (yearResultsNode.jan !== undefined) ? yearResultsNode : (resultsMaster.jan !== undefined ? resultsMaster : {}) );
+            const yearTargetsNode = targetsMaster[yearStr] || {};
+
+            const progressiveTargets = IndicatorsRenderer.calculateProgressiveTargets(targetsMaster, yearStr);
+            const fullTargetLine = progressiveTargets[yearStr] || new Array(12).fill(0);
+
+            periodicity.months.forEach(m => {
+                const resEntry = results[m];
+                const tarEntry = yearTargetsNode[m];
+                const monthIdx = monthKeys.indexOf(m);
+                const isManual = (tarEntry && typeof tarEntry === 'object' && tarEntry.m === true);
+                
+                tableData.push({
+                    year: year,
+                    id: m,
+                    month: m.toUpperCase(),
+                    target: fullTargetLine[monthIdx],
+                    isManualTarget: isManual,
+                    result: (resEntry && typeof resEntry === 'object') ? resEntry.v : (resEntry ?? null),
+                    updatedAt: (resEntry && typeof resEntry === 'object') ? resEntry.d : ""
+                });
+            });
+        }
 
         _table = new Tabulator("#tabulator-editor", {
             data: tableData,
             layout: "fitColumns",
+            height: "400px",
             clipboard: "paste",
             clipboardPasteAction: "update",
             clipboardPasteParser: "table",
             columns: [
+                { title: "Ano", field: "year", width: 80, headerSort: false, clipboard: false, cssClass: "readonly-col" },
                 { title: "Mês", field: "month", width: 100, headerSort: false, clipboard: false },
                 { 
                     title: "Meta", 
@@ -135,8 +186,6 @@ export const IndicatorsEditor = (() => {
         // Intercept paste to support multi-cell pasting from Excel even when an editor is active
         _table.on("tableBuilt", () => {
             _table.element.addEventListener("paste", (e) => {
-                // If we're in an input (editor), browser default paste will put everything in one cell.
-                // We intercept if it's multi-line/multi-column data.
                 if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") {
                     const data = (e.clipboardData || window.clipboardData).getData("text/plain");
                     if (data && (data.includes("\t") || data.includes("\n"))) {
@@ -151,7 +200,6 @@ export const IndicatorsEditor = (() => {
                         const rowEl = input.closest(".tabulator-row");
                         if (!rowEl) return;
                         
-                        // Parse Excel data
                         const lines = data.split(/\r?\n/).filter(line => line.length > 0);
                         let currentRowEl = rowEl;
                         
@@ -160,8 +208,6 @@ export const IndicatorsEditor = (() => {
                             const row = _table.getRow(currentRowEl);
                             const values = line.split("\t");
                             
-                            // Map values to fields starting from the current field
-                            // For simplicity in this specific editor, we just handle the target or result columns
                             if (field === "target") {
                                 row.update({ target: values[0], isManualTarget: true });
                                 if (values.length > 1) {
@@ -172,13 +218,10 @@ export const IndicatorsEditor = (() => {
                             }
                             
                             currentRowEl = currentRowEl.nextElementSibling;
-                            // Ensure it's still a row element
                             if (currentRowEl && !currentRowEl.classList.contains("tabulator-row")) {
                                 currentRowEl = null;
                             }
                         });
-                        
-                        // Blur to close editor and see results
                         input.blur();
                     }
                 }
@@ -187,67 +230,76 @@ export const IndicatorsEditor = (() => {
     }
 
     async function _handleSave() {
-        const rows = _table.getData();
-        const mapping = _currentConfig.mapping || _currentConfig || {};
-        const resultsField = mapping.resultsField || _currentConfig.resultsField;
-        const targetField = mapping.targetField || _currentConfig.targetField;
+        const allData = _table.getData();
+        const multiYearData = {};
 
-        // Parse existing data - Robustly handle non-JSON or legacy numeric values
+        // Group rows by year
+        allData.forEach(row => {
+            const y = row.year.toString();
+            if (!multiYearData[y]) {
+                multiYearData[y] = { results: {}, targets: {} };
+            }
+            
+            if (row.result !== null && row.result !== undefined && row.result !== "") {
+                multiYearData[y].results[row.id] = { v: parseFloat(row.result), d: row.updatedAt };
+            }
+            if (row.target !== null && row.target !== undefined && row.target !== "" && row.isManualTarget) {
+                multiYearData[y].targets[row.id] = { v: parseFloat(row.target), m: true };
+            }
+        });
+
+        // Conflict detection across all updated years
+        const mapping = _currentConfig.mapping || _currentConfig || {};
+        const targetField = mapping.targetField || _currentConfig.targetField;
         const _parseJson = (val) => {
             try {
                 return (typeof val === 'string' && val.trim().startsWith('{')) ? JSON.parse(val) : (typeof val === 'object' && val !== null ? val : {});
             } catch(e) { return {}; }
         };
-
-        let resultsMaster = _parseJson(_currentRecord[resultsField]);
-        let targetsMaster = _parseJson(_currentRecord[targetField]);
-
-        // 1. Prepare proposed changes
-        const newYearResults = {};
-        const newYearTargets = {};
-        rows.forEach(row => {
-            if (row.result !== null && row.result !== undefined && row.result !== "") {
-                newYearResults[row.id] = { v: parseFloat(row.result), d: row.updatedAt };
-            }
-            if (row.target !== null && row.target !== undefined && row.target !== "" && row.isManualTarget) {
-                newYearTargets[row.id] = { v: parseFloat(row.target), m: true };
-            }
-        });
-
-        // 2. Conflict Detection: Recalculate and compare
-        const oldTargets = IndicatorsRenderer.getIndicatorMetrics(_currentRecord, _currentConfig, _currentYear).targetLine;
-        
-        // Simulate new targets master
-        const simulatedTargetsMaster = JSON.parse(JSON.stringify(targetsMaster));
-        simulatedTargetsMaster[_currentYear] = newYearTargets;
-        const simulatedProgressive = IndicatorsRenderer.calculateProgressiveTargets(simulatedTargetsMaster);
-        const newTargets = simulatedProgressive[_currentYear] || new Array(12).fill(0);
-
-        // Check months with results
-        const monthsWithResults = rows.filter(r => r.result !== null && r.result !== undefined && r.result !== "");
+        const targetsMaster = _parseJson(_currentRecord[targetField]);
         const monthKeys = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
-        const conflicts = [];
 
-        monthsWithResults.forEach(row => {
-            const idx = monthKeys.indexOf(row.id);
-            if (Math.abs(oldTargets[idx] - newTargets[idx]) > 0.001 && !newYearTargets[row.id]) {
-                conflicts.push({ id: row.id, name: row.month, oldVal: oldTargets[idx] });
-            }
-        });
+        // Build a complete proposed targets master
+        const proposedTargetsMaster = JSON.parse(JSON.stringify(targetsMaster));
+        for (const yearStr of Object.keys(multiYearData)) {
+            proposedTargetsMaster[yearStr] = multiYearData[yearStr].targets;
+        }
 
-        if (conflicts.length > 0) {
-            const names = conflicts.map(c => c.name).join(', ');
-            const userChoice = await _showConflictPrompt(names);
+        const simulatedProgressive = IndicatorsRenderer.calculateProgressiveTargets(proposedTargetsMaster);
+
+        for (const yearStr of Object.keys(multiYearData)) {
+            const yearData = multiYearData[yearStr];
             
-            if (userChoice === 'fix') {
-                conflicts.forEach(c => {
-                    newYearTargets[c.id] = { v: c.oldVal, m: true };
-                });
+            // Get original targets for comparison
+            const oldTargets = IndicatorsRenderer.getIndicatorMetrics(_currentRecord, _currentConfig, yearStr).targetLine;
+            const newTargets = simulatedProgressive[yearStr] || new Array(12).fill(0);
+
+            const monthsWithResults = allData.filter(r => r.year.toString() === yearStr && r.result !== null && r.result !== undefined && r.result !== "");
+            const conflicts = [];
+
+            monthsWithResults.forEach(row => {
+                const idx = monthKeys.indexOf(row.id);
+                if (Math.abs(oldTargets[idx] - newTargets[idx]) > 0.001 && !yearData.targets[row.id]) {
+                    conflicts.push({ id: row.id, name: row.month, oldVal: oldTargets[idx] });
+                }
+            });
+
+            if (conflicts.length > 0) {
+                const names = conflicts.map(c => c.name).join(', ');
+                const userChoice = await _showConflictPrompt(`${yearStr}: ${names}`);
+                
+                if (userChoice === 'fix') {
+                    conflicts.forEach(c => {
+                        yearData.targets[c.id] = { v: c.oldVal, m: true };
+                    });
+                    // Re-calculate simulation if we fixed something, to keep it accurate for next years in loop
+                    // though actually we fixed it in yearData.targets which is already in multiYearData
+                }
             }
         }
 
         if (_onSaveCallback) {
-            await _onSaveCallback({ results: newYearResults, targets: newYearTargets });
+            await _onSaveCallback(multiYearData);
         }
         _close();
     }
@@ -294,3 +346,4 @@ export const IndicatorsEditor = (() => {
 
     return { open };
 })();
+

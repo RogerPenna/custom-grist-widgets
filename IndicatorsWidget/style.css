@@ -333,9 +333,106 @@ body {
     display: flex; justify-content: space-between; align-items: center; background: #f8f9fa;
 }
 
-.grf-modal-header h3, .grf-editor-header h3 {
+.grf-modal-header h3, .grf-editor-header h3, .grf-editor-header h2 {
     margin: 0;
     font-size: 16px;
+}
+
+.grf-editor-header .title-area {
+    display: flex;
+    align-items: center;
+    gap: 30px;
+}
+
+.year-range-selector {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    background: #ffffff;
+    padding: 5px 15px;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    font-size: 12px;
+    font-weight: 700;
+    color: #475569;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.year-range-selector label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.year-range-selector select {
+    padding: 3px 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 5px;
+    font-weight: 800;
+    color: #2563eb;
+    background: #f8fafc;
+    cursor: pointer;
+}
+
+.year-range-selector select:hover {
+    border-color: #3b82f6;
+}
+
+.grf-editor-footer {
+    padding: 15px 20px;
+    background: #f8f9fa;
+    border-top: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.grf-editor-footer .help-text {
+    margin: 0;
+    font-size: 12px;
+    color: #64748b;
+    font-style: italic;
+}
+
+.grf-editor-footer .actions {
+    display: flex;
+    gap: 10px;
+}
+
+.btn {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid transparent;
+}
+
+.btn-primary {
+    background: #2563eb;
+    color: #fff;
+}
+
+.btn-primary:hover {
+    background: #1d4ed8;
+}
+
+.btn-secondary {
+    background: #fff;
+    border-color: #cbd5e1;
+    color: #475569;
+}
+
+.delay-alert {
+    animation: pulse-alert 2s infinite;
+    filter: drop-shadow(0 0 2px rgba(239, 68, 68, 0.5));
+}
+
+@keyframes pulse-alert {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.3); opacity: 0.7; }
+    100% { transform: scale(1); opacity: 1; }
 }
 
 .grf-modal-body, .grf-editor-body { padding: 20px; flex: 1; overflow-y: auto; background: #EBEFEF; }
@@ -357,7 +454,8 @@ body {
     border-radius: 8px;
     box-shadow: 0 10px 25px rgba(0,0,0,0.2);
     width: 280px;
-    height: 220px;
+    min-height: 220px;
+    height: auto;
     pointer-events: none;
     display: none;
     flex-direction: column;

@@ -3,14 +3,14 @@ console.log("IndicatorsWidget v1.0.2 loading...");
 const debugEl = document.getElementById('debug-log');
 if (debugEl) debugEl.textContent = "Script loading...";
 
-import { GristTableLens } from '../libraries/grist-table-lens/grist-table-lens.js?v=1.0.4';
-import { GristDataWriter } from '../libraries/grist-data-writer.js?v=1.0.4';
-import { GristLauncherUtils } from '../libraries/grist-launcher-utils.js?v=1.0.4';
-import { IndicatorsRenderer } from '../libraries/grist-indicators-renderer/IndicatorsRenderer.js?v=1.0.4';
-import { IndicatorsEditor } from '../libraries/grist-indicators-renderer/IndicatorsEditor.js?v=1.0.4';
-import { open as openConfigManager } from '../libraries/grist-config-manager/ConfigManagerComponent.js?v=1.0.4';
-import { subscribe } from '../libraries/grist-event-bus/grist-event-bus.js?v=1.0.4';
-import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js?v=1.0.4'; 
+import { GristTableLens } from '../libraries/grist-table-lens/grist-table-lens.js?v=1.0.12';
+import { GristDataWriter } from '../libraries/grist-data-writer.js?v=1.0.12';
+import { GristLauncherUtils } from '../libraries/grist-launcher-utils.js?v=1.0.12';
+import { IndicatorsRenderer } from '../libraries/grist-indicators-renderer/IndicatorsRenderer.js?v=1.0.12';
+import { IndicatorsEditor } from '../libraries/grist-indicators-renderer/IndicatorsEditor.js?v=1.0.12';
+import { open as openConfigManager } from '../libraries/grist-config-manager/ConfigManagerComponent.js?v=1.0.12';
+import { subscribe } from '../libraries/grist-event-bus/grist-event-bus.js?v=1.0.12';
+import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js?v=1.0.12'; 
 
 if (debugEl) debugEl.textContent = "Imports done.";
 
@@ -576,24 +576,29 @@ async function openDetailModal(record) {
     await IndicatorsRenderer.renderIndicatorDetails(modalContent, record, widgetConfig, currentYear, tableLens);
 }
 
-async function handleSaveMasterData(record, newData) {
+async function handleSaveMasterData(record, multiYearData) {
     const mapping = widgetConfig.mapping || widgetConfig || {};
     const resultsField = mapping.resultsField || widgetConfig.resultsField;
     const targetField = mapping.targetField || widgetConfig.targetField;
-    let resultsMaster = {};
-    try {
-        const val = record[resultsField];
-        resultsMaster = (typeof val === 'string' && val.trim().startsWith('{')) ? JSON.parse(val) : (typeof val === 'object' && val !== null ? val : {});
-    } catch (e) {}
+    
+    const _parse = (val) => {
+        try {
+            return (typeof val === 'string' && val.trim().startsWith('{')) ? JSON.parse(val) : (typeof val === 'object' && val !== null ? val : {});
+        } catch (e) { return {}; }
+    };
+
+    let resultsMaster = _parse(record[resultsField]);
+    let targetsMaster = _parse(record[targetField]);
+
     const rawPeriodicity = record[mapping.periodicityField || widgetConfig.periodicityField];
     const periodicityKey = mapping.periodicityMap?.[rawPeriodicity] || 'MONTHLY';
-    resultsMaster[currentYear] = { periodicity: periodicityKey, results: newData.results, targets: {} };
-    let targetsMaster = {};
-    try {
-        const val = record[targetField];
-        targetsMaster = (typeof val === 'string' && val.trim().startsWith('{')) ? JSON.parse(val) : (typeof val === 'object' && val !== null ? val : {});
-    } catch (e) {}
-    targetsMaster[currentYear] = newData.targets;
+    
+    for (const year of Object.keys(multiYearData)) {
+        const newData = multiYearData[year];
+        resultsMaster[year] = { periodicity: periodicityKey, results: newData.results, targets: {} };
+        targetsMaster[year] = newData.targets;
+    }
+
     const updates = [{ id: record.id, fields: { [resultsField]: JSON.stringify(resultsMaster), [targetField]: JSON.stringify(targetsMaster) } }];
     try { 
         await dataWriter.updateRecords(widgetConfig.tableId, updates); 

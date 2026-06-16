@@ -1,7 +1,7 @@
 import { CardSystem } from '../grist-card-system/CardSystem.js';
 
 export const IndicatorsRenderer = (() => {
-    console.log("IndicatorsRenderer v1.0.2 loading...");
+    console.log("IndicatorsRenderer v1.0.5 loading...");
     const MONTH_KEYS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 
     const PERIODICITY_CONFIG = {
@@ -225,6 +225,102 @@ export const IndicatorsRenderer = (() => {
         const persistPerformance = (lastMonthValue !== null) ? lastMonthPerformance : performance;
         const persistStatus = (lastMonthValue !== null) ? lastMonthStatus : status;
 
+        // --- Delay & Next Expected Date Calculation (Strict Recurrent Timer) ---
+        const realToday = new Date();
+        const today = new Date(realToday); // We use actual today for delay logic
+        today.setHours(0, 0, 0, 0);
+
+        // 1. Get the MOST RECENT posted date
+        let lastPostedDate = null;
+        let lastPostedMonthKey = null;
+
+        MONTH_KEYS.forEach(m => {
+            const entry = results[m];
+            if (entry && typeof entry === 'object' && entry.d) {
+                const entryDate = new Date(entry.d);
+                if (!lastPostedDate || entryDate > lastPostedDate) {
+                    lastPostedDate = entryDate;
+                    lastPostedMonthKey = m;
+                }
+            }
+        });
+
+        // 2. Fetch Fixed Deadline Day from Record
+        const deadlineField = mapping.deadlineDayField || config.deadlineDayField;
+        let fixedDay = 10; // Default fallback
+        if (deadlineField && record[deadlineField] !== undefined && record[deadlineField] !== null) {
+            const val = parseInt(record[deadlineField], 10);
+            if (!isNaN(val) && val > 0 && val <= 31) {
+                fixedDay = val;
+            }
+        }
+
+        // 3. Calculate EXACT Next Deadline Date mathematically from the last posted date
+        let nextExpectedDate = new Date();
+        let expectedMonthName = "";
+        
+        if (lastPostedDate) {
+            nextExpectedDate = new Date(lastPostedDate);
+            
+            // Add periodicity duration
+            if (periodicityKey === 'MONTHLY') {
+                nextExpectedDate.setMonth(nextExpectedDate.getMonth() + 1);
+            } else if (periodicityKey === 'BIMONTHLY') {
+                nextExpectedDate.setMonth(nextExpectedDate.getMonth() + 2);
+            } else if (periodicityKey === 'QUARTERLY') {
+                nextExpectedDate.setMonth(nextExpectedDate.getMonth() + 3);
+            } else if (periodicityKey === 'QUADRIMESTRAL') {
+                nextExpectedDate.setMonth(nextExpectedDate.getMonth() + 4);
+            } else if (periodicityKey === 'SEMIANNUAL') {
+                nextExpectedDate.setMonth(nextExpectedDate.getMonth() + 6);
+            } else if (periodicityKey === 'ANNUAL') {
+                nextExpectedDate.setFullYear(nextExpectedDate.getFullYear() + 1);
+            }
+
+            // Force the specific delivery day chosen by the user
+            nextExpectedDate.setDate(fixedDay);
+
+            // UI Label: Find which month logically follows the last one
+            if (lastPostedMonthKey) {
+                const currentPeriodIdx = periodicity.months.indexOf(lastPostedMonthKey);
+                if (currentPeriodIdx !== -1 && currentPeriodIdx < periodicity.months.length - 1) {
+                    expectedMonthName = periodicity.months[currentPeriodIdx + 1].toUpperCase();
+                } else {
+                    expectedMonthName = periodicity.months[0].toUpperCase() + "/" + (parseInt(selectedYear) + 1);
+                }
+            }
+
+        } else {
+            // No data at all, deadline is the fixed day of the selected year's start
+            nextExpectedDate = new Date(parseInt(selectedYear), 0, fixedDay);
+            expectedMonthName = periodicity.months[0].toUpperCase();
+        }
+
+        nextExpectedDate.setHours(0, 0, 0, 0);
+
+        // 4. Fetch Custom Thresholds
+        const warningThresh = mapping.warningDaysThreshold !== undefined ? parseInt(mapping.warningDaysThreshold, 10) : 1;
+        const criticalThresh = mapping.criticalDaysThreshold !== undefined ? parseInt(mapping.criticalDaysThreshold, 10) : 30;
+
+        // 5. Calculate Exact Delay
+        let daysDelayed = 0;
+        let isDelayed = false;
+        let delayStatus = 'ok';
+
+        if (today > nextExpectedDate) {
+            const diffTime = today - nextExpectedDate;
+            daysDelayed = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            
+            if (daysDelayed >= warningThresh) {
+                isDelayed = true;
+                delayStatus = daysDelayed >= criticalThresh ? 'critical' : 'warning';
+            }
+        } else if (today < nextExpectedDate) {
+            // Calculate "days in advance" for debugging output
+            const diffTime = nextExpectedDate - today;
+            daysDelayed = -Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        }
+
         const chartMin = record[mapping.chartMinField || config.chartMinField];
         const chartMax = record[mapping.chartMaxField || config.chartMaxField];
 
@@ -251,6 +347,12 @@ export const IndicatorsRenderer = (() => {
             persistValue,
             persistPerformance,
             persistStatus,
+            nextExpectedDate,
+            expectedMonthName,
+            isDelayed,
+            daysDelayed,
+            delayStatus,
+            lastPostedDate,
             consolidationType,
             numPeriods,
             yearlyTarget,
@@ -314,8 +416,8 @@ export const IndicatorsRenderer = (() => {
 
         const layout = {
             width: 280,
-            height: 180,
-            margin: { t: 40, r: 30, l: 30, b: 10 },
+            height: 160,
+            margin: { t: 30, r: 30, l: 30, b: 0 },
             paper_bgcolor: "transparent",
             font: { color: "#334155", family: "inherit" }
         };
@@ -323,7 +425,7 @@ export const IndicatorsRenderer = (() => {
         Plotly.newPlot(container, data, layout, { staticPlot: true, responsive: true });
     }
 
-    function showTooltip(e, record, metrics) {
+    function showTooltip(e, record, metrics, selectedYear) {
         if (!tooltipEl) {
             tooltipEl = document.createElement('div');
             tooltipEl.className = 'indicator-tooltip';
@@ -336,7 +438,7 @@ export const IndicatorsRenderer = (() => {
         tooltipEl.style.display = 'flex';
         
         // Position tooltip
-        let top = rect.top - 230;
+        let top = rect.top - 240;
         let left = rect.left + rect.width / 2 - 140;
         
         if (top < 0) top = rect.bottom + 10;
@@ -346,9 +448,28 @@ export const IndicatorsRenderer = (() => {
         tooltipEl.style.top = top + 'px';
         tooltipEl.style.left = left + 'px';
 
+        const lastPostedStr = metrics.lastPostedDate ? new Date(metrics.lastPostedDate).toLocaleDateString('pt-BR') : 'Nenhuma';
+        const nextExpectedStr = metrics.nextExpectedDate.toLocaleDateString('pt-BR');
+        
+        // Find the name of the last month with data
+        const lastMonthName = metrics.lastMonthWithDataIdx !== undefined ? MONTH_KEYS[metrics.lastMonthWithDataIdx].toUpperCase() : 'NENHUM';
+        
+        let delayHtml = '';
+        
+        // Force the display of daysDelayed for debugging, regardless of the 'isDelayed' flag
+        const color = metrics.delayStatus === 'critical' ? '#ef4444' : (metrics.daysDelayed > 0 ? '#eab308' : '#22c55e');
+        delayHtml = `<div style="color:${color}; font-weight:bold; margin-top:5px; font-size:10px;">${metrics.daysDelayed > 0 ? '⚠️ ATRASADO EM' : '✅ EM DIA / ADIANTADO EM'} ${Math.abs(metrics.daysDelayed)} DIA(S)! A entrega de ${metrics.expectedMonthName} vence em ${nextExpectedStr}</div>`;
+        
+
         tooltipEl.innerHTML = `
             <div class="tooltip-header">${record.Nome || 'Indicador'}</div>
-            <div id="tooltip-gauge-container" class="tooltip-gauge-container" style="height: 180px;"></div>
+            <div id="tooltip-gauge-container" class="tooltip-gauge-container" style="height: 155px;"></div>
+            <div class="tooltip-footer" style="padding: 8px 12px; border-top: 1px solid #eee; font-size: 10px; color: #64748b; line-height: 1.4;">
+                <div>Último ciclo já entregue: <b style="color:#1e293b">${lastMonthName}/${selectedYear}</b></div>
+                <div>Próxima entrega pendente: <b style="color:#1e293b">${metrics.expectedMonthName}</b></div>
+                <div>Prazo para entregar ${metrics.expectedMonthName}: <b style="color:#1e293b">${nextExpectedStr}</b></div>
+                ${delayHtml}
+            </div>
         `;
         
         const valueToDisplay = metrics.lastMonthPerformance; // Snapshot performance of the latest month
@@ -970,6 +1091,12 @@ export const IndicatorsRenderer = (() => {
             const iconHtml = record.Icone ? `<span class="indicator-icon">${record.Icone}</span>` : '';
             const sumBadge = isSum ? '<span class="sum-badge">ACUMULADO</span>' : '';
             
+            let delayAlert = '';
+            if (metrics.isDelayed) {
+                const color = metrics.delayStatus === 'critical' ? '#ef4444' : '#eab308';
+                delayAlert = `<span class="delay-alert" title="Lançamento Atrasado em ${metrics.daysDelayed} dia(s)!" style="position: absolute; top: -5px; right: -5px; font-size: 14px; cursor: help; color: ${color}; text-shadow: 0 0 2px rgba(0,0,0,0.2);">⚠️</span>`;
+            }
+            
             card.innerHTML = `
                 <div class="card-content">
                     <div class="card-top">
@@ -978,7 +1105,10 @@ export const IndicatorsRenderer = (() => {
                         ${sumBadge}
                     </div>
                     <div class="card-bottom">
-                        <span class="indicator-status-emoji">${metrics.status}</span>
+                        <div style="position: relative; display: flex; align-items: center;">
+                            <span class="indicator-status-emoji">${metrics.status}</span>
+                            ${delayAlert}
+                        </div>
                         <div class="performance-info">
                             <span class="indicator-performance">${(metrics.performance * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}% ${isSum ? '<small>acumulado</small>' : ''}</span>
                             <span class="indicator-consolidated">${isSum ? 'Acumulado: ' : ''}${await formatMetricValue(metrics.consolidatedValue, tableLens, config.tableId, config)}</span>
@@ -994,7 +1124,7 @@ export const IndicatorsRenderer = (() => {
         }
 
         // --- TOOLTIP HOVER EVENTS ---
-        cardContainer.addEventListener('mouseenter', (e) => showTooltip(e, record, metrics));
+        cardContainer.addEventListener('mouseenter', (e) => showTooltip(e, record, metrics, currentYear));
         cardContainer.addEventListener('mouseleave', hideTooltip);
         cardContainer.addEventListener('mousemove', (e) => {
             if (tooltipEl && tooltipEl.style.display === 'flex') {

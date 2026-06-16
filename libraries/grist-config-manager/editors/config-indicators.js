@@ -26,6 +26,7 @@ export const IndicatorsConfigEditor = (() => {
             staticAchievementField: mapping.staticAchievementField || '',
             staticStatusField: mapping.staticStatusField || '',
             staticConsolidatedValueField: mapping.staticConsolidatedValueField || '',
+            deadlineDayField: mapping.deadlineDayField || '', // NEW
 
             // Goal Limits
             useUpperLimitField: mapping.useUpperLimitField || '',
@@ -33,6 +34,10 @@ export const IndicatorsConfigEditor = (() => {
             lowerLimitValueField: mapping.lowerLimitValueField || '',
             upperLimitValueField: mapping.upperLimitValueField || '',
             
+            // Delay Thresholds
+            warningDaysThreshold: mapping.warningDaysThreshold !== undefined ? mapping.warningDaysThreshold : 1, // NEW
+            criticalDaysThreshold: mapping.criticalDaysThreshold !== undefined ? mapping.criticalDaysThreshold : 30, // NEW
+
             // Value Mappings
             directionMap: mapping.directionMap || {}, 
             consolidationMap: mapping.consolidationMap || {},
@@ -87,6 +92,10 @@ export const IndicatorsConfigEditor = (() => {
                             <label>Tipo Consolidação (Coluna):</label>
                             <select id="ind-consolidation-field" class="form-control">${createColumnOptions(columns, state.consolidationField)}</select>
                         </div>
+                        <div class="form-group">
+                            <label>Dia Vencimento Fixo (Coluna num):</label>
+                            <select id="ind-deadline-day-field" class="form-control">${createColumnOptions(columns, state.deadlineDayField)}</select>
+                        </div>
                         <hr>
                         <h4>Persistência Estática (Salvar de volta no Grist)</h4>
                         <div class="form-group">
@@ -124,9 +133,20 @@ export const IndicatorsConfigEditor = (() => {
                     </div>
 
                     <div data-tab-section="logic" style="display:none">
-                        <h3>Mapeamento de Valores Reais</h3>
+                        <h3>Mapeamento de Valores Reais & Alertas</h3>
                         <p class="help-text">Mapeie os valores da sua coluna Grist para a lógica do App.</p>
                         
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom: 20px; padding: 15px; background: #fff8e6; border: 1px solid #ffeeba; border-radius: 6px;">
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label>Dias de Atraso para 🟡 Amarelo:</label>
+                                <input type="number" id="ind-warning-days" class="form-control" value="${state.warningDaysThreshold}" min="0">
+                            </div>
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label>Dias de Atraso para 🔴 Vermelho:</label>
+                                <input type="number" id="ind-critical-days" class="form-control" value="${state.criticalDaysThreshold}" min="1">
+                            </div>
+                        </div>
+
                         <div id="direction-mapping-container">
                             <h4>Direção do Indicador</h4>
                             <div id="dir-val-map-list"></div>
@@ -346,6 +366,9 @@ export const IndicatorsConfigEditor = (() => {
             upperLimitValueField: container.querySelector('#ind-upper-limit-value-field').value,
             useLowerLimitField: container.querySelector('#ind-use-lower-limit-field').value,
             lowerLimitValueField: container.querySelector('#ind-lower-limit-value-field').value,
+            deadlineDayField: container.querySelector('#ind-deadline-day-field').value,
+            warningDaysThreshold: parseInt(container.querySelector('#ind-warning-days').value, 10),
+            criticalDaysThreshold: parseInt(container.querySelector('#ind-critical-days').value, 10),
             directionMap: dirMap,
             consolidationMap: consMap,
             periodicityMap: perMap,
