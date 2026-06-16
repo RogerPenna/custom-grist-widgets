@@ -110,6 +110,14 @@ export const IndicatorsConfigEditor = (() => {
                             <label>Semáforo (Emoji):</label>
                             <select id="ind-static-status-field" class="form-control">${createColumnOptions(columns, state.staticStatusField)}</select>
                         </div>
+                        <div class="form-group">
+                            <label>Dias de Atraso (Numérico):</label>
+                            <select id="ind-static-days-delayed-field" class="form-control">${createColumnOptions(columns, state.staticDaysDelayedField)}</select>
+                        </div>
+                        <div class="form-group">
+                            <label>Status de Atraso (Texto):</label>
+                            <select id="ind-static-delay-status-field" class="form-control">${createColumnOptions(columns, state.staticDelayStatusField)}</select>
+                        </div>
                         <hr>
                         <h4>Limites da Meta (% da Meta)</h4>
                         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
@@ -362,6 +370,8 @@ export const IndicatorsConfigEditor = (() => {
             staticConsolidatedValueField: container.querySelector('#ind-static-consolidated-field').value,
             staticAchievementField: container.querySelector('#ind-static-achievement-field').value,
             staticStatusField: container.querySelector('#ind-static-status-field').value,
+            staticDaysDelayedField: container.querySelector('#ind-static-days-delayed-field').value, // NEW
+            staticDelayStatusField: container.querySelector('#ind-static-delay-status-field').value, // NEW
             useUpperLimitField: container.querySelector('#ind-use-upper-limit-field').value,
             upperLimitValueField: container.querySelector('#ind-upper-limit-value-field').value,
             useLowerLimitField: container.querySelector('#ind-use-lower-limit-field').value,

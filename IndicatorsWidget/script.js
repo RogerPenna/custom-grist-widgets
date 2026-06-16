@@ -380,8 +380,10 @@ async function updateCalculatedFields(records) {
     const consolidatedField = mapping.staticConsolidatedValueField;
     const performanceField = mapping.staticAchievementField;
     const statusField = mapping.staticStatusField;
+    const daysDelayedField = mapping.staticDaysDelayedField;
+    const delayStatusField = mapping.staticDelayStatusField;
 
-    if (!consolidatedField && !performanceField && !statusField) return;
+    if (!consolidatedField && !performanceField && !statusField && !daysDelayedField && !delayStatusField) return;
 
     const updates = [];
     const resultsField = mapping.resultsField || widgetConfig.resultsField;
@@ -416,6 +418,21 @@ async function updateCalculatedFields(records) {
         }
         if (statusField && rec[statusField] !== statusToSave) {
             fieldsToUpdate[statusField] = statusToSave;
+        }
+        
+        // Sync Delay Metrics
+        if (daysDelayedField) {
+            const newDays = metrics.daysDelayed || 0;
+            if (rec[daysDelayedField] !== newDays) fieldsToUpdate[daysDelayedField] = newDays;
+        }
+        if (delayStatusField) {
+            let delayText = '';
+            if (metrics.isDelayed) {
+                delayText = metrics.delayStatus === 'critical' ? '🔴 Vermelho' : '🟡 Amarelo';
+            } else {
+                delayText = '🟢 No Prazo';
+            }
+            if (rec[delayStatusField] !== delayText) fieldsToUpdate[delayStatusField] = delayText;
         }
 
         if (Object.keys(fieldsToUpdate).length > 0) {
