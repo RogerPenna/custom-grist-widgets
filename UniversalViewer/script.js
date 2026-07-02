@@ -186,12 +186,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (!currentConfigId) {
             rendererContainer.innerHTML = `<div class="status-placeholder">Widget pronto. Use a engrenagem ⚙️ para vincular uma configuração.</div>`;
-            if (!urlConfigId) addSettingsGear();
+            addSettingsGear();
             return;
         }
 
         rendererContainer.innerHTML = `<div class="status-placeholder">Carregando configuração...</div>`;
-        if (!urlConfigId) addSettingsGear();
+        addSettingsGear();
 
         try {
             currentConfig = await tableLens.fetchConfig(currentConfigId);
