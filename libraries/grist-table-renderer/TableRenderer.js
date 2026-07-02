@@ -659,8 +659,8 @@ export const TableRenderer = (() => {
                 .theme-${currentTheme} .tabulator { background: ${c.row} !important; color: ${c.text} !important; border-color: ${c.border} !important; }
                 .theme-${currentTheme} .tabulator-header { background: ${c.header} !important; border-bottom-color: ${c.border} !important; color: ${c.text} !important; }
                 .theme-${currentTheme} .tabulator-row { background-color: ${c.row} !important; color: ${c.text} !important; border-bottom-color: ${c.border} !important; }
-                .theme-${currentTheme} .tabulator-row.tabulator-row-even { background-color: ${c.row} !important; }
-                .theme-${currentTheme} .tabulator-row.tabulator-row-odd { background-color: ${oddRowBg} !important; }
+                .theme-${currentTheme} .tabulator-row:nth-child(even) { background-color: ${c.row} !important; }
+                .theme-${currentTheme} .tabulator-row:nth-child(odd) { background-color: ${oddRowBg} !important; }
                 .theme-${currentTheme} .tabulator-row:hover { background-color: rgba(59, 130, 246, 0.1) !important; }
                 
                 /* Grid line colors should be controlled by theme, but visibility by grid classes */
