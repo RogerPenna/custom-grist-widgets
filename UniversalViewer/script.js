@@ -463,7 +463,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.grist.ready({ requiredAccess: 'full' });
 
         window.grist.onOptions(async (options) => {
-            const newId = options?.configId || null;
+            const newId = urlConfigId || options?.configId || null;
             if (newId !== currentConfigId || !isInitialized) {
                 isInitialized = true;
                 currentConfigId = newId;
