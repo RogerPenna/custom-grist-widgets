@@ -209,6 +209,17 @@ export const TableConfigEditor = (() => {
                                 <label class="config-toggle"><input type="checkbox" id="striped-rows-checkbox" ${styling.tableLayoutConfig?.stripedRows !== false ? 'checked' : ''}> Linhas Zebradas</label>
                                 <label class="config-toggle"><input type="checkbox" id="resizable-cols-checkbox" ${styling.resizableColumns !== false ? 'checked' : ''}> Colunas Redimensionáveis</label>
                                 <label class="config-toggle"><input type="checkbox" id="header-filter-checkbox" ${styling.headerFilter ? 'checked' : ''}> Filtros no Cabeçalho</label>
+                                <div style="margin-top:8px;">
+                                    <div class="config-label-with-help">Paginação</div>
+                                    <select id="pagination-enabled-select" style="width:100%; padding:4px;">
+                                        <option value="local" ${styling.pagination?.enabled !== false && styling.pagination?.enabled !== 'false' ? 'selected' : ''}>Ativada (Local)</option>
+                                        <option value="false" ${styling.pagination?.enabled === false || styling.pagination?.enabled === 'false' ? 'selected' : ''}>Desativada (Scroll)</option>
+                                    </select>
+                                </div>
+                                <div id="page-size-container" style="margin-top:8px; display: ${styling.pagination?.enabled !== false && styling.pagination?.enabled !== 'false' ? 'block' : 'none'};">
+                                    <div class="config-label-with-help">Tamanho da Página</div>
+                                    <input type="number" id="pagination-size-input" value="${styling.pagination?.pageSize || 10}" style="width:calc(100% - 10px); padding:4px;" min="1" max="500">
+                                </div>
                             </div>
                             <div class="col-config-section">
                                 <div>
@@ -276,6 +287,15 @@ export const TableConfigEditor = (() => {
 
         const visibleList = container.querySelector('#column-list');
         const availableList = container.querySelector('#available-column-list');
+
+        const paginationEnabledSelect = container.querySelector('#pagination-enabled-select');
+        const pageSizeContainer = container.querySelector('#page-size-container');
+        if (paginationEnabledSelect && pageSizeContainer) {
+            paginationEnabledSelect.onchange = () => {
+                const val = paginationEnabledSelect.value;
+                pageSizeContainer.style.display = (val !== 'false') ? 'block' : 'none';
+            };
+        }
 
         // Adiciona coluna especial de Ações se não existir
         if (!cols.find(c => c.colId === '_actions')) {
@@ -419,7 +439,11 @@ export const TableConfigEditor = (() => {
             styling: {
                 resizableColumns: container.querySelector('#resizable-cols-checkbox').checked,
                 headerFilter: container.querySelector('#header-filter-checkbox').checked,
-                tableLayoutConfig: tableLayoutConfig
+                tableLayoutConfig: tableLayoutConfig,
+                pagination: {
+                    enabled: container.querySelector('#pagination-enabled-select').value,
+                    pageSize: parseInt(container.querySelector('#pagination-size-input').value, 10) || 10
+                }
             },
             actions: {
                 editMode: container.querySelector('#edit-mode-checkbox').checked,
@@ -457,6 +481,11 @@ export const TableConfigEditor = (() => {
                 <option value="progressRing" ${colConfig?.formatter === 'progressRing' ? 'selected' : ''}>Progresso Circular (Ring)</option>
                 <option value="sparkline" ${colConfig?.formatter === 'sparkline' ? 'selected' : ''}>Sparkline</option>
                 <option value="hidden" ${colConfig?.formatter === 'hidden' ? 'selected' : ''}>Oculto</option>
+            `;
+        } else if (category === 'date') {
+            formatterOptionsHtml += `
+                <option value="date" ${colConfig?.formatter === 'date' ? 'selected' : ''}>Apenas Data</option>
+                <option value="datetime" ${colConfig?.formatter === 'datetime' ? 'selected' : ''}>Data e Hora</option>
             `;
         } else {
             formatterOptionsHtml += `
@@ -806,7 +835,7 @@ export const TableConfigEditor = (() => {
         });
     }
 
-    function getFieldCategory(type) { if (!type) return 'text'; const t = type.toLowerCase(); if (t === 'bool') return 'bool'; if (['int', 'float', 'numeric'].some(x => t.startsWith(x))) return 'number'; return 'text'; }
+    function getFieldCategory(type) { if (!type) return 'text'; const t = type.toLowerCase(); if (t === 'bool') return 'bool'; if (['int', 'float', 'numeric'].some(x => t.startsWith(x))) return 'number'; if (t.startsWith('date')) return 'date'; return 'text'; }
     function updateDebugJson() { } // Placeholder
 
     return { render, read };

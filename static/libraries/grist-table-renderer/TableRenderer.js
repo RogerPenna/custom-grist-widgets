@@ -593,7 +593,7 @@ export const TableRenderer = (() => {
                 hozAlign: colConfig.align || 'left',
                 headerFilter: styling.headerFilter !== false,
                 width: colWidth,
-                bottomCalc: actions.enableColumnCalcs ? (colConfig.bottomCalc || undefined) : undefined,
+                bottomCalc: colConfig.bottomCalc || undefined,
                 editable: isEditable,
                 editor: editor,
                 editorParams: editorParams,
@@ -766,6 +766,8 @@ export const TableRenderer = (() => {
         const paginationSize = parseInt(paginationConfig.pageSize, 10) || 10;
         const paginationSizeSelector = paginationEnabled ? [5, 10, 20, 50, 100] : false;
 
+        const hasAnyBottomCalc = columns.some(col => col.bottomCalc !== undefined && col.bottomCalc !== null);
+
         tabulatorTable = new Tabulator(tableEl, {
             height: "100%",
             data: records,
@@ -773,7 +775,7 @@ export const TableRenderer = (() => {
             responsiveLayout: styling.responsiveLayout || false,
             resizableColumns: styling.resizableColumns !== false,
             columns: columns,
-            columnCalcs: actions.enableColumnCalcs ? "bottom" : false,
+            columnCalcs: hasAnyBottomCalc ? "bottom" : false,
             pagination: paginationEnabled,
             paginationSize: paginationSize,
             paginationSizeSelector: paginationSizeSelector,
