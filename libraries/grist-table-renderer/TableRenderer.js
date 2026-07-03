@@ -385,6 +385,10 @@ export const TableRenderer = (() => {
                     fieldOptions: widgetOptions,
                     receivedConfigs: config.receivedConfigs
                 });
+                
+                if (styling.hideEmptyPlaceholder && (tempContainer.textContent === '(vazio)' || tempContainer.innerHTML === '(vazio)')) {
+                    tempContainer.innerHTML = '';
+                }
             });
 
             return tempContainer;

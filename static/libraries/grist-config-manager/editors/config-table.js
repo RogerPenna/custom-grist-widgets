@@ -209,6 +209,7 @@ export const TableConfigEditor = (() => {
                                 <label class="config-toggle"><input type="checkbox" id="striped-rows-checkbox" ${styling.tableLayoutConfig?.stripedRows !== false ? 'checked' : ''}> Linhas Zebradas</label>
                                 <label class="config-toggle"><input type="checkbox" id="resizable-cols-checkbox" ${styling.resizableColumns !== false ? 'checked' : ''}> Colunas Redimensionáveis</label>
                                 <label class="config-toggle"><input type="checkbox" id="header-filter-checkbox" ${styling.headerFilter ? 'checked' : ''}> Filtros no Cabeçalho</label>
+                                <label class="config-toggle"><input type="checkbox" id="hide-empty-placeholder-checkbox" ${styling.hideEmptyPlaceholder ? 'checked' : ''}> Ocultar "(vazio)" em células em branco</label>
                                 <div style="margin-top:8px;">
                                     <div class="config-label-with-help">Paginação</div>
                                     <select id="pagination-enabled-select" style="width:100%; padding:4px;">
@@ -511,6 +512,7 @@ export const TableConfigEditor = (() => {
             styling: {
                 resizableColumns: container.querySelector('#resizable-cols-checkbox').checked,
                 headerFilter: container.querySelector('#header-filter-checkbox').checked,
+                hideEmptyPlaceholder: container.querySelector('#hide-empty-placeholder-checkbox').checked,
                 tableLayoutConfig: tableLayoutConfig,
                 pagination: {
                     enabled: container.querySelector('#pagination-enabled-select').value,
