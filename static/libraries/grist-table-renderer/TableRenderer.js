@@ -589,7 +589,7 @@ export const TableRenderer = (() => {
             const colWidth = (colConfig.width === 'auto' || colConfig.width === '') ? undefined : colConfig.width;
 
             return {
-                title: gristCol.label || gristCol.colId,
+                title: colConfig.title || gristCol.label || gristCol.colId,
                 field: gristCol.colId,
                 hozAlign: colConfig.align || 'left',
                 headerFilter: styling.headerFilter !== false,

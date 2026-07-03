@@ -409,6 +409,7 @@ export const TableConfigEditor = (() => {
                 colBase.showEdit = panel.querySelector('.action-btn-edit-checkbox')?.checked;
                 colBase.showDelete = panel.querySelector('.action-btn-delete-checkbox')?.checked;
             } else {
+                colBase.title = panel.querySelector('.col-title-input')?.value || null;
                 colBase.locked = panel.querySelector('.is-locked-checkbox')?.checked || false;
                 colBase.required = panel.querySelector('.is-required-checkbox')?.checked || false;
                 colBase.ignoreConditionalFormatting = panel.querySelector('.ignore-conditional-formatting-checkbox')?.checked || false;
@@ -663,6 +664,10 @@ export const TableConfigEditor = (() => {
                         <div>
                             <div class="config-label-with-help">Largura (px)</div>
                             <input type="text" class="col-width-input" value="${colConfig?.width || ''}" placeholder="auto" style="width:100%; padding:4px;">
+                        </div>
+                        <div style="margin-top:5px;">
+                            <div class="config-label-with-help">Título Customizado</div>
+                            <input type="text" class="col-title-input" value="${colConfig?.title || ''}" placeholder="${col.label}" style="width:100%; padding:4px;">
                         </div>
                     </div>
                     <div class="col-config-section">
