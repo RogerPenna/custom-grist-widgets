@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Metrológico de Calibração</title>
+    
+    <!-- External Styles -->
+    <link rel="stylesheet" href="../libraries/grist-style-utils/icons.css">
+    
+    <style>
+        :root {
+            --primary: #2c5e5a;
+            --primary-light: #f0f7f6;
+            --primary-hover: #1f4542;
+            --accent: #2e7d32;
+            --bg-canvas: #f1f5f9;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-sub: #64748b;
+            --border-color: #cbd5e1;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-canvas);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Glassmorphism Header */
+        header {
+            background: rgba(44, 94, 90, 0.95);
+            backdrop-filter: blur(10px);
+            color: white;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow-md);
+            z-index: 10;
+        }
+
+        .header-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header-title h1 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .header-title svg {
+            fill: white;
+            width: 24px;
+            height: 24px;
+        }
+
+        /* Tabs Navigation */
+        .tabs-nav {
+            display: flex;
+            gap: 5px;
+        }
+
+        .tab-btn {
+            background: rgba(255, 255, 255, 0.15);
+            border: none;
+            color: rgba(255, 255, 255, 0.85);
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .tab-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+            color: white;
+        }
+
+        .tab-btn.active {
+            background: white;
+            color: var(--primary);
+            box-shadow: var(--shadow-sm);
+        }
+
+        /* Main Viewport */
+        main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        .tab-pane {
+            display: none;
+            width: 100%;
+            height: 100%;
+        }
+
+        .tab-pane.active {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-height: 0;
+        }
+
+        iframe {
+            flex: 1;
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: var(--bg-canvas);
+        }
+
+        /* Kanban Board Styles */
+        .kanban-board {
+            display: flex;
+            gap: 15px;
+            padding: 15px;
+            overflow-x: auto;
+            flex: 1;
+            align-items: flex-start;
+        }
+
+        .kanban-column {
+            background: #e2e8f0;
+            border-radius: 8px;
+            width: 280px;
+            min-width: 280px;
+            max-height: 100%;
+            display: flex;
+            flex-direction: column;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid #cbd5e1;
+        }
+
+        .kanban-column-header {
+            padding: 12px;
+            font-weight: 700;
+            font-size: 13px;
+            color: #475569;
+            border-bottom: 2px solid #cbd5e1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .column-count {
+            background: #cbd5e1;
+            color: #475569;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+        }
+
+        .kanban-cards-container {
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            overflow-y: auto;
+            flex: 1;
+            min-height: 100px;
+        }
+
+        /* Instrument Card */
+        .instrument-card {
+            background: var(--card-bg);
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 12px;
+            box-shadow: var(--shadow-sm);
+            cursor: grab;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+
+        .instrument-card:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+
+        .instrument-card:active {
+            cursor: grabbing;
+        }
+
+        .card-tag {
+            font-weight: 700;
+            font-size: 14px;
+            color: var(--primary);
+            margin-bottom: 4px;
+        }
+
+        .card-details {
+            font-size: 12px;
+            color: var(--text-sub);
+            margin-bottom: 6px;
+        }
+
+        .card-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            color: #94a3b8;
+            border-top: 1px solid #f1f5f9;
+            padding-top: 6px;
+            margin-top: 6px;
+        }
+
+        .card-badge {
+            background: var(--primary-light);
+            color: var(--primary);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+        
+        .card-badge-status {
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+            background: #e2e8f0;
+            color: #475569;
+        }
+        
+        .card-badge-status.disponivel {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+        
+        .card-badge-status.laboratorio {
+            background: #ffeecb;
+            color: #b77900;
+        }
+
+        /* Sortable ghost/drag configurations */
+        .sortable-ghost {
+            opacity: 0.4;
+            border: 2px dashed var(--primary);
+        }
+
+        .sortable-chosen {
+            background: #f8fafc;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-title">
+            <svg viewBox="0 0 24 24" width="24" height="24">
+                <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10H7v-2h10v2zm0-4H7V7h10v2zm0 8H7v-2h10v2z"/>
+            </svg>
+            <h1>Painel Metrológico</h1>
+        </div>
+
+        <div class="tabs-nav">
+            <button class="tab-btn active" data-tab="inventario">Inventário Geral</button>
+            <button class="tab-btn" data-tab="fluxo" id="tab-fluxo-btn">Fluxo (Kanban)</button>
+            <button class="tab-btn" data-tab="importador">Importador XML/CAL</button>
+        </div>
+    </header>
+
+    <main>
+        <!-- Tab 1: Inventário Geral -->
+        <div id="pane-inventario" class="tab-pane active">
+            <iframe src="../UniversalViewer/index.html?configId=tableinstruments"></iframe>
+        </div>
+
+        <!-- Tab 2: Fluxo Kanban -->
+        <div id="pane-fluxo" class="tab-pane">
+            <div class="kanban-board" id="kanban-board-container">
+                <!-- Columns populated dynamically -->
+            </div>
+        </div>
+
+        <!-- Tab 3: Importador -->
+        <div id="pane-importador" class="tab-pane">
+            <iframe src="./importador-calibracoes.html"></iframe>
+        </div>
+    </main>
+
+    <!-- JS Scripts -->
+    <script src="../libraries/external/grist-plugin-api.js"></script>
+    <script src="../libraries/external/sortable.min.js"></script>
+    <script type="module" src="dashboard.js"></script>
+</body>
+</html>
