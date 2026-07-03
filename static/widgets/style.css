@@ -345,41 +345,41 @@ body.theme-night { background: #0f172a; color: #f1f5f9; }
 }
 
 /* Striped Rows - Simplified logic using custom-striped-enabled on .tabulator */
-.custom-striped-enabled .tabulator-row.tabulator-row-odd {
+.custom-striped-enabled .tabulator-row:nth-child(odd) {
     background-color: rgba(241, 245, 249, 0.4) !important;
 }
-.theme-glassmorphism .custom-striped-enabled .tabulator-row.tabulator-row-odd {
+.theme-glassmorphism .custom-striped-enabled .tabulator-row:nth-child(odd) {
     background-color: rgba(255, 255, 255, 0.25) !important;
 }
-.theme-minimal .custom-striped-enabled .tabulator-row.tabulator-row-odd {
+.theme-minimal .custom-striped-enabled .tabulator-row:nth-child(odd) {
     background-color: #f8fafc !important;
 }
-.theme-corporate .custom-striped-enabled .tabulator-row.tabulator-row-odd {
+.theme-corporate .custom-striped-enabled .tabulator-row:nth-child(odd) {
     background-color: #f8fafc !important;
 }
-.theme-night .custom-striped-enabled .tabulator-row.tabulator-row-odd {
+.theme-night .custom-striped-enabled .tabulator-row:nth-child(odd) {
     background-color: #0f172a !important;
 }
 
 /* Force identical background colors when striped rows are disabled */
-.tabulator:not(.custom-striped-enabled) .tabulator-row.tabulator-row-even,
-.tabulator:not(.custom-striped-enabled) .tabulator-row.tabulator-row-odd {
+.tabulator:not(.custom-striped-enabled) .tabulator-row:nth-child(even),
+.tabulator:not(.custom-striped-enabled) .tabulator-row:nth-child(odd) {
     background-color: #ffffff !important;
 }
-.theme-glassmorphism .tabulator:not(.custom-striped-enabled) .tabulator-row.tabulator-row-even,
-.theme-glassmorphism .tabulator:not(.custom-striped-enabled) .tabulator-row.tabulator-row-odd {
+.theme-glassmorphism .tabulator:not(.custom-striped-enabled) .tabulator-row:nth-child(even),
+.theme-glassmorphism .tabulator:not(.custom-striped-enabled) .tabulator-row:nth-child(odd) {
     background-color: rgba(255, 255, 255, 0.15) !important;
 }
-.theme-minimal .tabulator:not(.custom-striped-enabled) .tabulator-row.tabulator-row-even,
-.theme-minimal .tabulator:not(.custom-striped-enabled) .tabulator-row.tabulator-row-odd {
+.theme-minimal .tabulator:not(.custom-striped-enabled) .tabulator-row:nth-child(even),
+.theme-minimal .tabulator:not(.custom-striped-enabled) .tabulator-row:nth-child(odd) {
     background-color: #ffffff !important;
 }
-.theme-corporate .tabulator:not(.custom-striped-enabled) .tabulator-row.tabulator-row-even,
-.theme-corporate .tabulator:not(.custom-striped-enabled) .tabulator-row.tabulator-row-odd {
+.theme-corporate .tabulator:not(.custom-striped-enabled) .tabulator-row:nth-child(even),
+.theme-corporate .tabulator:not(.custom-striped-enabled) .tabulator-row:nth-child(odd) {
     background-color: #ffffff !important;
 }
-.theme-night .tabulator:not(.custom-striped-enabled) .tabulator-row.tabulator-row-even,
-.theme-night .tabulator:not(.custom-striped-enabled) .tabulator-row.tabulator-row-odd {
+.theme-night .tabulator:not(.custom-striped-enabled) .tabulator-row:nth-child(even),
+.theme-night .tabulator:not(.custom-striped-enabled) .tabulator-row:nth-child(odd) {
     background-color: #1e293b !important;
 }
 
