@@ -250,6 +250,66 @@ export const TableConfigEditor = (() => {
                             </div>
                         </div>
                     </div>
+                    <div class="config-section">
+                        <h3>Customização de Cores e Fontes</h3>
+                        <div class="col-config-grid">
+                            <div class="col-config-section">
+                                <div>
+                                    <div class="config-label-with-help">Fonte da Tabela</div>
+                                    <select id="custom-font-family-select" style="width:100%; padding:4px;">
+                                        <option value="" ${!styling.customStyles?.fontFamily ? 'selected' : ''}>-- Padrão do Tema --</option>
+                                        <option value="system-ui" ${styling.customStyles?.fontFamily === 'system-ui' ? 'selected' : ''}>System UI (Padrão)</option>
+                                        <option value="'Outfit', sans-serif" ${styling.customStyles?.fontFamily === "'Outfit', sans-serif" ? 'selected' : ''}>Outfit (BSC Style)</option>
+                                        <option value="'Inter', sans-serif" ${styling.customStyles?.fontFamily === "'Inter', sans-serif" ? 'selected' : ''}>Inter</option>
+                                        <option value="'Roboto', sans-serif" ${styling.customStyles?.fontFamily === "'Roboto', sans-serif" ? 'selected' : ''}>Roboto</option>
+                                        <option value="monospace" ${styling.customStyles?.fontFamily === 'monospace' ? 'selected' : ''}>Monospace</option>
+                                    </select>
+                                </div>
+                                <div style="margin-top:8px;">
+                                    <div class="config-label-with-help">Tamanho da Fonte</div>
+                                    <input type="text" id="custom-font-size-input" value="${styling.customStyles?.fontSize || ''}" placeholder="Ex: 13px, 0.9rem" style="width:calc(100% - 10px); padding:4px;">
+                                </div>
+                                <div style="margin-top:8px;">
+                                    <div class="config-label-with-help">Altura da Linha (Mínima px)</div>
+                                    <input type="number" id="custom-line-height-input" value="${styling.customStyles?.lineHeight || ''}" placeholder="Ex: 38" style="width:calc(100% - 10px); padding:4px;">
+                                </div>
+                                <div style="margin-top:8px;">
+                                    <div class="config-label-with-help">Espaçamento Interno (Cell Padding px)</div>
+                                    <input type="number" id="custom-cell-padding-input" value="${styling.customStyles?.cellPadding || ''}" placeholder="Ex: 8" style="width:calc(100% - 10px); padding:4px;">
+                                </div>
+                            </div>
+                            <div class="col-config-section">
+                                <div>
+                                    <div class="config-label-with-help">Fundo do Cabeçalho</div>
+                                    <div style="display:flex; align-items:center; gap:8px;">
+                                        <input type="color" id="custom-header-bg-input" value="${styling.customStyles?.headerBgColor || '#f8fafc'}" style="width:50px; height:24px; padding:0;">
+                                        <label class="config-toggle" style="margin-top:0;"><input type="checkbox" id="custom-header-bg-enabled" ${styling.customStyles?.headerBgColor ? 'checked' : ''}> Usar</label>
+                                    </div>
+                                </div>
+                                <div style="margin-top:8px;">
+                                    <div class="config-label-with-help">Texto do Cabeçalho</div>
+                                    <div style="display:flex; align-items:center; gap:8px;">
+                                        <input type="color" id="custom-header-text-input" value="${styling.customStyles?.headerTextColor || '#1e293b'}" style="width:50px; height:24px; padding:0;">
+                                        <label class="config-toggle" style="margin-top:0;"><input type="checkbox" id="custom-header-text-enabled" ${styling.customStyles?.headerTextColor ? 'checked' : ''}> Usar</label>
+                                    </div>
+                                </div>
+                                <div style="margin-top:8px;">
+                                    <div class="config-label-with-help">Fundo das Linhas</div>
+                                    <div style="display:flex; align-items:center; gap:8px;">
+                                        <input type="color" id="custom-row-bg-input" value="${styling.customStyles?.rowBgColor || '#ffffff'}" style="width:50px; height:24px; padding:0;">
+                                        <label class="config-toggle" style="margin-top:0;"><input type="checkbox" id="custom-row-bg-enabled" ${styling.customStyles?.rowBgColor ? 'checked' : ''}> Usar</label>
+                                    </div>
+                                </div>
+                                <div style="margin-top:8px;">
+                                    <div class="config-label-with-help">Fundo Zebrado (Ímpar)</div>
+                                    <div style="display:flex; align-items:center; gap:8px;">
+                                        <input type="color" id="custom-row-alt-bg-input" value="${styling.customStyles?.rowAltBgColor || '#f8fafc'}" style="width:50px; height:24px; padding:0;">
+                                        <label class="config-toggle" style="margin-top:0;"><input type="checkbox" id="custom-row-alt-bg-enabled" ${styling.customStyles?.rowAltBgColor ? 'checked' : ''}> Usar</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="tab-pane" id="pane-actions" style="display:none;">
                     <div class="config-section">
@@ -434,6 +494,17 @@ export const TableConfigEditor = (() => {
             stripedRows: container.querySelector('#striped-rows-checkbox')?.checked ?? true
         };
 
+        const customStyles = {
+            fontFamily: container.querySelector('#custom-font-family-select').value || null,
+            fontSize: container.querySelector('#custom-font-size-input').value || null,
+            lineHeight: parseInt(container.querySelector('#custom-line-height-input').value, 10) || null,
+            cellPadding: parseInt(container.querySelector('#custom-cell-padding-input').value, 10) || null,
+            headerBgColor: container.querySelector('#custom-header-bg-enabled').checked ? container.querySelector('#custom-header-bg-input').value : null,
+            headerTextColor: container.querySelector('#custom-header-text-enabled').checked ? container.querySelector('#custom-header-text-input').value : null,
+            rowBgColor: container.querySelector('#custom-row-bg-enabled').checked ? container.querySelector('#custom-row-bg-input').value : null,
+            rowAltBgColor: container.querySelector('#custom-row-alt-bg-enabled').checked ? container.querySelector('#custom-row-alt-bg-input').value : null
+        };
+
         return {
             mapping: { tableId: fullConfig.tableId, columns: fullConfig.columns, refListFieldConfig },
             styling: {
@@ -443,7 +514,8 @@ export const TableConfigEditor = (() => {
                 pagination: {
                     enabled: container.querySelector('#pagination-enabled-select').value,
                     pageSize: parseInt(container.querySelector('#pagination-size-input').value, 10) || 10
-                }
+                },
+                customStyles: customStyles
             },
             actions: {
                 editMode: container.querySelector('#edit-mode-checkbox').checked,

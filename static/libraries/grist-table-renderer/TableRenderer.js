@@ -671,6 +671,40 @@ export const TableRenderer = (() => {
                 .theme-${currentTheme} .tabulator-footer { background: ${c.header} !important; color: ${c.text} !important; border-top-color: ${c.border} !important; }
                 .theme-${currentTheme} .tabulator-page { background: ${c.row} !important; color: ${c.text} !important; border-color: ${c.border} !important; }
             `;
+
+            if (styling.customStyles) {
+                const cs = styling.customStyles;
+                let customCss = '';
+                if (cs.fontFamily) {
+                    customCss += `body, .tabulator, .tabulator-row, .tabulator-cell, .tabulator-col-title { font-family: ${cs.fontFamily} !important; }`;
+                }
+                if (cs.fontSize) {
+                    customCss += `.tabulator .tabulator-cell, .tabulator .tabulator-col-title, .tabulator-footer { font-size: ${cs.fontSize} !important; }`;
+                }
+                if (cs.headerBgColor) {
+                    customCss += `.tabulator .tabulator-header, .tabulator .tabulator-col { background-color: ${cs.headerBgColor} !important; }`;
+                }
+                if (cs.headerTextColor) {
+                    customCss += `.tabulator .tabulator-header, .tabulator .tabulator-col-title { color: ${cs.headerTextColor} !important; }`;
+                }
+                if (cs.rowBgColor) {
+                    customCss += `.tabulator .tabulator-row { background-color: ${cs.rowBgColor} !important; }`;
+                    customCss += `.tabulator .tabulator-row:nth-child(even) { background-color: ${cs.rowBgColor} !important; }`;
+                }
+                if (cs.rowAltBgColor) {
+                    customCss += `.tabulator .tabulator-row:nth-child(odd) { background-color: ${cs.rowAltBgColor} !important; }`;
+                }
+                if (cs.rowTextColor) {
+                    customCss += `.tabulator .tabulator-row, .tabulator .tabulator-cell { color: ${cs.rowTextColor} !important; }`;
+                }
+                if (cs.lineHeight) {
+                    customCss += `.tabulator .tabulator-row { min-height: ${cs.lineHeight}px !important; }`;
+                }
+                if (cs.cellPadding) {
+                    customCss += `.tabulator .tabulator-cell, .tabulator .tabulator-col { padding: ${cs.cellPadding}px !important; }`;
+                }
+                styleEl.innerHTML += customCss;
+            }
         }
 
         injectThemeStyles(theme, striped);
