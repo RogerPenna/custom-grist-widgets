@@ -16,7 +16,8 @@ export const TableRenderer = (() => {
             config,
             tableLens,
             onRowClick,
-            onAddRecord
+            onAddRecord,
+            onColumnOrderChanged
         } = options;
 
         // Tripartite configuration structure support
@@ -820,6 +821,12 @@ export const TableRenderer = (() => {
             paginationSizeSelector: paginationSizeSelector,
             movableColumns: true,
             resizableRows: true,
+            columnMoved: (column, columns) => {
+                if (onColumnOrderChanged) {
+                    const newOrder = columns.map(c => c.getField()).filter(Boolean);
+                    onColumnOrderChanged(newOrder);
+                }
+            },
             initialSort: (styling.defaultSort?.column || config.defaultSort?.column) ? [{ column: styling.defaultSort?.column || config.defaultSort.column, dir: styling.defaultSort?.direction || config.defaultSort.direction }] : [],
             
             cellEdited: async (cell) => {

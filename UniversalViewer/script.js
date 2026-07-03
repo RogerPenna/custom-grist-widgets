@@ -267,6 +267,46 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 mode: mode || 'view'
                             });
                         }
+                    },
+                    onColumnOrderChanged: async (newColumnsOrder) => {
+                        try {
+                            const configTableName = 'Grf_config';
+                            const allConfigs = await tableLens.fetchTableRecords(configTableName);
+                            const configRecord = allConfigs.find(c => c.configId === currentConfigId);
+                            if (!configRecord) return;
+                            
+                            const currentMapping = JSON.parse(configRecord.mappingJson || '{}');
+                            const columns = currentMapping.columns || [];
+                            
+                            const currentOrderMap = {};
+                            columns.forEach(col => {
+                                currentOrderMap[col.colId] = col;
+                            });
+                            
+                            const updatedColumns = newColumnsOrder
+                                .map(colId => currentOrderMap[colId])
+                                .filter(Boolean);
+                            
+                            const returnedIds = new Set(newColumnsOrder);
+                            columns.forEach(col => {
+                                if (!returnedIds.has(col.colId)) {
+                                    updatedColumns.push(col);
+                                }
+                            });
+                            
+                            currentMapping.columns = updatedColumns;
+                            
+                            const { GristDataWriter } = await import('../libraries/grist-data-writer.js?v=1.0.4');
+                            const dataWriter = new GristDataWriter(window.grist);
+                            await dataWriter.updateRecord(configTableName, configRecord.id, {
+                                mappingJson: JSON.stringify(currentMapping)
+                            });
+                            
+                            console.log("Auto-saved column order to Grist!");
+                            tableLens.clearConfigCache(currentConfigId);
+                        } catch (err) {
+                            console.error("Error auto-saving column order:", err);
+                        }
                     }
                 });
             }
