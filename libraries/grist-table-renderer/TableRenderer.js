@@ -296,7 +296,8 @@ export const TableRenderer = (() => {
             }
 
             const tempContainer = document.createElement('div');
-            tempContainer.style.cssText = 'width: 100%;';
+            const alignMap = { 'left': 'flex-start', 'right': 'flex-end', 'center': 'center' };
+            tempContainer.style.cssText = `width: 100%; height: 100%; display: flex; align-items: center; justify-content: ${alignMap[colConfig?.align] || 'flex-start'};`;
             
             // --- LOGICA DE DIRTY STATE (CELULA MODIFICADA) ---
             if (useSaveButton && pendingChanges[record.id] && pendingChanges[record.id].hasOwnProperty(colId)) {
