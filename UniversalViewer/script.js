@@ -257,8 +257,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     config: currentConfig,
                     tableLens,
                     onRowClick: async (record, mode) => {
-                        if (currentConfig.editMode === 'drawer' && currentConfig.drawerId) {
-                            const drawerCfg = await tableLens.fetchConfig(currentConfig.drawerId);
+                        const actions = currentConfig.actions || {};
+                        const drawerId = currentConfig.drawerId || actions.drawerId;
+                        if (drawerId) {
+                            const drawerCfg = await tableLens.fetchConfig(drawerId);
                             window.GristDrawer.open(currentConfig.tableId, record.id, { 
                                 ...drawerCfg, 
                                 tableLens,
