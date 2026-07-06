@@ -1,21 +1,21 @@
-import { GristTableLens } from '../libraries/grist-table-lens/grist-table-lens.js';
-import { GristDataWriter } from '../libraries/grist-data-writer.js';
-import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js?v=1.0.4';
+const BASE_URL = 'http://192.168.0.95:8484/api';
+const API_KEY = '24b20630caea9fc5bfa4aa76a803314f57d045c7';
+const DOC_ID = 'iJ2oJCJTYehz4C6XuAFGpk';
 
-let tableLens = null;
-let dataWriter = null;
 let currentRecords = [];
-let selectedRecordId = null;
-
-// Pipeline stages definition (dynamically populated)
 let STAGES = [];
 
 async function loadStages() {
     try {
-        const schema = await tableLens.getTableSchema('INSTRUMENTS');
-        const col = schema['METROLOGICAL_STAGE'];
-        if (col && col.widgetOptions) {
-            const opt = JSON.parse(col.widgetOptions);
+        const r = await fetch(`${BASE_URL}/docs/${DOC_ID}/tables/INSTRUMENTS/columns`, {
+            headers: { 'Authorization': `Bearer ${API_KEY}` }
+        });
+        const data = await r.json();
+        const col = data.columns.find(c => c.id === 'METROLOGICAL_STAGE');
+        if (col && col.fields.widgetOptions) {
+            const opt = (typeof col.fields.widgetOptions === 'string') 
+                ? JSON.parse(col.fields.widgetOptions) 
+                : col.fields.widgetOptions;
             const rawChoices = opt.choices || [];
             STAGES = rawChoices.filter(c => c !== "0. Em Uso" && c !== "Em Uso");
         }
@@ -38,6 +38,11 @@ async function loadStages() {
 
 // Proxy Grist messages to and from nested iframes to resolve handshake on nested structures
 window.addEventListener('message', (event) => {
+    if (!event.data) return;
+    
+    // Ignore internal actions
+    if (event.data.action === 'open-instrument-drawer') return;
+
     if (event.source === window.parent) {
         document.querySelectorAll('iframe').forEach(iframe => {
             if (iframe.contentWindow) {
@@ -48,9 +53,6 @@ window.addEventListener('message', (event) => {
         window.parent.postMessage(event.data, '*');
     }
 });
-
-tableLens = new GristTableLens(window.grist);
-dataWriter = new GristDataWriter(window.grist);
 
 // Tab switcher logic
 const tabBtns = document.querySelectorAll('.tab-btn');
@@ -71,35 +73,17 @@ tabBtns.forEach(btn => {
     });
 });
 
-// Start Grist
-grist.ready({ requiredAccess: 'full' });
-
-// Load full inventory
-grist.onRecords(async (records) => {
-    if (!records) return;
-    currentRecords = records;
-    
-    // If on the Kanban tab, re-render it when data changes
-    const activeTab = document.querySelector('.tab-btn.active').dataset.tab;
-    if (activeTab === 'fluxo') {
-        renderKanban();
-    }
-});
-
-// Share selection
-grist.onRecord(async (record) => {
-    if (record && record.id) {
-        selectedRecordId = record.id;
-    }
-});
-
 async function renderKanban() {
     const board = document.getElementById('kanban-board-container');
     board.innerHTML = '<div style="padding:20px; text-align:center; color:#64748b; font-style:italic;">Carregando dados...</div>';
 
     try {
         await loadStages();
-        currentRecords = await tableLens.fetchTableRecords('INSTRUMENTS');
+        const r = await fetch(`${BASE_URL}/docs/${DOC_ID}/tables/INSTRUMENTS/records`, {
+            headers: { 'Authorization': `Bearer ${API_KEY}` }
+        });
+        const data = await r.json();
+        currentRecords = data.records.map(rec => ({ id: rec.id, ...rec.fields }));
     } catch (err) {
         console.error("Erro ao buscar registros para o Kanban:", err);
         board.innerHTML = `<div style="padding:20px; text-align:center; color:#ef4444;">Falha ao carregar dados do Grist: ${err.message}</div>`;
@@ -129,7 +113,6 @@ async function renderKanban() {
     STAGES.forEach(s => counts[s] = 0);
 
     currentRecords.forEach(inst => {
-        // Resolve stage (if null/undefined, put in "0. Em Uso")
         let stage = inst.METROLOGICAL_STAGE || "0. Em Uso";
         if (stage === "0. Em Uso" || !STAGES.includes(stage)) {
             return;
@@ -141,7 +124,6 @@ async function renderKanban() {
         card.className = 'instrument-card';
         card.dataset.id = inst.id;
 
-        // Casing and resolution fallback
         const code = inst.Code || inst.CODE || `Instrumento #${inst.id}`;
         const type = inst.z_disp_ID_INSTRUMENT_TYPE || inst.ID_INSTRUMENT_TYPE || 'Sem Tipo';
         const model = inst.z_disp_ID_INSTRUMENT_MODEL || inst.ID_INSTRUMENT_MODEL || 'Sem Modelo';
@@ -170,26 +152,18 @@ async function renderKanban() {
             </div>
         `;
 
-        // Card click selection
-        card.addEventListener('click', async () => {
-            grist.setSelectedRows([inst.id]);
-            selectedRecordId = inst.id;
-            
+        // Card click selection - Relays drawer open command to UniversalViewer nested iframe
+        card.addEventListener('click', () => {
             // Highlight selected card
             document.querySelectorAll('.instrument-card').forEach(c => c.style.borderColor = '#e2e8f0');
             card.style.borderColor = 'var(--primary)';
 
-            // Open Details Drawer
-            try {
-                const drawerId = "drawerinstruments";
-                const drawerCfg = await tableLens.fetchConfig(drawerId);
-                await openDrawer('INSTRUMENTS', inst.id, { 
-                    ...drawerCfg, 
-                    tableLens,
-                    mode: 'view'
-                });
-            } catch (err) {
-                console.error("Erro ao abrir gaveta de detalhes:", err);
+            const viewerIframe = document.querySelector('#pane-inventario iframe');
+            if (viewerIframe && viewerIframe.contentWindow) {
+                viewerIframe.contentWindow.postMessage({
+                    action: 'open-instrument-drawer',
+                    recordId: inst.id
+                }, '*');
             }
         });
 
@@ -221,34 +195,49 @@ async function renderKanban() {
                 if (recordId && targetStage) {
                     console.log(`Mover registro ${recordId} para ${targetStage}`);
                     
-                    // Pre-calculate status changes automatically based on stage
                     const updates = { METROLOGICAL_STAGE: targetStage };
                     
                     if (targetStage.includes("5. Enviado")) {
-                        // "Em Laboratório Externo" (ID 3 based on query)
                         updates.ID_STATUS = 3;
                     } else if (targetStage.includes("1. Planejado")) {
-                        // "Disponível" (ID 1 based on query)
                         updates.ID_STATUS = 1;
                     }
 
                     try {
-                        await dataWriter.updateRecord('INSTRUMENTS', recordId, updates);
-                        console.log(`Registro ${recordId} atualizado com sucesso no Grist.`);
+                        // Save changes to Grist
+                        await fetch(`${BASE_URL}/docs/${DOC_ID}/tables/INSTRUMENTS/records`, {
+                            method: 'PATCH',
+                            headers: {
+                                'Authorization': `Bearer ${API_KEY}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                records: [{ id: recordId, fields: updates }]
+                            })
+                        });
+                        console.log(`Registro ${recordId} updated.`);
                         
-                        // Gravabilidade Histórica de Ocorrências
+                        // History Log
                         const occurrenceData = {
                             ID_INSTRUMENT: recordId,
                             DATE: new Date().toISOString().split('T')[0] + 'T12:00:00Z',
                             REAL_DATE: new Date().toISOString().split('T')[0] + 'T12:00:00Z',
                             COMMENTS: `Estágio logístico alterado no Kanban para: ${targetStage}`,
-                            ID_SITUATION: 1 // Ativo
+                            ID_SITUATION: 1
                         };
-                        await dataWriter.addRecord('INSTRUMENTS_OCCURRENCES', occurrenceData);
-                        console.log(`Histórico gravado na tabela INSTRUMENTS_OCCURRENCES para o registro ${recordId}.`);
+                        
+                        await fetch(`${BASE_URL}/docs/${DOC_ID}/tables/INSTRUMENTS_OCCURRENCES/records`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${API_KEY}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                records: [{ fields: occurrenceData }]
+                            })
+                        });
                     } catch (e) {
                         console.error("Falha ao salvar alteração de estágio no Grist:", e);
-                        // Re-render to restore visual state if failed
                         renderKanban();
                     }
                 }

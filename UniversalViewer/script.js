@@ -522,4 +522,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         isInitialized = true;
         await initializeAndUpdate();
     }
+
+    // Listen for events from parent window (Kanban card click) to open details drawer!
+    window.addEventListener('message', async (event) => {
+        if (event.data && event.data.action === 'open-instrument-drawer') {
+            const recordId = event.data.recordId;
+            try {
+                const drawerId = "drawerinstruments";
+                const drawerCfg = await tableLens.fetchConfig(drawerId);
+                window.GristDrawer.open('INSTRUMENTS', recordId, { 
+                    ...drawerCfg, 
+                    tableLens,
+                    mode: 'view'
+                });
+            } catch (err) {
+                console.error("[UniversalViewer] Error opening drawer from parent message:", err);
+            }
+        }
+    });
 });
