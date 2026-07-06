@@ -236,7 +236,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             } 
             else if (type === 'table') {
                 const { TableRenderer } = await import('../libraries/grist-table-renderer/TableRenderer.js?v=1.0.4');
-                let records = await tableLens.fetchTableRecords(tableId);
+                let [records, schema] = await Promise.all([
+                    tableLens.fetchTableRecords(tableId),
+                    tableLens.getTableSchema(tableId)
+                ]);
 
                 // Aplicar Filtro Externo (Drill-down)
                 if (currentFilter && currentFilter.column && currentFilter.value && !currentFilter.disableFiltering) {
