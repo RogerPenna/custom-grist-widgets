@@ -118,9 +118,10 @@ async function renderKanban() {
         const status = inst.z_disp_ID_STATUS || inst.ID_STATUS || 'Disponível';
         
         let statusClass = 'disponivel';
-        if (status.toLowerCase().includes('laborat')) {
+        const statusStr = String(status).toLowerCase();
+        if (statusStr.includes('laborat') || statusStr.includes('externo')) {
             statusClass = 'laboratorio';
-        } else if (status.toLowerCase().includes('emprest')) {
+        } else if (statusStr.includes('emprest')) {
             statusClass = 'laboratorio';
         }
 
