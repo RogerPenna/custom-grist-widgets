@@ -449,6 +449,7 @@ export const TableRenderer = (() => {
 
                         // Custom action buttons from config
                         customButtons.forEach(btnConfig => {
+                            if (btnConfig.isBatchAction) return; // Skip batch action buttons in row Actions column!
                             const btn = document.createElement('button');
                             btn.className = 'grf-custom-action-btn';
                             btn.title = btnConfig.text || '';
@@ -611,6 +612,21 @@ export const TableRenderer = (() => {
                 visible: colConfig.formatter !== 'hidden'
             };
         }).filter(col => col !== null);
+        
+        if (styling.rowSelection) {
+            columns.unshift({
+                formatter: "rowSelection",
+                titleFormatter: "rowSelection",
+                hozAlign: "center",
+                headerSort: false,
+                cellClick: function(e, cell) {
+                    cell.getRow().toggleSelect();
+                },
+                width: 40,
+                minWidth: 40,
+                resizable: false
+            });
+        }
 
         // Clear and rebuild layout container
         container.innerHTML = '';
@@ -726,6 +742,10 @@ export const TableRenderer = (() => {
         groupBar.innerHTML = `<span class="group-bar-placeholder">Arraste um cabeçalho de coluna aqui para agrupar</span>`;
         topBar.appendChild(groupBar);
         
+        let batchActionsContainer = null;
+        let batchActionsLabel = null;
+        const batchButtons = customButtons.filter(b => b.isBatchAction);
+        
         if (actions.enableAddNewBtn) {
             const addBtn = document.createElement('button');
             addBtn.className = 'grf-add-new-btn';
@@ -735,6 +755,66 @@ export const TableRenderer = (() => {
                 if (onAddRecord) onAddRecord();
             };
             topBar.appendChild(addBtn);
+        }
+
+        if (batchButtons.length > 0) {
+            batchActionsContainer = document.createElement('div');
+            batchActionsContainer.className = 'table-batch-actions-container';
+            batchActionsContainer.style.cssText = 'display: none; gap: 8px; align-items: center; margin-left: 12px; margin-right: auto;';
+            
+            batchActionsLabel = document.createElement('span');
+            batchActionsLabel.style.cssText = 'font-size: 11px; font-weight: bold; color: #64748b; margin-right: 4px;';
+            batchActionsLabel.innerText = 'Lote:';
+            batchActionsContainer.appendChild(batchActionsLabel);
+            
+            batchButtons.forEach(btnConfig => {
+                const btn = document.createElement('button');
+                btn.className = 'grf-batch-action-btn';
+                btn.style.cssText = `padding: 4px 10px; border-radius: 4px; border: none; font-size: 11px; font-weight: bold; cursor: pointer; color: #fff; background-color: ${btnConfig.color || '#3b82f6'}; display: inline-flex; align-items: center; gap: 4px;`;
+                
+                if (btnConfig.icon) {
+                    btn.innerHTML = `<svg style="width:12px; height:12px; fill:currentColor;"><use href="#${btnConfig.icon}"></use></svg> <span>${btnConfig.text || ''}</span>`;
+                } else {
+                    btn.innerText = btnConfig.text || 'Action';
+                }
+                
+                btn.onclick = async () => {
+                    const selectedRows = tabulatorTable.getSelectedRows();
+                    if (selectedRows.length === 0) return;
+                    
+                    btn.disabled = true;
+                    const originalText = btn.innerHTML;
+                    btn.innerText = 'Processando...';
+                    
+                    try {
+                        for (const row of selectedRows) {
+                            const record = row.getData();
+                            if (btnConfig.actionType === 'updateRecord') {
+                                const field = btnConfig.updateField;
+                                let val = btnConfig.updateValue;
+                                
+                                const gristCol = schema[field];
+                                if (gristCol && (gristCol.type === 'Int' || gristCol.type.startsWith('Ref:'))) {
+                                    val = parseInt(val, 10);
+                                }
+                                
+                                await tableLens.updateRecord(tableId, record.id, { [field]: val });
+                            }
+                        }
+                        alert(`${selectedRows.length} registros atualizados!`);
+                        tabulatorTable.deselectRow();
+                    } catch (err) {
+                        alert("Erro ao executar ação em lote: " + err.message);
+                    } finally {
+                        btn.disabled = false;
+                        btn.innerHTML = originalText;
+                    }
+                };
+                batchActionsContainer.appendChild(btn);
+            });
+            
+            // Insert batchActionsContainer before addBtn or just append it
+            topBar.insertBefore(batchActionsContainer, topBar.querySelector('.grf-add-new-btn'));
         }
         
         widgetWrapper.appendChild(topBar);
@@ -861,6 +941,19 @@ export const TableRenderer = (() => {
             setTimeout(() => {
                 tabulatorTable.redraw(true);
             }, 100);
+        });
+
+        tabulatorTable.on("rowSelectionChanged", (data, rows) => {
+            if (batchActionsContainer) {
+                if (rows.length > 0) {
+                    batchActionsContainer.style.display = 'flex';
+                    if (batchActionsLabel) {
+                        batchActionsLabel.innerText = `Selecionados (${rows.length}):`;
+                    }
+                } else {
+                    batchActionsContainer.style.display = 'none';
+                }
+            }
         });
 
         // Apply stripes backward compatibility class

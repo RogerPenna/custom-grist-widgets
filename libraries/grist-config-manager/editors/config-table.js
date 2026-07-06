@@ -210,6 +210,7 @@ export const TableConfigEditor = (() => {
                                 <label class="config-toggle"><input type="checkbox" id="resizable-cols-checkbox" ${styling.resizableColumns !== false ? 'checked' : ''}> Colunas Redimensionáveis</label>
                                 <label class="config-toggle"><input type="checkbox" id="header-filter-checkbox" ${styling.headerFilter ? 'checked' : ''}> Filtros no Cabeçalho</label>
                                 <label class="config-toggle"><input type="checkbox" id="hide-empty-placeholder-checkbox" ${styling.hideEmptyPlaceholder ? 'checked' : ''}> Ocultar "(vazio)" em células em branco</label>
+                                <label class="config-toggle"><input type="checkbox" id="row-selection-checkbox" ${styling.rowSelection ? 'checked' : ''}> Habilitar Seleção de Linhas (Checkboxes)</label>
                                 <div style="margin-top:8px;">
                                     <div class="config-label-with-help">Paginação</div>
                                     <select id="pagination-enabled-select" style="width:100%; padding:4px;">
@@ -513,6 +514,7 @@ export const TableConfigEditor = (() => {
                 resizableColumns: container.querySelector('#resizable-cols-checkbox').checked,
                 headerFilter: container.querySelector('#header-filter-checkbox').checked,
                 hideEmptyPlaceholder: container.querySelector('#hide-empty-placeholder-checkbox').checked,
+                rowSelection: container.querySelector('#row-selection-checkbox').checked,
                 tableLayoutConfig: tableLayoutConfig,
                 pagination: {
                     enabled: container.querySelector('#pagination-enabled-select').value,
@@ -829,16 +831,66 @@ export const TableConfigEditor = (() => {
             </div>
             <div style="display:flex; gap:10px; margin-bottom:10px;">
                 <div style="flex:1;"><label style="display:block; font-size:11px; font-weight:bold;">Ícone</label><div class="icon-picker-display" style="cursor:pointer; padding:6px; border:1px solid #cbd5e1; display:flex; align-items:center; gap:8px; border-radius:4px; background:#fff; font-size:11px;"><span class="current-icon" style="display:flex;">${btn.icon ? `<svg style="width:16px; height:16px; fill:currentColor;"><use href="#${btn.icon}"></use></svg>` : '...'}</span> <span style="font-weight:bold;">Alterar</span></div></div>
-                <div style="flex:1;"><label style="display:block; font-size:11px; font-weight:bold;">Ação</label><select id="btn-action" style="width:100%; padding:4px; font-size:11px;"><option value="navigateToGristPage" ${btn.actionType==='navigateToGristPage'?'selected':''}>Página Grist</option><option value="openUrlFromColumn" ${btn.actionType==='openUrlFromColumn'?'selected':''}>Abrir URL</option></select></div>
+                <div style="flex:1;"><label style="display:block; font-size:11px; font-weight:bold;">Ação</label><select id="btn-action" style="width:100%; padding:4px; font-size:11px;">
+                    <option value="navigateToGristPage" ${btn.actionType==='navigateToGristPage'?'selected':''}>Página Grist</option>
+                    <option value="openUrlFromColumn" ${btn.actionType==='openUrlFromColumn'?'selected':''}>Abrir URL</option>
+                    <option value="updateRecord" ${btn.actionType==='updateRecord'?'selected':''}>Atualizar Campo</option>
+                </select></div>
             </div>
             <div id="btn-action-panel"></div>
+            <div style="margin-top:10px; border-top:1px dashed #e2e8f0; padding-top:8px;">
+                <label style="font-size:11px; cursor:pointer; display:flex; align-items:center; gap:4px;">
+                    <input type="checkbox" id="btn-batch-cb" class="act-prop" data-prop="isBatchAction" ${btn.isBatchAction ? 'checked' : ''}> 
+                    <strong>Mostrar como Ação em Lote</strong> (para linhas selecionadas)
+                </label>
+            </div>
         `;
         const actionPanel = container.querySelector('#btn-action-panel');
+        
+        const bindProperties = () => {
+            container.querySelectorAll('.act-prop').forEach(el => {
+                el.onchange = (e) => {
+                    const prop = e.target.dataset.prop;
+                    if (prop) {
+                        if (e.target.type === 'checkbox') {
+                            btn[prop] = e.target.checked;
+                        } else {
+                            btn[prop] = e.target.value;
+                        }
+                        updateDebugJson();
+                    }
+                };
+                el.oninput = (e) => {
+                    const prop = e.target.dataset.prop;
+                    if (prop && e.target.tagName === 'INPUT' && e.target.type !== 'checkbox') {
+                        btn[prop] = e.target.value;
+                        updateDebugJson();
+                    }
+                };
+            });
+        };
+
         const updatePanel = () => {
             if (btn.actionType === 'navigateToGristPage') {
                 actionPanel.innerHTML = `<div style="margin-bottom:8px;"><label style="display:block; font-size:11px;">Tabela Destino</label><select class="act-prop" data-prop="targetPageId" style="width:100%; padding:4px;">${allGristPages.map(p => `<option value="${p.id}" ${btn.targetPageId===p.id?'selected':''}>${p.name}</option>`).join('')}</select></div>`;
+            } else if (btn.actionType === 'updateRecord') {
+                actionPanel.innerHTML = `
+                    <div style="margin-bottom:8px;">
+                        <label style="display:block; font-size:11px;">Coluna a Atualizar</label>
+                        <select class="act-prop" data-prop="updateField" style="width:100%; padding:4px;">
+                            <option value="">-- Selecione --</option>
+                            ${allGristColumns.map(col => `<option value="${col}" ${btn.updateField===col?'selected':''}>${col}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div style="margin-bottom:8px;">
+                        <label style="display:block; font-size:11px;">Novo Valor</label>
+                        <input type="text" class="act-prop" data-prop="updateValue" value="${btn.updateValue||''}" style="width:100%; padding:4px; font-size:11px;">
+                    </div>
+                `;
             } else { actionPanel.innerHTML = ''; }
+            bindProperties();
         };
+        
         updatePanel();
         container.querySelector('#btn-text').oninput = e => { btn.text = e.target.value; renderActionsLayout(); };
         container.querySelector('#btn-color').onchange = e => { btn.color = e.target.value; updateDebugJson(); };
