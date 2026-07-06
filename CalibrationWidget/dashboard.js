@@ -145,7 +145,7 @@ async function renderKanban() {
             </div>
             <div class="card-meta">
                 <span class="card-badge-status ${statusClass}">${status}</span>
-                <span class="card-badge">${inst.NEXT_CALIBRATION ? inst.NEXT_CALIBRATION.split('T')[0] : 'S/ Data'}</span>
+                <span class="card-badge">${inst.NEXT_CALIBRATION ? String(inst.NEXT_CALIBRATION).split('T')[0] : 'S/ Data'}</span>
             </div>
         `;
 
