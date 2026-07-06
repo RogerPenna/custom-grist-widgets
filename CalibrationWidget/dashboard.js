@@ -98,10 +98,10 @@ async function renderKanban() {
     STAGES.forEach(s => counts[s] = 0);
 
     currentRecords.forEach(inst => {
-        // Resolve stage (if null/undefined, put in "1. Planejado")
-        let stage = inst.METROLOGICAL_STAGE || "1. Planejado";
-        if (!STAGES.includes(stage)) {
-            stage = "1. Planejado";
+        // Resolve stage (if null/undefined, put in "0. Em Uso")
+        let stage = inst.METROLOGICAL_STAGE || "0. Em Uso";
+        if (stage === "0. Em Uso" || !STAGES.includes(stage)) {
+            return;
         }
 
         counts[stage]++;
@@ -190,6 +190,17 @@ async function renderKanban() {
                     try {
                         await dataWriter.updateRecord('INSTRUMENTS', recordId, updates);
                         console.log(`Registro ${recordId} atualizado com sucesso no Grist.`);
+                        
+                        // Gravabilidade Histórica de Ocorrências
+                        const occurrenceData = {
+                            ID_INSTRUMENT: recordId,
+                            DATE: new Date().toISOString().split('T')[0] + 'T12:00:00Z',
+                            REAL_DATE: new Date().toISOString().split('T')[0] + 'T12:00:00Z',
+                            COMMENTS: `Estágio logístico alterado no Kanban para: ${targetStage}`,
+                            ID_SITUATION: 1 // Ativo
+                        };
+                        await dataWriter.addRecord('INSTRUMENTS_OCCURRENCES', occurrenceData);
+                        console.log(`Histórico gravado na tabela INSTRUMENTS_OCCURRENCES para o registro ${recordId}.`);
                     } catch (e) {
                         console.error("Falha ao salvar alteração de estágio no Grist:", e);
                         // Re-render to restore visual state if failed

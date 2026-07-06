@@ -395,9 +395,22 @@
                 
                 await dataWriter.updateRecord('INSTRUMENTS', selectedInstrumentId, {
                     EXTERNAL_CALIBRATIONS: updatedRefs,
-                    METROLOGICAL_STAGE: "1. Planejado",
+                    METROLOGICAL_STAGE: "0. Em Uso",
                     ID_STATUS: 1
                 });
+                
+                // Add final occurrence
+                const finalOccurrence = {
+                    ID_INSTRUMENT: selectedInstrumentId,
+                    DATE: dateStr + 'T12:00:00Z',
+                    REAL_DATE: new Date().toISOString().split('T')[0] + 'T12:00:00Z',
+                    COMMENTS: `Calibração concluída. Certificado ${certCode} importado e ${validationStatus}.`,
+                    ID_SITUATION: 1, // Ativo
+                    ID_EXTERNAL_CALIBRATION: newCertId,
+                    CERTIFICATE_CODE: certCode
+                };
+                await dataWriter.addRecord('INSTRUMENTS_OCCURRENCES', finalOccurrence);
+                writeLog("Histórico final gravado em INSTRUMENTS_OCCURRENCES.");
                 
                 writeLog("🔗 Relacionamento bidirecional atualizado!");
                 showMessage(`Calibração importada e vinculada com sucesso! Status: ${validationStatus}`);
