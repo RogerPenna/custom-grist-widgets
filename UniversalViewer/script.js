@@ -247,6 +247,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                     });
                 }
 
+                // Post data to parent window (Dashboard) to render Kanban board
+                if (window.parent && window.parent !== window) {
+                    const stageCol = schema['METROLOGICAL_STAGE'];
+                    const choices = stageCol?.widgetOptions ? (
+                        typeof stageCol.widgetOptions === 'string' ? JSON.parse(stageCol.widgetOptions).choices : stageCol.widgetOptions.choices
+                    ) : [];
+                    window.parent.postMessage({
+                        action: 'instruments-data-loaded',
+                        records: records,
+                        choices: choices
+                    }, '*');
+                }
+
                 rendererContainer.innerHTML = '';
                 const tableDiv = document.createElement('div');
                 tableDiv.style.height = '100%';
@@ -525,7 +538,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Listen for events from parent window (Kanban card click) to open details drawer!
     window.addEventListener('message', async (event) => {
-        if (event.data && event.data.action === 'open-instrument-drawer') {
+        if (!event.data) return;
+        
+        if (event.data.action === 'open-instrument-drawer') {
             const recordId = event.data.recordId;
             try {
                 const drawerId = "drawerinstruments";
@@ -537,6 +552,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
             } catch (err) {
                 console.error("[UniversalViewer] Error opening drawer from parent message:", err);
+            }
+        } else if (event.data.action === 'update-instrument-stage') {
+            const { recordId, updates, occurrenceData } = event.data;
+            try {
+                const { GristDataWriter } = await import('../libraries/grist-data-writer.js?v=1.0.4');
+                const dataWriter = new GristDataWriter(window.grist);
+                await dataWriter.updateRecord('INSTRUMENTS', recordId, updates);
+                if (occurrenceData) {
+                    await dataWriter.addRecord('INSTRUMENTS_OCCURRENCES', occurrenceData);
+                }
+            } catch (err) {
+                console.error("[UniversalViewer] Error updating stage from parent message:", err);
             }
         }
     });

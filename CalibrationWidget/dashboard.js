@@ -1,48 +1,28 @@
-const BASE_URL = 'http://192.168.0.95:8484/api';
-const API_KEY = '24b20630caea9fc5bfa4aa76a803314f57d045c7';
-const DOC_ID = 'iJ2oJCJTYehz4C6XuAFGpk';
-
 let currentRecords = [];
 let STAGES = [];
 
-async function loadStages() {
-    try {
-        const r = await fetch(`${BASE_URL}/docs/${DOC_ID}/tables/INSTRUMENTS/columns`, {
-            headers: { 'Authorization': `Bearer ${API_KEY}` }
-        });
-        const data = await r.json();
-        const col = data.columns.find(c => c.id === 'METROLOGICAL_STAGE');
-        if (col && col.fields.widgetOptions) {
-            const opt = (typeof col.fields.widgetOptions === 'string') 
-                ? JSON.parse(col.fields.widgetOptions) 
-                : col.fields.widgetOptions;
-            const rawChoices = opt.choices || [];
-            STAGES = rawChoices.filter(c => c !== "0. Em Uso" && c !== "Em Uso");
-        }
-    } catch (e) {
-        console.error("Erro ao carregar estágios dinâmicos do Grist:", e);
-    }
-    
-    // Fallback if empty
-    if (STAGES.length === 0) {
-        STAGES = [
-            "1. Planejado",
-            "2. Orçamento",
-            "3. Notificar Responsável",
-            "4. Recebido na Matriz",
-            "5. Enviado ao Laboratório",
-            "6. Retornado (Importar Laudo)"
-        ];
-    }
-}
-
-// Proxy Grist messages to and from nested iframes to resolve handshake on nested structures
+// Proxy messages to nested iframes and listen to data updates
 window.addEventListener('message', (event) => {
     if (!event.data) return;
-    
-    // Ignore internal actions
-    if (event.data.action === 'open-instrument-drawer') return;
 
+    // Listen to data loaded from the Grist table inside the iframe
+    if (event.data.action === 'instruments-data-loaded') {
+        currentRecords = event.data.records || [];
+        const rawChoices = event.data.choices || [];
+        STAGES = rawChoices.filter(c => c !== "0. Em Uso" && c !== "Em Uso");
+        
+        // If the Kanban tab is active, re-render it
+        const activeTab = document.querySelector('.tab-btn.active').dataset.tab;
+        if (activeTab === 'fluxo') {
+            renderKanban();
+        }
+        return;
+    }
+
+    // Ignore internal actions
+    if (event.data.action === 'open-instrument-drawer' || event.data.action === 'update-instrument-stage') return;
+
+    // Relay other Grist Plugin messages
     if (event.source === window.parent) {
         document.querySelectorAll('iframe').forEach(iframe => {
             if (iframe.contentWindow) {
@@ -73,20 +53,10 @@ tabBtns.forEach(btn => {
     });
 });
 
-async function renderKanban() {
+function renderKanban() {
     const board = document.getElementById('kanban-board-container');
-    board.innerHTML = '<div style="padding:20px; text-align:center; color:#64748b; font-style:italic;">Carregando dados...</div>';
-
-    try {
-        await loadStages();
-        const r = await fetch(`${BASE_URL}/docs/${DOC_ID}/tables/INSTRUMENTS/records`, {
-            headers: { 'Authorization': `Bearer ${API_KEY}` }
-        });
-        const data = await r.json();
-        currentRecords = data.records.map(rec => ({ id: rec.id, ...rec.fields }));
-    } catch (err) {
-        console.error("Erro ao buscar registros para o Kanban:", err);
-        board.innerHTML = `<div style="padding:20px; text-align:center; color:#ef4444;">Falha ao carregar dados do Grist: ${err.message}</div>`;
+    if (STAGES.length === 0) {
+        board.innerHTML = '<div style="padding:20px; text-align:center; color:#64748b; font-style:italic;">Aguardando sincronização da tabela... Certifique-se de que a aba "Inventário Geral" foi carregada.</div>';
         return;
     }
 
@@ -203,42 +173,23 @@ async function renderKanban() {
                         updates.ID_STATUS = 1;
                     }
 
-                    try {
-                        // Save changes to Grist
-                        await fetch(`${BASE_URL}/docs/${DOC_ID}/tables/INSTRUMENTS/records`, {
-                            method: 'PATCH',
-                            headers: {
-                                'Authorization': `Bearer ${API_KEY}`,
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                records: [{ id: recordId, fields: updates }]
-                            })
-                        });
-                        console.log(`Registro ${recordId} updated.`);
-                        
-                        // History Log
-                        const occurrenceData = {
-                            ID_INSTRUMENT: recordId,
-                            DATE: new Date().toISOString().split('T')[0] + 'T12:00:00Z',
-                            REAL_DATE: new Date().toISOString().split('T')[0] + 'T12:00:00Z',
-                            COMMENTS: `Estágio logístico alterado no Kanban para: ${targetStage}`,
-                            ID_SITUATION: 1
-                        };
-                        
-                        await fetch(`${BASE_URL}/docs/${DOC_ID}/tables/INSTRUMENTS_OCCURRENCES/records`, {
-                            method: 'POST',
-                            headers: {
-                                'Authorization': `Bearer ${API_KEY}`,
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                records: [{ fields: occurrenceData }]
-                            })
-                        });
-                    } catch (e) {
-                        console.error("Falha ao salvar alteração de estágio no Grist:", e);
-                        renderKanban();
+                    const occurrenceData = {
+                        ID_INSTRUMENT: recordId,
+                        DATE: new Date().toISOString().split('T')[0] + 'T12:00:00Z',
+                        REAL_DATE: new Date().toISOString().split('T')[0] + 'T12:00:00Z',
+                        COMMENTS: `Estágio logístico alterado no Kanban para: ${targetStage}`,
+                        ID_SITUATION: 1 // Ativo
+                    };
+
+                    // Send update command to UniversalViewer iframe (which has direct connection to Grist)
+                    const viewerIframe = document.querySelector('#pane-inventario iframe');
+                    if (viewerIframe && viewerIframe.contentWindow) {
+                        viewerIframe.contentWindow.postMessage({
+                            action: 'update-instrument-stage',
+                            recordId: recordId,
+                            updates: updates,
+                            occurrenceData: occurrenceData
+                        }, '*');
                     }
                 }
             }
