@@ -128,13 +128,22 @@ function renderKanban() {
             document.querySelectorAll('.instrument-card').forEach(c => c.style.borderColor = '#e2e8f0');
             card.style.borderColor = 'var(--primary)';
 
-            const viewerIframe = document.querySelector('#pane-inventario iframe');
-            if (viewerIframe && viewerIframe.contentWindow) {
-                viewerIframe.contentWindow.postMessage({
-                    action: 'open-instrument-drawer',
-                    recordId: inst.id
-                }, '*');
+            // Switch to Inventário Geral tab so the iframe (and therefore the drawer) is visible
+            const tabBtn = document.querySelector('.tab-btn[data-tab="inventario"]');
+            if (tabBtn) {
+                tabBtn.click();
             }
+
+            // Small delay to let the tab display before sliding the drawer
+            setTimeout(() => {
+                const viewerIframe = document.querySelector('#pane-inventario iframe');
+                if (viewerIframe && viewerIframe.contentWindow) {
+                    viewerIframe.contentWindow.postMessage({
+                        action: 'open-instrument-drawer',
+                        recordId: inst.id
+                    }, '*');
+                }
+            }, 100);
         });
 
         if (colContainers[stage]) {
