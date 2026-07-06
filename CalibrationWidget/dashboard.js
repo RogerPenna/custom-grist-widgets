@@ -75,6 +75,16 @@ grist.onRecord(async (record) => {
 
 async function renderKanban() {
     const board = document.getElementById('kanban-board-container');
+    board.innerHTML = '<div style="padding:20px; text-align:center; color:#64748b; font-style:italic;">Carregando dados...</div>';
+
+    try {
+        currentRecords = await tableLens.fetchTableRecords('INSTRUMENTS');
+    } catch (err) {
+        console.error("Erro ao buscar registros para o Kanban:", err);
+        board.innerHTML = `<div style="padding:20px; text-align:center; color:#ef4444;">Falha ao carregar dados do Grist: ${err.message}</div>`;
+        return;
+    }
+
     board.innerHTML = '';
 
     // Create column elements
