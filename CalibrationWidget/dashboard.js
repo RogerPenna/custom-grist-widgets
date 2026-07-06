@@ -1,20 +1,40 @@
 import { GristTableLens } from '../libraries/grist-table-lens/grist-table-lens.js';
 import { GristDataWriter } from '../libraries/grist-data-writer.js';
+import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js?v=1.0.4';
 
 let tableLens = null;
 let dataWriter = null;
 let currentRecords = [];
 let selectedRecordId = null;
 
-// Pipeline stages definition
-const STAGES = [
-    "1. Planejado",
-    "2. Orçamento",
-    "3. Notificar Responsável",
-    "4. Recebido na Matriz",
-    "5. Enviado ao Laboratório",
-    "6. Retornado (Importar Laudo)"
-];
+// Pipeline stages definition (dynamically populated)
+let STAGES = [];
+
+async function loadStages() {
+    try {
+        const schema = await tableLens.getTableSchema('INSTRUMENTS');
+        const col = schema['METROLOGICAL_STAGE'];
+        if (col && col.widgetOptions) {
+            const opt = JSON.parse(col.widgetOptions);
+            const rawChoices = opt.choices || [];
+            STAGES = rawChoices.filter(c => c !== "0. Em Uso" && c !== "Em Uso");
+        }
+    } catch (e) {
+        console.error("Erro ao carregar estágios dinâmicos do Grist:", e);
+    }
+    
+    // Fallback if empty
+    if (STAGES.length === 0) {
+        STAGES = [
+            "1. Planejado",
+            "2. Orçamento",
+            "3. Notificar Responsável",
+            "4. Recebido na Matriz",
+            "5. Enviado ao Laboratório",
+            "6. Retornado (Importar Laudo)"
+        ];
+    }
+}
 
 // Proxy Grist messages to and from nested iframes to resolve handshake on nested structures
 window.addEventListener('message', (event) => {
@@ -78,6 +98,7 @@ async function renderKanban() {
     board.innerHTML = '<div style="padding:20px; text-align:center; color:#64748b; font-style:italic;">Carregando dados...</div>';
 
     try {
+        await loadStages();
         currentRecords = await tableLens.fetchTableRecords('INSTRUMENTS');
     } catch (err) {
         console.error("Erro ao buscar registros para o Kanban:", err);
@@ -150,13 +171,26 @@ async function renderKanban() {
         `;
 
         // Card click selection
-        card.addEventListener('click', () => {
+        card.addEventListener('click', async () => {
             grist.setSelectedRows([inst.id]);
             selectedRecordId = inst.id;
             
             // Highlight selected card
             document.querySelectorAll('.instrument-card').forEach(c => c.style.borderColor = '#e2e8f0');
             card.style.borderColor = 'var(--primary)';
+
+            // Open Details Drawer
+            try {
+                const drawerId = "drawerinstruments";
+                const drawerCfg = await tableLens.fetchConfig(drawerId);
+                await openDrawer('INSTRUMENTS', inst.id, { 
+                    ...drawerCfg, 
+                    tableLens,
+                    mode: 'view'
+                });
+            } catch (err) {
+                console.error("Erro ao abrir gaveta de detalhes:", err);
+            }
         });
 
         if (colContainers[stage]) {
