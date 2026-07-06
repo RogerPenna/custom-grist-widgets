@@ -121,7 +121,7 @@ async function renderKanban() {
         card.dataset.id = inst.id;
 
         // Casing and resolution fallback
-        const code = inst.CODE || `Instrumento #${inst.id}`;
+        const code = inst.Code || inst.CODE || `Instrumento #${inst.id}`;
         const type = inst.z_disp_ID_INSTRUMENT_TYPE || inst.ID_INSTRUMENT_TYPE || 'Sem Tipo';
         const model = inst.z_disp_ID_INSTRUMENT_MODEL || inst.ID_INSTRUMENT_MODEL || 'Sem Modelo';
         const resp = inst.z_disp_ID_RESPONSIBLE || inst.ID_RESPONSIBLE || 'Não Atribuído';
