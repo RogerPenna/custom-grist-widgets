@@ -5,6 +5,60 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Painel Metrológico de Calibração</title>
     
+    <script>
+        const messageSources = new Map();
+        
+        // Proxy messages immediately on window load to prevent race conditions during iframe initialization
+        window.addEventListener('message', (event) => {
+            if (!event.data) return;
+
+            // Forward data updates to dashboard.js if it loaded
+            if (event.data.action === 'instruments-data-loaded') {
+                if (window.onInstrumentsDataLoaded) {
+                    window.onInstrumentsDataLoaded(event.data);
+                } else {
+                    // Cache it if dashboard.js hasn't loaded yet
+                    window.cachedInstrumentsData = event.data;
+                }
+                return;
+            }
+
+            // Ignore internal actions
+            if (event.data.action === 'open-instrument-drawer' || 
+                event.data.action === 'update-instrument-stage' || 
+                event.data.action === 'table-lens-request' ||
+                event.data.action === 'table-lens-response') return;
+
+            // Relay Grist Plugin messages correctly using request tracking to prevent double handshake conflict
+            if (event.source === window.parent) {
+                // This is a reply from Grist
+                const reqId = event.data.reqId;
+                const targetIframe = messageSources.get(reqId);
+                if (targetIframe && targetIframe.contentWindow) {
+                    targetIframe.contentWindow.postMessage(event.data, '*');
+                } else {
+                    // Fallback: send to all iframes if reqId is not found
+                    document.querySelectorAll('iframe').forEach(iframe => {
+                        if (iframe.contentWindow) {
+                            iframe.contentWindow.postMessage(event.data, '*');
+                        }
+                    });
+                }
+            } else {
+                // This is a request from a nested iframe to Grist
+                const reqId = event.data.reqId;
+                if (reqId !== undefined) {
+                    const iframe = Array.from(document.querySelectorAll('iframe'))
+                        .find(f => f.contentWindow === event.source);
+                    if (iframe) {
+                        messageSources.set(reqId, iframe);
+                    }
+                }
+                window.parent.postMessage(event.data, '*');
+            }
+        });
+    </script>
+    
     <!-- External Styles -->
     <link rel="stylesheet" href="../libraries/grist-style-utils/icons.css">
     <link rel="stylesheet" href="../libraries/grist-drawer-component/drawer-style.css?v=1.0.4">

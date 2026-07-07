@@ -44,60 +44,23 @@ const mockDataWriter = new Proxy({}, {
     }
 });
 
-const messageSources = new Map();
-
-// Proxy messages to nested iframes and listen to data updates
-window.addEventListener('message', (event) => {
-    if (!event.data) return;
-
-    // Listen to data loaded from the Grist table inside the iframe
-    if (event.data.action === 'instruments-data-loaded') {
-        currentRecords = event.data.records || [];
-        const rawChoices = event.data.choices || [];
-        STAGES = rawChoices.filter(c => c !== "0. Em Uso" && c !== "Em Uso");
-        
-        // If the Kanban tab is active, re-render it
-        const activeTab = document.querySelector('.tab-btn.active').dataset.tab;
-        if (activeTab === 'fluxo') {
-            renderKanban();
-        }
-        return;
+// Register data loaded handler for early head-registered proxy listener
+window.onInstrumentsDataLoaded = (data) => {
+    currentRecords = data.records || [];
+    const rawChoices = data.choices || [];
+    STAGES = rawChoices.filter(c => c !== "0. Em Uso" && c !== "Em Uso");
+    
+    // If the Kanban tab is active, re-render it
+    const activeTab = document.querySelector('.tab-btn.active').dataset.tab;
+    if (activeTab === 'fluxo') {
+        renderKanban();
     }
+};
 
-    // Ignore internal actions
-    if (event.data.action === 'open-instrument-drawer' || 
-        event.data.action === 'update-instrument-stage' || 
-        event.data.action === 'table-lens-request' ||
-        event.data.action === 'table-lens-response') return;
-
-    // Relay Grist Plugin messages correctly using request tracking to prevent double handshake conflict
-    if (event.source === window.parent) {
-        // This is a reply from Grist
-        const reqId = event.data.reqId;
-        const targetIframe = messageSources.get(reqId);
-        if (targetIframe && targetIframe.contentWindow) {
-            targetIframe.contentWindow.postMessage(event.data, '*');
-        } else {
-            // Fallback: send to all iframes if reqId is not found
-            document.querySelectorAll('iframe').forEach(iframe => {
-                if (iframe.contentWindow) {
-                    iframe.contentWindow.postMessage(event.data, '*');
-                }
-            });
-        }
-    } else {
-        // This is a request from a nested iframe to Grist
-        const reqId = event.data.reqId;
-        if (reqId !== undefined) {
-            const iframe = Array.from(document.querySelectorAll('iframe'))
-                .find(f => f.contentWindow === event.source);
-            if (iframe) {
-                messageSources.set(reqId, iframe);
-            }
-        }
-        window.parent.postMessage(event.data, '*');
-    }
-});
+// Handle any cached data received before dashboard.js loaded
+if (window.cachedInstrumentsData) {
+    window.onInstrumentsDataLoaded(window.cachedInstrumentsData);
+}
 
 // Tab switcher logic
 const tabBtns = document.querySelectorAll('.tab-btn');
