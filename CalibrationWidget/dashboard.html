@@ -11,6 +11,8 @@
         // Proxy messages immediately on window load to prevent race conditions during iframe initialization
         window.addEventListener('message', (event) => {
             if (!event.data) return;
+            
+            console.log("[Dashboard Head Proxy] Received:", event.data.action, event.data);
 
             // Forward data updates to dashboard.js if it loaded
             if (event.data.action === 'instruments-data-loaded') {
@@ -326,6 +328,7 @@
             <button class="tab-btn active" data-tab="inventario">Inventário Geral</button>
             <button class="tab-btn" data-tab="fluxo" id="tab-fluxo-btn">Fluxo (Kanban)</button>
             <button class="tab-btn" data-tab="importador">Importador XML/CAL</button>
+            <button class="tab-btn" data-tab="certificados">Certificados Terceiros</button>
         </div>
     </header>
 
@@ -345,6 +348,11 @@
         <!-- Tab 3: Importador -->
         <div id="pane-importador" class="tab-pane">
             <iframe src="./importador-calibracoes.html"></iframe>
+        </div>
+
+        <!-- Tab 4: Certificados Terceiros -->
+        <div id="pane-certificados" class="tab-pane">
+            <iframe src="../UniversalViewer/index.html?configId=tableexternalcalibrations"></iframe>
         </div>
     </main>
 
