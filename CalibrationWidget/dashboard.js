@@ -1,102 +1,62 @@
 import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js?v=1.0.4';
 
-const BASE_URL = 'http://192.168.0.95:8484/api';
-const API_KEY = '24b20630caea9fc5bfa4aa76a803314f57d045c7';
-const DOC_ID = 'iJ2oJCJTYehz4C6XuAFGpk';
+import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js?v=1.0.4';
 
 let currentRecords = [];
 let STAGES = [];
 
-// REST-based mock TableLens and DataWriter to allow GristDrawer to run outside Grist handshake context
-const mockTableLens = {
-    getTableSchema: async (tableId) => {
-        const r = await fetch(`${BASE_URL}/docs/${DOC_ID}/tables/${tableId}/columns?api_key=${API_KEY}`);
-        const data = await r.json();
-        const schema = {};
-        data.columns.forEach(col => {
-            schema[col.id] = {
-                colId: col.id,
-                type: col.fields.type,
-                label: col.fields.label,
-                widgetOptions: col.fields.widgetOptions
-            };
-        });
-        return schema;
-    },
-    fetchRecordById: async (tableId, recordId) => {
-        const r = await fetch(`${BASE_URL}/docs/${DOC_ID}/tables/${tableId}/records?api_key=${API_KEY}`);
-        const data = await r.json();
-        const rec = data.records.find(row => row.id === recordId);
-        return rec ? { id: rec.id, ...rec.fields } : null;
-    },
-    fetchConfig: async (configId) => {
-        const r = await fetch(`${BASE_URL}/docs/${DOC_ID}/tables/Grf_config/records?api_key=${API_KEY}`);
-        const data = await r.json();
-        const rec = data.records.find(row => row.fields.configId === configId);
-        if (!rec) return null;
+// Helper function to invoke TableLens/DataWriter methods inside the nested iframe via postMessage RPC
+function callIframe(method, args) {
+    return new Promise((resolve, reject) => {
+        const transactionId = Math.random().toString(36).substr(2, 9);
+        const handleResponse = (e) => {
+            if (e.data && e.data.action === 'table-lens-response' && e.data.transactionId === transactionId) {
+                window.removeEventListener('message', handleResponse);
+                if (e.data.error) reject(new Error(e.data.error));
+                else resolve(e.data.result);
+            }
+        };
+        window.addEventListener('message', handleResponse);
         
-        let mergedConfig = {};
-        try {
-            if (rec.fields.configJson) mergedConfig = JSON.parse(rec.fields.configJson);
-        } catch(e) {}
-        try {
-            if (rec.fields.mappingJson) mergedConfig.mapping = JSON.parse(rec.fields.mappingJson);
-        } catch(e) {}
-        try {
-            if (rec.fields.stylingJson) mergedConfig.styling = JSON.parse(rec.fields.stylingJson);
-        } catch(e) {}
-        try {
-            if (rec.fields.actionsJson) mergedConfig.actions = JSON.parse(rec.fields.actionsJson);
-        } catch(e) {}
-        return mergedConfig;
-    }
+        const viewerIframe = document.querySelector('#pane-inventario iframe');
+        if (viewerIframe && viewerIframe.contentWindow) {
+            viewerIframe.contentWindow.postMessage({
+                action: 'table-lens-request',
+                method,
+                args,
+                transactionId
+            }, '*');
+        } else {
+            window.removeEventListener('message', handleResponse);
+            reject(new Error("Iframe de inventário não carregado."));
+        }
+    });
+}
+
+// REST-less mock TableLens and DataWriter that forward calls to the nested iframe
+const mockTableLens = {
+    getTableSchema: async (tableId) => callIframe('getTableSchema', [tableId]),
+    fetchRecordById: async (tableId, recordId) => callIframe('fetchRecordById', [tableId, recordId]),
+    fetchConfig: async (configId) => callIframe('fetchConfig', [configId])
 };
 
 const mockDataWriter = {
-    updateRecord: async (tableId, recordId, changes) => {
-        await fetch(`${BASE_URL}/docs/${DOC_ID}/tables/${tableId}/records?api_key=${API_KEY}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                records: [{ id: recordId, fields: changes }]
-            })
-        });
-        // Notify iframe table of data updates
-        const viewerIframe = document.querySelector('#pane-inventario iframe');
-        if (viewerIframe && viewerIframe.contentWindow) {
-            viewerIframe.contentWindow.postMessage({ action: 'reload-records' }, '*');
-        }
-        // Refresh Kanban locally
-        renderKanban();
-    },
-    addRecord: async (tableId, changes) => {
-        await fetch(`${BASE_URL}/docs/${DOC_ID}/tables/${tableId}/records?api_key=${API_KEY}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                records: [{ fields: changes }]
-            })
-        });
-        const viewerIframe = document.querySelector('#pane-inventario iframe');
-        if (viewerIframe && viewerIframe.contentWindow) {
-            viewerIframe.contentWindow.postMessage({ action: 'reload-records' }, '*');
-        }
-        renderKanban();
-    },
-    deleteRecords: async (tableId, recordIds) => {
-        // Mock delete if needed
-    }
+    updateRecord: async (tableId, recordId, changes) => callIframe('updateRecord', [tableId, recordId, changes]),
+    addRecord: async (tableId, changes) => callIframe('addRecord', [tableId, changes]),
+    deleteRecords: async (tableId, recordIds) => callIframe('deleteRecords', [tableId, recordIds])
 };
 
 // Proxy messages to nested iframes and listen to data updates
 window.addEventListener('message', (event) => {
     if (!event.data) return;
 
+    // Listen to data loaded from the Grist table inside the iframe
     if (event.data.action === 'instruments-data-loaded') {
         currentRecords = event.data.records || [];
         const rawChoices = event.data.choices || [];
         STAGES = rawChoices.filter(c => c !== "0. Em Uso" && c !== "Em Uso");
         
+        // If the Kanban tab is active, re-render it
         const activeTab = document.querySelector('.tab-btn.active').dataset.tab;
         if (activeTab === 'fluxo') {
             renderKanban();
@@ -104,8 +64,13 @@ window.addEventListener('message', (event) => {
         return;
     }
 
-    if (event.data.action === 'open-instrument-drawer' || event.data.action === 'update-instrument-stage') return;
+    // Ignore internal actions
+    if (event.data.action === 'open-instrument-drawer' || 
+        event.data.action === 'update-instrument-stage' || 
+        event.data.action === 'table-lens-request' ||
+        event.data.action === 'table-lens-response') return;
 
+    // Relay other Grist Plugin messages
     if (event.source === window.parent) {
         document.querySelectorAll('iframe').forEach(iframe => {
             if (iframe.contentWindow) {
@@ -136,20 +101,11 @@ tabBtns.forEach(btn => {
     });
 });
 
-async function renderKanban() {
+function renderKanban() {
     const board = document.getElementById('kanban-board-container');
     if (STAGES.length === 0) {
         board.innerHTML = '<div style="padding:20px; text-align:center; color:#64748b; font-style:italic;">Aguardando sincronização da tabela... Certifique-se de que a aba "Inventário Geral" foi carregada.</div>';
         return;
-    }
-
-    // Refresh records dynamically using REST API to make sure dragging and editing has immediate effect
-    try {
-        const r = await fetch(`${BASE_URL}/docs/${DOC_ID}/tables/INSTRUMENTS/records?api_key=${API_KEY}`);
-        const data = await r.json();
-        currentRecords = data.records.map(rec => ({ id: rec.id, ...rec.fields }));
-    } catch (err) {
-        console.error("Erro ao recarregar registros REST para o Kanban:", err);
     }
 
     board.innerHTML = '';
@@ -282,7 +238,6 @@ async function renderKanban() {
                         await mockDataWriter.addRecord('INSTRUMENTS_OCCURRENCES', occurrenceData);
                     } catch(err) {
                         console.error("Erro ao mover cartão:", err);
-                        renderKanban();
                     }
                 }
             }
