@@ -364,11 +364,25 @@ export const TableConfigEditor = (() => {
             cols.unshift({ colId: '_actions', label: '⚡ Ações', type: 'Actions' });
         }
 
+        // Populate lists maintaining the saved columns order
+        const mappedColIds = new Set();
+        
+        // 1. Visible list in saved order
+        currentCols.forEach(savedCol => {
+            const col = cols.find(c => c.colId === savedCol.colId);
+            if (col) {
+                const card = createColumnCard(col, savedCol);
+                visibleList.appendChild(card);
+                mappedColIds.add(col.colId);
+            }
+        });
+        
+        // 2. Available (unmapped) columns
         cols.forEach(col => {
-            const config = currentCols.find(c => c.colId === col.colId);
-            const card = createColumnCard(col, config);
-            if (config) visibleList.appendChild(card);
-            else availableList.appendChild(card);
+            if (!mappedColIds.has(col.colId)) {
+                const card = createColumnCard(col, null);
+                availableList.appendChild(card);
+            }
         });
 
         enableDragAndDrop([visibleList, availableList]);
