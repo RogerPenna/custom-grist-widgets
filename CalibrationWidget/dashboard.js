@@ -73,12 +73,12 @@ window.addEventListener('message', (event) => {
     // Relay Grist Plugin messages correctly using request tracking to prevent double handshake conflict
     if (event.source === window.parent) {
         // This is a reply from Grist
-        const rc = event.data.rc;
-        const targetIframe = messageSources.get(rc);
+        const reqId = event.data.reqId;
+        const targetIframe = messageSources.get(reqId);
         if (targetIframe && targetIframe.contentWindow) {
             targetIframe.contentWindow.postMessage(event.data, '*');
         } else {
-            // Fallback: send to all iframes if rc is not found
+            // Fallback: send to all iframes if reqId is not found
             document.querySelectorAll('iframe').forEach(iframe => {
                 if (iframe.contentWindow) {
                     iframe.contentWindow.postMessage(event.data, '*');
@@ -87,12 +87,12 @@ window.addEventListener('message', (event) => {
         }
     } else {
         // This is a request from a nested iframe to Grist
-        const rc = event.data.rc;
-        if (rc !== undefined) {
+        const reqId = event.data.reqId;
+        if (reqId !== undefined) {
             const iframe = Array.from(document.querySelectorAll('iframe'))
                 .find(f => f.contentWindow === event.source);
             if (iframe) {
-                messageSources.set(rc, iframe);
+                messageSources.set(reqId, iframe);
             }
         }
         window.parent.postMessage(event.data, '*');
