@@ -1,17 +1,102 @@
+import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js?v=1.0.4';
+
+const BASE_URL = 'http://192.168.0.95:8484/api';
+const API_KEY = '24b20630caea9fc5bfa4aa76a803314f57d045c7';
+const DOC_ID = 'iJ2oJCJTYehz4C6XuAFGpk';
+
 let currentRecords = [];
 let STAGES = [];
+
+// REST-based mock TableLens and DataWriter to allow GristDrawer to run outside Grist handshake context
+const mockTableLens = {
+    getTableSchema: async (tableId) => {
+        const r = await fetch(`${BASE_URL}/docs/${DOC_ID}/tables/${tableId}/columns?api_key=${API_KEY}`);
+        const data = await r.json();
+        const schema = {};
+        data.columns.forEach(col => {
+            schema[col.id] = {
+                colId: col.id,
+                type: col.fields.type,
+                label: col.fields.label,
+                widgetOptions: col.fields.widgetOptions
+            };
+        });
+        return schema;
+    },
+    fetchRecordById: async (tableId, recordId) => {
+        const r = await fetch(`${BASE_URL}/docs/${DOC_ID}/tables/${tableId}/records?api_key=${API_KEY}`);
+        const data = await r.json();
+        const rec = data.records.find(row => row.id === recordId);
+        return rec ? { id: rec.id, ...rec.fields } : null;
+    },
+    fetchConfig: async (configId) => {
+        const r = await fetch(`${BASE_URL}/docs/${DOC_ID}/tables/Grf_config/records?api_key=${API_KEY}`);
+        const data = await r.json();
+        const rec = data.records.find(row => row.fields.configId === configId);
+        if (!rec) return null;
+        
+        let mergedConfig = {};
+        try {
+            if (rec.fields.configJson) mergedConfig = JSON.parse(rec.fields.configJson);
+        } catch(e) {}
+        try {
+            if (rec.fields.mappingJson) mergedConfig.mapping = JSON.parse(rec.fields.mappingJson);
+        } catch(e) {}
+        try {
+            if (rec.fields.stylingJson) mergedConfig.styling = JSON.parse(rec.fields.stylingJson);
+        } catch(e) {}
+        try {
+            if (rec.fields.actionsJson) mergedConfig.actions = JSON.parse(rec.fields.actionsJson);
+        } catch(e) {}
+        return mergedConfig;
+    }
+};
+
+const mockDataWriter = {
+    updateRecord: async (tableId, recordId, changes) => {
+        await fetch(`${BASE_URL}/docs/${DOC_ID}/tables/${tableId}/records?api_key=${API_KEY}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                records: [{ id: recordId, fields: changes }]
+            })
+        });
+        // Notify iframe table of data updates
+        const viewerIframe = document.querySelector('#pane-inventario iframe');
+        if (viewerIframe && viewerIframe.contentWindow) {
+            viewerIframe.contentWindow.postMessage({ action: 'reload-records' }, '*');
+        }
+        // Refresh Kanban locally
+        renderKanban();
+    },
+    addRecord: async (tableId, changes) => {
+        await fetch(`${BASE_URL}/docs/${DOC_ID}/tables/${tableId}/records?api_key=${API_KEY}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                records: [{ fields: changes }]
+            })
+        });
+        const viewerIframe = document.querySelector('#pane-inventario iframe');
+        if (viewerIframe && viewerIframe.contentWindow) {
+            viewerIframe.contentWindow.postMessage({ action: 'reload-records' }, '*');
+        }
+        renderKanban();
+    },
+    deleteRecords: async (tableId, recordIds) => {
+        // Mock delete if needed
+    }
+};
 
 // Proxy messages to nested iframes and listen to data updates
 window.addEventListener('message', (event) => {
     if (!event.data) return;
 
-    // Listen to data loaded from the Grist table inside the iframe
     if (event.data.action === 'instruments-data-loaded') {
         currentRecords = event.data.records || [];
         const rawChoices = event.data.choices || [];
         STAGES = rawChoices.filter(c => c !== "0. Em Uso" && c !== "Em Uso");
         
-        // If the Kanban tab is active, re-render it
         const activeTab = document.querySelector('.tab-btn.active').dataset.tab;
         if (activeTab === 'fluxo') {
             renderKanban();
@@ -19,10 +104,8 @@ window.addEventListener('message', (event) => {
         return;
     }
 
-    // Ignore internal actions
     if (event.data.action === 'open-instrument-drawer' || event.data.action === 'update-instrument-stage') return;
 
-    // Relay other Grist Plugin messages
     if (event.source === window.parent) {
         document.querySelectorAll('iframe').forEach(iframe => {
             if (iframe.contentWindow) {
@@ -53,11 +136,20 @@ tabBtns.forEach(btn => {
     });
 });
 
-function renderKanban() {
+async function renderKanban() {
     const board = document.getElementById('kanban-board-container');
     if (STAGES.length === 0) {
         board.innerHTML = '<div style="padding:20px; text-align:center; color:#64748b; font-style:italic;">Aguardando sincronização da tabela... Certifique-se de que a aba "Inventário Geral" foi carregada.</div>';
         return;
+    }
+
+    // Refresh records dynamically using REST API to make sure dragging and editing has immediate effect
+    try {
+        const r = await fetch(`${BASE_URL}/docs/${DOC_ID}/tables/INSTRUMENTS/records?api_key=${API_KEY}`);
+        const data = await r.json();
+        currentRecords = data.records.map(rec => ({ id: rec.id, ...rec.fields }));
+    } catch (err) {
+        console.error("Erro ao recarregar registros REST para o Kanban:", err);
     }
 
     board.innerHTML = '';
@@ -122,28 +214,23 @@ function renderKanban() {
             </div>
         `;
 
-        // Card click selection - Relays drawer open command to UniversalViewer nested iframe
-        card.addEventListener('click', () => {
-            // Highlight selected card
+        // Card click selection - Opens Details Drawer directly on the parent window!
+        card.addEventListener('click', async () => {
             document.querySelectorAll('.instrument-card').forEach(c => c.style.borderColor = '#e2e8f0');
             card.style.borderColor = 'var(--primary)';
 
-            // Switch to Inventário Geral tab so the iframe (and therefore the drawer) is visible
-            const tabBtn = document.querySelector('.tab-btn[data-tab="inventario"]');
-            if (tabBtn) {
-                tabBtn.click();
+            try {
+                const drawerId = "drawerinstruments";
+                const drawerCfg = await mockTableLens.fetchConfig(drawerId);
+                await openDrawer('INSTRUMENTS', inst.id, { 
+                    ...drawerCfg, 
+                    tableLens: mockTableLens,
+                    dataWriter: mockDataWriter,
+                    mode: 'view'
+                });
+            } catch (err) {
+                console.error("[Dashboard] Erro ao abrir gaveta de detalhes:", err);
             }
-
-            // Small delay to let the tab display before sliding the drawer
-            setTimeout(() => {
-                const viewerIframe = document.querySelector('#pane-inventario iframe');
-                if (viewerIframe && viewerIframe.contentWindow) {
-                    viewerIframe.contentWindow.postMessage({
-                        action: 'open-instrument-drawer',
-                        recordId: inst.id
-                    }, '*');
-                }
-            }, 100);
         });
 
         if (colContainers[stage]) {
@@ -190,15 +277,12 @@ function renderKanban() {
                         ID_SITUATION: 1 // Ativo
                     };
 
-                    // Send update command to UniversalViewer iframe (which has direct connection to Grist)
-                    const viewerIframe = document.querySelector('#pane-inventario iframe');
-                    if (viewerIframe && viewerIframe.contentWindow) {
-                        viewerIframe.contentWindow.postMessage({
-                            action: 'update-instrument-stage',
-                            recordId: recordId,
-                            updates: updates,
-                            occurrenceData: occurrenceData
-                        }, '*');
+                    try {
+                        await mockDataWriter.updateRecord('INSTRUMENTS', recordId, updates);
+                        await mockDataWriter.addRecord('INSTRUMENTS_OCCURRENCES', occurrenceData);
+                    } catch(err) {
+                        console.error("Erro ao mover cartão:", err);
+                        renderKanban();
                     }
                 }
             }
