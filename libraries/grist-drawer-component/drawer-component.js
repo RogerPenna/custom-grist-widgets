@@ -297,7 +297,7 @@ function _initializeDrawerDOM() {
 
     drawerPanel = document.createElement('div');
     drawerPanel.id = 'grist-drawer-panel';
-    drawerPanel.style.cssText = "position:fixed; top:0; right:-100%; width:600px; height:100%; background:white; z-index:2147483641; transition:right 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow:-5px 0 25px rgba(0,0,0,0.15); display:flex; flex-direction:column; font-family:sans-serif;";
+    drawerPanel.style.cssText = "position:fixed; top:0; right:-100%; width:600px; height:100%; background:white; z-index:2147483641; transition:right 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow:-5px 0 25px rgba(0,0,0,0.15); display:flex; flex-direction:column; font-family:sans-serif; transform:none !important;";
 
     drawerPanel.innerHTML = `
         <div class="drawer-header" style="padding:20px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
@@ -367,6 +367,8 @@ export async function openDrawer(tableId, recordId, options = {}) {
     drawerPanel.style.right = `-${width}`;
 
     drawerOverlay.style.setProperty('display', 'block', 'important');
+    drawerOverlay.style.setProperty('opacity', '1', 'important');
+    drawerOverlay.style.setProperty('visibility', 'visible', 'important');
     
     setTimeout(() => {
         if (drawerPanel) drawerPanel.style.setProperty('right', '0px', 'important');
@@ -395,7 +397,11 @@ export function closeDrawer() {
     const width = drawerPanel.style.width || '600px';
     drawerPanel.style.setProperty('right', `-${width}`, 'important');
     setTimeout(() => {
-        if (drawerOverlay) drawerOverlay.style.setProperty('display', 'none', 'important');
+        if (drawerOverlay) {
+            drawerOverlay.style.setProperty('display', 'none', 'important');
+            drawerOverlay.style.setProperty('opacity', '0', 'important');
+            drawerOverlay.style.setProperty('visibility', 'hidden', 'important');
+        }
     }, 300);
 }
 
