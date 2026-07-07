@@ -1,7 +1,5 @@
 import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js?v=1.0.4';
 
-import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js?v=1.0.4';
-
 let currentRecords = [];
 let STAGES = [];
 
