@@ -149,6 +149,8 @@
     min-height: 10px;
     display: flex;
     align-items: center;
+    justify-content: flex-start !important;
+    text-align: left !important;
     padding: 0 4px;
     flex-wrap: wrap; /* Permite que o header e a tabela da RefList quebrem a linha */
 }
