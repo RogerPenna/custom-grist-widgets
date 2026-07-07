@@ -31,18 +31,20 @@ function callIframe(method, args) {
     });
 }
 
-// REST-less mock TableLens and DataWriter that forward calls to the nested iframe
-const mockTableLens = {
-    getTableSchema: async (tableId) => callIframe('getTableSchema', [tableId]),
-    fetchRecordById: async (tableId, recordId) => callIframe('fetchRecordById', [tableId, recordId]),
-    fetchConfig: async (configId) => callIframe('fetchConfig', [configId])
-};
+// Javascript Proxy mocks that automatically forward any method calls to the nested iframe
+const mockTableLens = new Proxy({}, {
+    get: (target, prop) => {
+        return async (...args) => callIframe(prop, args);
+    }
+});
 
-const mockDataWriter = {
-    updateRecord: async (tableId, recordId, changes) => callIframe('updateRecord', [tableId, recordId, changes]),
-    addRecord: async (tableId, changes) => callIframe('addRecord', [tableId, changes]),
-    deleteRecords: async (tableId, recordIds) => callIframe('deleteRecords', [tableId, recordIds])
-};
+const mockDataWriter = new Proxy({}, {
+    get: (target, prop) => {
+        return async (...args) => callIframe(prop, args);
+    }
+});
+
+const messageSources = new Map();
 
 // Proxy messages to nested iframes and listen to data updates
 window.addEventListener('message', (event) => {
@@ -68,14 +70,31 @@ window.addEventListener('message', (event) => {
         event.data.action === 'table-lens-request' ||
         event.data.action === 'table-lens-response') return;
 
-    // Relay other Grist Plugin messages
+    // Relay Grist Plugin messages correctly using request tracking to prevent double handshake conflict
     if (event.source === window.parent) {
-        document.querySelectorAll('iframe').forEach(iframe => {
-            if (iframe.contentWindow) {
-                iframe.contentWindow.postMessage(event.data, '*');
-            }
-        });
+        // This is a reply from Grist
+        const rc = event.data.rc;
+        const targetIframe = messageSources.get(rc);
+        if (targetIframe && targetIframe.contentWindow) {
+            targetIframe.contentWindow.postMessage(event.data, '*');
+        } else {
+            // Fallback: send to all iframes if rc is not found
+            document.querySelectorAll('iframe').forEach(iframe => {
+                if (iframe.contentWindow) {
+                    iframe.contentWindow.postMessage(event.data, '*');
+                }
+            });
+        }
     } else {
+        // This is a request from a nested iframe to Grist
+        const rc = event.data.rc;
+        if (rc !== undefined) {
+            const iframe = Array.from(document.querySelectorAll('iframe'))
+                .find(f => f.contentWindow === event.source);
+            if (iframe) {
+                messageSources.set(rc, iframe);
+            }
+        }
         window.parent.postMessage(event.data, '*');
     }
 });

@@ -568,6 +568,32 @@ document.addEventListener('DOMContentLoaded', async () => {
             } catch (err) {
                 console.error("[UniversalViewer] Error updating stage from parent message:", err);
             }
+        } else if (event.data.action === 'reload-records') {
+            if (isInitialized) await initializeAndUpdate();
+        } else if (event.data.action === 'table-lens-request') {
+            const { method, args, transactionId } = event.data;
+            try {
+                let result;
+                if (tableLens && typeof tableLens[method] === 'function') {
+                    result = await tableLens[method](...args);
+                } else if (dataWriter && typeof dataWriter[method] === 'function') {
+                    result = await dataWriter[method](...args);
+                } else {
+                    throw new Error(`Method ${method} not found on tableLens or dataWriter`);
+                }
+                
+                event.source.postMessage({
+                    action: 'table-lens-response',
+                    transactionId,
+                    result
+                }, '*');
+            } catch (err) {
+                event.source.postMessage({
+                    action: 'table-lens-response',
+                    transactionId,
+                    error: err.message
+                }, '*');
+            }
         }
     });
 });
