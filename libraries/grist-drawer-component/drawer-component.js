@@ -198,6 +198,7 @@ async function _renderDrawerContent() {
             // Atualiza cor dos ícones de ação
             drawerPanel.querySelectorAll('.drawer-header-buttons svg').forEach(svg => {
                 svg.style.stroke = textCol;
+                svg.style.color = textCol;
             });
 
             // Título Dinâmico
