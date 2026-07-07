@@ -9,6 +9,7 @@ export const GristTableLens = function(gristInstance) {
     const _metaState = {
         tables: null,
         columnsAndRules: null,
+        viewsSections: null,
         tableSchemasCache: {},
         configCache: {},
         accessToken: null,
@@ -41,7 +42,7 @@ export const GristTableLens = function(gristInstance) {
     };
 
     async function _loadGristMeta() {
-        if (_metaState.tables && _metaState.columnsAndRules) return;
+        if (_metaState.tables && _metaState.columnsAndRules && _metaState.viewsSections) return;
         const p = [];
         try {
             if (!_metaState.tables) {
@@ -50,14 +51,25 @@ export const GristTableLens = function(gristInstance) {
             if (!_metaState.columnsAndRules) {
                 p.push(_grist.docApi.fetchTable('_grist_Tables_column').then(d => _metaState.columnsAndRules = d));
             }
+            if (!_metaState.viewsSections) {
+                p.push(
+                    _grist.docApi.fetchTable('_grist_Views_section')
+                        .then(d => _metaState.viewsSections = d)
+                        .catch(err => {
+                            console.warn("GTL: Falha ao carregar _grist_Views_section. Prosseguindo sem formatação condicional de linha.", err);
+                            _metaState.viewsSections = { id: [], tableRef: [], rules: [], options: [] };
+                        })
+                );
+            }
             await Promise.all(p);
-            if (!_metaState.tables || !_metaState.columnsAndRules) {
-                throw new Error("_grist_Tables ou _grist_Tables_column não puderam ser carregados.");
+            if (!_metaState.tables || !_metaState.columnsAndRules || !_metaState.viewsSections) {
+                throw new Error("_grist_Tables, _grist_Tables_column ou _grist_Views_section não puderam ser carregados.");
             }
         } catch (error) {
             console.error("GTL: Falha _loadGristMeta.", error);
             _metaState.tables = null;
             _metaState.columnsAndRules = null;
+            _metaState.viewsSections = null;
             throw error;
         }
     }
@@ -597,5 +609,71 @@ export const GristTableLens = function(gristInstance) {
             ? recordIds.map(id => typeof id === 'string' && /^\d+$/.test(id) ? parseInt(id, 10) : id)
             : recordIds;
         return _grist.docApi.applyUserActions([['BulkRemoveRecord', tableId, cleanIds]]);
+    };
+
+    this.getRowRules = async function(tableId) {
+        const resolvedId = await this.resolveTableId(tableId);
+        await _loadGristMeta();
+        const numId = _getNumericTableId(resolvedId);
+        if (!numId) return [];
+        
+        const tableEntries = _metaState.columnsAndRules.id.map((id, index) => {
+            if (String(_metaState.columnsAndRules.parentId[index]) === String(numId)) {
+                return {
+                    id: _metaState.columnsAndRules.id[index],
+                    colId: _metaState.columnsAndRules.colId[index],
+                    type: _metaState.columnsAndRules.type[index],
+                    widgetOptions: _metaState.columnsAndRules.widgetOptions[index],
+                    rules: _metaState.columnsAndRules.rules[index],
+                    formula: _metaState.columnsAndRules.formula[index]
+                };
+            }
+            return null;
+        }).filter(Boolean);
+
+        const rulesDefinitionsFromMeta = new Map();
+        tableEntries.forEach(entry => {
+            if (entry.colId?.includes("ConditionalRule") && entry.formula) {
+                let ruleStyle = {};
+                if (entry.widgetOptions) { 
+                    try { 
+                        ruleStyle = JSON.parse(entry.widgetOptions);
+                    } catch (e) {} 
+                }
+                rulesDefinitionsFromMeta.set(String(entry.id), { id: String(entry.id), helperColumnId: String(entry.colId), conditionFormula: entry.formula, style: ruleStyle });
+            }
+        });
+
+        if (_metaState.viewsSections) {
+            const vs = _metaState.viewsSections;
+            for (let i = 0; i < vs.id.length; i++) {
+                if (String(vs.tableRef[i]) === String(numId)) {
+                    const ruleIdList = vs.rules[i];
+                    if (Array.isArray(ruleIdList) && ruleIdList[0] === 'L') {
+                        let rulesOptions = [];
+                        if (vs.options[i]) {
+                            try {
+                                const opts = JSON.parse(vs.options[i]);
+                                rulesOptions = opts.rulesOptions || [];
+                            } catch (e) {}
+                        }
+                        ruleIdList.slice(1).forEach((rId, index) => {
+                            const rd = rulesDefinitionsFromMeta.get(String(rId));
+                            if (rd) {
+                                rd.style = rulesOptions[index] || {};
+                            }
+                        });
+                    }
+                }
+            }
+        }
+
+        const rowRules = [];
+        rulesDefinitionsFromMeta.forEach(rd => {
+            if (rd.helperColumnId.includes("RowConditionalRule")) {
+                rowRules.push(rd);
+            }
+        });
+        return rowRules;
     };
 };

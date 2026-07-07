@@ -1,6 +1,6 @@
 // libraries/grist-table-renderer/TableRenderer.js
-import { renderField } from '../grist-field-renderer/grist-field-renderer.js?v=1.0.4';
-import { publish } from '../grist-event-bus/grist-event-bus.js?v=1.0.4';
+import { renderField } from '../grist-field-renderer/grist-field-renderer.js?v=1.0.5';
+import { publish } from '../grist-event-bus/grist-event-bus.js?v=1.0.5';
 
 export const TableRenderer = (() => {
 

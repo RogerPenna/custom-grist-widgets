@@ -1,6 +1,6 @@
 // libraries/grist-table-renderer/TableRenderer.js
-import { renderField } from '../grist-field-renderer/grist-field-renderer.js?v=1.0.4';
-import { publish } from '../grist-event-bus/grist-event-bus.js?v=1.0.4';
+import { renderField } from '../grist-field-renderer/grist-field-renderer.js?v=1.0.5';
+import { publish } from '../grist-event-bus/grist-event-bus.js?v=1.0.5';
 
 export const TableRenderer = (() => {
 
@@ -30,6 +30,7 @@ export const TableRenderer = (() => {
 
         const tableId = mapping.tableId || config.tableId;
         const schema = await tableLens.getTableSchema(tableId);
+        const rowRules = typeof tableLens.getRowRules === 'function' ? await tableLens.getRowRules(tableId) : [];
         const useSaveButton = actions.useSaveButton || false;
         const customButtons = actions.customButtons || [];
         
@@ -901,6 +902,30 @@ export const TableRenderer = (() => {
             paginationSizeSelector: paginationSizeSelector,
             movableColumns: true,
             resizableRows: true,
+            rowFormatter: (row) => {
+                const data = row.getData();
+                rowRules.forEach(rule => {
+                    if (data[rule.helperColumnId] === true) {
+                        const rowEl = row.getElement();
+                        const style = rule.style || {};
+                        if (style.fillColor && style.fillColor !== 'transparent') {
+                            rowEl.style.setProperty('background-color', style.fillColor, 'important');
+                        }
+                        if (style.textColor && style.textColor !== 'transparent') {
+                            rowEl.style.setProperty('color', style.textColor, 'important');
+                            rowEl.querySelectorAll('.tabulator-cell').forEach(cell => {
+                                cell.style.setProperty('color', style.textColor, 'important');
+                            });
+                        }
+                        if (style.fontBold) {
+                            rowEl.style.setProperty('font-weight', 'bold', 'important');
+                        }
+                        if (style.fontItalic) {
+                            rowEl.style.setProperty('font-style', 'italic', 'important');
+                        }
+                    }
+                });
+            },
             columnMoved: (column, columns) => {
                 if (onColumnOrderChanged) {
                     const newOrder = columns.map(c => c.getField()).filter(Boolean);
