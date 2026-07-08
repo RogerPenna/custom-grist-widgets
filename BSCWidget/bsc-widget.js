@@ -1,11 +1,11 @@
 // BSCWidget/bsc-widget.js - Restaurado e funcional usando BSCRenderer
-import { GristTableLens } from '../libraries/grist-table-lens/grist-table-lens.js?v=1.0.5';
-import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js?v=1.0.5';
-import { subscribe } from '../libraries/grist-event-bus/grist-event-bus.js?v=1.0.5';
-import { open as openConfigManager } from '../libraries/grist-config-manager/ConfigManagerComponent.js?v=1.0.5';
-import { RelationshipLines } from '../libraries/grist-relationship-lines/RelationshipLines.js?v=1.0.5';
-import { GristLauncherUtils } from '../libraries/grist-launcher-utils.js?v=1.0.5';
-import { BSCRenderer } from '../libraries/grist-bsc-renderer/BSCRenderer.js?v=1.0.5';
+import { GristTableLens } from '../libraries/grist-table-lens/grist-table-lens.js?v=1.0.8';
+import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js?v=1.0.8';
+import { subscribe } from '../libraries/grist-event-bus/grist-event-bus.js?v=1.0.8';
+import { open as openConfigManager } from '../libraries/grist-config-manager/ConfigManagerComponent.js?v=1.0.8';
+import { RelationshipLines } from '../libraries/grist-relationship-lines/RelationshipLines.js?v=1.0.8';
+import { GristLauncherUtils } from '../libraries/grist-launcher-utils.js?v=1.0.8';
+import { BSCRenderer } from '../libraries/grist-bsc-renderer/BSCRenderer.js?v=1.0.8';
 
 document.addEventListener('DOMContentLoaded', async () => {
     console.log("[BSC Widget] DOMContentLoaded - Inicializando...");

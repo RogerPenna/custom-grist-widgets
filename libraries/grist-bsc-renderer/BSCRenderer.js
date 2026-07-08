@@ -1,6 +1,6 @@
 // libraries/grist-bsc-renderer/BSCRenderer.js
 import { CardSystem } from '../grist-card-system/CardSystem.js';
-import { RelationshipLines } from '../grist-relationship-lines/RelationshipLines.js?v=1.0.5';
+import { RelationshipLines } from '../grist-relationship-lines/RelationshipLines.js?v=1.0.8';
 
 export const BSCRenderer = (() => {
 

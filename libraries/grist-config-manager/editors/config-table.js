@@ -849,6 +849,7 @@ export const TableConfigEditor = (() => {
                     <option value="navigateToGristPage" ${btn.actionType==='navigateToGristPage'?'selected':''}>Página Grist</option>
                     <option value="openUrlFromColumn" ${btn.actionType==='openUrlFromColumn'?'selected':''}>Abrir URL</option>
                     <option value="updateRecord" ${btn.actionType==='updateRecord'?'selected':''}>Atualizar Campo</option>
+                    <option value="editRecord" ${btn.actionType==='editRecord'?'selected':''}>Abrir Gaveta (Drawer)</option>
                 </select></div>
             </div>
             <div id="btn-action-panel"></div>
@@ -899,6 +900,17 @@ export const TableConfigEditor = (() => {
                     <div style="margin-bottom:8px;">
                         <label style="display:block; font-size:11px;">Novo Valor</label>
                         <input type="text" class="act-prop" data-prop="updateValue" value="${btn.updateValue||''}" style="width:100%; padding:4px; font-size:11px;">
+                    </div>
+                `;
+            } else if (btn.actionType === 'editRecord') {
+                const drawerConfigs = _allConfigs.filter(c => c.componentType === 'Drawer');
+                actionPanel.innerHTML = `
+                    <div style="margin-bottom:8px;">
+                        <label style="display:block; font-size:11px;">Configuração da Gaveta (Drawer)</label>
+                        <select class="act-prop" data-prop="drawerConfigId" style="width:100%; padding:4px;">
+                            <option value="">-- Padrão do Widget --</option>
+                            ${drawerConfigs.map(c => `<option value="${c.configId}" ${btn.drawerConfigId===c.configId?'selected':''}>${c.widgetTitle} (${c.configId})</option>`).join('')}
+                        </select>
                     </div>
                 `;
             } else { actionPanel.innerHTML = ''; }

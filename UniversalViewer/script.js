@@ -1,13 +1,13 @@
 // UniversalViewer/script.js
 
-import { GristTableLens } from '../libraries/grist-table-lens/grist-table-lens.js?v=1.0.5';
-import { HeadlessTableLens } from '../libraries/headless-table-lens.js?v=1.0.5';
-import { GristRestAdapter } from '../libraries/headless-rest-adapter.js?v=1.0.5';
-import { GristLauncherUtils } from '../libraries/grist-launcher-utils.js?v=1.0.5';
-import { subscribe } from '../libraries/grist-event-bus/grist-event-bus.js?v=1.0.5';
-import { open as openConfigManager } from '../libraries/grist-config-manager/ConfigManagerComponent.js?v=1.0.5';
-import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js?v=1.0.5';
-import { GristFilterBar } from '../libraries/grist-filter-bar/grist-filter-bar.js?v=1.0.5';
+import { GristTableLens } from '../libraries/grist-table-lens/grist-table-lens.js?v=1.0.8';
+import { HeadlessTableLens } from '../libraries/headless-table-lens.js?v=1.0.8';
+import { GristRestAdapter } from '../libraries/headless-rest-adapter.js?v=1.0.8';
+import { GristLauncherUtils } from '../libraries/grist-launcher-utils.js?v=1.0.8';
+import { subscribe } from '../libraries/grist-event-bus/grist-event-bus.js?v=1.0.8';
+import { open as openConfigManager } from '../libraries/grist-config-manager/ConfigManagerComponent.js?v=1.0.8';
+import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js?v=1.0.8';
+import { GristFilterBar } from '../libraries/grist-filter-bar/grist-filter-bar.js?v=1.0.8';
 
 document.addEventListener('DOMContentLoaded', async () => {
     const rendererContainer = document.getElementById('renderer-container');
@@ -212,7 +212,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.log(`[UniversalViewer] Identificado tipo: "${type}" para a config: ${currentConfigId}`);
 
             if (type === 'cardsystem') {
-                const { CardSystem } = await import('../libraries/grist-card-system/CardSystem.js?v=1.0.5');
+                const { CardSystem } = await import('../libraries/grist-card-system/CardSystem.js?v=1.0.8');
                 let [records, schema] = await Promise.all([
                     tableLens.fetchTableRecords(tableId),
                     tableLens.getTableSchema(tableId)
@@ -235,7 +235,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 rendererContainer.appendChild(wrapper);
             } 
             else if (type === 'table') {
-                const { TableRenderer } = await import('../libraries/grist-table-renderer/TableRenderer.js?v=1.0.5');
+                const { TableRenderer } = await import('../libraries/grist-table-renderer/TableRenderer.js?v=1.0.8');
                 let [records, schema] = await Promise.all([
                     tableLens.fetchTableRecords(tableId),
                     tableLens.getTableSchema(tableId)
@@ -312,7 +312,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             
                             currentMapping.columns = updatedColumns;
                             
-                            const { GristDataWriter } = await import('../libraries/grist-data-writer.js?v=1.0.5');
+                            const { GristDataWriter } = await import('../libraries/grist-data-writer.js?v=1.0.8');
                             const dataWriter = new GristDataWriter(window.grist);
                             await dataWriter.updateRecord(configTableName, configRecord.id, {
                                 mappingJson: JSON.stringify(currentMapping)
@@ -327,7 +327,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
             }
             else if (type === 'bsc') {
-                const { BSCRenderer } = await import('../libraries/grist-bsc-renderer/BSCRenderer.js?v=1.0.5');
+                const { BSCRenderer } = await import('../libraries/grist-bsc-renderer/BSCRenderer.js?v=1.0.8');
                 const mapping = currentConfig.mapping || currentConfig || {};
                 const tableNames = {
                     modelsTable: mapping.modelsTable || 'Modelos',
@@ -364,7 +364,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
             }
             else if (type === 'indicators') {
-                const { IndicatorsRenderer } = await import('../libraries/grist-indicators-renderer/IndicatorsRenderer.js?v=1.0.5');
+                const { IndicatorsRenderer } = await import('../libraries/grist-indicators-renderer/IndicatorsRenderer.js?v=1.0.8');
                 const [records, configs] = await Promise.all([
                     tableLens.fetchTableRecords(tableId),
                     tableLens.fetchTableRecords('Grf_config')
@@ -559,7 +559,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else if (event.data.action === 'update-instrument-stage') {
             const { recordId, updates, occurrenceData } = event.data;
             try {
-                const { GristDataWriter } = await import('../libraries/grist-data-writer.js?v=1.0.5');
+                const { GristDataWriter } = await import('../libraries/grist-data-writer.js?v=1.0.8');
                 const dataWriter = new GristDataWriter(window.grist);
                 await dataWriter.updateRecord('INSTRUMENTS', recordId, updates);
                 if (occurrenceData) {

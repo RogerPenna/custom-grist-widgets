@@ -1,10 +1,211 @@
 // libraries/grist-table-renderer/TableRenderer.js
-import { renderField } from '../grist-field-renderer/grist-field-renderer.js?v=1.0.5';
-import { publish } from '../grist-event-bus/grist-event-bus.js?v=1.0.5';
+import { renderField } from '../grist-field-renderer/grist-field-renderer.js?v=1.0.8';
+import { publish } from '../grist-event-bus/grist-event-bus.js?v=1.0.8';
 
 export const TableRenderer = (() => {
 
     let tabulatorTable = null;
+
+    function openCustomFilterPopup(cell, success, cancel) {
+        const existing = document.querySelector(".grf-custom-filter-popup");
+        if (existing) existing.remove();
+        
+        const field = cell.getField();
+        const table = cell.getTable();
+        const rect = cell.getElement().getBoundingClientRect();
+        
+        const popup = document.createElement("div");
+        popup.className = "grf-custom-filter-popup";
+        popup.style.cssText = `
+            position: fixed;
+            top: ${rect.bottom + window.scrollY + 5}px;
+            left: ${Math.max(10, rect.left + window.scrollX - 50)}px;
+            width: 260px;
+            background: #fff;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            padding: 12px;
+            z-index: 1000000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        `;
+        
+        const searchInput = document.createElement("input");
+        searchInput.type = "text";
+        searchInput.placeholder = "🔍 Pesquisar...";
+        searchInput.style.cssText = "width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 8px; font-size: 12px; box-sizing: border-box;";
+        popup.appendChild(searchInput);
+        
+        const selectAllContainer = document.createElement("label");
+        selectAllContainer.style.cssText = "display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: bold; cursor: pointer; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px;";
+        const selectAllCheckbox = document.createElement("input");
+        selectAllCheckbox.type = "checkbox";
+        selectAllContainer.appendChild(selectAllCheckbox);
+        selectAllContainer.appendChild(document.createTextNode("Selecionar todos"));
+        popup.appendChild(selectAllContainer);
+        
+        const itemsList = document.createElement("div");
+        itemsList.style.cssText = "max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 2px 0;";
+        popup.appendChild(itemsList);
+        
+        const uniqueItems = [];
+        const seenValues = new Set();
+        
+        const currentFilters = table.getFilters();
+        const activeFilter = currentFilters.find(f => f.field === field);
+        const selectedValues = new Set(Array.isArray(activeFilter?.value) ? activeFilter.value : (activeFilter?.value ? [activeFilter.value] : []));
+        
+        table.getRows().forEach(row => {
+            const data = row.getData();
+            const rawVal = data[field];
+            if (rawVal === undefined || rawVal === null) return;
+            
+            const strVal = String(rawVal);
+            if (!seenValues.has(strVal)) {
+                seenValues.add(strVal);
+                
+                const tabCell = row.getCell(field);
+                let label = rawVal;
+                if (tabCell) {
+                    label = tabCell.getElement().textContent || tabCell.getElement().innerText || rawVal;
+                    if (typeof label === 'string') {
+                        label = label.trim();
+                        if ((!label || label === "(vazio)") && data["z_disp_" + field]) {
+                            label = data["z_disp_" + field];
+                        }
+                    }
+                }
+                
+                uniqueItems.push({ value: rawVal, label: label || "(vazio)" });
+            }
+        });
+        
+        function renderItems(filterText = "") {
+            itemsList.innerHTML = "";
+            const lowerFilter = filterText.toLowerCase();
+            
+            const filtered = uniqueItems.filter(item => 
+                String(item.label).toLowerCase().includes(lowerFilter)
+            );
+            
+            filtered.forEach(item => {
+                const labelContainer = document.createElement("label");
+                labelContainer.style.cssText = "display: flex; align-items: center; gap: 8px; font-size: 12px; cursor: pointer; padding: 2px 4px; border-radius: 4px;";
+                labelContainer.onmouseover = () => labelContainer.style.background = "#f1f5f9";
+                labelContainer.onmouseout = () => labelContainer.style.background = "transparent";
+                
+                const checkbox = document.createElement("input");
+                checkbox.type = "checkbox";
+                checkbox.value = item.value;
+                checkbox.checked = selectedValues.has(item.value);
+                
+                checkbox.onchange = () => {
+                    if (checkbox.checked) {
+                        selectedValues.add(item.value);
+                    } else {
+                        selectedValues.delete(item.value);
+                        selectAllCheckbox.checked = false;
+                    }
+                };
+                
+                labelContainer.appendChild(checkbox);
+                labelContainer.appendChild(document.createTextNode(item.label));
+                itemsList.appendChild(labelContainer);
+            });
+        }
+        
+        renderItems();
+        
+        selectAllCheckbox.checked = selectedValues.size === uniqueItems.length && uniqueItems.length > 0;
+        selectAllCheckbox.onchange = () => {
+            if (selectAllCheckbox.checked) {
+                uniqueItems.forEach(item => selectedValues.add(item.value));
+            } else {
+                selectedValues.clear();
+            }
+            renderItems(searchInput.value);
+        };
+        
+        searchInput.oninput = () => {
+            renderItems(searchInput.value);
+        };
+        
+        const btnContainer = document.createElement("div");
+        btnContainer.style.cssText = "display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid #f1f5f9; padding-top: 8px; margin-top: 4px;";
+        
+        const cancelBtn = document.createElement("button");
+        cancelBtn.innerText = "CANCELAR";
+        cancelBtn.style.cssText = "padding: 6px 12px; border-radius: 4px; border: 1px solid #cbd5e1; background: #fff; font-size: 11px; font-weight: bold; cursor: pointer; color: #64748b;";
+        cancelBtn.onclick = () => {
+            popup.remove();
+            cancel();
+        };
+        
+        const okBtn = document.createElement("button");
+        okBtn.innerText = "OK";
+        okBtn.style.cssText = "padding: 6px 12px; border-radius: 4px; border: none; background: #3b82f6; color: #fff; font-size: 11px; font-weight: bold; cursor: pointer;";
+        okBtn.onclick = () => {
+            popup.remove();
+            const valuesArray = Array.from(selectedValues);
+            success(valuesArray);
+        };
+        
+        btnContainer.appendChild(cancelBtn);
+        btnContainer.appendChild(okBtn);
+        popup.appendChild(btnContainer);
+        
+        document.body.appendChild(popup);
+        
+        function clickOutside(e) {
+            if (!popup.contains(e.target) && !cell.getElement().contains(e.target)) {
+                popup.remove();
+                document.removeEventListener("click", clickOutside);
+            }
+        }
+        
+        setTimeout(() => {
+            document.addEventListener("click", clickOutside);
+        }, 100);
+    }
+
+    const customFilterEditor = (cell, onRendered, success, cancel, editorParams) => {
+        const container = document.createElement("div");
+        container.style.cssText = "display: flex; align-items: center; justify-content: space-between; width: 100%; position: relative; cursor: pointer; min-height: 24px;";
+        
+        const input = document.createElement("input");
+        input.type = "text";
+        input.placeholder = "Filtrar...";
+        input.readOnly = true;
+        input.style.cssText = "width: calc(100% - 20px); border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px 6px; font-size: 11px; cursor: pointer; background: #fff;";
+        
+        const icon = document.createElement("span");
+        icon.innerHTML = "🔍";
+        icon.style.cssText = "font-size: 11px; margin-left: 2px; color: #64748b;";
+        
+        container.appendChild(input);
+        container.appendChild(icon);
+        
+        container.onclick = (e) => {
+            e.stopPropagation();
+            openCustomFilterPopup(cell, success, cancel);
+        };
+        
+        onRendered(() => {
+            const table = cell.getTable();
+            const field = cell.getField();
+            const currentFilters = table.getFilters();
+            const activeFilter = currentFilters.find(f => f.field === field);
+            if (activeFilter && Array.isArray(activeFilter.value) && activeFilter.value.length > 0) {
+                input.value = `Selecionados (${activeFilter.value.length})`;
+            } else {
+                input.value = "";
+            }
+        });
+        
+        return container;
+    };
 
     /**
      * Renders a Tabulator table inside the container using the provided data and configuration.
@@ -595,11 +796,31 @@ export const TableRenderer = (() => {
 
             const colWidth = (colConfig.width === 'auto' || colConfig.width === '') ? undefined : colConfig.width;
 
+            let headerFilter = undefined;
+            let headerFilterParams = undefined;
+            let headerFilterFunc = undefined;
+            if (styling.headerFilter !== false) {
+                headerFilter = customFilterEditor;
+                headerFilterFunc = (headerValue, rowValue) => {
+                    if (!headerValue || (Array.isArray(headerValue) && headerValue.length === 0) || headerValue === "") {
+                        return true;
+                    }
+                    const selected = Array.isArray(headerValue) ? headerValue : [headerValue];
+                    const cleanRowValue = (rowValue && typeof rowValue === 'object' && rowValue.label) ? rowValue.label : rowValue;
+                    return selected.some(val => {
+                        const cleanVal = (val && typeof val === 'object' && val.label) ? val.label : val;
+                        return String(cleanRowValue).toLowerCase() === String(cleanVal).toLowerCase();
+                    });
+                };
+            }
+
             return {
                 title: colConfig.title || gristCol.label || gristCol.colId,
                 field: gristCol.colId,
                 hozAlign: colConfig.align || 'left',
-                headerFilter: styling.headerFilter !== false,
+                headerFilter: headerFilter,
+                headerFilterParams: headerFilterParams,
+                headerFilterFunc: headerFilterFunc,
                 width: colWidth,
                 bottomCalc: colConfig.bottomCalc || undefined,
                 editable: isEditable,
@@ -895,6 +1116,7 @@ export const TableRenderer = (() => {
             layout: styling.layout || "fitColumns",
             responsiveLayout: styling.responsiveLayout || false,
             resizableColumns: styling.resizableColumns !== false,
+            popupContainer: "body",
             columns: columns,
             columnCalcs: hasAnyBottomCalc ? "bottom" : false,
             pagination: paginationEnabled,
