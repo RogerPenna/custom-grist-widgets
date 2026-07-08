@@ -1,10 +1,10 @@
 // widgets/TimelineViewer.js
-import { GristTableLens } from '../libraries/grist-table-lens/grist-table-lens.js?v=1.0.9';
-import { open as openConfigManager } from '../libraries/grist-config-manager/ConfigManagerComponent.js?v=1.0.9';
+import { GristTableLens } from '../libraries/grist-table-lens/grist-table-lens.js?v=1.1.0';
+import { open as openConfigManager } from '../libraries/grist-config-manager/ConfigManagerComponent.js?v=1.1.0';
 import { TimelineRenderer } from '../libraries/grist-timeline-renderer/TimelineRenderer.js';
-import { subscribe } from '../libraries/grist-event-bus/grist-event-bus.js?v=1.0.9';
-import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js?v=1.0.9';
-import { GristLauncherUtils } from '../libraries/grist-launcher-utils.js?v=1.0.9';
+import { subscribe } from '../libraries/grist-event-bus/grist-event-bus.js?v=1.1.0';
+import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js?v=1.1.0';
+import { GristLauncherUtils } from '../libraries/grist-launcher-utils.js?v=1.1.0';
 
 document.addEventListener('DOMContentLoaded', async () => {
     console.log("[TimelineViewer] DOMContentLoaded - Inicializando...");

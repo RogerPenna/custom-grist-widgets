@@ -927,7 +927,20 @@ export const TableConfigEditor = (() => {
         };
         
         updatePanel();
-        container.querySelector('#btn-text').oninput = e => { btn.text = e.target.value; renderActionsLayout(); };
+        container.querySelector('#btn-text').oninput = e => {
+            btn.text = e.target.value;
+            const listContent = _mainContainer.querySelector('#btn-list-content');
+            if (listContent) {
+                const activeItem = listContent.children[_activeButtonIdx];
+                if (activeItem) {
+                    const labelSpan = activeItem.querySelector('span');
+                    if (labelSpan) {
+                        labelSpan.textContent = btn.text || 'Botão ' + (_activeButtonIdx + 1);
+                    }
+                }
+            }
+            updateDebugJson();
+        };
         container.querySelector('#btn-color').onchange = e => { btn.color = e.target.value; updateDebugJson(); };
         container.querySelector('.icon-picker-display').onclick = () => openIconPicker(null, container.querySelector('.current-icon'), btn);
         container.querySelector('#btn-action').onchange = e => { btn.actionType = e.target.value; updatePanel(); updateDebugJson(); };

@@ -1,6 +1,6 @@
-import { GristTableLens } from '../grist-table-lens/grist-table-lens.js?v=1.0.9';
-import { GristDataWriter } from '../grist-data-writer.js?v=1.0.9';
-import { publish } from '../grist-event-bus/grist-event-bus.js?v=1.0.9';
+import { GristTableLens } from '../grist-table-lens/grist-table-lens.js?v=1.1.0';
+import { GristDataWriter } from '../grist-data-writer.js?v=1.1.0';
+import { publish } from '../grist-event-bus/grist-event-bus.js?v=1.1.0';
 import { GristRestApi } from '../grist-rest-api.js';
 
 // Import editor modules
