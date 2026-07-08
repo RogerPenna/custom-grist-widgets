@@ -849,7 +849,9 @@ export const TableConfigEditor = (() => {
                     <option value="navigateToGristPage" ${btn.actionType==='navigateToGristPage'?'selected':''}>Página Grist</option>
                     <option value="openUrlFromColumn" ${btn.actionType==='openUrlFromColumn'?'selected':''}>Abrir URL</option>
                     <option value="updateRecord" ${btn.actionType==='updateRecord'?'selected':''}>Atualizar Campo</option>
-                    <option value="editRecord" ${btn.actionType==='editRecord'?'selected':''}>Abrir Gaveta (Drawer)</option>
+                    <option value="viewRecord" ${btn.actionType==='viewRecord'?'selected':''}>Abrir Gaveta (Visualizar)</option>
+                    <option value="editRecord" ${btn.actionType==='editRecord'?'selected':''}>Abrir Gaveta (Editar)</option>
+                    <option value="deleteRecord" ${btn.actionType==='deleteRecord'?'selected':''}>Excluir Registro</option>
                 </select></div>
             </div>
             <div id="btn-action-panel"></div>
@@ -902,7 +904,7 @@ export const TableConfigEditor = (() => {
                         <input type="text" class="act-prop" data-prop="updateValue" value="${btn.updateValue||''}" style="width:100%; padding:4px; font-size:11px;">
                     </div>
                 `;
-            } else if (btn.actionType === 'editRecord') {
+            } else if (btn.actionType === 'editRecord' || btn.actionType === 'viewRecord') {
                 const drawerConfigs = _allConfigs.filter(c => c.componentType === 'Drawer');
                 actionPanel.innerHTML = `
                     <div style="margin-bottom:8px;">
@@ -911,6 +913,13 @@ export const TableConfigEditor = (() => {
                             <option value="">-- Padrão do Widget --</option>
                             ${drawerConfigs.map(c => `<option value="${c.configId}" ${btn.drawerConfigId===c.configId?'selected':''}>${c.widgetTitle} (${c.configId})</option>`).join('')}
                         </select>
+                    </div>
+                `;
+            } else if (btn.actionType === 'deleteRecord') {
+                actionPanel.innerHTML = `
+                    <div style="margin-bottom:8px;">
+                        <label style="display:block; font-size:11px;">Mensagem de Confirmação</label>
+                        <input type="text" class="act-prop" data-prop="confirmationMessage" value="${btn.confirmationMessage||'Tem certeza que deseja excluir este registro?'}" style="width:100%; padding:4px; font-size:11px;">
                     </div>
                 `;
             } else { actionPanel.innerHTML = ''; }

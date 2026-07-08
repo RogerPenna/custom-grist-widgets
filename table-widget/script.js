@@ -1,11 +1,11 @@
 // table-widget/script.js - Refatorado para usar TableRenderer
-import '../libraries/grist-config-manager/editors/table-manifest.js?v=1.0.8';
-import { GristTableLens } from '../libraries/grist-table-lens/grist-table-lens.js?v=1.0.8';
-import { open as openConfigManager } from '../libraries/grist-config-manager/ConfigManagerComponent.js?v=1.0.8';
-import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js?v=1.0.8';
-import { GristLauncherUtils } from '../libraries/grist-launcher-utils.js?v=1.0.8';
-import { TableRenderer } from '../libraries/grist-table-renderer/TableRenderer.js?v=1.0.8';
-import { subscribe } from '../libraries/grist-event-bus/grist-event-bus.js?v=1.0.8';
+import '../libraries/grist-config-manager/editors/table-manifest.js?v=1.0.9';
+import { GristTableLens } from '../libraries/grist-table-lens/grist-table-lens.js?v=1.0.9';
+import { open as openConfigManager } from '../libraries/grist-config-manager/ConfigManagerComponent.js?v=1.0.9';
+import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js?v=1.0.9';
+import { GristLauncherUtils } from '../libraries/grist-launcher-utils.js?v=1.0.9';
+import { TableRenderer } from '../libraries/grist-table-renderer/TableRenderer.js?v=1.0.9';
+import { subscribe } from '../libraries/grist-event-bus/grist-event-bus.js?v=1.0.9';
 
 document.addEventListener('DOMContentLoaded', async function () {
     let currentConfig = null;
