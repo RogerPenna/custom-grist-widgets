@@ -1,4 +1,4 @@
-import { widgetRegistry } from '../../libraries/widget-registry.js';
+import { widgetRegistry } from '../../widget-registry.js';
 
 widgetRegistry.register({
     componentType: 'Style',

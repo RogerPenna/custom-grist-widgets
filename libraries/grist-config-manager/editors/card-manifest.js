@@ -1,4 +1,4 @@
-import { widgetRegistry } from '../../libraries/widget-registry.js';
+import { widgetRegistry } from '../../widget-registry.js';
 import './config-cards.js'; // Ensure CardConfigEditor is loaded
 
 widgetRegistry.register({

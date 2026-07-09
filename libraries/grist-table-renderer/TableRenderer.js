@@ -1,6 +1,6 @@
 // libraries/grist-table-renderer/TableRenderer.js
-import { renderField } from '../grist-field-renderer/grist-field-renderer.js?v=1.1.0';
-import { publish } from '../grist-event-bus/grist-event-bus.js?v=1.1.0';
+import { renderField } from '../grist-field-renderer/grist-field-renderer.js?v=1.3.19';
+import { publish } from '../grist-event-bus/grist-event-bus.js?v=1.3.19';
 
 export const TableRenderer = (() => {
 
@@ -193,15 +193,19 @@ export const TableRenderer = (() => {
         };
         
         onRendered(() => {
-            const table = cell.getTable();
-            const field = cell.getField();
-            const currentFilters = table.getFilters();
-            const activeFilter = currentFilters.find(f => f.field === field);
-            if (activeFilter && Array.isArray(activeFilter.value) && activeFilter.value.length > 0) {
-                input.value = `Selecionados (${activeFilter.value.length})`;
-            } else {
-                input.value = "";
-            }
+            setTimeout(() => {
+                try {
+                    const table = cell.getTable();
+                    const field = cell.getField();
+                    const currentFilters = table.getFilters();
+                    const activeFilter = currentFilters.find(f => f.field === field);
+                    if (activeFilter && Array.isArray(activeFilter.value) && activeFilter.value.length > 0) {
+                        input.value = `Selecionados (${activeFilter.value.length})`;
+                    } else {
+                        input.value = "";
+                    }
+                } catch(e) {}
+            }, 50);
         });
         
         return container;
@@ -1001,7 +1005,8 @@ export const TableRenderer = (() => {
                 }
                 
                 btn.onclick = async () => {
-                    const selectedRows = tabulatorTable.getSelectedRows();
+                    const activeData = tabulatorTable.getData("active");
+                    const selectedRows = tabulatorTable.getSelectedRows().filter(row => activeData.some(r => r.id === row.getData().id));
                     if (selectedRows.length === 0) return;
                     
                     btn.disabled = true;

@@ -6,7 +6,7 @@
 }
 
 .grf-cm-modal {
-    background-color: #ffffff; width: 95%; height: 90%; max-width: 1400px;
+    background-color: #ffffff; width: 95%; height: 95%; max-width: 1400px;
     border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.3);
     display: flex; flex-direction: column; overflow: hidden;
 }
@@ -86,16 +86,18 @@ input[type="text"], input[type="number"], select, textarea {
 .drawer-config-section { margin-top: 20px; }
 .drawer-config-section h4 { margin-top: 0; border-bottom: 1px solid #dee2e6; padding-bottom: 8px; }
 #unifiedFieldList { list-style: none; padding: 0; }
-.field-card { display: flex; align-items: center; padding: 8px 12px; margin-bottom: 5px; background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; cursor: grab; user-select: none; flex-wrap: wrap; }
+.field-card { display: flex; align-items: center; padding: 8px 12px; margin-bottom: 5px; background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; cursor: grab; user-select: none; flex-wrap: wrap; transition: background-color 0.1s, border-color 0.1s; }
 .field-card:active { cursor: grabbing; }
 .field-card.dragging { opacity: 0.5; }
+.field-card.selected { background-color: #e0f2fe; border-color: #3b82f6; box-shadow: 0 0 0 1px #3b82f6 inset; }
 .field-card-label { flex-grow: 1; font-weight: 500; }
 .field-card-controls { display: flex; align-items: center; gap: 20px; font-size: 12px; }
 .field-card-controls label { display: flex; align-items: center; gap: 5px; cursor: pointer; font-weight: normal; }
 .add-tab-btn { display: block; width: 100%; margin-bottom: 15px; background-color: #6c757d; border: 1px solid #5c636a; color: white; }
 .add-tab-btn:hover { background-color: #5c636a; }
-.tab-card { display: flex; align-items: center; padding: 8px 12px; margin-bottom: 8px; margin-top: 10px; background-color: #e9ecef; border: 1px solid #ced4da; border-left: 5px solid #0d6efd; border-radius: 4px; cursor: grab; user-select: none; }
-.tab-card-icon { margin-right: 8px; }
+.tab-card { display: flex; align-items: center; padding: 8px 12px; margin-bottom: 8px; margin-top: 10px; background-color: #e9ecef; border: 1px solid #ced4da; border-left: 5px solid #0d6efd; border-radius: 4px; cursor: grab; user-select: none; transition: background-color 0.1s, border-color 0.1s; }
+.tab-card.selected { background-color: #e0f2fe; border-color: #3b82f6; border-left-color: #2563eb; box-shadow: 0 0 0 1px #3b82f6 inset; }
+.tab-card-icon { margin-right: 8px; cursor: pointer; }
 .tab-card-input { flex-grow: 1; font-weight: bold; font-size: 1em; border: none; background-color: transparent; padding: 4px; border-radius: 3px; }
 .tab-card-input:focus { outline: none; background-color: white; box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.25); }
 .delete-tab-btn { background: none; border: none; cursor: pointer; font-size: 16px; opacity: 0.5; margin-left: 8px; }

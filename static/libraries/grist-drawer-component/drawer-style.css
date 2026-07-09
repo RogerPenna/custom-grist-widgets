@@ -77,42 +77,10 @@
     background: #e0e0e0 !important;
 }
 
-/* --- Corpo e Abas (Estilo CardSystem) --- */
+/* --- Corpo e Abas (Usando Estilos Inline Seguros) --- */
 .drawer-body {
     flex-grow: 1; display: flex; flex-direction: column; overflow: hidden;
     background-color: #FFFFFF;
-}
-
-.drawer-tabs {
-    display: flex;
-    flex-shrink: 0;
-    padding: 0;
-    border-bottom: 2px solid #a0a0a0;
-}
-
-.drawer-tab {
-    flex-grow: 1;
-    text-align: center;
-    padding: 10px 16px;
-    cursor: pointer;
-    border: none;
-    border-bottom: 2px solid transparent;
-    margin-bottom: -2px;
-    color: #333;
-    font-weight: 500;
-    background-color: #e0e0e0;
-    transition: background-color 0.2s, color 0.2s;
-}
-
-.drawer-tab:not(.is-active):hover {
-    background-color: #d0d0d0;
-}
-
-.drawer-tab.is-active {
-    font-weight: 600;
-    color: #000;
-    background-color: #FFFFFF;
-    border-bottom: 2px solid #007bff;
 }
 
 .drawer-tab-panels {
@@ -149,6 +117,8 @@
     min-height: 10px;
     display: flex;
     align-items: center;
+    justify-content: flex-start !important;
+    text-align: left !important;
     padding: 0 4px;
     flex-wrap: wrap; /* Permite que o header e a tabela da RefList quebrem a linha */
 }

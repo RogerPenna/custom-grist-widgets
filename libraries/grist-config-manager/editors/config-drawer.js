@@ -107,7 +107,47 @@ export const DrawerConfigEditor = (() => {
                 <div class="drawer-config-section">
                      <label><input type="checkbox" id="showDebugInfoCheckbox" ${styling.showDebugInfo ? 'checked' : ''}> Show Schema Debug Info (in Drawer)</label>
                 </div>
-                <div class="config-section-title">Layout e Regras de Campos</div>
+
+                <div class="drawer-config-section" style="border: 1px solid #dee2e6; padding: 10px; border-radius: 4px; background-color: #f8f9fa;">
+                    <label style="font-weight:bold; margin-bottom: 8px;">Configurações Globais de Layout:</label>
+                    <div style="display:flex; gap: 15px; margin-bottom: 10px;">
+                        <div style="flex:1;">
+                            <label>Espaçamento entre campos:</label>
+                            <select id="layoutGapSelector">
+                                <option value="20" ${configData.layout?.gap === '20' || !configData.layout?.gap ? 'selected' : ''}>Padrão (20px)</option>
+                                <option value="15" ${configData.layout?.gap === '15' ? 'selected' : ''}>Compacto (15px)</option>
+                                <option value="10" ${configData.layout?.gap === '10' ? 'selected' : ''}>Muito Compacto (10px)</option>
+                                <option value="5" ${configData.layout?.gap === '5' ? 'selected' : ''}>Mínimo (5px)</option>
+                            </select>
+                        </div>
+                        <div style="flex:1;">
+                            <label>Posição dos Labels:</label>
+                            <select id="layoutLabelPositionSelector">
+                                <option value="above" ${configData.layout?.labelPosition !== 'left' ? 'selected' : ''}>Acima do Valor (Padrão)</option>
+                                <option value="left" ${configData.layout?.labelPosition === 'left' ? 'selected' : ''}>À Esquerda do Valor</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div id="leftLabelOptions" style="display:${configData.layout?.labelPosition === 'left' ? 'flex' : 'none'}; gap: 15px; border-top: 1px dashed #ccc; padding-top: 10px;">
+                        <div style="flex:1;">
+                            <label>Alinhamento do Texto:</label>
+                            <select id="layoutLabelAlignSelector">
+                                <option value="left" ${configData.layout?.labelAlign === 'left' || !configData.layout?.labelAlign ? 'selected' : ''}>Esquerda</option>
+                                <option value="center" ${configData.layout?.labelAlign === 'center' ? 'selected' : ''}>Centro</option>
+                                <option value="right" ${configData.layout?.labelAlign === 'right' ? 'selected' : ''}>Direita</option>
+                            </select>
+                        </div>
+                        <div style="flex:1;">
+                            <label>Largura do Label:</label>
+                            <select id="layoutLabelWidthSelector">
+                                ${[10,20,30,40,50,60,70,80,90].map(w => `<option value="${w}" ${configData.layout?.labelWidth === String(w) ? 'selected' : (w===30 && !configData.layout?.labelWidth) ? 'selected' : ''}>${w}%</option>`).join('')}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="config-section-title">Regras e Ordem dos Campos</div>
                 <div class="drawer-config-section">
                     <button type="button" id="addTabBtn" class="btn btn-primary add-tab-btn">📑 + Adicionar Aba</button>
                     <ul id="unifiedFieldList" class="field-order-list"></ul>
@@ -201,11 +241,11 @@ export const DrawerConfigEditor = (() => {
         _renderWorkflowUI(configData.workflow, currentSchema);
         const allCols = Object.values(currentSchema).filter(c => !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos');
         const unifiedListEl = container.querySelector('#unifiedFieldList');
-        const tabs = configData.tabs && configData.tabs.length > 0 ? configData.tabs : [{ title: 'Principal', fields: allCols.map(c => c.colId) }];
+        const tabs = configData.tabs && configData.tabs.length > 0 ? configData.tabs : [{ title: 'Principal', isHidden: false, fields: allCols.map(c => c.colId) }];
         const usedFields = new Set();
 
         for (const tab of tabs) {
-            unifiedListEl.appendChild(createTabCard(tab.title));
+            unifiedListEl.appendChild(createTabCard(tab.title, tab.isHidden));
             for (const fieldId of tab.fields) {
                 const col = allCols.find(c => c.colId === fieldId);
                 if (col) {
@@ -291,6 +331,7 @@ export const DrawerConfigEditor = (() => {
         // --- TRIPARTIÇÃO ---
         const mapping = {
             tableId: fullConfig.tableId,
+            layout: fullConfig.layout,
             tabs: fullConfig.tabs,
             hiddenFields: fullConfig.hiddenFields,
             lockedFields: fullConfig.lockedFields,
@@ -351,6 +392,12 @@ export const DrawerConfigEditor = (() => {
             displayMode: container.querySelector('#displayModeSelector').value,
             width: container.querySelector('#drawerWidthSelector').value,
             showDebugInfo: container.querySelector('#showDebugInfoCheckbox')?.checked || false,
+            layout: {
+                gap: container.querySelector('#layoutGapSelector')?.value || '20',
+                labelPosition: container.querySelector('#layoutLabelPositionSelector')?.value || 'above',
+                labelAlign: container.querySelector('#layoutLabelAlignSelector')?.value || 'left',
+                labelWidth: container.querySelector('#layoutLabelWidthSelector')?.value || '30'
+            },
             tabs: [],
             refListFieldConfig: {},
             styleOverrides: {},
@@ -372,11 +419,21 @@ export const DrawerConfigEditor = (() => {
         listItems.forEach(item => {
             if (item.classList.contains('tab-card')) {
                 if (currentTab) drawerConfig.tabs.push(currentTab);
-                currentTab = { title: item.querySelector('.tab-card-input').value, fields: [] };
+                currentTab = { 
+                    title: item.querySelector('.tab-card-input').value, 
+                    isHidden: item.querySelector('.is-tab-hidden-checkbox')?.checked || false,
+                    fields: [] 
+                };
             } else if (item.classList.contains('field-card')) {
-                if (!currentTab) currentTab = { title: 'Principal', fields: [] };
+                if (!currentTab) currentTab = { title: 'Principal', isHidden: false, fields: [] };
                 const colId = item.dataset.colId;
                 currentTab.fields.push(colId);
+
+                const customLabelInput = item.querySelector('.custom-label-input');
+                if (customLabelInput && customLabelInput.value.trim() !== '') {
+                    if (!drawerConfig.fieldOptions[colId]) drawerConfig.fieldOptions[colId] = {};
+                    drawerConfig.fieldOptions[colId].customLabel = customLabelInput.value.trim();
+                }
 
                 const rendererSelect = item.querySelector('.special-renderer-select');
                 if (rendererSelect && rendererSelect.value) {
@@ -461,7 +518,37 @@ export const DrawerConfigEditor = (() => {
     }
 
     function _persistCurrentStageUI(stageName) { if (!stageName) return; const stageData = { hiddenFields: [], lockedFields: [], requiredFields: [] }; document.querySelectorAll('#unifiedFieldList .field-card').forEach(card => { const colId = card.dataset.colId; if (card.querySelector('.is-hidden-checkbox').checked) stageData.hiddenFields.push(colId); if (card.querySelector('.is-locked-checkbox').checked) stageData.lockedFields.push(colId); if (card.querySelector('.is-required-checkbox').checked) stageData.requiredFields.push(colId); }); stageConfigs[stageName] = stageData; }
-    function _applyStageUI(stageName) { currentEditingStage = stageName; const stageData = stageConfigs[stageName] || { hiddenFields: [], lockedFields: [], requiredFields: [] }; document.querySelectorAll('#unifiedFieldList .field-card').forEach(card => { const colId = card.dataset.colId; card.querySelector('.is-hidden-checkbox').checked = stageData.hiddenFields.includes(colId); card.querySelector('.is-locked-checkbox').checked = stageData.lockedFields.includes(colId); card.querySelector('.is-required-checkbox').checked = stageData.requiredFields.includes(colId); }); const copyBtn = document.getElementById('copyStageConfigBtn'); if (copyBtn) { copyBtn.disabled = (stageName === '_global'); } }
+    function _applyStageUI(stageName) { 
+        currentEditingStage = stageName; 
+        const stageData = stageConfigs[stageName] || { hiddenFields: [], lockedFields: [], requiredFields: [] }; 
+        const svgEyeOpen = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#22c55e"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
+        const svgEyeClosed = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#94a3b8"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`;
+        const svgLockClosed = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#ef4444"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>`;
+        const svgLockOpen = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#22c55e"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg>`;
+        const svgAsteriskReq = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#ef4444"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line><line x1="7.05" y1="7.05" x2="16.95" y2="16.95"></line><line x1="7.05" y1="16.95" x2="16.95" y2="7.05"></line></svg>`;
+        const svgAsteriskOpt = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#cbd5e1"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line><line x1="7.05" y1="7.05" x2="16.95" y2="16.95"></line><line x1="7.05" y1="16.95" x2="16.95" y2="7.05"></line></svg>`;
+
+        document.querySelectorAll('#unifiedFieldList .field-card').forEach(card => { 
+            const colId = card.dataset.colId; 
+            const isHidden = stageData.hiddenFields.includes(colId);
+            const isLocked = stageData.lockedFields.includes(colId);
+            const isRequired = stageData.requiredFields.includes(colId);
+
+            card.querySelector('.is-hidden-checkbox').checked = isHidden; 
+            card.querySelector('.is-locked-checkbox').checked = isLocked; 
+            card.querySelector('.is-required-checkbox').checked = isRequired; 
+            
+            const iconHidden = card.querySelector('.icon-hidden');
+            const iconLocked = card.querySelector('.icon-locked');
+            const iconRequired = card.querySelector('.icon-required');
+            
+            if (iconHidden) iconHidden.innerHTML = isHidden ? svgEyeClosed : svgEyeOpen;
+            if (iconLocked) iconLocked.innerHTML = isLocked ? svgLockClosed : svgLockOpen;
+            if (iconRequired) iconRequired.innerHTML = isRequired ? svgAsteriskReq : svgAsteriskOpt;
+        }); 
+        const copyBtn = document.getElementById('copyStageConfigBtn'); 
+        if (copyBtn) { copyBtn.disabled = (stageName === '_global'); } 
+    }
     
     function _handleCopyStageConfig() { 
         const sourceStage = currentEditingStage; 
@@ -518,29 +605,101 @@ export const DrawerConfigEditor = (() => {
         container.querySelector('#addTabBtn').addEventListener('click', () => { 
             const list = container.querySelector('#unifiedFieldList'); 
             list.appendChild(createTabCard('Nova Aba')); 
-        }); 
+        });
+        const posSelector = container.querySelector('#layoutLabelPositionSelector');
+        if (posSelector) {
+            posSelector.addEventListener('change', (e) => {
+                const leftOptions = container.querySelector('#leftLabelOptions');
+                if (leftOptions) leftOptions.style.display = e.target.value === 'left' ? 'flex' : 'none';
+            });
+        }
     }
 
-    function createTabCard(title) { 
+    function createTabCard(title, isHidden = false) { 
         const card = document.createElement('li'); card.className = 'tab-card'; card.draggable = true; 
-        card.innerHTML = ` <span class="tab-card-icon">📑</span> <input type="text" class="tab-card-input" value="${title}"> <button type="button" class="delete-tab-btn" title="Deletar Aba">🗑️</button> `; 
+        
+        const svgEyeOpen = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#22c55e"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
+        const svgEyeClosed = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#94a3b8"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`;
+
+        card.innerHTML = ` 
+            <span class="tab-card-icon">📑</span> 
+            <input type="text" class="tab-card-input" value="${title}"> 
+            <input type="checkbox" class="is-tab-hidden-checkbox" style="display:none;" ${isHidden ? 'checked' : ''}>
+            <div class="icon-toggle icon-tab-hidden" title="Visibilidade da Aba" style="cursor:pointer; display:flex; align-items:center; justify-content:center; width:24px; height:24px; margin-left:8px;">
+                ${isHidden ? svgEyeClosed : svgEyeOpen}
+            </div>
+            <button type="button" class="delete-tab-btn" title="Deletar Aba">🗑️</button> 
+        `; 
+        
         card.querySelector('.delete-tab-btn').addEventListener('click', (e) => { 
-            e.preventDefault(); 
+            e.stopPropagation();
             if (confirm(`Deletar aba?`)) card.remove(); 
         }); 
+
+        const hiddenCb = card.querySelector('.is-tab-hidden-checkbox');
+        const iconHidden = card.querySelector('.icon-tab-hidden');
+        iconHidden.addEventListener('click', (e) => {
+            e.stopPropagation();
+            hiddenCb.checked = !hiddenCb.checked;
+            iconHidden.innerHTML = hiddenCb.checked ? svgEyeClosed : svgEyeOpen;
+            updateDebugJson();
+        });
+
+        card.addEventListener('click', (e) => {
+            if (e.target.closest('.delete-tab-btn') || e.target.closest('.icon-toggle') || e.target.closest('input')) return;
+            if (e.ctrlKey || e.shiftKey) {
+                card.classList.toggle('selected');
+            } else {
+                document.querySelectorAll('#unifiedFieldList .selected').forEach(el => el.classList.remove('selected'));
+                card.classList.add('selected');
+            }
+        });
+
         return card; 
     }
 
     function enableDragAndDrop(listElement) { 
         if (!listElement) return; 
+        
         let draggedItem = null; 
-        listElement.addEventListener('dragstart', e => { draggedItem = e.target.closest('li'); setTimeout(() => draggedItem.classList.add('dragging'), 0); }); 
-        listElement.addEventListener('dragend', () => { if (draggedItem) draggedItem.classList.remove('dragging'); }); 
+        let selectedItems = [];
+
+        listElement.addEventListener('dragstart', e => { 
+            const targetItem = e.target.closest('li');
+            if (!targetItem.classList.contains('selected')) {
+                document.querySelectorAll('#unifiedFieldList .selected').forEach(el => el.classList.remove('selected'));
+                targetItem.classList.add('selected');
+            }
+            
+            selectedItems = Array.from(listElement.querySelectorAll('.selected'));
+            draggedItem = targetItem;
+            
+            setTimeout(() => {
+                selectedItems.forEach(item => item.classList.add('dragging'));
+            }, 0); 
+        }); 
+        
+        listElement.addEventListener('dragend', () => { 
+            if (selectedItems) {
+                selectedItems.forEach(item => item.classList.remove('dragging'));
+            }
+            draggedItem = null;
+            selectedItems = [];
+        }); 
+        
         listElement.addEventListener('dragover', e => { 
             e.preventDefault(); 
+            if (!draggedItem) return;
+            
             const afterElement = getDragAfterElement(listElement, e.clientY); 
-            if (afterElement == null) listElement.appendChild(draggedItem); 
-            else listElement.insertBefore(draggedItem, afterElement); 
+            
+            selectedItems.forEach(item => {
+                if (afterElement == null) {
+                    listElement.appendChild(item); 
+                } else {
+                    listElement.insertBefore(item, afterElement); 
+                }
+            });
         }); 
     }
 
@@ -554,15 +713,47 @@ export const DrawerConfigEditor = (() => {
         }, { offset: Number.NEGATIVE_INFINITY }).element; 
     }
 
+    function openConfigPopup(title, contentContainer, gearIcon) {
+        const modal = document.createElement('div');
+        modal.className = 'field-config-modal';
+        modal.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); width:600px; max-height:85vh; overflow-y:auto; background:white; padding:24px; border-radius:12px; box-shadow:0 20px 40px rgba(0,0,0,0.3); z-index:2147483647; display:flex; flex-direction:column; gap:15px; border:1px solid #e2e8f0; font-family:sans-serif;';
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:2147483647; backdrop-filter:blur(2px);';
+        
+        const header = document.createElement('div');
+        header.style.cssText = 'display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:15px; margin-bottom:15px;';
+        header.innerHTML = `<h3 style="margin:0; font-size:18px; color:#1e293b;">${title}</h3> <button class="btn-close" style="background:none; border:none; font-size:24px; cursor:pointer; color:#64748b; line-height:1;">&times;</button>`;
+        
+        modal.appendChild(header);
+        
+        contentContainer.style.display = 'block'; // Ensure container is visible
+        const panels = contentContainer.querySelectorAll('.style-config-panel, .widget-config-panel, .reflist-config-panel');
+        panels.forEach(p => p.style.display = 'block'); // Always show panels inside modal
+        
+        modal.appendChild(contentContainer);
+        document.body.appendChild(overlay);
+        document.body.appendChild(modal);
+        
+        const close = () => {
+            document.body.removeChild(overlay);
+            document.body.removeChild(modal);
+            contentContainer.style.display = 'none'; // Hide container again
+            panels.forEach(p => p.style.display = 'none'); // Hide when putting back
+            gearIcon.parentNode.appendChild(contentContainer);
+            updateDebugJson();
+        };
+        header.querySelector('.btn-close').onclick = close;
+        overlay.onclick = close;
+    }
+
     function createFieldCard(col, configData, lens) {
         const card = document.createElement('li'); card.className = 'field-card'; card.dataset.colId = col.colId; card.draggable = true; 
         const styleOverrides = configData.styleOverrides?.[col.colId] || {}; 
         
         const styleConfigHtml = ` 
-            <div class="field-card-extra-actions"> <button type="button" class="btn btn-secondary btn-sm toggle-style-config">Configurar Estilos</button> </div> 
-            <div class="style-config-panel" style="display: none;"> 
-                <h5>Opções de Estilo para "${col.label}"</h5> 
-                <div class="style-config-list"> 
+            <div class="style-config-panel" style="display: none; padding: 15px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 15px;"> 
+                <h5 style="margin-top:0; color:#334155; font-size:14px;">Estilos</h5> 
+                <div class="style-config-list" style="display:flex; flex-direction:column; gap:8px; font-size:13px;"> 
                     <label><input type="checkbox" data-style-key="ignoreConditional" ${styleOverrides.ignoreConditional ? 'checked' : ''}> Ignorar Formatação Condicional</label> 
                     <label><input type="checkbox" data-style-key="ignoreHeader" ${styleOverrides.ignoreHeader ? 'checked' : ''}> Ignorar Estilo do Cabeçalho</label> 
                     <label><input type="checkbox" data-style-key="ignoreCell" ${styleOverrides.ignoreCell ? 'checked' : ''}> Ignorar Estilo da Célula</label> 
@@ -579,14 +770,13 @@ export const DrawerConfigEditor = (() => {
             const colorMode = widgetCfg?.options?.mode || 'picker';
             const swatches = widgetCfg?.options?.swatches || '';
             widgetConfigHtml = `
-            <div class="field-card-extra-actions"> <button type="button" class="btn btn-secondary btn-sm toggle-widget-config">Configurar Widget</button> </div>
-            <div class="widget-config-panel" style="display: none; padding: 10px; background: #f1f5f9; border-radius: 4px; margin-top: 5px;">
-                <h5>Configuração de Widget para "${col.label}"</h5>
+            <div class="widget-config-panel" style="display: none; padding: 15px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 15px;">
+                <h5 style="margin-top:0; color:#334155; font-size:14px;">Widget</h5>
                 <div class="drawer-config-section"><label><input type="radio" name="widget-type-${col.colId}" value="" ${!isColorWidget && !isDynamicUI ? 'checked' : ''} class="widget-type-radio"> Padrão</label></div>
                 <div class="drawer-config-section"><label><input type="checkbox" class="is-color-picker-checkbox" ${isColorWidget ? 'checked' : ''}> Habilitar Componente de Cor</label></div>
                 <div class="drawer-config-section"><label><input type="radio" name="widget-type-${col.colId}" value="DynamicUI" ${isDynamicUI ? 'checked' : ''} class="widget-type-radio"> Dynamic UI (JSON)</label></div>
                 <div class="drawer-config-section"><label><input type="radio" name="widget-type-${col.colId}" value="Image" ${widgetCfg?.widget === 'Image' ? 'checked' : ''} class="widget-type-radio"> Imagem (URL/Anexo)</label></div>
-                <div class="color-options-container" style="display: ${isColorWidget ? 'block' : 'none'}; margin-top: 10px; border-top: 1px solid #ddd; padding-top: 10px;">
+                <div class="color-options-container" style="display: ${isColorWidget ? 'block' : 'none'}; margin-top: 10px; border-top: 1px solid #e2e8f0; padding-top: 10px;">
                     <div class="drawer-config-section">
                         <label style="font-size: 11px; font-weight: bold; color: #0056b3;">Vincular Paleta Global:</label>
                         <select class="color-palette-id-select" style="width:100%; font-size: 11px; border-color: #0056b3;">
@@ -607,9 +797,8 @@ export const DrawerConfigEditor = (() => {
             const isProgressBar = currentWidgetOverride?.widget === 'ProgressBar';
             const progressOptions = currentWidgetOverride?.options || {};
             widgetConfigHtml = `
-            <div class="field-card-extra-actions"> <button type="button" class="btn btn-secondary btn-sm toggle-widget-config">Configurar Widget</button> </div>
-            <div class="widget-config-panel" style="display: none;">
-                <h5>Tipo de Widget para "${col.label}"</h5>
+            <div class="widget-config-panel" style="display: none; padding: 15px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 15px;">
+                <h5 style="margin-top:0; color:#334155; font-size:14px;">Widget</h5>
                 <label><input type="radio" name="widget-type-${col.colId}" value="" ${!isProgressBar ? 'checked' : ''} class="widget-type-radio"> Padrão</label>
                 <label><input type="radio" name="widget-type-${col.colId}" value="ProgressBar" ${isProgressBar ? 'checked' : ''} class="widget-type-radio"> Barra de Progresso</label>
                 <div class="progress-options" style="display: ${isProgressBar ? 'block' : 'none'}; padding: 8px; background: #f8f9fa;">
@@ -652,29 +841,18 @@ export const DrawerConfigEditor = (() => {
             const fieldConfig = configData.refListFieldConfig?.[col.colId] || {};
             const refListConfig = fieldConfig._refListConfig || {};
             const isZebra = fieldConfig?._options?.zebra === true;
-
-            // --- FILTRAGEM DE CONFIGS PARA DROPDOWNS ---
             const cardConfigs = _allConfigs.filter(c => c.componentType === 'CardSystem' || c.componentType === 'Card System');
             const drawerConfigs = _allConfigs.filter(c => c.componentType === 'Drawer');
 
             const cardConfigOptions = `<option value="">-- Selecione um Card --</option>` + 
-                cardConfigs.map(c => {
-                    const unified = lens.parseConfigRecord(c);
-                    const tableDisplay = unified.tableId ? ` (${unified.tableId})` : '';
-                    return `<option value="${c.configId}" ${refListConfig.cardConfigId === c.configId ? 'selected' : ''}>${c.widgetTitle}${tableDisplay} [${c.configId}]</option>`;
-                }).join('');
+                cardConfigs.map(c => `<option value="${c.configId}" ${refListConfig.cardConfigId === c.configId ? 'selected' : ''}>${c.widgetTitle} [${c.configId}]</option>`).join('');
             
             const drawerConfigOptions = `<option value="">-- Selecione um Drawer --</option>` + 
-                drawerConfigs.map(c => {
-                    const unified = lens.parseConfigRecord(c);
-                    const tableDisplay = unified.tableId ? ` (${unified.tableId})` : '';
-                    return `<option value="${c.configId}" ${refListConfig.addRecordConfigId === c.configId ? 'selected' : ''}>${c.widgetTitle}${tableDisplay} [${c.configId}]</option>`;
-                }).join('');
+                drawerConfigs.map(c => `<option value="${c.configId}" ${refListConfig.addRecordConfigId === c.configId ? 'selected' : ''}>${c.widgetTitle} [${c.configId}]</option>`).join('');
 
             refListConfigHtml = `
-            <div class="field-card-extra-actions"> <button type="button" class="btn btn-secondary btn-sm toggle-reflist-config">Configurar Sub-Tabela</button> </div>
-            <div class="reflist-config-panel" style="display: none; padding: 10px; background: #f8f9fa; border-radius: 4px; margin-top: 5px; border: 1px solid #dee2e6;">
-                <h5>Opções de Sub-Tabela (RefList)</h5>
+            <div class="reflist-config-panel" style="display: none; padding: 15px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 15px;">
+                <h5 style="margin-top:0; color:#334155; font-size:14px;">Opções de Sub-Tabela (RefList)</h5>
                 <div class="drawer-config-section"><label>Exibir como:</label><select class="reflist-display-as"><option value="table" ${refListConfig.displayAs === 'table' ? 'selected' : ''}>Tabela Simples</option><option value="cards" ${refListConfig.displayAs === 'cards' ? 'selected' : ''}>Cards</option><option value="tabulator" ${refListConfig.displayAs === 'tabulator' ? 'selected' : ''}>Tabulator</option></select></div>
                 <div class="drawer-config-section"><label><input type="checkbox" class="reflist-zebra-checkbox" ${isZebra ? 'checked' : ''}> Tabela Zebrada</label><label><input type="checkbox" class="reflist-collapsible-checkbox" ${refListConfig.collapsible ? 'checked' : ''}> Retrátil</label></div>
                 
@@ -694,11 +872,110 @@ export const DrawerConfigEditor = (() => {
                 <div class="reflist-column-config" style="margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px;"><label>Colunas da Sub-Tabela:</label><div class="reflist-columns-container"><p>Carregando colunas...</p></div></div>
             </div>`;
         }
+
+        const hasCustomStyle = Object.keys(styleOverrides).length > 0;
+        const hasCustomWidget = !!currentWidgetOverride || !!configData.fieldOptions?.[col.colId];
+        const hasCustomRefList = !!configData.refListFieldConfig?.[col.colId];
+        const hasCustomConfig = hasCustomStyle || hasCustomWidget || hasCustomRefList;
+        const gearColor = hasCustomConfig ? '#3b82f6' : '#cbd5e1';
+
+        // HTML entities for icons
+        const svgEyeOpen = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#22c55e"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
+        const svgEyeClosed = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#94a3b8"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`;
+        const svgLockClosed = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#ef4444"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>`;
+        const svgLockOpen = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#22c55e"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg>`;
+        const svgAsteriskReq = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#ef4444"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line><line x1="7.05" y1="7.05" x2="16.95" y2="16.95"></line><line x1="7.05" y1="16.95" x2="16.95" y2="7.05"></line></svg>`;
+        const svgAsteriskOpt = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#cbd5e1"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line><line x1="7.05" y1="7.05" x2="16.95" y2="16.95"></line><line x1="7.05" y1="16.95" x2="16.95" y2="7.05"></line></svg>`;
+        const svgGear = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>`;
+
+        const customLabelHtml = `
+            <div class="custom-label-panel" style="padding: 15px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 15px;">
+                <label style="font-size: 11px; font-weight: bold; color: #334155; display:block; margin-bottom:4px;">Nome de Exibição (Alias):</label>
+                <input type="text" class="custom-label-input" value="${configData.fieldOptions?.[col.colId]?.customLabel || ''}" placeholder="${col.label}" style="width:100%; font-size:12px; padding:6px; border:1px solid #cbd5e1; border-radius:4px;">
+                <small style="font-size:10px; color:#64748b; margin-top:4px; display:block;">Sobrescreve o nome original no Drawer (Não altera no Grist).</small>
+            </div>
+        `;
+
+        card.innerHTML = ` 
+        <div class="field-card-main" style="display:flex; justify-content:space-between; align-items:center; padding:4px 8px; height:32px; box-sizing:border-box;"> 
+            <div class="field-card-left" style="display:flex; align-items:center; gap:10px; overflow:hidden;"> 
+                <button type="button" class="btn-config-popup" style="background:none; border:none; cursor:pointer; color:${gearColor}; display:flex; align-items:center; padding:4px;" title="Configurações (Estilo, Widget)">${svgGear}</button>
+                <span class="field-card-label" style="font-weight:600; font-size:13px; color:#1e293b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${col.label} <span class="field-card-type" style="font-weight:normal; font-size:11px; color:#94a3b8;">(${col.type})</span></span> 
+            </div> 
+            <div class="field-card-right" style="display:flex; align-items:center; gap:12px; flex-shrink:0;"> 
+                <input type="checkbox" class="is-hidden-checkbox" style="display:none;"> 
+                <input type="checkbox" class="is-locked-checkbox" style="display:none;"> 
+                <input type="checkbox" class="is-required-checkbox" style="display:none;"> 
+                
+                <div class="icon-toggle icon-hidden" title="Visibilidade" style="cursor:pointer; display:flex; align-items:center; justify-content:center; width:24px; height:24px;"></div>
+                <div class="icon-toggle icon-locked" title="Travado" style="cursor:pointer; display:flex; align-items:center; justify-content:center; width:24px; height:24px;"></div>
+                <div class="icon-toggle icon-required" title="Obrigatório" style="cursor:pointer; display:flex; align-items:center; justify-content:center; width:24px; height:24px;"></div>
+            </div> 
+        </div>
+        <div class="extra-panels-container" style="display:none;">
+            ${customLabelHtml}
+            ${styleConfigHtml} 
+            ${widgetConfigHtml} 
+            ${refListConfigHtml}
+        </div>
+        `; 
         
-        card.innerHTML = ` <div class="field-card-main"> <div class="field-card-left"> <span class="field-card-label">${col.label} <span class="field-card-type">(${col.type})</span></span> </div> <div class="field-card-right"> <div class="field-card-controls"> <label><input type="checkbox" class="is-hidden-checkbox"> Oculto</label> <label><input type="checkbox" class="is-locked-checkbox"> Travado</label> <label><input type="checkbox" class="is-required-checkbox"> Obrigatório</label> </div> </div> </div> ${styleConfigHtml} ${widgetConfigHtml} ${refListConfigHtml} `; 
-        
-        card.querySelector('.toggle-style-config').onclick = () => { const p = card.querySelector('.style-config-panel'); p.style.display = p.style.display === 'none' ? 'block' : 'none'; };
-        if (card.querySelector('.toggle-widget-config')) card.querySelector('.toggle-widget-config').onclick = () => { const p = card.querySelector('.widget-config-panel'); p.style.display = p.style.display === 'none' ? 'block' : 'none'; };
+        // Setup Icon Toggles
+        const hiddenCb = card.querySelector('.is-hidden-checkbox');
+        const lockedCb = card.querySelector('.is-locked-checkbox');
+        const requiredCb = card.querySelector('.is-required-checkbox');
+        const iconHidden = card.querySelector('.icon-hidden');
+        const iconLocked = card.querySelector('.icon-locked');
+        const iconRequired = card.querySelector('.icon-required');
+
+        const updateIcons = () => {
+            iconHidden.innerHTML = hiddenCb.checked ? svgEyeClosed : svgEyeOpen;
+            iconLocked.innerHTML = lockedCb.checked ? svgLockClosed : svgLockOpen;
+            iconRequired.innerHTML = requiredCb.checked ? svgAsteriskReq : svgAsteriskOpt;
+        };
+        updateIcons(); // Initial call
+
+        const handleIconClick = (cb, type) => {
+            const isSelected = card.classList.contains('selected');
+            const itemsToUpdate = isSelected 
+                ? Array.from(document.querySelectorAll('#unifiedFieldList .field-card.selected'))
+                : [card];
+            
+            const newValue = !cb.checked;
+            
+            itemsToUpdate.forEach(item => {
+                const itemCb = item.querySelector(type === 'hidden' ? '.is-hidden-checkbox' : type === 'locked' ? '.is-locked-checkbox' : '.is-required-checkbox');
+                const itemIcon = item.querySelector(type === 'hidden' ? '.icon-hidden' : type === 'locked' ? '.icon-locked' : '.icon-required');
+                
+                if (itemCb && itemIcon) {
+                    itemCb.checked = newValue;
+                    if (type === 'hidden') itemIcon.innerHTML = newValue ? svgEyeClosed : svgEyeOpen;
+                    if (type === 'locked') itemIcon.innerHTML = newValue ? svgLockClosed : svgLockOpen;
+                    if (type === 'required') itemIcon.innerHTML = newValue ? svgAsteriskReq : svgAsteriskOpt;
+                }
+            });
+            updateDebugJson();
+        };
+
+        iconHidden.onclick = (e) => { e.stopPropagation(); handleIconClick(hiddenCb, 'hidden'); };
+        iconLocked.onclick = (e) => { e.stopPropagation(); handleIconClick(lockedCb, 'locked'); };
+        iconRequired.onclick = (e) => { e.stopPropagation(); handleIconClick(requiredCb, 'required'); };
+
+        card.addEventListener('click', (e) => {
+            if (e.target.closest('.btn-config-popup') || e.target.closest('.icon-toggle') || e.target.closest('input') || e.target.closest('.extra-panels-container') || e.target.closest('.field-box-icon') || e.target.closest('.resize-handle')) return;
+            if (e.ctrlKey || e.shiftKey) {
+                card.classList.toggle('selected');
+            } else {
+                document.querySelectorAll('#unifiedFieldList .selected').forEach(el => el.classList.remove('selected'));
+                card.classList.add('selected');
+            }
+        });
+
+        // Bind Popup
+        card.querySelector('.btn-config-popup').onclick = () => {
+            const container = card.querySelector('.extra-panels-container');
+            openConfigPopup(`Configurar "${col.label}"`, container, card.querySelector('.btn-config-popup'));
+        };
         
         const colorPaletteSelect = card.querySelector('.color-palette-id-select');
         if (colorPaletteSelect) {
@@ -717,7 +994,6 @@ export const DrawerConfigEditor = (() => {
             };
         }
 
-        // Interatividade para Barra de Progresso
         const progressTypeSelect = card.querySelector('.progress-type');
         if (progressTypeSelect) {
             progressTypeSelect.onchange = () => {
@@ -738,9 +1014,10 @@ export const DrawerConfigEditor = (() => {
             };
         }
 
-        if (card.querySelector('.toggle-reflist-config')) card.querySelector('.toggle-reflist-config').onclick = async () => {
+        // We load reflist columns inside the popup now, so it still works.
+        const addRefListLoader = async () => {
             const panel = card.querySelector('.reflist-config-panel');
-            if (panel.style.display === 'none') {
+            if (panel) {
                 const referencedTableId = col.type.split(':')[1];
                 const referencedSchema = await lens.getTableSchema(referencedTableId);
                 const fieldConfig = configData.refListFieldConfig?.[col.colId] || {};
@@ -751,9 +1028,12 @@ export const DrawerConfigEditor = (() => {
                         return `<tr data-ref-col-id="${refCol.colId}"><td>${refCol.label}</td><td><input type="checkbox" data-config-key="showInTable" ${colConfig.showInTable ? 'checked' : ''}></td><td><input type="checkbox" data-config-key="hideInModal" ${colConfig.hideInModal ? 'checked' : ''}></td><td><input type="checkbox" data-config-key="lockInModal" ${colConfig.lockInModal ? 'checked' : ''}></td><td><input type="checkbox" data-config-key="requireInModal" ${colConfig.requireInModal ? 'checked' : ''}></td></tr>`;
                     }).join('')}</tbody></table>`;
                 }
-                panel.style.display = 'block';
-            } else panel.style.display = 'none';
+            }
         };
+        if (col.type.startsWith('RefList:')) {
+            addRefListLoader();
+        }
+
         return card;
     }
 

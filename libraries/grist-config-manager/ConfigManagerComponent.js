@@ -1,6 +1,6 @@
-import { GristTableLens } from '../grist-table-lens/grist-table-lens.js?v=1.1.0';
-import { GristDataWriter } from '../grist-data-writer.js?v=1.1.0';
-import { publish } from '../grist-event-bus/grist-event-bus.js?v=1.1.0';
+import { GristTableLens } from '../grist-table-lens/grist-table-lens.js?v=1.3.19';
+import { GristDataWriter } from '../grist-data-writer.js?v=1.3.19';
+import { publish } from '../grist-event-bus/grist-event-bus.js?v=1.3.19';
 import { GristRestApi } from '../grist-rest-api.js';
 
 // Import editor modules
@@ -14,6 +14,7 @@ import { ProgressBarConfigEditor } from './editors/config-progress-bar.js?v=1.0.
 import { ColorOptionsConfigEditor } from './editors/config-color-options.js?v=1.0.3';
 import { TimelineConfigEditor } from './editors/config-timeline.js';
 import { GanttConfigEditor } from './editors/config-gantt.js';
+import { DashboardConfigEditor } from './editors/config-dashboard.js?v=1.3.19';
 
 let overlay = null;
 let _grist = null;
@@ -30,6 +31,7 @@ const COMPONENT_TYPE_COLORS = {
     'StatusIcons': '#ffc107', // warning
     'Timeline': '#0dcaf0', // cyan
     'Gantt': '#ffc107', // gold
+    'Dashboard': '#2c5e5a', // dark teal
     'default': '#6c757d' // grey
 };
 
@@ -159,7 +161,7 @@ export async function renderMainUI(grist, container, initialConfigId, componentT
         }
 
         // --- MASTER LISTS ---
-        const MASTER_WIDGET_TYPES = ['Card System', 'Drawer', 'Table', 'BSC', 'Indicators', 'Timeline', 'Gantt'];
+        const MASTER_WIDGET_TYPES = ['Card System', 'Drawer', 'Table', 'BSC', 'Indicators', 'Timeline', 'Gantt', 'Dashboard'];
         const MASTER_COMPONENT_TYPES = ['Progress Bar', 'Color Options', 'Card Style', 'Status Icons'];
 
         // --- NOVA VERIFICAÇÃO DE COLUNAS (TRIPARTIÇÃO) ---
@@ -320,6 +322,7 @@ export async function renderMainUI(grist, container, initialConfigId, componentT
             'Indicators': IndicatorsConfigEditor,
             'Timeline': TimelineConfigEditor,
             'Gantt': GanttConfigEditor,
+            'Dashboard': DashboardConfigEditor,
             // Design System Components
             'ProgressBar': ProgressBarConfigEditor,
             'ColorOptions': ColorOptionsConfigEditor,
@@ -638,7 +641,7 @@ export async function renderMainUI(grist, container, initialConfigId, componentT
 export function open(grist, options = {}) {
     if (overlay) return;
     _grist = grist;
-    const { initialConfigId = null, componentTypes = ['Card System', 'Drawer', 'Card Style', 'Table', 'BSC', 'Indicators'] } = options;
+    const { initialConfigId = null, componentTypes = ['Card System', 'Drawer', 'Card Style', 'Table', 'BSC', 'Indicators', 'Dashboard'] } = options;
     overlay = document.createElement('div');
     overlay.className = 'grf-cm-overlay';
     overlay.innerHTML = `<div class="grf-cm-modal"><div class="grf-cm-header"><h1>Gerenciador de Configurações</h1><button class="grf-cm-close">×</button></div><div class="grf-cm-body"><p>Carregando...</p></div></div>`;

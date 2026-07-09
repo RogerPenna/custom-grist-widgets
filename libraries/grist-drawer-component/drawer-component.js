@@ -161,6 +161,7 @@ async function _renderDrawerContent() {
     const hiddenFields = config.hiddenFields || config.mapping?.hiddenFields || [];
     const lockedFields = config.lockedFields || config.mapping?.lockedFields || [];
     const styling = config.styling || config.styling?.styling || {};
+    const layoutConfig = config.layout || config.mapping?.layout || {};
 
     try {
         const schema = await tableLens.getTableSchema(currentTableId);
@@ -210,7 +211,7 @@ async function _renderDrawerContent() {
         }
 
         panelsContainer.innerHTML = '';
-        const finalTabs = (tabs && tabs.length > 0) ? tabs : [{ 
+        let finalTabs = (tabs && tabs.length > 0) ? tabs : [{ 
             title: "Principal", 
             fields: Object.keys(schema).filter(id => {
                 const isTechnical = id.startsWith('gristHelper_') || id === 'id' || schema[id].type === 'ManualSortPos';
@@ -218,6 +219,8 @@ async function _renderDrawerContent() {
                 return !isTechnical && !isHidden;
             })
         }];
+        
+        finalTabs = finalTabs.filter(t => !t.isHidden);
 
         finalTabs.forEach((tabConfig, index) => {
             const tabEl = document.createElement('div');
@@ -238,19 +241,43 @@ async function _renderDrawerContent() {
                 const col = schema[fieldId];
                 if (!col || hiddenFields.includes(fieldId)) return;
 
+                const fOpts = fieldOptions[fieldId] || {};
+                const displayLabel = fOpts.customLabel || col.label || col.colId;
+
                 const row = document.createElement('div');
                 row.className = 'drawer-field-row';
-                row.style.marginBottom = '20px';
-                row.innerHTML = `
-                    <label style="display:block; font-weight:800; font-size:11px; color:#94a3b8; text-transform:uppercase; margin-bottom:6px; letter-spacing:0.025em;">
-                        ${col.label || col.colId}
-                    </label>
-                    <div class="field-val" style="min-height:24px; font-size:14px; color:#1e293b;"></div>
-                `;
+                
+                const gap = layoutConfig.gap ? layoutConfig.gap + 'px' : '20px';
+                row.style.marginBottom = gap;
+                
+                const isRefList = col.type.startsWith('RefList:');
+                const isLeftAligned = !isRefList && layoutConfig.labelPosition === 'left';
+                
+                if (isLeftAligned) {
+                    const lWidth = layoutConfig.labelWidth || '30';
+                    const lAlign = layoutConfig.labelAlign || 'left';
+                    row.style.display = 'flex';
+                    row.style.alignItems = 'baseline';
+                    row.style.gap = '15px';
+                    
+                    row.innerHTML = `
+                        <label style="flex: 0 0 ${lWidth}%; text-align:${lAlign}; font-weight:800; font-size:11px; color:#94a3b8; text-transform:uppercase; letter-spacing:0.025em; box-sizing:border-box;">
+                            ${displayLabel}
+                        </label>
+                        <div class="field-val" style="flex: 1; min-width: 0; min-height:24px; font-size:14px; color:#1e293b;"></div>
+                    `;
+                } else {
+                    row.innerHTML = `
+                        <label style="display:block; font-weight:800; font-size:11px; color:#94a3b8; text-transform:uppercase; margin-bottom:6px; letter-spacing:0.025em;">
+                            ${displayLabel}
+                        </label>
+                        <div class="field-val" style="min-height:24px; font-size:14px; color:#1e293b;"></div>
+                    `;
+                }
+                
                 panelEl.appendChild(row);
 
                 const widgetCfg = widgetOverrides[fieldId] || {};
-                const fOpts = fieldOptions[fieldId] || {};
                 const sOverride = styleOverrides[fieldId] || {};
                 
                 let widgetType = widgetCfg.widget;

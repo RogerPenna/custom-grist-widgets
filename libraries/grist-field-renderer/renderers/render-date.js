@@ -1,12 +1,18 @@
 // libraries/grist-field-renderer/renderers/render-date.js
 
 export function renderDate(options) {
-    const { container, colSchema, cellValue, isEditing, isLocked } = options;
+    const { container, colSchema, cellValue, isEditing, isLocked, record, fieldStyle } = options;
     const wopts = colSchema.widgetOptions || {};
-    const isDateTime = colSchema.type.startsWith('DateTime');
+    
+    // Check if the custom widget explicitly overrides the format
+    const widgetOverride = fieldStyle?.widget;
+    let isDateTime = colSchema.type.startsWith('DateTime');
+    if (widgetOverride === 'date') isDateTime = false;
+    if (widgetOverride === 'datetime') isDateTime = true;
 
     // Grist armazena timestamps em segundos. JS Date usa milissegundos.
     const date = cellValue ? new Date(cellValue * 1000) : null;
+    const zDispValue = record ? record['z_disp_' + colSchema.colId] : undefined;
 
     // NOVO: Lógica para campos travados no modo de edição.
     // Usa a mesma lógica de renderização do modo de visualização.
@@ -14,6 +20,8 @@ export function renderDate(options) {
         if (!date) {
             container.textContent = '(vazio)';
             container.className = 'grf-readonly-empty';
+        } else if (!widgetOverride && typeof zDispValue === 'string' && zDispValue.trim() !== '') {
+            container.textContent = zDispValue;
         } else if (isDateTime) {
             container.textContent = date.toLocaleString();
         } else {
@@ -62,6 +70,11 @@ export function renderDate(options) {
     if (!date) {
         container.textContent = '(vazio)';
         container.className = 'grf-readonly-empty';
+        return;
+    }
+    
+    if (!widgetOverride && typeof zDispValue === 'string' && zDispValue.trim() !== '') {
+        container.textContent = zDispValue;
         return;
     }
     

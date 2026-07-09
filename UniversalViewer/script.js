@@ -1,13 +1,13 @@
 // UniversalViewer/script.js
 
-import { GristTableLens } from '../libraries/grist-table-lens/grist-table-lens.js?v=1.1.0';
-import { HeadlessTableLens } from '../libraries/headless-table-lens.js?v=1.1.0';
-import { GristRestAdapter } from '../libraries/headless-rest-adapter.js?v=1.1.0';
-import { GristLauncherUtils } from '../libraries/grist-launcher-utils.js?v=1.1.0';
-import { subscribe } from '../libraries/grist-event-bus/grist-event-bus.js?v=1.1.0';
-import { open as openConfigManager } from '../libraries/grist-config-manager/ConfigManagerComponent.js?v=1.1.0';
-import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js?v=1.1.0';
-import { GristFilterBar } from '../libraries/grist-filter-bar/grist-filter-bar.js?v=1.1.0';
+import { GristTableLens } from '../libraries/grist-table-lens/grist-table-lens.js?v=1.3.19';
+import { HeadlessTableLens } from '../libraries/headless-table-lens.js?v=1.3.19';
+import { GristRestAdapter } from '../libraries/headless-rest-adapter.js?v=1.3.19';
+import { GristLauncherUtils } from '../libraries/grist-launcher-utils.js?v=1.3.19';
+import { subscribe } from '../libraries/grist-event-bus/grist-event-bus.js?v=1.3.19';
+import { open as openConfigManager } from '../libraries/grist-config-manager/ConfigManagerComponent.js?v=1.3.19';
+import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js?v=1.3.19';
+import { GristFilterBar } from '../libraries/grist-filter-bar/grist-filter-bar.js?v=1.3.19';
 
 document.addEventListener('DOMContentLoaded', async () => {
     const rendererContainer = document.getElementById('renderer-container');
@@ -197,6 +197,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             currentConfig = await tableLens.fetchConfig(currentConfigId);
             if (!currentConfig) throw new Error(`Configuração "${currentConfigId}" não encontrada.`);
 
+            // Fetch and relay dashboard configuration if running inside an iframe
+            if (window.self !== window.top) {
+                tableLens.fetchTableRecords('Grf_config').then(allConfigs => {
+                    const dashboardRecord = allConfigs.find(c => c.componentType === 'Dashboard');
+                    if (dashboardRecord) {
+                        window.parent.postMessage({
+                            action: 'dashboard-config-loaded',
+                            config: dashboardRecord
+                        }, '*');
+                    }
+                }).catch(err => console.warn("[UniversalViewer] Falha ao retransmitir configuração do dashboard:", err));
+            }
+
             const tableId = currentConfig.tableId;
 
             // Tenta pegar o tipo de múltiplas fontes (Raiz, Mapping, ou da própria linha da tabela se disponível)
@@ -212,7 +225,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.log(`[UniversalViewer] Identificado tipo: "${type}" para a config: ${currentConfigId}`);
 
             if (type === 'cardsystem') {
-                const { CardSystem } = await import('../libraries/grist-card-system/CardSystem.js?v=1.1.0');
+                const { CardSystem } = await import('../libraries/grist-card-system/CardSystem.js?v=1.3.19');
                 let [records, schema] = await Promise.all([
                     tableLens.fetchTableRecords(tableId),
                     tableLens.getTableSchema(tableId)
@@ -235,7 +248,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 rendererContainer.appendChild(wrapper);
             } 
             else if (type === 'table') {
-                const { TableRenderer } = await import('../libraries/grist-table-renderer/TableRenderer.js?v=1.1.0');
+                const { TableRenderer } = await import('../libraries/grist-table-renderer/TableRenderer.js?v=1.3.19');
                 let [records, schema] = await Promise.all([
                     tableLens.fetchTableRecords(tableId),
                     tableLens.getTableSchema(tableId)
@@ -251,7 +264,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
 
                 // Post data to parent window (Dashboard) to render Kanban board
-                if (window.parent && window.parent !== window) {
+                if (window.parent && window.parent !== window && tableId === 'INSTRUMENTS') {
                     const stageCol = schema['METROLOGICAL_STAGE'];
                     const choices = stageCol?.widgetOptions ? (
                         typeof stageCol.widgetOptions === 'string' ? JSON.parse(stageCol.widgetOptions).choices : stageCol.widgetOptions.choices
@@ -312,7 +325,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             
                             currentMapping.columns = updatedColumns;
                             
-                            const { GristDataWriter } = await import('../libraries/grist-data-writer.js?v=1.1.0');
+                            const { GristDataWriter } = await import('../libraries/grist-data-writer.js?v=1.3.19');
                             const dataWriter = new GristDataWriter(window.grist);
                             await dataWriter.updateRecord(configTableName, configRecord.id, {
                                 mappingJson: JSON.stringify(currentMapping)
@@ -327,7 +340,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
             }
             else if (type === 'bsc') {
-                const { BSCRenderer } = await import('../libraries/grist-bsc-renderer/BSCRenderer.js?v=1.1.0');
+                const { BSCRenderer } = await import('../libraries/grist-bsc-renderer/BSCRenderer.js?v=1.3.19');
                 const mapping = currentConfig.mapping || currentConfig || {};
                 const tableNames = {
                     modelsTable: mapping.modelsTable || 'Modelos',
@@ -364,7 +377,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
             }
             else if (type === 'indicators') {
-                const { IndicatorsRenderer } = await import('../libraries/grist-indicators-renderer/IndicatorsRenderer.js?v=1.1.0');
+                const { IndicatorsRenderer } = await import('../libraries/grist-indicators-renderer/IndicatorsRenderer.js?v=1.3.19');
                 const [records, configs] = await Promise.all([
                     tableLens.fetchTableRecords(tableId),
                     tableLens.fetchTableRecords('Grf_config')
@@ -456,7 +469,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 await initializeAndUpdate();
             },
             onOpenManager: () => {
-                openConfigManager(window.grist, { initialConfigId: currentConfigId, componentTypes: ['CardSystem', 'Drawer', 'CardStyle', 'Table', 'BSC', 'Indicators'] });
+                openConfigManager(window.grist, { initialConfigId: currentConfigId, componentTypes: ['CardSystem', 'Drawer', 'CardStyle', 'Table', 'BSC', 'Indicators', 'Dashboard'] });
             }
         });
     }
@@ -561,7 +574,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else if (event.data.action === 'update-instrument-stage') {
             const { recordId, updates, occurrenceData } = event.data;
             try {
-                const { GristDataWriter } = await import('../libraries/grist-data-writer.js?v=1.1.0');
+                const { GristDataWriter } = await import('../libraries/grist-data-writer.js?v=1.3.19');
                 const dataWriter = new GristDataWriter(window.grist);
                 await dataWriter.updateRecord('INSTRUMENTS', recordId, updates);
                 if (occurrenceData) {
