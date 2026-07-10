@@ -1,7 +1,9 @@
-import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js?v=1.3.19';
+import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js?v=1.3.29';
 
 let currentRecords = [];
 let STAGES = [];
+
+import { openSelectorModal } from '../libraries/grist-modal-component/selector-modal.js';
 let currentDashboardConfig = null;
 
 // --- CARREGAMENTO DE ÍCONES ---
@@ -132,13 +134,66 @@ function renderKanban() {
         col.className = 'kanban-column';
         col.innerHTML = `
             <div class="kanban-column-header">
-                <span>${stageName}</span>
+                <div style="display:flex;align-items:center;">
+                    <span>${stageName}</span>
+                    <button class="kanban-add-btn" data-stage="${stageName}" style="background:transparent;border:none;cursor:pointer;color:#64748b;display:flex;align-items:center;justify-content:center;padding:4px;border-radius:4px;margin-left:5px;">
+                        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    </button>
+                </div>
                 <span class="column-count" id="count-${stageName.replace(/[^a-zA-Z0-9]/g, '')}">0</span>
             </div>
             <div class="kanban-cards-container" data-stage="${stageName}"></div>
         `;
         board.appendChild(col);
         colContainers[stageName] = col.querySelector('.kanban-cards-container');
+    });
+
+    // Add event listeners to the new add buttons
+    board.querySelectorAll('.kanban-add-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const targetStage = btn.getAttribute('data-stage');
+            
+            // Filter instruments that are not in the target stage
+            const availableItems = currentRecords.filter(rec => {
+                const currentStage = rec.METROLOGICAL_STAGE || "0. Em Uso";
+                return currentStage !== targetStage;
+            });
+            
+            openSelectorModal({
+                title: `Adicionar à Coluna: ${targetStage}`,
+                items: availableItems,
+                searchFn: (item, query) => {
+                    const code = String(item.Code || item.CODE || '').toLowerCase();
+                    const resp = String(item.z_disp_ID_RESPONSIBLE || item.ID_RESPONSIBLE || '').toLowerCase();
+                    const stage = String(item.METROLOGICAL_STAGE || "0. Em Uso").toLowerCase();
+                    return code.includes(query) || resp.includes(query) || stage.includes(query);
+                },
+                renderItem: (item) => {
+                    const code = item.Code || item.CODE || 'Sem Código';
+                    const resp = item.z_disp_ID_RESPONSIBLE || item.ID_RESPONSIBLE || 'Sem Responsável';
+                    const stage = item.METROLOGICAL_STAGE || "0. Em Uso";
+                    return `<div><b>${code}</b> - <span style="color:#64748b;">${resp}</span></div><div style="font-size:11px;color:#94a3b8;margin-top:2px;">Estágio: ${stage}</div>`;
+                },
+                getRowBackground: (item) => {
+                    const stage = item.METROLOGICAL_STAGE || "0. Em Uso";
+                    if (STAGES.includes(stage)) {
+                        return "#fff7ed"; // light orange
+                    }
+                    return "white";
+                },
+                onSave: async (selectedIds) => {
+                    if (!selectedIds.length) return;
+                    try {
+                        for (const id of selectedIds) {
+                            await callIframe('updateRecord', ['INSTRUMENTS', id, { METROLOGICAL_STAGE: targetStage }]);
+                        }
+                    } catch (err) {
+                        console.error("Erro ao adicionar ao grupo:", err);
+                    }
+                }
+            });
+        });
     });
 
     // Populate columns with instrument cards
@@ -343,6 +398,21 @@ function renderDashboard(configRecord = null) {
         return btnText === item.label && btn.getAttribute('data-tab-type') === targetType;
     });
 
+    const configBtn = document.getElementById('btn-dash-config');
+    if (configBtn) {
+        configBtn.onclick = () => {
+            const viewerIframe = document.querySelector('main .tab-pane iframe[src*="UniversalViewer"]');
+            if (viewerIframe && viewerIframe.contentWindow) {
+                viewerIframe.contentWindow.postMessage({
+                    action: 'open-dashboard-config',
+                    configId: currentDashboardConfig?.configId || ''
+                }, '*');
+            } else {
+                alert("Nenhuma aba do tipo Visualizador foi encontrada. Crie pelo menos uma aba do tipo Visualizador para poder acessar as configurações.");
+            }
+        };
+    }
+
     if (isSameStructure) {
         return;
     }
@@ -367,7 +437,7 @@ function renderDashboard(configRecord = null) {
         btn.setAttribute('data-tab-type', tabType);
 
         if (item.icon) {
-            btn.innerHTML = `<svg style="width:14px; height:14px; fill:currentColor; margin-right:6px;"><use href="#${item.icon}"></use></svg><span>${item.label}</span>`;
+            btn.innerHTML = `<svg style="width:14px; height:14px; fill:currentColor; stroke:currentColor; stroke-width:0.5px; margin-right:6px;"><use href="#${item.icon}"></use></svg><span>${item.label}</span>`;
         } else {
             btn.innerText = item.label;
         }
@@ -382,23 +452,48 @@ function renderDashboard(configRecord = null) {
             pane.innerHTML = `<iframe src="./importador-calibracoes.html"></iframe>`;
         } else if (tabType === 'submenu') {
             const subItems = item.subItems || [];
-            let cardsHtml = '';
+            
+            // Group the items
+            const grouped = {};
             subItems.forEach((sub) => {
-                cardsHtml += `
-                    <div class="submenu-card" data-config-id="${sub.targetConfigId}" data-label="${sub.label}" style="background: white; border: 1px solid #cbd5e1; border-radius: 8px; padding: 20px; box-shadow: var(--shadow-sm); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; display: flex; align-items: center; gap: 15px; border-left: 4px solid var(--primary);">
-                        <div class="submenu-card-icon" style="background: var(--primary-light); color: var(--primary); width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 20px;">⚙️</div>
-                        <div style="flex:1;">
-                            <div style="font-weight: 700; font-size: 14px; color: var(--text-main);">${sub.label}</div>
-                            <div style="font-size: 11px; color: var(--text-sub);">Clique para configurar / ver</div>
+                const g = sub.group || 'Sem Grupo';
+                if (!grouped[g]) grouped[g] = [];
+                grouped[g].push(sub);
+            });
+
+            let contentHtml = '';
+            
+            // Render groups
+            const groups = Object.keys(grouped);
+            // If there's only one group and it's "Sem Grupo", we don't need a header
+            const showHeaders = groups.length > 1 || (groups.length === 1 && groups[0] !== 'Sem Grupo');
+
+            groups.forEach(groupName => {
+                if (showHeaders) {
+                    contentHtml += `<h3 style="grid-column: 1/-1; margin: 10px 0 0 0; font-size: 14px; color: var(--primary); border-bottom: 2px solid var(--primary-light); padding-bottom: 5px;">${groupName}</h3>`;
+                }
+                
+                grouped[groupName].forEach(sub => {
+                    const iconSvg = sub.icon ? `<svg style="width:20px; height:20px; fill:currentColor; stroke:currentColor; stroke-width:0.5px;"><use href="#${sub.icon}"></use></svg>` : `⚙️`;
+                    
+                    contentHtml += `
+                        <div class="submenu-card" data-config-id="${sub.targetConfigId}" data-label="${sub.label}" style="background: white; border: 1px solid #cbd5e1; border-radius: 8px; padding: 20px; box-shadow: var(--shadow-sm); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; display: flex; align-items: center; gap: 15px; border-left: 4px solid var(--primary);">
+                            <div class="submenu-card-icon" style="background: var(--primary-light); color: var(--primary); width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 20px;">
+                                ${iconSvg}
+                            </div>
+                            <div style="flex:1;">
+                                <div style="font-weight: 700; font-size: 14px; color: var(--text-main);">${sub.label}</div>
+                                <div style="font-size: 11px; color: var(--text-sub);">Clique para configurar / ver</div>
+                            </div>
                         </div>
-                    </div>
-                `;
+                    `;
+                });
             });
 
             pane.innerHTML = `
                 <div class="submenu-viewport" style="display:flex; flex-direction:column; width:100%; height:100%; min-height:0; flex:1;">
                     <div class="submenu-grid-view" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(225px, 1fr)); gap: 20px; padding: 25px; overflow-y:auto; flex:1; min-height:0; align-content:start;">
-                        ${cardsHtml || '<div style="grid-column:1/-1; text-align:center; color:#64748b; font-style:italic; padding:40px;">Nenhum atalho configurado para este sub-menu.</div>'}
+                        ${contentHtml || '<div style="grid-column:1/-1; text-align:center; color:#64748b; font-style:italic; padding:40px;">Nenhum atalho configurado para este sub-menu.</div>'}
                     </div>
                     <div class="submenu-detail-view" style="display:none; flex-direction:column; flex:1; min-height:0; width:100%; height:100%;">
                         <div class="submenu-detail-header" style="padding:10px 15px; background:#fff; border-bottom:1px solid #cbd5e1; display:flex; align-items:center; gap:10px;">

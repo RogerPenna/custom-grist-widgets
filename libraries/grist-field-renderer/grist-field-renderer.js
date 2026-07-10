@@ -1,25 +1,25 @@
 // libraries/grist-field-renderer/grist-field-renderer.js
 
-import { renderText } from './renderers/render-text.js?v=1.3.19';
-import { renderDate } from './renderers/render-date.js?v=1.3.19';
-import { renderRef } from './renderers/render-ref.js?v=1.3.19';
-import { renderChoice } from './renderers/render-choice.js?v=1.3.19';
-import { renderRefList } from './renderers/render-reflist.js?v=1.3.19';
-import { renderBool } from './renderers/render-bool.js?v=1.3.19';
-import { renderColorPicker } from './renderers/render-color-picker.js?v=1.3.19';
-import { renderProgressBar } from './renderers/render-progress-bar.js?v=1.3.19';
-import { renderToggle } from './renderers/render-toggle.js?v=1.3.19';
-import { renderIndicatorJson } from './renderers/render-indicator-json.js?v=1.3.19';
-import { renderDynamicUI } from './renderers/render-dynamic-ui.js?v=1.3.19';
-import { renderImage } from './renderers/render-image.js?v=1.3.19';
-import { renderMoney } from './renderers/render-money.js?v=1.3.19';
+import { renderText } from './renderers/render-text.js?v=1.3.29';
+import { renderDate } from './renderers/render-date.js?v=1.3.29';
+import { renderRef } from './renderers/render-ref.js?v=1.3.29';
+import { renderChoice } from './renderers/render-choice.js?v=1.3.29';
+import { renderRefList } from './renderers/render-reflist.js?v=1.3.29';
+import { renderBool } from './renderers/render-bool.js?v=1.3.29';
+import { renderColorPicker } from './renderers/render-color-picker.js?v=1.3.29';
+import { renderProgressBar } from './renderers/render-progress-bar.js?v=1.3.29';
+import { renderToggle } from './renderers/render-toggle.js?v=1.3.29';
+import { renderIndicatorJson } from './renderers/render-indicator-json.js?v=1.3.29';
+import { renderDynamicUI } from './renderers/render-dynamic-ui.js?v=1.3.29';
+import { renderImage } from './renderers/render-image.js?v=1.3.29';
+import { renderMoney } from './renderers/render-money.js?v=1.3.29';
 
 (function () {
   if (document.getElementById('grf-styles')) return;
   const link = document.createElement('link');
   link.id = 'grf-styles';
   link.rel = 'stylesheet';
-  link.href = '../libraries/grist-field-renderer/styles/renderer-styles.css?v=1.3.19';
+  link.href = '../libraries/grist-field-renderer/styles/renderer-styles.css?v=1.3.29';
   document.head.appendChild(link);
 })();
 

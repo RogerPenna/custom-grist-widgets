@@ -1,5 +1,6 @@
 import { getFieldStyle, renderField } from '../grist-field-renderer/grist-field-renderer.js';
 import { publish } from '../grist-event-bus/grist-event-bus.js';
+import { openSelectorModal } from '../grist-modal-component/selector-modal.js';
 
 /*******************************************************************
  * CardSystem: A pure visualization component for the Grist Framework.
@@ -627,6 +628,55 @@ export const CardSystem = (() => {
             countBadge.className = "cs-accordion-count";
             countBadge.textContent = `${totalCount} ${totalCount === 1 ? 'card' : 'cards'}`;
             headerLeft.appendChild(countBadge);
+            
+            // NOVO: Adiciona botão '+' para inserir registros no grupo
+            const addBtn = document.createElement("button");
+            addBtn.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`;
+            addBtn.style.cssText = "background:transparent;border:none;cursor:pointer;color:#64748b;display:flex;align-items:center;justify-content:center;padding:4px;border-radius:4px;margin-left:5px;";
+            addBtn.onmouseover = () => addBtn.style.background = "#e2e8f0";
+            addBtn.onmouseleave = () => addBtn.style.background = "transparent";
+            addBtn.onclick = (e) => {
+                e.stopPropagation();
+                
+                // Pegar os instrumentos (processedRecords) que ainda NÃO estão neste grupo
+                const grouperCol = activeGrouper || groupingConfig.statusColumn;
+                const availableItems = processedRecords.filter(rec => {
+                    const statusVal = _getRecordGroupKey(rec, grouperCol, resolvedGroupValues);
+                    return statusVal !== gKey;
+                });
+                
+                openSelectorModal({
+                    title: `Adicionar à Coluna: ${gKey}`,
+                    items: availableItems,
+                    searchFn: (item, query) => {
+                        const code = String(item.Code || '').toLowerCase();
+                        const resp = String(item._csResolved_ID_RESPONSIBLE || item.ID_RESPONSIBLE || '').toLowerCase();
+                        return code.includes(query) || resp.includes(query);
+                    },
+                    renderItem: (item) => {
+                        const code = item.Code || 'Sem Código';
+                        const resp = item._csResolved_ID_RESPONSIBLE || item.ID_RESPONSIBLE || 'Sem Responsável';
+                        return `<b>${code}</b> - <span style="color:#64748b;">${resp}</span>`;
+                    },
+                    onSave: async (selectedIds) => {
+                        if (!selectedIds.length) return;
+                        try {
+                            const tableId = currentOptions.tableId || currentOptions.mapping?.tableId;
+                            const tableLens = currentOptions.lens;
+                            if (tableLens && tableId) {
+                                for (const id of selectedIds) {
+                                    // Se o gKey for "Sem Grupo", vamos colocar como vazio (ou manter null). 
+                                    const newValue = gKey === 'Sem Grupo' ? '' : gKey;
+                                    await tableLens.updateRecord(tableId, id, { [grouperCol]: newValue });
+                                }
+                            }
+                        } catch (err) {
+                            console.error("Erro ao adicionar ao grupo:", err);
+                        }
+                    }
+                });
+            };
+            headerLeft.appendChild(addBtn);
             
             if (groupingConfig.statusColumn) {
                 const statusListDiv = document.createElement("div");

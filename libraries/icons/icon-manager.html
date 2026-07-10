@@ -45,6 +45,15 @@
         button.success { background: #28a745; border-color: #28a745; }
         
         #json-output { width: 100%; height: 200px; margin-top: 20px; display: none; font-family: monospace; font-size: 12px; padding: 10px; border: 2px solid #007bff; border-radius: 4px; }
+        
+        /* Shortcuts styling */
+        .shortcuts-container { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 15px; padding-bottom: 12px; border-bottom: 1px dashed #ccd; }
+        .shortcut-item { display: inline-flex; align-items: center; background: #fff; border: 1px solid #ccd; border-radius: 20px; padding: 2px 8px 2px 12px; transition: all 0.2s; }
+        .shortcut-item:hover { border-color: #007bff; box-shadow: 0 1px 4px rgba(0,123,255,0.15); }
+        .shortcut-btn { text-decoration: none; color: #333; font-size: 12px; font-weight: 500; display: inline-flex; align-items: center; gap: 4px; }
+        .shortcut-btn:hover { color: #007bff; }
+        .delete-shortcut { border: none; background: transparent; color: #999; font-weight: bold; cursor: pointer; font-size: 14px; padding: 0 0 0 6px; line-height: 1; transition: color 0.2s; }
+        .delete-shortcut:hover { color: #dc3545; }
     </style>
 </head>
 <body>
@@ -63,6 +72,17 @@
     </div>
 
     <div id="add-new-panel" class="add-new-section">
+        <div class="shortcuts-container">
+            <span style="font-size: 12px; font-weight: bold; color: #555;">Find Icons:</span>
+            <div id="shortcuts-list" style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;"></div>
+            <button onclick="toggleAddShortcutForm()" class="btn-mini primary" style="padding: 3px 8px; font-size: 11px; border-radius: 20px;">+ Add Link</button>
+            <div id="add-shortcut-form" style="display: none; align-items: center; gap: 5px; background: #fff; padding: 5px 10px; border-radius: 8px; border: 1px solid #ddd; margin-left: 5px;">
+                <input type="text" id="shortcut-name" placeholder="Name" style="width: 80px; padding: 2px 5px; font-size: 11px; height: 22px; box-sizing: border-box;">
+                <input type="text" id="shortcut-url" placeholder="URL (https://...)" style="width: 150px; padding: 2px 5px; font-size: 11px; height: 22px; box-sizing: border-box;">
+                <button onclick="saveShortcut()" class="btn-mini success" style="padding: 2px 6px; font-size: 11px; height: 22px;">Save</button>
+                <button onclick="toggleAddShortcutForm()" class="btn-mini secondary" style="padding: 2px 6px; font-size: 11px; height: 22px;">Cancel</button>
+            </div>
+        </div>
         <div class="add-new-inputs">
             <input type="text" id="new-icon-id" placeholder="Icon ID (e.g. icon-home) [Auto-detects from SVG class]">
             <textarea id="new-icon-path" placeholder="Paste full <svg> code here..."></textarea>
@@ -106,10 +126,90 @@
     const svgUrl = './icons.svg';
     let iconConfigs = {};
 
+    // --- SHORTCUTS MANAGEMENT ---
+    const DEFAULT_SHORTCUTS = [
+        { name: 'Tabler Icons', url: 'https://tabler.io/icons' },
+        { name: 'Lucide Icons', url: 'https://lucide.dev/' }
+    ];
+
+    function getShortcuts() {
+        const stored = localStorage.getItem('grist_icon_shortcuts');
+        if (stored) {
+            try {
+                return JSON.parse(stored);
+            } catch (e) {
+                return DEFAULT_SHORTCUTS;
+            }
+        }
+        return DEFAULT_SHORTCUTS;
+    }
+
+    function renderShortcuts() {
+        const shortcuts = getShortcuts();
+        const listEl = document.getElementById('shortcuts-list');
+        listEl.innerHTML = '';
+        shortcuts.forEach((s, idx) => {
+            const item = document.createElement('div');
+            item.className = 'shortcut-item';
+            item.innerHTML = `
+                <a href="${s.url}" target="_blank" class="shortcut-btn" title="Open ${s.name} in a new tab">
+                    <span>${s.name}</span>
+                    <span style="opacity: 0.5; font-size: 10px;">↗</span>
+                </a>
+                <button class="delete-shortcut" onclick="deleteShortcut(${idx}); event.stopPropagation();" title="Delete shortcut">×</button>
+            `;
+            listEl.appendChild(item);
+        });
+    }
+
+    function toggleAddShortcutForm() {
+        const form = document.getElementById('add-shortcut-form');
+        form.style.display = form.style.display === 'flex' ? 'none' : 'flex';
+        if (form.style.display === 'flex') {
+            document.getElementById('shortcut-name').focus();
+        }
+    }
+
+    function saveShortcut() {
+        const nameEl = document.getElementById('shortcut-name');
+        const urlEl = document.getElementById('shortcut-url');
+        const name = nameEl.value.trim();
+        let url = urlEl.value.trim();
+
+        if (!name || !url) {
+            alert('Please enter both name and URL.');
+            return;
+        }
+
+        if (!url.startsWith('http://') && !url.startsWith('https://')) {
+            url = 'https://' + url;
+        }
+
+        const shortcuts = getShortcuts();
+        shortcuts.push({ name, url });
+        localStorage.setItem('grist_icon_shortcuts', JSON.stringify(shortcuts));
+        
+        nameEl.value = '';
+        urlEl.value = '';
+        toggleAddShortcutForm();
+        renderShortcuts();
+    }
+
+    function deleteShortcut(idx) {
+        if (!confirm('Delete this shortcut?')) return;
+        const shortcuts = getShortcuts();
+        shortcuts.splice(idx, 1);
+        localStorage.setItem('grist_icon_shortcuts', JSON.stringify(shortcuts));
+        renderShortcuts();
+    }
+
     function toggleAddNew() {
         const panel = document.getElementById('add-new-panel');
         panel.classList.toggle('active');
-        if (panel.classList.contains('active')) document.getElementById('new-icon-id').focus();
+        if (panel.classList.contains('active')) {
+            document.getElementById('new-icon-id').focus();
+            renderShortcuts();
+        }
     }
 
     async function loadIcons() {
@@ -435,6 +535,7 @@
     }
 
     loadIcons();
+    renderShortcuts();
 </script>
 
 </body>

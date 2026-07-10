@@ -384,7 +384,14 @@ export const GristTableLens = function(gristInstance) {
     this.parseConfigRecord = function(record) {
         if (!record) return null;
         
-        let mergedConfig = {};
+        let mergedConfig = {
+            id: record.id,
+            configId: record.configId,
+            widgetTitle: record.widgetTitle,
+            description: record.description,
+            componentType: record.componentType,
+            pageId: record.pageId
+        };
         
         // 1. Carrega o legado se existir
         if (record.configJson) {
@@ -448,7 +455,9 @@ export const GristTableLens = function(gristInstance) {
             const configs = _colDataToRows(configTableData);
             const targetConfig = configs.find(c => c.configId === configId);
             if (!targetConfig) {
-                throw new Error(`Configuração com id "${configId}" não encontrada na tabela "${configTableName}".`);
+                const availableConfigs = configs.map(c => c.configId).join(", ");
+                console.error("Available configs:", availableConfigs);
+                throw new Error(`Configuração com id "${configId}" não encontrada na tabela "${configTableName}". IDs encontrados: [${availableConfigs}]`);
             }
             
             const parsedConfig = this.parseConfigRecord(targetConfig);

@@ -1,10 +1,10 @@
 // widgets/GanttViewer.js
-import { GristTableLens } from '../libraries/grist-table-lens/grist-table-lens.js?v=1.3.19';
-import { open as openConfigManager } from '../libraries/grist-config-manager/ConfigManagerComponent.js?v=1.3.19';
+import { GristTableLens } from '../libraries/grist-table-lens/grist-table-lens.js?v=1.3.29';
+import { open as openConfigManager } from '../libraries/grist-config-manager/ConfigManagerComponent.js?v=1.3.29';
 import { GanttRenderer } from '../libraries/grist-gantt-renderer/GanttRenderer.js';
-import { subscribe } from '../libraries/grist-event-bus/grist-event-bus.js?v=1.3.19';
-import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js?v=1.3.19';
-import { GristLauncherUtils } from '../libraries/grist-launcher-utils.js?v=1.3.19';
+import { subscribe } from '../libraries/grist-event-bus/grist-event-bus.js?v=1.3.29';
+import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js?v=1.3.29';
+import { GristLauncherUtils } from '../libraries/grist-launcher-utils.js?v=1.3.29';
 
 document.addEventListener('DOMContentLoaded', async () => {
     console.log("[GanttViewer] DOMContentLoaded - Inicializando...");

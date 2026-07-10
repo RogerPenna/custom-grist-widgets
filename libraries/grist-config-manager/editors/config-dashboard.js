@@ -6,37 +6,151 @@ export const DashboardConfigEditor = (() => {
     let _iconPickerPopup = null;
 
     const AVAILABLE_ICONS = [
-        "icon-CompassRose", "icon-activity-icon", "icon-adjustments", "icon-adjustments-vert",
-        "icon-annotation", "icon-arrow-down-icon", "icon-arrow-down-left-icon", "icon-arrow-down-right-icon",
-        "icon-arrow-left-icon", "icon-arrow-move", "icon-arrow-right-icon", "icon-arrow-up-icon",
-        "icon-arrow-up-left-icon", "icon-arrow-up-right-icon", "icon-backhoe", "icon-badge-check",
-        "icon-bar-chart", "icon-bar-chart-line", "icon-barcode", "icon-bars", "icon-bell",
-        "icon-bell-active", "icon-bookmark", "icon-bulldozer", "icon-bullseye", "icon-calculator-icon",
-        "icon-calendar", "icon-calendar-edit", "icon-card-checklist", "icon-chart", "icon-chart-gantt-icon",
-        "icon-chart-mixed", "icon-chart-pie", "icon-chart-up", "icon-check", "icon-check-circle",
-        "icon-check-circle-alt", "icon-checklist", "icon-chess-knight-icon", "icon-chess-pawn-icon",
-        "icon-chess-rook-icon", "icon-clipboard", "icon-clipboard-check", "icon-clipboard-list",
-        "icon-clock-arrow", "icon-close-circle", "icon-close-sidebar", "icon-column", "icon-compass",
-        "icon-cone", "icon-cone-striped", "icon-core-drill", "icon-dashboard", "icon-database-icon",
-        "icon-diagram-2", "icon-diagram-3", "icon-download", "icon-edit", "icon-envelope",
-        "icon-exclamation", "icon-exclamation-diamond", "icon-exclamation-triangle", "icon-expand",
-        "icon-eye", "icon-file", "icon-file-chart", "icon-file-check", "icon-file-clone",
-        "icon-file-search", "icon-filter", "icon-flag", "icon-folder", "icon-forward",
-        "icon-globe", "icon-globe-americas", "icon-grid", "icon-hardhat-icon", "icon-home",
-        "icon-hourglass", "icon-inbox", "icon-info-circle", "icon-interactive-card-icon",
-        "icon-lifesaver", "icon-lightning", "icon-link", "icon-link-broken", "icon-lock",
-        "icon-mail-open", "icon-measurement-icon", "icon-microscope", "icon-minus-circle",
-        "icon-minus-circle-alt", "icon-move-icon", "icon-paper-clip", "icon-paste", "icon-pen",
-        "icon-pen-alt", "icon-pencil-square", "icon-plus-circle", "icon-plus-circle-alt",
-        "icon-printer", "icon-process-cogs", "icon-profile-card", "icon-question-circle",
-        "icon-rec-check-icon", "icon-rectangle-list", "icon-reload-icon", "icon-ruler-icon",
-        "icon-save", "icon-save-alt", "icon-search", "icon-settings", "icon-share",
-        "icon-shield-exclamation", "icon-sort-asc", "icon-sort-desc", "icon-speedometer",
-        "icon-star", "icon-star-active", "icon-status-bar-icon", "icon-status-indicator-icon",
-        "icon-survey-icon", "icon-tools", "icon-traffic-light", "icon-trashbin", "icon-truck",
-        "icon-unlock", "icon-upload", "icon-user-group", "icon-user-icon", "icon-view-grid-icon",
-        "icon-wrench", "icon-zoom-in", "icon-zoom-out"
-    ];
+        "icon-CompassRose",
+        "icon-activity-icon",
+        "icon-adjustments",
+        "icon-adjustments-vert",
+        "icon-annotation",
+        "icon-arrow-down-icon",
+        "icon-arrow-down-left-icon",
+        "icon-arrow-down-right-icon",
+        "icon-arrow-left-icon",
+        "icon-arrow-move",
+        "icon-arrow-right-icon",
+        "icon-arrow-up-icon",
+        "icon-arrow-up-left-icon",
+        "icon-arrow-up-right-icon",
+        "icon-backhoe",
+        "icon-badge-check",
+        "icon-badge-check-icon",
+        "icon-bar-chart",
+        "icon-bar-chart-line",
+        "icon-barcode",
+        "icon-bars",
+        "icon-bell",
+        "icon-bell-active",
+        "icon-book-open-check-icon",
+        "icon-bookmark",
+        "icon-building-icon",
+        "icon-building2-icon",
+        "icon-buildings",
+        "icon-bulldozer",
+        "icon-bullseye",
+        "icon-calculator-icon",
+        "icon-calendar",
+        "icon-calendar-edit",
+        "icon-card-checklist",
+        "icon-chart",
+        "icon-chart-gantt-icon",
+        "icon-chart-mixed",
+        "icon-chart-pie",
+        "icon-chart-up",
+        "icon-check",
+        "icon-check-circle",
+        "icon-check-circle-alt",
+        "icon-checklist",
+        "icon-chess-knight-icon",
+        "icon-chess-pawn-icon",
+        "icon-chess-rook-icon",
+        "icon-circle-star-icon",
+        "icon-clipboard",
+        "icon-clipboard-check",
+        "icon-clipboard-list",
+        "icon-clock-arrow",
+        "icon-close-circle",
+        "icon-close-sidebar",
+        "icon-column",
+        "icon-compass",
+        "icon-cone",
+        "icon-cone-striped",
+        "icon-crosshair-icon",
+        "icon-diagram-2",
+        "icon-diagram-3",
+        "icon-download",
+        "icon-edit",
+        "icon-exclamation",
+        "icon-exclamation-diamond",
+        "icon-exclamation-triangle",
+        "icon-expand",
+        "icon-eye",
+        "icon-factory-icon",
+        "icon-file",
+        "icon-file-chart",
+        "icon-file-check",
+        "icon-file-clone",
+        "icon-file-search",
+        "icon-filter",
+        "icon-flag",
+        "icon-flag-icon",
+        "icon-folder",
+        "icon-forward",
+        "icon-globe",
+        "icon-globe-americas",
+        "icon-grid",
+        "icon-hard-hat",
+        "icon-hourglass",
+        "icon-info-circle",
+        "icon-kanban",
+        "icon-land-plot-icon",
+        "icon-landmark-icon",
+        "icon-life-buoy-icon",
+        "icon-lifesaver",
+        "icon-lightbulb",
+        "icon-lightning",
+        "icon-link",
+        "icon-link-broken",
+        "icon-lock",
+        "icon-math",
+        "icon-medal-icon",
+        "icon-microscope",
+        "icon-minus-circle",
+        "icon-minus-circle-alt",
+        "icon-new",
+        "icon-package-check-icon",
+        "icon-package-open-icon",
+        "icon-pen",
+        "icon-pen-alt",
+        "icon-pencil-ruler-icon",
+        "icon-plus-circle",
+        "icon-plus-circle-alt",
+        "icon-pocket-knife-icon",
+        "icon-printer",
+        "icon-printer-icon",
+        "icon-process",
+        "icon-process-cogs",
+        "icon-profile-card",
+        "icon-rectangle-list",
+        "icon-risk",
+        "icon-ruler-dimension-line-icon",
+        "icon-ruler-icon",
+        "icon-ruler90",
+        "icon-save",
+        "icon-save-alt",
+        "icon-search",
+        "icon-settings",
+        "icon-sheet-icon",
+        "icon-shield-alert-icon",
+        "icon-shovel-icon",
+        "icon-speedometer",
+        "icon-square-radical-icon",
+        "icon-strategy",
+        "icon-target-arrow",
+        "icon-tool-case-icon",
+        "icon-tools",
+        "icon-tools2",
+        "icon-traffic-cone-icon",
+        "icon-traffic-light",
+        "icon-trashbin",
+        "icon-trophy-icon",
+        "icon-truck",
+        "icon-unlock",
+        "icon-user-round-icon",
+        "icon-variable",
+        "icon-warehouse-icon",
+        "icon-wrench",
+        "icon-zoom-in",
+        "icon-zoom-out"
+        ];
 
     function render(container, config, tableLens, tableId, receivedConfigs = []) {
         _mainContainer = container;
@@ -213,7 +327,7 @@ export const DashboardConfigEditor = (() => {
                     <div style="flex:1;">
                         <label style="display:block; font-size:10px; font-weight:bold; color:#64748b; margin-bottom:3px;">Ícone</label>
                         <button type="button" class="btn-pick-icon" data-idx="${idx}" style="width:100%; height:28px; padding:2px; display:flex; align-items:center; justify-content:center; gap:5px; font-size:11px; cursor:pointer; background:#fff; border:1px solid #cbd5e1; border-radius:4px;">
-                            <svg class="icon" style="width:14px; height:14px; fill:currentColor;"><use href="#${tab.icon || 'icon-settings'}"></use></svg>
+                            <svg class="icon" style="width:14px; height:14px; fill:currentColor; stroke:currentColor; stroke-width:0.5px;"><use href="#${tab.icon || 'icon-settings'}"></use></svg>
                             <span>${(tab.icon || 'icon-settings').replace('icon-', '')}</span>
                         </button>
                     </div>
@@ -339,17 +453,36 @@ export const DashboardConfigEditor = (() => {
                 `<option value="${c.configId}" ${sub.targetConfigId === c.configId ? 'selected' : ''}>${c.widgetTitle} (${c.configId})</option>`
             ).join('');
 
+            row.style.display = 'flex';
+            row.style.gap = '4px';
+            row.style.alignItems = 'center';
+            row.style.marginBottom = '4px';
+            
+            const iconId = sub.icon || 'icon-settings';
+
             row.innerHTML = `
-                <input type="text" class="subitem-label" value="${sub.label || ''}" placeholder="Nome do Atalho" style="flex:1; padding:3px; font-size:10px;">
-                <select class="subitem-select" style="flex:1; padding:3px; font-size:10px;">
+                <button type="button" class="btn-subitem-icon" style="width:22px; height:22px; padding:2px; display:flex; align-items:center; justify-content:center; background:#fff; border:1px solid #cbd5e1; border-radius:3px; cursor:pointer;" title="Escolher Ícone">
+                    <svg class="icon" style="width:12px; height:12px; fill:currentColor; stroke:currentColor; stroke-width:0.5px;"><use href="#${iconId}"></use></svg>
+                </button>
+                <input type="text" class="subitem-label" value="${sub.label || ''}" placeholder="Nome do Atalho" style="flex:2; padding:3px; font-size:10px; border:1px solid #cbd5e1; border-radius:3px; min-width:0;">
+                <input type="text" class="subitem-group" value="${sub.group || ''}" placeholder="Grupo (Opc. )" style="flex:1.5; padding:3px; font-size:10px; border:1px solid #cbd5e1; border-radius:3px; min-width:0;">
+                <select class="subitem-select" style="flex:2; padding:3px; font-size:10px; border:1px solid #cbd5e1; border-radius:3px; min-width:0;">
                     <option value="">-- Sem Widget --</option>
                     ${selectOptions}
                 </select>
-                <button type="button" class="btn-del-subitem" style="color:#ef4444; background:none; border:none; cursor:pointer; font-weight:bold; font-size:10px; padding:2px;">✕</button>
+                <button type="button" class="btn-del-subitem" style="color:#ef4444; background:none; border:none; cursor:pointer; font-weight:bold; font-size:12px; padding:2px;">✕</button>
             `;
+
+            row.querySelector('.btn-subitem-icon').onclick = (e) => {
+                openIconPickerForTab(tabIdx, e.currentTarget, subIdx);
+            };
 
             row.querySelector('.subitem-label').oninput = (e) => {
                 subItems[subIdx].label = e.target.value;
+            };
+
+            row.querySelector('.subitem-group').oninput = (e) => {
+                subItems[subIdx].group = e.target.value;
             };
 
             row.querySelector('.subitem-select').onchange = (e) => {
@@ -365,7 +498,7 @@ export const DashboardConfigEditor = (() => {
         });
     }
 
-    function openIconPickerForTab(tabIdx, btnEl) {
+    function openIconPickerForTab(tabIdx, btnEl, subIdx = -1) {
         if (_iconPickerPopup) {
             _iconPickerPopup.remove();
         }
@@ -417,7 +550,7 @@ export const DashboardConfigEditor = (() => {
                 .icon-picker-popup .icon-option svg {
                     width: 18px;
                     height: 18px;
-                    fill: currentColor;
+                    fill: currentColor; stroke: currentColor; stroke-width: 0.5px;
                 }
                 .icon-picker-popup .icon-label {
                     font-size: 8px;
@@ -447,7 +580,7 @@ export const DashboardConfigEditor = (() => {
         _mainContainer.appendChild(_iconPickerPopup);
 
         const searchInput = _iconPickerPopup.querySelector('#picker-search');
-        const options = _iconPickerPopup.querySelector('.icon-option');
+        const options = _iconPickerPopup.querySelectorAll('.icon-option');
 
         searchInput.focus();
         searchInput.oninput = (e) => {
@@ -461,12 +594,18 @@ export const DashboardConfigEditor = (() => {
         options.forEach(opt => {
             opt.onclick = () => {
                 const iconId = opt.dataset.id;
-                _menuItems[tabIdx].icon = iconId;
                 
-                btnEl.innerHTML = `
-                    <svg class="icon" style="width:14px; height:14px; fill:currentColor;"><use href="#${iconId}"></use></svg>
-                    <span>${iconId.replace('icon-', '')}</span>
-                `;
+                if (subIdx !== -1) {
+                    _menuItems[tabIdx].subItems[subIdx].icon = iconId;
+                    btnEl.innerHTML = `<svg class="icon" style="width:12px; height:12px; fill:currentColor; stroke:currentColor; stroke-width:0.5px;"><use href="#${iconId}"></use></svg>`;
+                } else {
+                    _menuItems[tabIdx].icon = iconId;
+                    btnEl.innerHTML = `
+                        <svg class="icon" style="width:14px; height:14px; fill:currentColor; stroke:currentColor; stroke-width:0.5px;"><use href="#${iconId}"></use></svg>
+                        <span>${iconId.replace('icon-', '')}</span>
+                    `;
+                }
+                
                 _iconPickerPopup.remove();
                 _iconPickerPopup = null;
             };

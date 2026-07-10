@@ -32,6 +32,8 @@ icon-backhoe
 
 icon-badge-check
 
+icon-badge-check-icon
+
 icon-bar-chart
 
 icon-bar-chart-line
@@ -44,7 +46,15 @@ icon-bell
 
 icon-bell-active
 
+icon-book-open-check-icon
+
 icon-bookmark
+
+icon-building-icon
+
+icon-building2-icon
+
+icon-buildings
 
 icon-bulldozer
 
@@ -81,6 +91,8 @@ icon-chess-knight-icon
 icon-chess-pawn-icon
 
 icon-chess-rook-icon
+
+icon-circle-star-icon
 
 icon-clipboard
 
@@ -121,6 +133,8 @@ icon-exclamation-triangle
 icon-expand
 
 icon-eye
+
+icon-factory-icon
 
 icon-file
 
@@ -174,15 +188,27 @@ icon-link-broken
 
 icon-lock
 
+icon-math
+
+icon-medal-icon
+
 icon-microscope
 
 icon-minus-circle
 
 icon-minus-circle-alt
 
+icon-new
+
+icon-package-check-icon
+
+icon-package-open-icon
+
 icon-pen
 
 icon-pen-alt
+
+icon-pencil-ruler-icon
 
 icon-plus-circle
 
@@ -204,6 +230,12 @@ icon-rectangle-list
 
 icon-risk
 
+icon-ruler-dimension-line-icon
+
+icon-ruler-icon
+
+icon-ruler90
+
 icon-save
 
 icon-save-alt
@@ -219,6 +251,8 @@ icon-shield-alert-icon
 icon-shovel-icon
 
 icon-speedometer
+
+icon-square-radical-icon
 
 icon-strategy
 
@@ -243,6 +277,10 @@ icon-truck
 icon-unlock
 
 icon-user-round-icon
+
+icon-variable
+
+icon-warehouse-icon
 
 icon-wrench
 

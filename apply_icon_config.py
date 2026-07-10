@@ -625,7 +625,103 @@ config = {
     "fill": false,
     "stroke": true,
     "strokeWidth": 2
+  },
+  "icon-medal-icon": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-circle-star-icon": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-package-open-icon": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-package-check-icon": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-factory-icon": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-ruler-icon": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-ruler-dimension-line-icon": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-pencil-ruler-icon": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-building2-icon": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-building-icon": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-warehouse-icon": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-square-radical-icon": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-badge-check-icon": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-book-open-check-icon": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-new": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-variable": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-math": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-ruler90": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
+  },
+  "icon-buildings": {
+    "fill": false,
+    "stroke": true,
+    "strokeWidth": 2
   }
+}
 }
 }
 }

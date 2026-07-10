@@ -1,6 +1,6 @@
-import { GristTableLens } from '../grist-table-lens/grist-table-lens.js?v=1.3.19';
-import { GristDataWriter } from '../grist-data-writer.js?v=1.3.19';
-import { publish } from '../grist-event-bus/grist-event-bus.js?v=1.3.19';
+import { GristTableLens } from '../grist-table-lens/grist-table-lens.js?v=1.3.29';
+import { GristDataWriter } from '../grist-data-writer.js?v=1.3.29';
+import { publish } from '../grist-event-bus/grist-event-bus.js?v=1.3.29';
 import { GristRestApi } from '../grist-rest-api.js';
 
 // Import editor modules
@@ -14,7 +14,7 @@ import { ProgressBarConfigEditor } from './editors/config-progress-bar.js?v=1.0.
 import { ColorOptionsConfigEditor } from './editors/config-color-options.js?v=1.0.3';
 import { TimelineConfigEditor } from './editors/config-timeline.js';
 import { GanttConfigEditor } from './editors/config-gantt.js';
-import { DashboardConfigEditor } from './editors/config-dashboard.js?v=1.3.19';
+import { DashboardConfigEditor } from './editors/config-dashboard.js?v=1.3.29';
 
 let overlay = null;
 let _grist = null;
