@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.error('Falha ao carregar o arquivo de ícones:', error);
         }
     }
-    await loadIcons();
+    loadIcons(); // fire-and-forget: icons are decorative and don't need to block init
 
     // --- 0.1 AMBIENTE (GRIST vs HEADLESS) ---
     if (urlConfigId && urlDocId) {
@@ -61,6 +61,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- 1. SUBSCRIPÇÕES GLOBAIS ---
     subscribe('data-changed', async () => {
         console.log("[UniversalViewer] Dados alterados, atualizando...");
+        if (tableLens && typeof tableLens.clearTableRecordsCache === 'function') {
+            tableLens.clearTableRecordsCache();
+        }
         await initializeAndUpdate();
     });
 
@@ -197,9 +200,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             currentConfig = await tableLens.fetchConfig(currentConfigId);
             if (!currentConfig) throw new Error(`Configuração "${currentConfigId}" não encontrada.`);
 
-            // Fetch and relay dashboard configuration if running inside an iframe
+            // Relay dashboard configuration to parent if running inside an iframe
+            // Reuses configs already fetched by fetchConfig (no extra RPC)
             if (window.self !== window.top) {
-                tableLens.fetchTableRecords('Grf_config').then(allConfigs => {
+                try {
+                    const allConfigs = currentConfig.receivedConfigs || [];
                     const dashboardRecord = allConfigs.find(c => c.componentType === 'Dashboard');
                     if (dashboardRecord) {
                         const parsedDashboard = tableLens.parseConfigRecord(dashboardRecord);
@@ -208,7 +213,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                             config: parsedDashboard
                         }, '*');
                     }
-                }).catch(err => console.warn("[UniversalViewer] Falha ao retransmitir configuração do dashboard:", err));
+                } catch (err) {
+                    console.warn("[UniversalViewer] Falha ao retransmitir configuração do dashboard:", err);
+                }
             }
 
             const tableId = currentConfig.tableId;
@@ -379,10 +386,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             else if (type === 'indicators') {
                 const { IndicatorsRenderer } = await import('../libraries/grist-indicators-renderer/IndicatorsRenderer.js?v=1.3.23');
-                const [records, configs] = await Promise.all([
+                let [records, configs] = await Promise.all([
                     tableLens.fetchTableRecords(tableId),
                     tableLens.fetchTableRecords('Grf_config')
                 ]);
+                records = IndicatorsRenderer.calculateFormulas(records, currentConfig);
                 rendererContainer.innerHTML = '';
                 const currentYear = new Date().getFullYear().toString();
                 const styling = currentConfig.styling || {};
@@ -536,6 +544,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log("[UniversalViewer] Inicializando Grist Plugin API...");
         window.grist.ready({ requiredAccess: 'full' });
 
+        // Pre-warm metadata cache while waiting for onOptions callback
+        if (typeof tableLens.warmup === 'function') {
+            tableLens.warmup();
+        }
+
         window.grist.onOptions(async (options) => {
             const newId = urlConfigId || options?.configId || null;
             if (newId !== currentConfigId || !isInitialized) {
@@ -546,8 +559,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         window.grist.onRecords(async () => {
+            if (tableLens && typeof tableLens.clearTableRecordsCache === 'function') {
+                tableLens.clearTableRecordsCache();
+            }
             if (isInitialized) await initializeAndUpdate();
-        });
+        }, { keepEncoded: true });
     } else {
         // MODO HEADLESS: Inicializa diretamente sem esperar pelo Grist
         console.log("[UniversalViewer] Pulando Grist API (Modo Headless)");
@@ -585,11 +601,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                 console.error("[UniversalViewer] Error updating stage from parent message:", err);
             }
         } else if (event.data.action === 'open-dashboard-config') {
-            const { open: openConfigManager } = await import('../libraries/grist-config-manager/ConfigManagerComponent.js?v=1.3.29');
+            const { open: openConfigManager } = await import('../libraries/grist-config-manager/ConfigManagerComponent.js?v=1.3.32');
             openConfigManager(grist, {
                 initialConfigId: event.data.configId,
                 componentTypes: ['Dashboard']
             });
+        } else if (event.data.action === 'change-config') {
+            const { configId } = event.data;
+            if (configId) {
+                const url = new URL(window.location);
+                url.searchParams.set('configId', configId);
+                window.history.pushState({}, '', url);
+                if (isInitialized) await initializeAndUpdate();
+            }
         } else if (event.data.action === 'reload-records') {
             if (isInitialized) await initializeAndUpdate();
         } else if (event.data.action === 'table-lens-request') {

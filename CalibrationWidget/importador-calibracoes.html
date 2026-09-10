@@ -114,15 +114,90 @@
         }
     </style>
     
-    <!-- External JS Libraries -->
+    <!-- External CSS & JS Libraries -->
+    <link rel="stylesheet" href="../libraries/tabulator/tabulator.min.css">
     <script src="../libraries/external/grist-plugin-api.js"></script>
+    <script src="../libraries/tabulator/tabulator.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+    <!-- Modal Styles -->
+    <style>
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            overflow: auto;
+        }
+        .modal-content {
+            background-color: #ffffff;
+            margin: 2% auto;
+            width: 95%;
+            max-width: 1200px;
+            border-radius: 6px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            display: flex;
+            flex-direction: column;
+            max-height: 90vh;
+        }
+        .modal-header {
+            padding: 15px 20px;
+            background-color: var(--primary-color);
+            color: #ffffff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top-left-radius: 6px;
+            border-top-right-radius: 6px;
+        }
+        .modal-header h2 { margin: 0; font-size: 18px; color: #ffffff; border: none; }
+        .close-preview-modal-btn { font-size: 28px; font-weight: bold; cursor: pointer; color: #ffffff; }
+        .modal-body { padding: 20px; flex: 1; overflow-y: auto; background-color: #fafafa; }
+        .modal-footer { padding: 12px 20px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 10px; background: #fff; }
+        .preview-layout { display: flex; gap: 20px; min-height: 520px; }
+        .preview-main-panel { flex: 3; display: flex; flex-direction: column; background-color: #ffffff; border: 1px solid var(--border-color); border-radius: 6px; overflow: hidden; }
+        .preview-side-panel { flex: 1; min-width: 280px; max-width: 340px; background-color: #f1f3f4; border: 1px solid var(--border-color); border-radius: 6px; padding: 15px; display: flex; flex-direction: column; gap: 15px; }
+        .preview-tabs { display: flex; background-color: #eceff1; border-bottom: 1px solid var(--border-color); }
+        .preview-tab-btn { padding: 12px 20px; border: none; border-right: 1px solid var(--border-color); background-color: #eceff1; color: var(--text-color); cursor: pointer; font-weight: 600; }
+        .preview-tab-btn.active { background-color: #ffffff; border-bottom: 3px solid var(--primary-color); color: var(--primary-color); }
+        .preview-tab-contents { padding: 15px; flex: 1; display: flex; flex-direction: column; overflow-y: auto; }
+        .preview-tab-pane { display: none; flex: 1; }
+        .preview-tab-pane.active { display: flex; flex-direction: column; }
+        .pdf-viewer-container { flex: 1; border: 1px solid var(--border-color); border-radius: 4px; overflow: hidden; background-color: #e4e4e4; }
+        #preview-results-grid { flex: 1; min-height: 440px; }
+        .side-panel-section { background-color: #ffffff; border: 1px solid var(--border-color); border-radius: 4px; padding: 12px; }
+        .side-panel-section h3 { margin: 0 0 10px 0; font-size: 14px; color: var(--primary-color); border-bottom: 1px solid #eceff1; padding-bottom: 6px; }
+        .info-group { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; }
+        .info-group label { color: #546e7a; font-weight: 500; }
+        .info-group .info-value { font-weight: bold; color: var(--text-color); }
+        .validation-summary-box { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; padding: 10px; background-color: #fafafa; border: 1px solid #eceff1; border-radius: 4px; }
+        .summary-item { display: flex; align-items: center; font-size: 13px; }
+        .summary-item .dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; display: inline-block; }
+        .summary-item .dot.green { background-color: var(--success-color); }
+        .summary-item .dot.orange { background-color: #ef6c00; }
+        .summary-item .dot.red { background-color: var(--error-color); }
+        .summary-item .label { flex: 1; color: #546e7a; }
+        .summary-item .value { font-weight: bold; }
+        .final-status-container { margin-top: 15px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+        .badge { padding: 6px 12px; border-radius: 4px; font-weight: bold; font-size: 13px; }
+        .badge.approved { background-color: #c8e6c9; color: var(--success-color); }
+        .badge.rejected { background-color: #ffcdd2; color: var(--error-color); }
+        .badge.warning { background-color: #ffe082; color: #b77900; }
+        .btn-primary { background-color: var(--primary-color); color: #ffffff; border: none; padding: 8px 16px; border-radius: 4px; font-weight: bold; cursor: pointer; }
+        .btn-primary:hover { background-color: var(--primary-hover); }
+        .btn-secondary { background-color: #ffffff; color: var(--text-color); border: 1px solid var(--border-color); padding: 8px 16px; border-radius: 4px; cursor: pointer; }
+        .btn-secondary:hover { background-color: #f1f3f4; }
+    </style>
 </head>
 <body>
     <div class="container">
         <h2>📥 Importar Calibração (.CAL / XML)</h2>
         <p style="color: #607d8b; font-size: 13px; margin-top: -5px;">
-            Arraste um arquivo de calibração para realizar o parse e salvar no banco automaticamente com a validação calculada.
+            Arraste um arquivo de calibração para visualizar o relatório completo (PDF, tabela XML e laudo) antes de confirmar a gravação.
         </p>
 
         <div class="form-group">
@@ -143,6 +218,108 @@
         <div id="log-console" class="log-area"></div>
     </div>
 
+    <!-- MODAL: RELATÓRIO DE IMPORTAÇÃO (Pré-visualização) -->
+    <div id="import-preview-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Relatório de Importação de Certificado</h2>
+                <span class="close-preview-modal-btn">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="preview-layout">
+                    <!-- Painel Esquerdo: Visualização e Tabelas -->
+                    <div class="preview-main-panel">
+                        <div class="preview-tabs">
+                            <button class="preview-tab-btn active" data-prevtab="prev-tab-pdf">Certificado PDF</button>
+                            <button class="preview-tab-btn" data-prevtab="prev-tab-xml">Tabela de Resultados (XML)</button>
+                        </div>
+                        
+                        <div class="preview-tab-contents">
+                            <!-- Tab: PDF -->
+                            <div id="prev-tab-pdf" class="preview-tab-pane active">
+                                <div class="pdf-viewer-container">
+                                    <iframe id="preview-pdf-frame" src="" width="100%" height="520px"></iframe>
+                                </div>
+                            </div>
+                            <!-- Tab: XML Results -->
+                            <div id="prev-tab-xml" class="preview-tab-pane">
+                                <div id="preview-table-selector-container" style="margin-bottom: 10px; display: none;">
+                                    <label style="font-weight: 600; margin-right: 10px; color: var(--text-color);">Tabela do Certificado:</label>
+                                    <select id="preview-table-select" style="padding: 6px; border-radius: 4px; border: 1px solid var(--border-color); font-size: 13px;"></select>
+                                </div>
+                                <div id="preview-results-grid"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Painel Direito: Metadados do Instrumento e Validação -->
+                    <div class="preview-side-panel">
+                        <div class="side-panel-section">
+                            <h3>Dados do Instrumento</h3>
+                            <div class="info-group">
+                                <label>Código/Tag</label>
+                                <span id="preview-inst-code" class="info-value">-</span>
+                            </div>
+                            <div class="info-group">
+                                <label>Número de Série</label>
+                                <span id="preview-inst-serial" class="info-value">-</span>
+                            </div>
+                            <div class="info-group">
+                                <label>Tipo de Instrumento</label>
+                                <span id="preview-inst-type" class="info-value">-</span>
+                            </div>
+                        </div>
+
+                        <div class="side-panel-section">
+                            <h3>Dados do Certificado</h3>
+                            <div class="info-group">
+                                <label>Número do Certificado</label>
+                                <span id="preview-cert-code" class="info-value">-</span>
+                            </div>
+                            <div class="info-group">
+                                <label>Data de Calibração</label>
+                                <span id="preview-cert-date" class="info-value">-</span>
+                            </div>
+                        </div>
+
+                        <div class="side-panel-section">
+                            <h3>Resultado da Validação</h3>
+                            <div class="info-group">
+                                <label>Erro Máximo Permitido</label>
+                                <span id="preview-inst-limit" class="info-value">-</span>
+                            </div>
+                            <div class="validation-summary-box">
+                                <div class="summary-item">
+                                    <span class="dot green"></span>
+                                    <span class="label">Conforme:</span>
+                                    <span id="preview-count-pass" class="value">0</span>
+                                </div>
+                                <div class="summary-item">
+                                    <span class="dot orange"></span>
+                                    <span class="label">Alerta:</span>
+                                    <span id="preview-count-warn" class="value">0</span>
+                                </div>
+                                <div class="summary-item">
+                                    <span class="dot red"></span>
+                                    <span class="label">Reprovado:</span>
+                                    <span id="preview-count-fail" class="value">0</span>
+                                </div>
+                            </div>
+                            <div class="final-status-container">
+                                <label style="font-size: 11px; font-weight: bold; color: #546e7a;">AVALIAÇÃO FINAL</label>
+                                <span id="preview-final-status-badge" class="badge warning">AGUARDANDO</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="preview-btn-confirm" class="btn-primary">Confirmar e Gravar</button>
+                <button id="preview-btn-cancel" class="btn-secondary">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Script de Negócio -->
     <script type="module">
         import { GristTableLens } from '../libraries/grist-table-lens/grist-table-lens.js';
@@ -152,6 +329,11 @@
         let dataWriter = null;
         let instrumentsList = [];
         let selectedInstrumentId = null;
+        let pendingImportData = null;
+        let tempPdfUrl = null;
+        let pendingPdfBlob = null;
+        let pendingPdfFilename = null;
+        let previewResultsGrid = null;
 
         tableLens = new GristTableLens(window.grist);
         dataWriter = new GristDataWriter(window.grist);
@@ -161,6 +343,51 @@
         instSelect.addEventListener('change', (e) => {
             selectedInstrumentId = e.target.value ? parseInt(e.target.value, 10) : null;
         });
+
+        // Modal Close / Cancel Handlers
+        document.querySelectorAll('.close-preview-modal-btn, #preview-btn-cancel').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.getElementById('import-preview-modal').style.display = 'none';
+                if (tempPdfUrl) {
+                    URL.revokeObjectURL(tempPdfUrl);
+                    tempPdfUrl = null;
+                }
+                pendingImportData = null;
+                writeLog("🚫 Importação cancelada pelo usuário. Nenhum dado foi salvo.");
+            });
+        });
+
+        // Preview Tabs Switcher
+        document.querySelectorAll('.preview-tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.preview-tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.preview-tab-pane').forEach(p => p.classList.remove('active'));
+                
+                btn.classList.add('active');
+                const targetId = btn.getAttribute('data-prevtab');
+                document.getElementById(targetId).classList.add('active');
+                
+                if (targetId === 'prev-tab-xml' && previewResultsGrid) {
+                    previewResultsGrid.redraw(true);
+                }
+            });
+        });
+
+        // Confirm Action Button
+        document.getElementById('preview-btn-confirm').addEventListener('click', saveImportedCertificate);
+
+        // Preview Table Select Switcher (for XML files with multiple tables)
+        const previewSelectEl = document.getElementById('preview-table-select');
+        if (previewSelectEl) {
+            previewSelectEl.addEventListener('change', (e) => {
+                const selectedIdx = parseInt(e.target.value, 10);
+                if (pendingImportData && pendingImportData.tables && pendingImportData.tables[selectedIdx]) {
+                    if (previewResultsGrid) {
+                        previewResultsGrid.setData(pendingImportData.tables[selectedIdx].points);
+                    }
+                }
+            });
+        }
 
         // Uploader Dropzone handlers
         const uploadZone = document.getElementById('upload-zone');
@@ -195,15 +422,71 @@
             }
         });
 
+        function normalizeStr(str) {
+            return String(str || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        }
+
+        function formatToIsoDate(dStr) {
+            if (!dStr) return new Date().toISOString().split('T')[0];
+            dStr = String(dStr).trim();
+            // DD/MM/YYYY or DD-MM-YYYY
+            if (/^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}/.test(dStr)) {
+                const parts = dStr.split(/[\/\-]/);
+                const day = parts[0].padStart(2, '0');
+                const month = parts[1].padStart(2, '0');
+                const year = parts[2];
+                return `${year}-${month}-${day}`;
+            }
+            // YYYY-MM-DD
+            if (/^\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2}/.test(dStr)) {
+                const parts = dStr.split(/[\/\-]/);
+                const year = parts[0];
+                const month = parts[1].padStart(2, '0');
+                const day = parts[2].padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            }
+            const parsed = new Date(dStr);
+            if (!isNaN(parsed.getTime())) {
+                return parsed.toISOString().split('T')[0];
+            }
+            return dStr;
+        }
+
+        function getRecordFieldValue(rec, fieldNames) {
+            if (!rec) return null;
+            const recKeys = Object.keys(rec);
+            for (const fname of fieldNames) {
+                const normF = normalizeStr(fname);
+                const foundKey = recKeys.find(k => normalizeStr(k) === normF);
+                if (foundKey && rec[foundKey] !== undefined && rec[foundKey] !== null && String(rec[foundKey]).trim() !== '') {
+                    return String(rec[foundKey]).trim();
+                }
+            }
+            return null;
+        }
+
         async function refreshInstrumentsDropdown(selectedId = null) {
             const instSelect = document.getElementById('instrument-select');
             try {
                 instrumentsList = await tableLens.fetchTableRecords('INSTRUMENTS');
-                instSelect.innerHTML = '<option value="">-- Selecione o Instrumento --</option>';
+                let typesMap = {};
+                try {
+                    const types = await tableLens.fetchTableRecords('INSTRUMENTS_TYPES');
+                    types.forEach(t => { typesMap[t.id] = t.NAME; });
+                } catch(e) {}
+
+                instSelect.innerHTML = '<option value="">-- Selecione o Instrumento (ou deixe para autodetectar via XML) --</option>';
                 instrumentsList.forEach(inst => {
                     const opt = document.createElement('option');
                     opt.value = inst.id;
-                    opt.textContent = `${inst.CODE} - ${inst.ID_INSTRUMENT_TYPE || ''} (${inst.ID_SITUATION || ''})`;
+
+                    const codeStr = inst.CODE || inst.TAG || inst.IDENTIFIER || inst.CODIGO || inst.CODIGO_INSTRUMENTO || inst.INSTRUMENT_CODE || inst.EQUIPMENT_CODE || inst.PATRIMONIO || inst.NAME || ('ID ' + inst.id);
+                    const serialStr = inst.SERIAL_NUMBER || inst.SERIAL || inst.NUMERO_SERIE || '';
+                    const typeStr = typesMap[inst.ID_INSTRUMENT_TYPE] || inst.ID_INSTRUMENT_TYPE || '';
+                    const typeDisplay = typeStr ? ` - ${typeStr}` : '';
+                    const serialDisplay = (serialStr && serialStr !== codeStr) ? ` (SN: ${serialStr})` : '';
+                    
+                    opt.textContent = `${codeStr}${serialDisplay}${typeDisplay}`;
                     if (selectedId && String(inst.id) === String(selectedId)) {
                         opt.selected = true;
                         selectedInstrumentId = inst.id;
@@ -230,11 +513,6 @@
         }
 
         async function processFile(file) {
-            if (!selectedInstrumentId) {
-                alert("Por favor, selecione o Instrumento correspondente antes de fazer o upload.");
-                return;
-            }
-            
             document.getElementById('log-console').textContent = '';
             writeLog(`Iniciando processamento do arquivo: ${file.name}`);
             
@@ -245,23 +523,49 @@
                 try {
                     const zip = await JSZip.loadAsync(file);
                     let xmlFile = null;
+                    let pdfFile = null;
+
                     Object.keys(zip.files).forEach(name => {
                         if (name.toLowerCase().endsWith('.xml')) xmlFile = zip.files[name];
+                        if (name.toLowerCase().endsWith('.pdf')) pdfFile = zip.files[name];
                     });
                     
-                    if (xmlFile) {
-                        const xmlText = await xmlFile.async("string");
-                        await importXml(xmlText);
-                    } else {
+                    if (!xmlFile) {
                         showMessage("Arquivo .XML não encontrado dentro do pacote .CAL", true);
+                        return;
                     }
+
+                    const xmlText = await xmlFile.async("string");
+
+                    if (pdfFile) {
+                        const pdfBuffer = await pdfFile.async("arraybuffer");
+                        pendingPdfBlob = new Blob([pdfBuffer], { type: "application/pdf" });
+                        pendingPdfFilename = pdfFile.name;
+                        if (tempPdfUrl) URL.revokeObjectURL(tempPdfUrl);
+                        tempPdfUrl = URL.createObjectURL(pendingPdfBlob);
+                    } else {
+                        pendingPdfBlob = null;
+                        pendingPdfFilename = null;
+                        if (tempPdfUrl) {
+                            URL.revokeObjectURL(tempPdfUrl);
+                            tempPdfUrl = null;
+                        }
+                    }
+
+                    await prepareImportPreview(xmlText, tempPdfUrl);
                 } catch (e) {
                     showMessage("Erro ao ler pacote .CAL: " + e.message, true);
                 }
             } else if (isXml) {
                 const reader = new FileReader();
                 reader.onload = async (e) => {
-                    await importXml(e.target.result);
+                    pendingPdfBlob = null;
+                    pendingPdfFilename = null;
+                    if (tempPdfUrl) {
+                        URL.revokeObjectURL(tempPdfUrl);
+                        tempPdfUrl = null;
+                    }
+                    await prepareImportPreview(e.target.result, null);
                 };
                 reader.readAsText(file);
             } else {
@@ -269,64 +573,201 @@
             }
         }
 
-        async function importXml(xmlText) {
+        async function prepareImportPreview(xmlText, pdfUrl) {
             try {
                 writeLog("Parsing XML...");
                 const parser = new DOMParser();
                 const xmlDoc = parser.parseFromString(xmlText, "text/xml");
                 
-                // Parse headers
-                const certCode = xmlDoc.querySelector("NumeroCertificado, Numero, Code")?.textContent || "Cert-" + Date.now();
-                const dateStr = xmlDoc.querySelector("DataCalibracao, Data, Date")?.textContent || new Date().toISOString().split('T')[0];
-                const labName = xmlDoc.querySelector("Laboratorio, Laboratory, Lab")?.textContent || "Laboratório de Calibração";
-                const notes = xmlDoc.querySelector("Observacoes, Notes, Description")?.textContent || "Importação automática de XML";
-                
-                writeLog(`Certificado: ${certCode}`);
-                writeLog(`Data: ${dateStr}`);
-                writeLog(`Lab: ${labName}`);
-                
-                // Parse tables and points
-                const tables = xmlDoc.querySelectorAll("TabelaResultado, Table, Tabela");
-                if (tables.length === 0) {
-                    throw new Error("Nenhuma Tabela de Resultados encontrada no XML.");
+                function getTagText(selectors, fallback = "") {
+                    for (const sel of selectors) {
+                        const el = xmlDoc.querySelector(sel);
+                        if (el && el.textContent.trim()) return el.textContent.trim();
+                    }
+                    return fallback;
                 }
 
-                const parsedTables = [];
-                tables.forEach((t, idx) => {
-                    const name = t.querySelector("Nome, Name")?.textContent || `Tabela ${idx + 1}`;
-                    const points = [];
-                    const rows = t.querySelectorAll("Ponto, Row, Record");
-                    rows.forEach(r => {
-                        points.push({
-                            REFERENCE_VALUE: parseFloat(r.querySelector("ValorReferencia, Nominal, Reference")?.textContent || 0),
-                            INDICATED_VALUE: parseFloat(r.querySelector("Indicao, Indicated, Value")?.textContent || 0),
-                            ERROR: parseFloat(r.querySelector("Erro, Error, Tendence")?.textContent || 0),
-                            UNCERTAINTY: parseFloat(r.querySelector("Incerteza, Uncertainty")?.textContent || 0),
-                            K_FACTOR: parseFloat(r.querySelector("FatorK, K, Coverage")?.textContent || 2)
-                        });
+                function parseNum(val, defaultVal = 0) {
+                    if (val === null || val === undefined) return defaultVal;
+                    const cleaned = String(val).replace(',', '.').trim();
+                    const parsed = parseFloat(cleaned);
+                    return isNaN(parsed) ? defaultVal : parsed;
+                }
+
+                // Parse headers
+                const certCode = getTagText([
+                    "code", "NumeroCertificado", "Numero_Certificado", "NumeroCert", "Numero", 
+                    "Code", "Certificado", "CertificateNumber", "CertNumber", "NumCert"
+                ], "Cert-" + Date.now());
+
+                const rawDateStr = getTagText([
+                    "date", "DataCalibracao", "Data_Calibracao", "DataCertificado", "Data", 
+                    "Date", "CalibrationDate", "Data_Emissao"
+                ], new Date().toISOString().split('T')[0]);
+
+                const dateStr = formatToIsoDate(rawDateStr);
+
+                const labName = getTagText([
+                    "supplierName", "Laboratorio", "Laboratorio_Calibracao", "Laboratory", "Lab", 
+                    "Laboratório", "NomeLaboratorio"
+                ], "Laboratório de Calibração");
+
+                const notes = getTagText([
+                    "Observacoes", "Observacao", "Notes", "Description", "Obs"
+                ], "Importação automática de XML");
+                
+                const xmlInstCode = getTagText([
+                    "instrumentCode", "InstrumentCode", "CodigoInstrumento", "Tag", "Instrumento"
+                ], "");
+
+                writeLog(`Certificado: ${certCode}`);
+                writeLog(`Data Formatada: ${dateStr}`);
+                writeLog(`Lab: ${labName}`);
+                
+                if (xmlInstCode) {
+                    writeLog(`Código do Instrumento no XML: ${xmlInstCode}`);
+                    const normXmlCode = normalizeStr(xmlInstCode);
+
+                    // 1. Match against any code/tag/serial field
+                    let matchedInst = instrumentsList.find(i => {
+                        const codeVal = getRecordFieldValue(i, ['CODE', 'TAG', 'IDENTIFIER', 'CODIGO', 'CODIGO_INSTRUMENTO', 'INSTRUMENT_CODE', 'EQUIPMENT_CODE', 'PATRIMONIO', 'NAME', 'SERIAL_NUMBER']);
+                        return codeVal && normalizeStr(codeVal) === normXmlCode;
                     });
-                    parsedTables.push({ name, points });
-                });
+
+                    // 2. Partial match fallback
+                    if (!matchedInst && normXmlCode.length >= 2) {
+                        matchedInst = instrumentsList.find(i => {
+                            const codeVal = getRecordFieldValue(i, ['CODE', 'TAG', 'IDENTIFIER', 'CODIGO', 'CODIGO_INSTRUMENTO', 'INSTRUMENT_CODE', 'EQUIPMENT_CODE', 'PATRIMONIO', 'NAME', 'SERIAL_NUMBER']);
+                            if (!codeVal) return false;
+                            const nf = normalizeStr(codeVal);
+                            return nf && (nf.includes(normXmlCode) || normXmlCode.includes(nf));
+                        });
+                    }
+                    
+                    if (matchedInst) {
+                        selectedInstrumentId = matchedInst.id;
+                        document.getElementById('instrument-select').value = matchedInst.id;
+                        writeLog(`✅ Instrumento auto-vinculado: ${xmlInstCode} (ID ${matchedInst.id})`);
+                    } else {
+                        writeLog(`⚠️ Instrumento "${xmlInstCode}" do XML não localizado pelo código.`);
+                    }
+                }
+
+                if (!selectedInstrumentId) {
+                    throw new Error(`Instrumento "${xmlInstCode || 'desconhecido'}" não localizado. Por favor, selecione o instrumento no dropdown acima antes de importar.`);
+                }
+
+                const currentInstrument = instrumentsList.find(i => i.id === selectedInstrumentId);
+                
+                // Parse tables and points
+                let parsedTables = [];
+                const tableElements = Array.from(xmlDoc.querySelectorAll(
+                    "table, TabelaResultado, Table, Tabela, Tabela_Resultado, Tabelas, Resultados, ResultadosCalibracao, CalibrationTable, Tables"
+                ));
+
+                if (tableElements.length > 0) {
+                    tableElements.forEach((tbl, idx) => {
+                        const tableName = getTagText(["name", "Nome", "Name", "Titulo", "Title"], `Tabela ${idx + 1}`);
+
+                        const headerElements = Array.from(tbl.querySelectorAll("headers > header, header"));
+                        const headerTexts = headerElements.map(h => h.textContent.trim().toLowerCase());
+
+                        let refIdx = -1, indIdx = -1, errIdx = -1, uncIdx = -1, kIdx = -1;
+
+                        if (headerTexts.length > 0) {
+                            headerTexts.forEach((ht, i) => {
+                                const typeAttr = headerElements[i]?.getAttribute('type');
+                                if (ht.includes("referência") || ht.includes("referencia") || ht.includes("nominal")) {
+                                    if (refIdx === -1 || typeAttr === "3") refIdx = i;
+                                }
+                                if (ht.includes("indicação") || ht.includes("indicacao") || ht.includes("instrumento") || ht.includes("leitura")) {
+                                    if (indIdx === -1 || typeAttr === "3") indIdx = i;
+                                }
+                                if (ht.includes("tendência") || ht.includes("tendencia") || ht.includes("erro") || ht.includes("desvio")) {
+                                    if (errIdx === -1 || typeAttr === "3") errIdx = i;
+                                }
+                                if (ht.includes("incerteza") || ht.includes("uncertainty")) {
+                                    if (uncIdx === -1 || typeAttr === "3") uncIdx = i;
+                                }
+                                if (ht.includes("fator k") || ht.includes("fator_k") || ht === "k" || ht.includes("coverage")) {
+                                    if (kIdx === -1 || typeAttr === "3") kIdx = i;
+                                }
+                            });
+                        }
+
+                        const rowElements = Array.from(tbl.querySelectorAll("rows > row, row, Ponto, Record, PontoMedicao, Medicao, Item"));
+                        const points = [];
+
+                        rowElements.forEach(r => {
+                            const valueElements = Array.from(r.querySelectorAll("value"));
+
+                            if (valueElements.length > 0 && refIdx !== -1) {
+                                const refVal = parseNum(valueElements[refIdx]?.textContent);
+                                const indVal = parseNum(valueElements[indIdx]?.textContent);
+                                const errVal = parseNum(valueElements[errIdx]?.textContent);
+                                const uncVal = parseNum(valueElements[uncIdx]?.textContent);
+                                const kVal = kIdx !== -1 ? parseNum(valueElements[kIdx]?.textContent, 2.0) : 2.0;
+
+                                points.push({
+                                    REFERENCE_VALUE: refVal,
+                                    INDICATED_VALUE: indVal,
+                                    ERROR: errVal,
+                                    UNCERTAINTY: uncVal,
+                                    K_FACTOR: kVal
+                                });
+                            } else {
+                                function getFloat(parentEl, selectors, defaultVal = 0) {
+                                    for (const sel of selectors) {
+                                        const el = parentEl.querySelector(sel);
+                                        if (el && el.textContent.trim()) return parseNum(el.textContent);
+                                    }
+                                    return defaultVal;
+                                }
+
+                                const refVal = getFloat(r, ["ValorReferencia", "Nominal", "Reference", "VPadrao", "Valor_Referencia", "ValorPadrao", "Ref", "StandardValue", "Valor_Nominal"]);
+                                const indVal = getFloat(r, ["Indicao", "Indicated", "Value", "VIndicado", "Valor_Indicado", "ValorIndicado", "Ind", "Indication", "ReadValue", "Leitura"]);
+                                const errVal = getFloat(r, ["Erro", "Error", "Tendence", "Tendencia", "Tendência", "Valor_Erro", "Erro_Medicao", "Desvio", "Bias"]);
+                                const uncVal = getFloat(r, ["Incerteza", "Uncertainty", "IncertezaExpandida", "Incerteza_Expandida", "Unc", "U", "IncertezaU", "Incerteza_U"]);
+                                const kVal   = getFloat(r, ["FatorK", "K", "Coverage", "Fator_K", "CoverageFactor", "Fator_Abrangencia", "FatorAbrangencia"], 2.0);
+
+                                points.push({
+                                    REFERENCE_VALUE: refVal,
+                                    INDICATED_VALUE: indVal,
+                                    ERROR: errVal,
+                                    UNCERTAINTY: uncVal,
+                                    K_FACTOR: kVal
+                                });
+                            }
+                        });
+
+                        if (points.length > 0) {
+                            parsedTables.push({ name: tableName, points });
+                        }
+                    });
+                }
+
+                if (parsedTables.length === 0) {
+                    throw new Error("Nenhuma Tabela ou Ponto de Medição válido foi encontrado no XML.");
+                }
                 
                 writeLog(`Total de Tabelas: ${parsedTables.length}`);
                 
-                // Perform acceptance checks
-                writeLog("Calculando Validação (Critérios de Aceitação)...");
-                const instrument = instrumentsList.find(i => i.id === selectedInstrumentId);
-                const instrumentTypeId = instrument ? instrument.ID_INSTRUMENT_TYPE : null;
-                
                 // Fetch limits
+                writeLog("Calculando Validação Metrológica (Critérios de Aceitação)...");
+                const instrumentTypeId = currentInstrument ? getRecordFieldValue(currentInstrument, ['ID_INSTRUMENT_TYPE', 'INSTRUMENT_TYPE']) : null;
                 let maxErrorAllowed = 5.0; // fallback default
+
                 try {
                     const allCriteria = await tableLens.fetchTableRecords('CRITERION_ACCEPTANCE');
-                    const matchedGen = allCriteria.filter(c => String(c.ID_INSTRUMENT_TYPE) === String(instrumentTypeId));
+                    const matchedGen = allCriteria.filter(c => String(getRecordFieldValue(c, ['ID_INSTRUMENT_TYPE', 'INSTRUMENT_TYPE'])) === String(instrumentTypeId));
                     
                     const allIndiv = await tableLens.fetchTableRecords('CRITERION_INSTRUMENTS');
-                    const matchedIndiv = allIndiv.filter(c => String(c.ID_INSTRUMENT) === String(selectedInstrumentId));
+                    const matchedIndiv = allIndiv.filter(c => String(getRecordFieldValue(c, ['ID_INSTRUMENT', 'INSTRUMENT'])) === String(selectedInstrumentId));
                     
                     const criteria = [...matchedIndiv, ...matchedGen];
                     if (criteria.length > 0) {
-                        maxErrorAllowed = parseFloat(criteria[0].MAX_ERROR_MORE || 5.0);
+                        const limVal = getRecordFieldValue(criteria[0], ['MAX_ERROR_MORE', 'MAX_ERROR', 'LIMIT']);
+                        maxErrorAllowed = parseFloat(limVal || 5.0);
                         writeLog(`Limite Máximo Encontrado: ${maxErrorAllowed}`);
                     } else {
                         writeLog(`Sem critérios cadastrados para o instrumento. Utilizando limite genérico: ${maxErrorAllowed}`);
@@ -335,46 +776,278 @@
                     writeLog(`Erro ao buscar limites de aceitação: ${err.message}. Usando default ${maxErrorAllowed}`);
                 }
 
-                // Check points
-                let allPointsValid = true;
+                // Check points summary
+                let passCount = 0, warnCount = 0, failCount = 0;
                 parsedTables.forEach(t => {
                     t.points.forEach(p => {
                         const totalError = Math.abs(p.ERROR) + p.UNCERTAINTY;
                         if (totalError > maxErrorAllowed) {
-                            allPointsValid = false;
+                            failCount++;
+                        } else if (totalError >= 0.9 * maxErrorAllowed) {
+                            warnCount++;
+                        } else {
+                            passCount++;
                         }
                     });
                 });
                 
-                const validationStatus = allPointsValid ? "Aprovado" : "Reprovado";
-                writeLog(`Resultado do Laudo: ${validationStatus.toUpperCase()}`);
-
-                // Insert into Grist database
-                writeLog("Inserindo certificado no banco do Grist...");
-                const certResponse = await dataWriter.addRecord('EXTERNAL_CALIBRATIONS', {
-                    CODE: certCode,
-                    CALIBRATION_DATE: dateStr,
-                    ID_LABORATORY: labName,
-                    DESCRIPTION: notes,
-                    VALIDATION_STATUS: validationStatus
-                });
-                
-                if (!certResponse || !certResponse.retValues || !certResponse.retValues[0]) {
-                    throw new Error("Erro ao criar cabeçalho do certificado.");
+                let finalStatus = "Aprovado";
+                if (failCount > 0) {
+                    finalStatus = "Reprovado";
+                } else if (warnCount > 0) {
+                    finalStatus = "Alerta";
                 }
-                const newCertId = certResponse.retValues[0];
+                writeLog(`Resultado do Laudo Calculado: ${finalStatus.toUpperCase()}`);
+
+                // Update Side Panel Info
+                const instCodeDisplay = (currentInstrument && getRecordFieldValue(currentInstrument, ['CODE', 'TAG', 'IDENTIFIER'])) || xmlInstCode || '-';
+                const instSerialDisplay = (currentInstrument && getRecordFieldValue(currentInstrument, ['SERIAL_NUMBER', 'SERIAL'])) || '-';
+
+                document.getElementById('preview-inst-code').innerText = instCodeDisplay;
+                document.getElementById('preview-inst-serial').innerText = instSerialDisplay;
+                
+                let typeName = instrumentTypeId || '-';
+                try {
+                    const typeRow = await tableLens.findRecord('INSTRUMENTS_TYPES', { id: instrumentTypeId });
+                    if (typeRow) typeName = getRecordFieldValue(typeRow, ['NAME', 'TYPE']) || typeName;
+                } catch(e) {}
+                document.getElementById('preview-inst-type').innerText = typeName;
+
+                document.getElementById('preview-cert-code').innerText = certCode;
+                document.getElementById('preview-cert-date').innerText = dateStr;
+                document.getElementById('preview-inst-limit').innerText = maxErrorAllowed;
+
+                document.getElementById('preview-count-pass').innerText = passCount;
+                document.getElementById('preview-count-warn').innerText = warnCount;
+                document.getElementById('preview-count-fail').innerText = failCount;
+
+                const finalBadge = document.getElementById('preview-final-status-badge');
+                finalBadge.innerText = finalStatus.toUpperCase();
+                finalBadge.className = 'badge ' + (finalStatus === 'Aprovado' ? 'approved' : finalStatus === 'Reprovado' ? 'rejected' : 'warning');
+
+                // PDF tab
+                const iframe = document.getElementById('preview-pdf-frame');
+                if (pdfUrl) {
+                    iframe.src = pdfUrl;
+                    iframe.style.display = 'block';
+                } else {
+                    iframe.src = '';
+                    iframe.style.display = 'none';
+                }
+
+                // Table Selector
+                const selectContainer = document.getElementById('preview-table-selector-container');
+                const selectEl = document.getElementById('preview-table-select');
+                selectEl.innerHTML = '';
+                
+                if (parsedTables.length > 1) {
+                    parsedTables.forEach((tbl, idx) => {
+                        const opt = document.createElement('option');
+                        opt.value = idx;
+                        opt.innerText = tbl.name;
+                        selectEl.appendChild(opt);
+                    });
+                    selectContainer.style.display = 'block';
+                } else {
+                    selectContainer.style.display = 'none';
+                }
+
+                // Results Tabulator Grid
+                if (parsedTables.length > 0) {
+                    previewResultsGrid = new Tabulator("#preview-results-grid", {
+                        data: parsedTables[0].points,
+                        layout: "fitColumns",
+                        columns: [
+                            { title: "Valor de Referência", field: "REFERENCE_VALUE" },
+                            { title: "Indicação Instrumento", field: "INDICATED_VALUE" },
+                            { title: "Tendência (Erro)", field: "ERROR" },
+                            { title: "Incerteza U", field: "UNCERTAINTY" },
+                            { title: "Fator K", field: "K_FACTOR" }
+                        ],
+                        rowFormatter: function(row) {
+                            const data = row.getData();
+                            const err = Math.abs(parseFloat(data.ERROR || 0));
+                            const unc = parseFloat(data.UNCERTAINTY || 0);
+                            const combined = err + unc;
+                            
+                            const el = row.getElement();
+                            if (combined > maxErrorAllowed) {
+                                el.style.backgroundColor = "#ffebee";
+                                el.style.color = "#b71c1c";
+                                el.style.fontWeight = "bold";
+                            } else if (combined >= 0.9 * maxErrorAllowed) {
+                                el.style.backgroundColor = "#fff3e0";
+                                el.style.color = "#e65100";
+                                el.style.fontWeight = "500";
+                            } else {
+                                el.style.backgroundColor = "#e8f5e9";
+                                el.style.color = "#1b5e20";
+                                el.style.fontWeight = "500";
+                            }
+                        }
+                    });
+                }
+
+                // Save pending data object
+                pendingImportData = {
+                    certCode,
+                    dateStr,
+                    labName,
+                    notes,
+                    hasAttachment: !!pdfUrl,
+                    validationStatus: finalStatus,
+                    selectedInstrumentId,
+                    tables: parsedTables
+                };
+
+                // Show modal & set default tab to PDF
+                document.getElementById('import-preview-modal').style.display = 'block';
+                document.querySelector('[data-prevtab="prev-tab-pdf"]').click();
+
+                writeLog("📋 Relatório de Importação exibido na tela. Verifique os dados e o PDF antes de confirmar a gravação.");
+                showMessage("Relatório gerado! Verifique a tela de pré-visualização e clique em 'Confirmar e Gravar' para salvar no Grist.");
+            } catch(e) {
+                showMessage("Falha no processamento: " + e.message, true);
+                writeLog("Erro: " + e.stack);
+            }
+        }
+
+        // Helper de mapeamento dinâmico de colunas para evitar erros de schema no Sandbox
+        async function buildPayload(tableId, mapObj) {
+            let schemaCols = [];
+            try {
+                const s = await tableLens.getTableSchema(tableId);
+                schemaCols = Object.keys(s || {});
+            } catch(e) {}
+            
+            function findMatchingCol(keyName) {
+                if (schemaCols.length === 0) return keyName;
+                const normKey = normalizeStr(keyName);
+                return schemaCols.find(sc => normalizeStr(sc) === normKey) || null;
+            }
+            
+            const payload = {};
+            Object.keys(mapObj).forEach(k => {
+                const val = mapObj[k];
+                if (val === undefined || val === null) return;
+                
+                const matchedCol = findMatchingCol(k);
+                if (matchedCol) {
+                    payload[matchedCol] = val;
+                }
+            });
+            return payload;
+        }
+
+        async function saveImportedCertificate() {
+            if (!pendingImportData) return;
+
+            const confirmBtn = document.getElementById('preview-btn-confirm');
+            confirmBtn.disabled = true;
+            confirmBtn.innerText = "Gravando no Grist...";
+
+            try {
+                const { certCode, dateStr, labName, notes, hasAttachment, validationStatus, selectedInstrumentId, tables } = pendingImportData;
+
+                // Lookup Supplier ID by Name
+                let supplierId = null;
+                if (labName) {
+                    try {
+                        const suppliers = await tableLens.fetchTableRecords('SUPPLIERS');
+                        const normLab = normalizeStr(labName);
+                        const matchedSupp = suppliers.find(s => {
+                            const nameVal = getRecordFieldValue(s, ['NAME', 'Name', 'NOME', 'SUPPLIER_NAME', 'Supplier']);
+                            return nameVal && (normalizeStr(nameVal) === normLab || normalizeStr(nameVal).includes(normLab) || normLab.includes(normalizeStr(nameVal)));
+                        });
+                        if (matchedSupp) {
+                            supplierId = matchedSupp.id;
+                            writeLog(`✅ Laboratório/Fornecedor vinculado: "${labName}" (ID ${supplierId})`);
+                        } else {
+                            writeLog(`⚠️ Laboratório "${labName}" não encontrado na tabela SUPPLIERS.`);
+                        }
+                    } catch(e) {}
+                }
+
+                // Lookup Calibration Type ("Rastreado")
+                let calTypeId = 1;
+                try {
+                    const calTypes = await tableLens.fetchTableRecords('CALIBRATION_TYPES');
+                    const matchedType = calTypes.find(ct => {
+                        const nameVal = getRecordFieldValue(ct, ['NAME', 'TYPE']);
+                        return nameVal && normalizeStr(nameVal).includes('rastreado');
+                    });
+                    if (matchedType) calTypeId = matchedType.id;
+                } catch(e) {}
+
+                // Lookup Status ("Disponível")
+                let statusId = 1;
+                try {
+                    const statuses = await tableLens.fetchTableRecords('STATUS');
+                    const matchedStatus = statuses.find(st => {
+                        const nameVal = getRecordFieldValue(st, ['NAME', 'STATUS']);
+                        return nameVal && normalizeStr(nameVal).includes('disponivel');
+                    });
+                    if (matchedStatus) statusId = matchedStatus.id;
+                } catch(e) {}
+
+                // Upload PDF Attachment to Grist if available
+                let attachmentRef = null;
+                if (pendingPdfBlob && window.grist && window.grist.docApi && window.grist.docApi.addAttachment) {
+                    try {
+                        writeLog("📎 Enviando anexo PDF para os anexos do Grist...");
+                        const attResult = await window.grist.docApi.addAttachment(pendingPdfBlob, pendingPdfFilename || `${certCode}.pdf`);
+                        const attId = (Array.isArray(attResult) ? attResult[0] : attResult);
+                        if (attId) {
+                            attachmentRef = ['L', attId];
+                            writeLog(`✅ PDF anexado no Grist com sucesso (ID Anexo: ${attId})`);
+                        }
+                    } catch(attErr) {
+                        writeLog(`⚠️ Não foi possível salvar anexo nativo no Grist: ${attErr.message}`);
+                    }
+                }
+
+                writeLog("Inserindo certificado no banco do Grist...");
+                const certPayload = await buildPayload('EXTERNAL_CALIBRATIONS', {
+                    CODE: certCode,
+                    DATE: dateStr,
+                    CALIBRATION_DATE: dateStr,
+                    OBSERVATION: notes,
+                    DESCRIPTION: notes,
+                    VALIDATION_STATUS: validationStatus,
+                    IS_CONFORM: validationStatus === 'Reprovado' ? 0 : 1,
+                    ID_INSTRUMENT: selectedInstrumentId,
+                    ID_SUPPLIER: supplierId,
+                    HAS_ATTACHMENT: (hasAttachment || attachmentRef) ? 1 : 0,
+                    ATTACHMENT: attachmentRef,
+                    FILE: attachmentRef,
+                    ANEXO: attachmentRef,
+                    PDF: attachmentRef,
+                    IS_IMPORT: 1,
+                    ID_CALIBRATION_TYPE: calTypeId,
+                    ID_STATUS: statusId,
+                    ID_STATUS_AUTOMATIC: statusId
+                });
+
+                writeLog("Payload do certificado gerado: " + JSON.stringify(certPayload));
+                const certResponse = await dataWriter.addRecord('EXTERNAL_CALIBRATIONS', certPayload);
+                const newCertId = (certResponse && certResponse.retValues && certResponse.retValues[0]) || (Array.isArray(certResponse) && certResponse[0]) || (certResponse && certResponse[0]);
+                if (!newCertId) {
+                    throw new Error("Erro ao criar cabeçalho do certificado no Grist.");
+                }
                 writeLog(`Certificado criado com ID: ${newCertId}`);
                 
                 // Insert tables and points
-                for (const t of parsedTables) {
-                    const tableResponse = await dataWriter.addRecord('EXTERNAL_CAL_TABLES', {
+                for (const t of tables) {
+                    const tblPayload = await buildPayload('EXTERNAL_CAL_TABLES', {
                         NAME: t.name,
                         ID_EXTERNAL_CALIBRATION: newCertId
                     });
-                    if (tableResponse && tableResponse.retValues && tableResponse.retValues[0]) {
-                        const newTableId = tableResponse.retValues[0];
+                    const tableResponse = await dataWriter.addRecord('EXTERNAL_CAL_TABLES', tblPayload);
+                    const newTableId = (tableResponse && tableResponse.retValues && tableResponse.retValues[0]) || (Array.isArray(tableResponse) && tableResponse[0]) || (tableResponse && tableResponse[0]);
+                    
+                    if (newTableId) {
                         for (const p of t.points) {
-                            await dataWriter.addRecord('EXTERNAL_CAL_RESULTS', {
+                            const resPayload = await buildPayload('EXTERNAL_CAL_RESULTS', {
                                 REFERENCE_VALUE: p.REFERENCE_VALUE,
                                 INDICATED_VALUE: p.INDICATED_VALUE,
                                 ERROR: p.ERROR,
@@ -382,6 +1055,7 @@
                                 K_FACTOR: p.K_FACTOR,
                                 ID_EXTERNAL_CAL_TABLE: newTableId
                             });
+                            await dataWriter.addRecord('EXTERNAL_CAL_RESULTS', resPayload);
                         }
                     }
                 }
@@ -390,17 +1064,18 @@
                 // Update Instrument RefList
                 writeLog("Conectando certificado ao Instrumento...");
                 const freshInstrument = await tableLens.fetchRecordById('INSTRUMENTS', selectedInstrumentId);
-                const currentRefs = freshInstrument.EXTERNAL_CALIBRATIONS || [];
-                const updatedRefs = ['L', ...((Array.isArray(currentRefs) && currentRefs[0] === 'L') ? currentRefs.slice(1) : []), newCertId];
+                const rawCurrentRefs = getRecordFieldValue(freshInstrument, ['EXTERNAL_CALIBRATIONS']) || [];
+                const currentRefs = Array.isArray(rawCurrentRefs) ? rawCurrentRefs : [];
+                const updatedRefs = ['L', ...((currentRefs[0] === 'L') ? currentRefs.slice(1) : currentRefs), newCertId];
                 
                 await dataWriter.updateRecord('INSTRUMENTS', selectedInstrumentId, {
                     EXTERNAL_CALIBRATIONS: updatedRefs,
                     METROLOGICAL_STAGE: "0. Em Uso",
-                    ID_STATUS: 1
+                    ID_STATUS: statusId
                 });
                 
                 // Add final occurrence
-                const finalOccurrence = {
+                const finalOccurrence = await buildPayload('INSTRUMENTS_OCCURRENCES', {
                     ID_INSTRUMENT: selectedInstrumentId,
                     DATE: dateStr + 'T12:00:00Z',
                     REAL_DATE: new Date().toISOString().split('T')[0] + 'T12:00:00Z',
@@ -408,20 +1083,31 @@
                     ID_SITUATION: 1, // Ativo
                     ID_EXTERNAL_CALIBRATION: newCertId,
                     CERTIFICATE_CODE: certCode
-                };
+                });
                 await dataWriter.addRecord('INSTRUMENTS_OCCURRENCES', finalOccurrence);
                 writeLog("Histórico final gravado em INSTRUMENTS_OCCURRENCES.");
                 
-                writeLog("🔗 Relacionamento bidirecional atualizado!");
-                showMessage(`Calibração importada e vinculada com sucesso! Status: ${validationStatus}`);
+                writeLog("🔗 Relacionamento bidirecional atualizado com sucesso!");
+                showMessage(`Calibração importada e gravada com sucesso! Status: ${validationStatus}`);
                 
+                // Close modal
+                document.getElementById('import-preview-modal').style.display = 'none';
+                if (tempPdfUrl) {
+                    URL.revokeObjectURL(tempPdfUrl);
+                    tempPdfUrl = null;
+                }
+                pendingImportData = null;
+
                 // Request refresh of visual components
                 if (window.grist) {
                     window.grist.docApi.fetchTable('INSTRUMENTS');
                 }
             } catch(e) {
-                showMessage("Falha na Importação: " + e.message, true);
+                showMessage("Falha ao gravar no Grist: " + e.message, true);
                 writeLog("Erro: " + e.stack);
+            } finally {
+                confirmBtn.disabled = false;
+                confirmBtn.innerText = "Confirmar e Gravar";
             }
         }
     </script>

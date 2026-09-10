@@ -11,6 +11,7 @@ export const GristTableLens = function(gristInstance) {
         columnsAndRules: null,
         viewsSections: null,
         tableSchemasCache: {},
+        tableRecordsCache: {},
         configCache: {},
         accessToken: null,
         baseUrl: null
@@ -41,8 +42,16 @@ export const GristTableLens = function(gristInstance) {
         return _metaState.baseUrl;
     };
 
+    let _metaLoadingPromise = null;
+
     async function _loadGristMeta() {
         if (_metaState.tables && _metaState.columnsAndRules && _metaState.viewsSections) return;
+        if (_metaLoadingPromise) return _metaLoadingPromise;
+        _metaLoadingPromise = _doLoadGristMeta();
+        try { await _metaLoadingPromise; } finally { _metaLoadingPromise = null; }
+    }
+
+    async function _doLoadGristMeta() {
         const p = [];
         try {
             if (!_metaState.tables) {
@@ -73,6 +82,16 @@ export const GristTableLens = function(gristInstance) {
             throw error;
         }
     }
+
+    /**
+     * Pre-loads Grist internal metadata (_grist_Tables, _grist_Tables_column, _grist_Views_section).
+     * Call this early (e.g. right after grist.ready()) so the cache is warm when
+     * fetchConfig / fetchTableRecords / getTableSchema run later.
+     * Returns a promise but callers don't need to await it.
+     */
+    this.warmup = function() {
+        return _loadGristMeta();
+    };
 
     function _getNumericTableId(tableId) {
         if (!_metaState.tables?.tableId) return null;
@@ -245,9 +264,13 @@ export const GristTableLens = function(gristInstance) {
         if (!tableId) { return []; }
         try {
             const resolvedId = await this.resolveTableId(tableId);
+            if (_metaState.tableRecordsCache[resolvedId]) {
+                return _metaState.tableRecordsCache[resolvedId];
+            }
             const rawData = await _grist.docApi.fetchTable(resolvedId);
             const records = _colDataToRows(rawData);
             records.forEach(r => { r.gristHelper_tableId = resolvedId; });
+            _metaState.tableRecordsCache[resolvedId] = records;
             return records;
         } catch (error) {
             console.error(`GTL.fetchTableRecords: Erro ao buscar registros para tabela '${tableId}'. Retornando array vazio.`, error);
@@ -265,9 +288,13 @@ export const GristTableLens = function(gristInstance) {
         }
         try {
             const resolvedId = await this.resolveTableId(tableId);
+            if (_metaState.tableRecordsCache[resolvedId]) {
+                return _metaState.tableRecordsCache[resolvedId];
+            }
             const rawData = await _grist.docApi.fetchTable(resolvedId);
             const records = _colDataToRows(rawData);
             records.forEach(r => { r.gristHelper_tableId = resolvedId; });
+            _metaState.tableRecordsCache[resolvedId] = records;
             return records;
         } catch (error) {
             console.error(`GTL.fetchTableRecordsOrThrow: Erro ao buscar registros para tabela '${tableId}'. Lançando o erro.`, error);
@@ -346,28 +373,77 @@ export const GristTableLens = function(gristInstance) {
         if (!colSchema.type.startsWith('Ref:') || !record) {
             return { displayValue: `[Invalid Ref]`, referencedRecord: null };
         }
-        const recordId = record[colSchema.colId];
+        let recordVal = record[colSchema.colId];
+        
+        // Se já for uma string (resolvido pelo Grist)
+        if (typeof recordVal === 'string') {
+            return { displayValue: recordVal || '(vazio)', referencedRecord: null };
+        }
+        
+        // Se for um objeto com displayValue (comum em dados vindos diretos do Grist onRecords)
+        if (recordVal && typeof recordVal === 'object') {
+            if (typeof recordVal.displayValue !== 'undefined') {
+                return { displayValue: recordVal.displayValue || '(vazio)', referencedRecord: recordVal };
+            }
+            // Se for array (RefList no formato ['L', id])
+            if (Array.isArray(recordVal) && recordVal.length > 0 && recordVal[0] === 'L') {
+                recordVal = recordVal[1];
+            } else if (recordVal.id) {
+                recordVal = recordVal.id;
+            }
+        }
+        
+        const recordId = recordVal;
         if (typeof recordId !== 'number' || recordId <= 0) {
             return { displayValue: '(vazio)', referencedRecord: null };
         }
         let finalDisplayColId = null;
         const displayColIdNum = colSchema.displayCol;
-        if (displayColIdNum) {
-            const sourceTableId = record.gristHelper_tableId;
-            if (sourceTableId) {
-                const sourceSchema = await this.getTableSchema(sourceTableId);
-                const displayColHelperSchema = Object.values(sourceSchema).find(c => c.id === displayColIdNum);
-                if (displayColHelperSchema) {
-                    if (displayColHelperSchema.isFormula && displayColHelperSchema.formula?.includes('.')) {
-                        const formulaParts = displayColHelperSchema.formula.split('.');
-                        finalDisplayColId = formulaParts[formulaParts.length - 1];
-                    } else {
-                        finalDisplayColId = displayColHelperSchema.colId;
-                    }
+        const sourceTableId = record.gristHelper_tableId;
+        const referencedTableId = colSchema.type.split(':')[1];
+        
+        if (displayColIdNum && sourceTableId) {
+            const sourceSchema = await this.getTableSchema(sourceTableId);
+            const displayColHelperSchema = Object.values(sourceSchema).find(c => c.id === displayColIdNum);
+            if (displayColHelperSchema) {
+                // Tenta ler o valor já calculado diretamente da coluna helper se estiver presente no record
+                if (record[displayColHelperSchema.colId] !== undefined) {
+                    const val = record[displayColHelperSchema.colId];
+                    return { displayValue: val != null ? String(val) : '(vazio)', referencedRecord: null };
+                }
+
+                if (displayColHelperSchema.isFormula && displayColHelperSchema.formula?.includes('.')) {
+                    const formulaParts = displayColHelperSchema.formula.split('.');
+                    finalDisplayColId = formulaParts[formulaParts.length - 1];
+                } else {
+                    finalDisplayColId = displayColHelperSchema.colId;
                 }
             }
         }
-        const referencedTableId = colSchema.type.split(':')[1];
+        
+        if (!finalDisplayColId && referencedTableId) {
+            const refSchema = await this.getTableSchema(referencedTableId);
+            const cols = Object.values(refSchema).filter(c => c && c.colId !== 'id' && !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos');
+            
+            // 1. Procura por nomes comuns de colunas de texto/rótulo
+            const commonNames = ['nome', 'name', 'titulo', 'title', 'label', 'descricao', 'description'];
+            const foundByName = cols.find(c => commonNames.some(name => c.colId.toLowerCase().includes(name)));
+            
+            if (foundByName) {
+                finalDisplayColId = foundByName.colId;
+            } else {
+                // 2. Primeiro campo do tipo Text ou Any ou Choice (permitindo fórmulas!)
+                const textOrAnyCol = cols.find(c => c.type === 'Text' || c.type === 'Any' || c.type === 'Choice');
+                if (textOrAnyCol) {
+                    finalDisplayColId = textOrAnyCol.colId;
+                } else if (cols.length > 0) {
+                    finalDisplayColId = cols[0].colId;
+                } else {
+                    finalDisplayColId = 'id';
+                }
+            }
+        }
+        
         const referencedRecord = await this.fetchRecordById(referencedTableId, recordId);
         if (!referencedRecord) {
             return { displayValue: `[Ref Inválido: ${recordId}]`, referencedRecord: null };
@@ -396,7 +472,8 @@ export const GristTableLens = function(gristInstance) {
         // 1. Carrega o legado se existir
         if (record.configJson) {
             try {
-                mergedConfig = JSON.parse(record.configJson);
+                const parsed = JSON.parse(record.configJson);
+                mergedConfig = { ...mergedConfig, ...parsed };
             } catch (e) {
                 console.error("GTL.parseConfigRecord: Erro ao processar configJson legado.", e);
             }
@@ -533,7 +610,13 @@ export const GristTableLens = function(gristInstance) {
         }
     };
 
+    this.clearTableRecordsCache = function() {
+        _metaState.tableRecordsCache = {};
+        console.log("GTL: Cache de registros de tabelas foi limpo.");
+    };
+
     this.clearConfigCache = function(configId) {
+        _metaState.tableRecordsCache = {};
         if (!window.GristConfigCache) {
             window.GristConfigCache = {};
         }
