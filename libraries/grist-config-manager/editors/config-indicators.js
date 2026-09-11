@@ -18,6 +18,7 @@ export const IndicatorsConfigEditor = (() => {
         state = {
             // Mapping
             resultsField: mapping.resultsField || '',
+            formulaField: mapping.formulaField || '',
             directionField: mapping.directionField || '',
             consolidationField: mapping.consolidationField || '',
             periodicityField: mapping.periodicityField || '',
@@ -47,6 +48,7 @@ export const IndicatorsConfigEditor = (() => {
             // Grouping
             groupFields: mapping.groupFields || [],
             groupDisplayFields: mapping.groupDisplayFields || {},
+            searchFields: mapping.searchFields || [],
 
             // Styling
             cardType: styling.cardType || 'STANDARD',
@@ -87,6 +89,7 @@ export const IndicatorsConfigEditor = (() => {
                     <button type="button" class="config-tab-button active" data-tab-id="mapping">Mapeamento</button>
                     <button type="button" class="config-tab-button" data-tab-id="logic">Lógica & Valores</button>
                     <button type="button" class="config-tab-button" data-tab-id="grouping">Agrupamento</button>
+                    <button type="button" class="config-tab-button" data-tab-id="search">Busca</button>
                     <button type="button" class="config-tab-button" data-tab-id="styling">Estilo</button>
                     <button type="button" class="config-tab-button" data-tab-id="actions">Ações</button>
                 </div>
@@ -96,6 +99,10 @@ export const IndicatorsConfigEditor = (() => {
                         <div class="form-group">
                             <label>Dados do Indicador (Master JSON):</label>
                             <select id="ind-results-field" class="form-control">${createColumnOptions(columns, state.resultsField)}</select>
+                        </div>
+                        <div class="form-group">
+                            <label>Fórmula do Indicador (Texto/JSON):</label>
+                            <select id="ind-formula-field" class="form-control">${createColumnOptions(columns, state.formulaField)}</select>
                         </div>
                         <div class="form-group">
                             <label>Meta do Ciclo (Campo Backup):</label>
@@ -186,6 +193,19 @@ export const IndicatorsConfigEditor = (() => {
                                 <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 5px;">
                                     <input type="checkbox" id="grp-${c}" value="${c}" ${state.groupFields.includes(c) ? 'checked' : ''}>
                                     <label for="grp-${c}" style="margin:0; cursor:pointer;">${c}</label>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <div data-tab-section="search" style="display:none">
+                        <h3>Opções de Busca</h3>
+                        <p class="help-text">Selecione as colunas que estarão disponíveis para pesquisa no widget.</p>
+                        <div id="ind-search-fields-list" style="max-height: 250px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 4px; background: #fff;">
+                            ${columns.map(c => `
+                                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 5px;">
+                                    <input type="checkbox" id="sch-${c}" value="${c}" ${state.searchFields.includes(c) ? 'checked' : ''}>
+                                    <label for="sch-${c}" style="margin:0; cursor:pointer;">${c}</label>
                                 </div>
                             `).join('')}
                         </div>
@@ -416,9 +436,15 @@ export const IndicatorsConfigEditor = (() => {
             groupFields.push(cb.value);
         });
 
+        const searchFields = [];
+        container.querySelectorAll('#ind-search-fields-list input:checked').forEach(cb => {
+            searchFields.push(cb.value);
+        });
+
         const mapping = {
             tableId: _targetTableId,
             resultsField: container.querySelector('#ind-results-field').value,
+            formulaField: container.querySelector('#ind-formula-field').value,
             directionField: container.querySelector('#ind-direction-field').value,
             consolidationField: container.querySelector('#ind-consolidation-field').value,
             periodicityField: container.querySelector('#ind-periodicity-field').value,
@@ -438,7 +464,8 @@ export const IndicatorsConfigEditor = (() => {
             directionMap: dirMap,
             consolidationMap: consMap,
             periodicityMap: perMap,
-            groupFields: groupFields
+            groupFields: groupFields,
+            searchFields: searchFields
         };
 
         const styling = {

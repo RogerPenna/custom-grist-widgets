@@ -20,7 +20,8 @@ export async function renderRef(options) {
     // NOVO: Lógica para campos travados no modo de edição.
     // Reutiliza a lógica de visualização, que já é assíncrona.
     if (isEditing && isLocked) {
-        if (cellValue == null || cellValue <= 0) {
+        const cellId = (cellValue && typeof cellValue === 'object') ? cellValue.id : cellValue;
+        if (cellId == null || (typeof cellId === 'number' && cellId <= 0)) {
             container.textContent = '(vazio)';
             container.className = 'grf-readonly-empty';
         } else {
@@ -80,8 +81,21 @@ export async function renderRef(options) {
         
         // Fallback se a lógica acima falhar
         if (!finalDisplayColId) {
-            const firstSensibleColumn = Object.values(refSchema).find(c => c && c.type === 'Text' && !c.isFormula);
-            finalDisplayColId = firstSensibleColumn ? firstSensibleColumn.colId : 'id';
+            const cols = Object.values(refSchema).filter(c => c && c.colId !== 'id' && !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos');
+            const commonNames = ['nome', 'name', 'titulo', 'title', 'label', 'descricao', 'description'];
+            const foundByName = cols.find(c => commonNames.some(name => c.colId.toLowerCase().includes(name)));
+            if (foundByName) {
+                finalDisplayColId = foundByName.colId;
+            } else {
+                const textOrAnyCol = cols.find(c => c.type === 'Text' || c.type === 'Any' || c.type === 'Choice');
+                if (textOrAnyCol) {
+                    finalDisplayColId = textOrAnyCol.colId;
+                } else if (cols.length > 0) {
+                    finalDisplayColId = cols[0].colId;
+                } else {
+                    finalDisplayColId = 'id';
+                }
+            }
         }
 
         // Preenche o dropdown usando o finalDisplayColId correto
@@ -146,7 +160,9 @@ export async function renderRef(options) {
     }
 
     // --- MODO DE VISUALIZAÇÃO (LÓGICA ORIGINAL PRESERVADA) ---
-    if (cellValue == null || cellValue <= 0) {
+    const cellId = (cellValue && typeof cellValue === 'object') ? cellValue.id : cellValue;
+    const hasDisplayValue = cellValue && typeof cellValue === 'object' && typeof cellValue.displayValue !== 'undefined';
+    if (!hasDisplayValue && (cellId == null || (typeof cellId === 'number' && cellId <= 0))) {
         container.textContent = '(vazio)';
         container.className = 'grf-readonly-empty';
         return;

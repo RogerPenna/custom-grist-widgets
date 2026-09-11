@@ -1,17 +1,32 @@
 // js/sidePanelModule.js
-import { fetchAllAnalyses, filterAnalysesForRisk } from './gristApiService.js';
+import { fetchAllAnalyses, filterAnalysesForRisk, findAnalysisLinkingColumn } from './gristApiService.js';
 import { formatDate, getDeptName } from './utils.js';
-import { RISK_DEPT_COLUMN, RISK_NAME_COLUMN, RISK_IDRISCO_COLUMN, ANALYSIS_DATE_COLUMN } from './config.js'; // Importa nomes de colunas
+import { getColumnKey } from './config.js';
 
 const panelElement = document.getElementById('side-panel');
 const titleElement = document.getElementById('side-panel-title');
-const tabsNavElement = panelElement?.querySelector('.tabs-nav');
 const tabContentsElement = panelElement?.querySelectorAll('.tab-content');
 const tabButtonsElement = panelElement?.querySelectorAll('.tab-button');
 const closeButton = document.getElementById('btn-close-side-panel');
 
 let currentRiskData = null; // Guarda os dados do risco selecionado
 let currentActiveTab = 'detalhes'; // Estado da aba ativa
+
+// --- Getters Dinâmicos de Colunas ---
+const getColIdRisco = () => getColumnKey('IDRisco', 'idRiscoField');
+const getColNomeRisco = () => getColumnKey('NomeRisco', 'nomeRiscoField');
+const getColDepto = () => getColumnKey('Departamento', 'deptoField');
+const getColProb = () => getColumnKey('ultprob', 'probField');
+const getColImpact = () => getColumnKey('ultimpac', 'impactField');
+const getColTratamento = () => getColumnKey('Ultimo_Tratamento', 'tratamentoField');
+const getColPAs = () => getColumnKey('PAs', 'pasField');
+const getColNextAnalise = () => getColumnKey('DataProxAnalise', 'nextAnaliseField');
+const getColDescricao = () => getColumnKey('Descricao', 'descricaoField');
+
+// For analyses columns:
+const getColAnalysisProb = () => getColumnKey('ProbNum', 'analysisProbField');
+const getColAnalysisImpact = () => getColumnKey('ImpactNum', 'analysisImpactField');
+const getColAnalysisDate = () => getColumnKey('Data_Analise', 'analysisDateField');
 
 /** Inicializa o módulo do painel lateral, adicionando listeners. */
 export function initSidePanel() {
@@ -38,24 +53,31 @@ export function openSidePanel(riskRecord) {
 
     currentRiskData = riskRecord;
     if (titleElement) {
-        titleElement.textContent = `Detalhes: ${riskRecord[RISK_IDRISCO_COLUMN] || riskRecord.id} - ${riskRecord[RISK_NAME_COLUMN] || 'Sem Nome'}`;
+        const cod = riskRecord[getColIdRisco()] || riskRecord.id;
+        const codDisplay = !isNaN(cod) ? `RSK-${String(cod).padStart(4, '0')}` : cod;
+        titleElement.textContent = `Detalhes: ${codDisplay} - ${riskRecord[getColNomeRisco()] || 'Sem Nome'}`;
     }
 
     // Renderiza detalhes imediatamente
     renderRiskDetails();
+    
     // Limpa/reseta outras abas
     const analysesTab = document.getElementById('tab-analises');
     if (analysesTab) analysesTab.innerHTML = '<p class="loading-message">Clique para carregar análises.</p>';
-    // Resetar outras abas se necessário...
 
-    panelElement.style.display = 'flex';
+    const evolucaoTab = document.getElementById('tab-evolucao');
+    if (evolucaoTab) evolucaoTab.innerHTML = '<div id="drawer-matrix-container"><p class="loading-message">Clique para carregar evolução.</p></div>';
+
+    // Abre o painel aplicando a classe CSS active para transição suave
+    panelElement.classList.add('active');
+    currentActiveTab = ''; // Força ativação
     activateTab('detalhes'); // Garante que detalhes é a aba ativa inicial
 }
 
 /** Fecha o painel lateral. */
 export function closeSidePanel() {
     if (!panelElement) return;
-    panelElement.style.display = 'none';
+    panelElement.classList.remove('active'); // Remove classe active para transição de fechar
     currentRiskData = null; // Limpa o risco atual
     currentActiveTab = 'detalhes'; // Reseta aba ativa
     console.log("Painel lateral fechado.");
@@ -78,9 +100,43 @@ async function activateTab(tabName) {
 
     // Lógica específica ao ativar certas abas
     if (tabName === 'analises' && currentRiskData) {
-        await loadAndRenderAnalyses(); // Carrega dados se a aba de análises for ativada
+        await loadAndRenderAnalyses();
+    } else if (tabName === 'evolucao' && currentRiskData) {
+        await loadAndRenderEvolution();
     }
-    // Adicionar lógica para outras abas se necessário
+}
+
+/** Renderiza a evolução individual do risco na matriz modular do drawer */
+async function loadAndRenderEvolution() {
+    const container = document.getElementById('tab-evolucao');
+    if (!container || !currentRiskData) return;
+
+    container.innerHTML = `
+        <div id="drawer-matrix-container" style="width:100%; height:100%; display:flex; flex-direction:column;">
+            <p class="loading-message"><em>Carregando matriz de evolução...</em></p>
+        </div>
+    `;
+
+    try {
+        await findAnalysisLinkingColumn();
+        await fetchAllAnalyses();
+        const relatedAnalyses = filterAnalysesForRisk(currentRiskData.id);
+
+        const { renderMatrix } = await import('./matrixModule.js');
+        
+        renderMatrix(
+            null, // sem registros gerais (foca apenas na evolução individual)
+            'drawer-matrix-container',
+            null,
+            null,
+            null,
+            currentRiskData, // risco selecionado
+            relatedAnalyses // análises vinculadas
+        );
+    } catch (e) {
+        console.error("Erro ao renderizar evolução no drawer:", e);
+        container.innerHTML = `<p style="color: var(--danger); padding: 12px;">Erro ao carregar evolução: ${e.message}</p>`;
+    }
 }
 
 /** Renderiza os detalhes do risco atual na aba 'detalhes'. */
@@ -91,19 +147,24 @@ function renderRiskDetails() {
         container.innerHTML = '<p>Erro: Dados do risco não disponíveis.</p>';
         return;
     }
-    // Adapte os campos conforme sua tabela Riscos e nomes em config.js
+    
+    const cod = currentRiskData[getColIdRisco()] || currentRiskData.id;
+    const codDisplay = !isNaN(cod) ? `RSK-${String(cod).padStart(4, '0')}` : cod;
+
+    // Obtém o grau de risco atual em formato de texto/choice list
+    const grau = currentRiskData["$Grau_de_Risco_Atual"]?.[1] || currentRiskData.Grau_de_Risco_Atual || currentRiskData.UltimoCalcRisk || 'N/A';
+
     container.innerHTML = `
-        <h3>${currentRiskData[RISK_NAME_COLUMN] || "Sem nome"} (#${currentRiskData[RISK_IDRISCO_COLUMN] || currentRiskData.id})</h3>
-        <p><strong>Departamento:</strong> ${getDeptName(currentRiskData, RISK_DEPT_COLUMN)}</p>
-        <p><strong>Descrição:</strong> ${currentRiskData.Descricao || "<em>Não fornecida</em>"}</p>
+        <h3>${currentRiskData[getColNomeRisco()] || "Sem nome"} (#${codDisplay})</h3>
+        <p><strong>Departamento:</strong> ${getDeptName(currentRiskData, getColDepto())}</p>
+        <p><strong>Descrição:</strong> ${currentRiskData[getColDescricao()] || currentRiskData.Descricao || "<em>Não fornecida</em>"}</p>
         <hr>
-        <p><strong>Última Probabilidade:</strong> ${currentRiskData.UltimaProbabilidade || currentRiskData[RISK_PROB_COLUMN] || "N/A"}</p>
-        <p><strong>Último Impacto:</strong> ${currentRiskData.Ultimo_Impacto || currentRiskData[RISK_IMPACT_COLUMN] || "N/A"}</p>
-        <!-- Adapte como o grau é exibido -->
-        <p><strong>Grau de Risco Atual:</strong> ${currentRiskData.Grau_de_Risco_Atual?.[1] || currentRiskData.UltimoCalcRisk || 'N/A'}</p>
-        <p><strong>Tratamento Atual:</strong> ${currentRiskData.Ultimo_Tratamento || "N/A"}</p>
-        <p><strong>Planos de Ação Vinculados:</strong> ${currentRiskData.PAs || '0'}</p>
-        <p><strong>Próxima Análise:</strong> ${formatDate(currentRiskData.DataProxAnalise) || "<em>Não definida</em>"}</p>
+        <p><strong>Última Probabilidade:</strong> ${currentRiskData.UltimaProbabilidade || currentRiskData[getColProb()] || "N/D"}</p>
+        <p><strong>Último Impacto:</strong> ${currentRiskData.Ultimo_Impacto || currentRiskData[getColImpact()] || "N/D"}</p>
+        <p><strong>Grau de Risco Atual:</strong> ${grau}</p>
+        <p><strong>Tratamento Atual:</strong> ${currentRiskData[getColTratamento()] || currentRiskData.Tratamento || "N/D"}</p>
+        <p><strong>Planos de Ação:</strong> ${currentRiskData[getColPAs()] || currentRiskData.PAs || '0'}</p>
+        <p><strong>Próxima Análise:</strong> ${formatDate(currentRiskData[getColNextAnalise()]) || formatDate(currentRiskData.DataProxAnalise) || "<em>Não definida</em>"}</p>
     `;
 }
 
@@ -114,18 +175,13 @@ async function loadAndRenderAnalyses() {
 
     container.innerHTML = '<p class="loading-message"><em>Carregando análises...</em></p>';
     try {
-        // Garante que a coluna de ligação foi identificada e os dados buscados
-        await findAnalysisLinkingColumn(); // Tenta identificar (usa cache se já tiver)
-        await fetchAllAnalyses();          // Tenta buscar/usar cache
-
-        // Filtra os dados cacheados
+        await findAnalysisLinkingColumn(); // Garante identificação da coluna de ligação
+        await fetchAllAnalyses();          // Garante busca das análises
         const relatedAnalyses = filterAnalysesForRisk(currentRiskData.id);
-
         renderRiskAnalyses(relatedAnalyses);
-
     } catch (error) {
         console.error("Erro ao carregar/renderizar análises:", error);
-        container.innerHTML = `<p style="color: red;">Erro ao carregar análises: ${error.message}</p>`;
+        container.innerHTML = `<p style="color: var(--danger);">Erro ao carregar análises: ${error.message}</p>`;
     }
 }
 
@@ -139,24 +195,30 @@ function renderRiskAnalyses(analyses) {
         return;
     }
 
-    // Ordena análises (opcional, por data decrescente)
+    // Ordena análises por data decrescente (mais recente primeiro)
     analyses.sort((a, b) => {
-        let dateA = a[ANALYSIS_DATE_COLUMN] ? (typeof a[ANALYSIS_DATE_COLUMN] === 'number' ? a[ANALYSIS_DATE_COLUMN] : new Date(a[ANALYSIS_DATE_COLUMN]).getTime()) : 0;
-        let dateB = b[ANALYSIS_DATE_COLUMN] ? (typeof b[ANALYSIS_DATE_COLUMN] === 'number' ? b[ANALYSIS_DATE_COLUMN] : new Date(b[ANALYSIS_DATE_COLUMN]).getTime()) : 0;
-        return (dateB || 0) - (dateA || 0); // Trata N/A como 0
+        const dateValA = a[getColAnalysisDate()] || a.DataAnalise || 0;
+        const dateValB = b[getColAnalysisDate()] || b.DataAnalise || 0;
+        const timeA = typeof dateValA === 'number' ? dateValA * 1000 : new Date(dateValA).getTime();
+        const timeB = typeof dateValB === 'number' ? dateValB * 1000 : new Date(dateValB).getTime();
+        return timeB - timeA;
     });
 
-    // Monta o HTML - Adapte os nomes das colunas conforme sua tabela Analise_Risco
     let html = '<ul>';
     analyses.forEach(a => {
+        const dateVal = a[getColAnalysisDate()] || a.DataAnalise;
+        const formattedDate = formatDate(dateVal) || 'N/D';
+        const prob = a[getColAnalysisProb()] || a.ProbNum || a.Probabilidade || 'N/D';
+        const imp = a[getColAnalysisImpact()] || a.ImpactNum || a.Consequencia || 'N/D';
+        const grau = a.Grau_de_Risco?.[1] || a.Grau_de_Risco || a.CalcRisk || 'N/D';
+
         html += `
           <li>
-            <strong>ID Análise:</strong> ${a.id}<br>
-            <strong>Data:</strong> ${formatDate(a[ANALYSIS_DATE_COLUMN]) || 'N/D'}<br>
+            <strong>Data:</strong> ${formattedDate}<br>
             <strong>Analista:</strong> ${a.Analista || 'N/D'}<br>
-            <strong>Probabilidade:</strong> ${a.Probabilidade || 'N/D'}<br>
-            <strong>Impacto:</strong> ${a.Consequencia || 'N/D'}<br> <!-- Exemplo: usando Consequencia -->
-            <strong>Grau Risco:</strong> ${a.Grau_de_Risco?.[1] || a.CalcRisk || 'N/D'}<br> <!-- Exemplo: usando ChoiceList -->
+            <strong>Probabilidade:</strong> ${prob}<br>
+            <strong>Impacto:</strong> ${imp}<br>
+            <strong>Grau Risco:</strong> ${grau}<br>
             <strong>Tratamento:</strong> ${a.Tratamento || 'N/D'}<br>
             <strong>Observações:</strong> ${a.Observacoes || '<em>Nenhuma</em>'}
           </li>

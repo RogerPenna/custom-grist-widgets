@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="utf-8">
     <title>Dashboard de Performance de Fornecedores</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="../../libraries/grist-drawer-component/drawer-style.css">
@@ -21,12 +22,148 @@
     <script src="../libraries/external/grist-plugin-api.js"></script>
     <script src="../libraries/external/luxon.min.js"></script>
     <script src="../../libraries/tabulator/tabulator.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="script.js" type="module"></script>
 </head>
 
 <body>
-    <div id="filter-bar"></div>
-    <div id="dashboard-container"></div>
-    <script src="script.js" type="module"></script>
+    <div class="main-tabs">
+        <button class="main-tab-button active" id="tab-suppliers-btn">📋 Lista de Fornecedores</button>
+        <button class="main-tab-button" id="tab-charts-btn">📊 Gráficos de Desempenho</button>
+        <button class="main-tab-button" id="tab-config-btn">🔗 Vínculos e Categorias</button>
+    </div>
+
+    <!-- ABA 1: Lista de Fornecedores -->
+    <div id="tab-suppliers" class="main-tab-content active">
+        <div id="filter-bar"></div>
+        <div id="dashboard-container"></div>
+    </div>
+
+    <!-- ABA 2: Gráficos de Desempenho -->
+    <div id="tab-charts" class="main-tab-content">
+        <div class="charts-controls">
+            <div class="control-group">
+                <label for="charts-analysis-type">Tipo de Análise:</label>
+                <select id="charts-analysis-type">
+                    <option value="performance">Performance (Entregas e Valor)</option>
+                    <option value="quality">Qualidade (Aceitação e NCs)</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label for="charts-obra-filter">Filtrar por Obra:</label>
+                <select id="charts-obra-filter">
+                    <option value="all">Todas as Obras</option>
+                </select>
+            </div>
+            <div class="control-group" id="charts-perf-view-group">
+                <label for="charts-perf-view">Visualizar:</label>
+                <select id="charts-perf-view">
+                    <option value="both">Ambos os Gráficos</option>
+                    <option value="count">Por Quantidade de Entregas</option>
+                    <option value="value">Por Valor Total</option>
+                </select>
+            </div>
+            <div class="control-group" id="charts-qual-view-group" style="display: none;">
+                <label for="charts-qual-view">Visualizar:</label>
+                <select id="charts-qual-view">
+                    <option value="acceptance">% Aceitação por Obra</option>
+                    <option value="problems">Problemas por Fornecedor</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="charts-container">
+            <!-- Gráficos de Performance -->
+            <div class="performance-charts active">
+                <div class="chart-wrapper entregas-chart-wrapper"><canvas id="entregasChart"></canvas></div>
+                <div class="chart-wrapper valor-chart-wrapper"><canvas id="valorChart"></canvas></div>
+            </div>
+            <!-- Gráficos de Qualidade -->
+            <div class="quality-charts">
+                <div class="chart-wrapper acceptance-chart-wrapper"><canvas id="acceptanceChart"></canvas></div>
+                <div class="chart-wrapper problems-chart-wrapper"><canvas id="problemsChart"></canvas></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ABA 3: Vínculos e Categorias -->
+    <div id="tab-config" class="main-tab-content">
+        <div class="config-layout">
+            <!-- Coluna 1: Vinculador Rápido (Lote) -->
+            <div class="config-card">
+                <h3>🔗 Vinculador Rápido em Lote</h3>
+                <p class="config-help">Selecione um material e classe, depois marque os fornecedores na lista ao lado para vinculá-los de uma só vez.</p>
+                
+                <div class="config-form-group">
+                    <label for="batch-material">Material (Tipo):</label>
+                    <select id="batch-material">
+                        <option value="">Selecione um material...</option>
+                    </select>
+                </div>
+                
+                <div class="config-form-group">
+                    <label for="batch-classe">Classe:</label>
+                    <select id="batch-classe">
+                        <option value="">(Não alterar)</option>
+                        <option value="Fabricante">Fabricante</option>
+                        <option value="Revendedor">Revendedor</option>
+                    </select>
+                </div>
+                
+                <button id="batch-link-btn" class="config-btn" disabled>Vincular Selecionados</button>
+            </div>
+            
+            <!-- Coluna 2: Lista Checklist -->
+            <div class="config-card supplier-checklist-card">
+                <h3>🏢 Selecionar Fornecedores</h3>
+                <input type="text" id="config-supplier-search" placeholder="Pesquisar fornecedores...">
+                <div class="config-checklist-actions">
+                    <button id="checklist-select-all" class="config-btn-secondary">Selecionar Todos</button>
+                    <button id="checklist-clear" class="config-btn-secondary">Limpar Seleção</button>
+                </div>
+                <div id="config-supplier-list" class="config-supplier-checklist">
+                    <!-- Lista de checkboxes gerada via JS -->
+                </div>
+            </div>
+            
+            <!-- Coluna 3: Configurador Individual (Inverso) -->
+            <div class="config-card">
+                <h3>🔄 Configurador Individual</h3>
+                <p class="config-help">Selecione um fornecedor para ver, adicionar ou remover materiais e alterar sua classe rapidamente.</p>
+                
+                <div class="config-form-group">
+                    <label for="config-individual-supplier">Fornecedor:</label>
+                    <select id="config-individual-supplier">
+                        <option value="">Selecione um fornecedor...</option>
+                    </select>
+                </div>
+                
+                <div id="individual-config-panel" style="display: none;">
+                    <div class="config-form-group">
+                        <label for="individual-classe">Classe:</label>
+                        <select id="individual-classe">
+                            <option value="">Nenhuma</option>
+                            <option value="Fabricante">Fabricante</option>
+                            <option value="Revendedor">Revendedor</option>
+                        </select>
+                    </div>
+                    
+                    <div class="individual-materials-section">
+                        <h4>Materiais Vinculados</h4>
+                        <div id="individual-materials-list" class="tags-container">
+                            <!-- Tags de materiais vinculados -->
+                        </div>
+                        
+                        <div class="add-material-row">
+                            <select id="individual-add-material-select">
+                                <option value="">Adicionar material...</option>
+                            </select>
+                            <button id="individual-add-material-btn" class="config-btn-small">➕</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

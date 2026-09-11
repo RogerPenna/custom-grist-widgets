@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório de Calibração</title>
+
+    <!-- Dependencies -->
+    <link rel="stylesheet" href="../libraries/tabulator/tabulator.min.css">
+    <script src="../libraries/external/grist-plugin-api.js"></script>
+    <script src="../libraries/tabulator/tabulator.min.js"></script>
+
+    <style>
+        :root {
+            --primary-color: #2c5e5a;
+            --primary-hover: #1f4542;
+            --secondary-color: #455a64;
+            --success-color: #2e7d32;
+            --error-color: #c62828;
+            --warning-color: #ef6c00;
+            --border-color: #cfd8dc;
+            --text-color: #263238;
+            --bg-page: #f8fafc;
+        }
+
+        * { box-sizing: border-box; }
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-page);
+            color: var(--text-color);
+            overflow: hidden;
+        }
+
+        .report-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        /* Top Header Bar */
+        .report-header {
+            padding: 8px 16px;
+            background-color: var(--primary-color);
+            color: #ffffff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .report-header h2 {
+            margin: 0;
+            font-size: 14px;
+            font-weight: 700;
+            color: #ffffff;
+            letter-spacing: 0.02em;
+        }
+
+        #header-cert-info {
+            font-size: 12px;
+            font-weight: 600;
+            opacity: 0.95;
+            background: rgba(255,255,255,0.15);
+            padding: 3px 10px;
+            border-radius: 12px;
+        }
+
+        /* Main Scrollable/Flex Body */
+        .report-body {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            padding: 10px;
+            gap: 10px;
+            background-color: #f1f5f9;
+            min-height: 0;
+        }
+
+        /* Top Summary Cards Bar (Full Width, 3 Sections) */
+        .summary-cards-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            flex-shrink: 0;
+        }
+
+        .side-panel-section {
+            background-color: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 10px 12px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .side-panel-section h3 {
+            margin: 0 0 6px 0;
+            font-size: 11px;
+            color: var(--primary-color);
+            border-bottom: 1px solid #eceff1;
+            padding-bottom: 4px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .info-group {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+            font-size: 12px;
+            gap: 8px;
+        }
+
+        .info-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .info-group label {
+            color: #546e7a;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .info-group .info-value {
+            font-weight: 700;
+            color: var(--text-color);
+            text-align: right;
+            word-break: break-word;
+        }
+
+        .validation-summary-box {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 6px;
+            margin-top: 4px;
+            padding: 6px 8px;
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+        }
+
+        .summary-item {
+            display: flex;
+            align-items: center;
+            font-size: 11px;
+        }
+
+        .summary-item .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 5px;
+            display: inline-block;
+        }
+
+        .summary-item .dot.green { background-color: var(--success-color); }
+        .summary-item .dot.orange { background-color: var(--warning-color); }
+        .summary-item .dot.red { background-color: var(--error-color); }
+
+        .summary-item .label {
+            color: #546e7a;
+            margin-right: 4px;
+        }
+
+        .summary-item .value {
+            font-weight: 800;
+        }
+
+        .final-status-container {
+            margin-top: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .badge {
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 11px;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .badge.approved {
+            background-color: #c8e6c9;
+            color: var(--success-color);
+            border: 1px solid #a5d6a7;
+        }
+
+        .badge.rejected {
+            background-color: #ffcdd2;
+            color: var(--error-color);
+            border: 1px solid #ef9a9a;
+        }
+
+        .badge.warning {
+            background-color: #ffe082;
+            color: #b77900;
+            border: 1px solid #ffe082;
+        }
+
+        /* Main Tabs & Content Area (Full 100% Width & Height) */
+        .preview-main-panel {
+            flex: 1;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            background-color: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            min-height: 350px;
+        }
+
+        .preview-tabs {
+            display: flex;
+            background-color: #eceff1;
+            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+
+        .preview-tab-btn {
+            padding: 9px 18px;
+            border: none;
+            border-right: 1px solid var(--border-color);
+            background-color: #eceff1;
+            color: var(--text-color);
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 12px;
+            transition: all 0.15s;
+        }
+
+        .preview-tab-btn:hover {
+            background-color: #e2e8f0;
+        }
+
+        .preview-tab-btn.active {
+            background-color: #ffffff;
+            border-bottom: 3px solid var(--primary-color);
+            color: var(--primary-color);
+            font-weight: 700;
+        }
+
+        .preview-tab-contents {
+            padding: 8px 10px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        .preview-tab-pane {
+            display: none;
+            flex: 1;
+            min-height: 0;
+            height: 100%;
+        }
+
+        .preview-tab-pane.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .table-selector-bar {
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+
+        .table-selector-bar label {
+            font-weight: 600;
+            color: var(--text-color);
+        }
+
+        .table-selector-bar select {
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+            font-size: 12px;
+            background-color: #ffffff;
+        }
+
+        #preview-results-grid {
+            flex: 1;
+            min-height: 250px;
+            width: 100%;
+        }
+
+        .pdf-viewer-container {
+            flex: 1;
+            width: 100%;
+            height: 100%;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            overflow: hidden;
+            background-color: #525659;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .pdf-viewer-container iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .pdf-empty-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #b0bec5;
+            font-size: 13px;
+            gap: 8px;
+        }
+
+        /* Loading / Error placeholder */
+        .status-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            padding: 40px;
+            color: #64748b;
+            font-size: 13px;
+            text-align: center;
+            gap: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="report-container">
+        <!-- Barra de Título Superior -->
+        <div class="report-header">
+            <h2>Relatório de Importação de Certificado</h2>
+            <div id="header-cert-info">-</div>
+        </div>
+
+        <!-- Placeholder Inicial de Carregamento -->
+        <div class="status-placeholder" id="initial-placeholder">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            <span>Carregando análise metrológica do certificado...</span>
+        </div>
+
+        <!-- Corpo Principal em Pilha Vertical (Cards de Metadados no Topo + Tabela/PDF Abaixo em 100% de Largura) -->
+        <div class="report-body" id="main-report-body" style="display: none;">
+            
+            <!-- Cards de Metadados e Resumo no Topo -->
+            <div class="summary-cards-container">
+                <!-- Seção 1: Instrumento -->
+                <div class="side-panel-section">
+                    <h3>Dados do Instrumento</h3>
+                    <div class="info-group">
+                        <label>Código/Tag:</label>
+                        <span id="preview-inst-code" class="info-value">-</span>
+                    </div>
+                    <div class="info-group">
+                        <label>Número de Série:</label>
+                        <span id="preview-inst-serial" class="info-value">-</span>
+                    </div>
+                    <div class="info-group">
+                        <label>Tipo de Instrumento:</label>
+                        <span id="preview-inst-type" class="info-value">-</span>
+                    </div>
+                </div>
+
+                <!-- Seção 2: Certificado -->
+                <div class="side-panel-section">
+                    <h3>Dados do Certificado</h3>
+                    <div class="info-group">
+                        <label>Nº do Certificado:</label>
+                        <span id="preview-cert-code" class="info-value">-</span>
+                    </div>
+                    <div class="info-group">
+                        <label>Data de Calibração:</label>
+                        <span id="preview-cert-date" class="info-value">-</span>
+                    </div>
+                    <div class="info-group">
+                        <label>Erro Máx. Permitido:</label>
+                        <span id="preview-inst-limit" class="info-value" style="color:var(--primary-color); font-weight:800;">-</span>
+                    </div>
+                </div>
+
+                <!-- Seção 3: Validação -->
+                <div class="side-panel-section">
+                    <h3>Resultado da Validação</h3>
+                    <div class="validation-summary-box">
+                        <div class="summary-item">
+                            <span class="dot green"></span>
+                            <span class="label">Conforme:</span>
+                            <span id="preview-count-pass" class="value">0</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="dot orange"></span>
+                            <span class="label">Alerta:</span>
+                            <span id="preview-count-warn" class="value">0</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="dot red"></span>
+                            <span class="label">Reprovado:</span>
+                            <span id="preview-count-fail" class="value">0</span>
+                        </div>
+                    </div>
+                    <div class="final-status-container">
+                        <span style="font-size: 10px; font-weight: bold; color: #546e7a;">AVALIAÇÃO FINAL</span>
+                        <span id="preview-final-status-badge" class="badge approved">APROVADO</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Painel de Conteúdo: Abas e Tabela/PDF com 100% de Largura e Altura -->
+            <div class="preview-main-panel">
+                <div class="preview-tabs">
+                    <button class="preview-tab-btn active" data-prevtab="prev-tab-xml">Tabela de Resultados (XML)</button>
+                    <button class="preview-tab-btn" data-prevtab="prev-tab-pdf">Certificado PDF</button>
+                </div>
+                
+                <div class="preview-tab-contents">
+                    <!-- Tab 1: Tabela de Resultados XML -->
+                    <div id="prev-tab-xml" class="preview-tab-pane active">
+                        <div class="table-selector-bar" id="table-selector-container" style="display: none;">
+                            <label for="table-select">Tabela do Certificado:</label>
+                            <select id="table-select"></select>
+                        </div>
+                        <div id="preview-results-grid"></div>
+                    </div>
+
+                    <!-- Tab 2: PDF -->
+                    <div id="prev-tab-pdf" class="preview-tab-pane">
+                        <div class="pdf-viewer-container">
+                            <div class="pdf-empty-placeholder" id="pdf-empty-msg">Nenhum documento PDF vinculado a este certificado.</div>
+                            <iframe id="preview-pdf-frame" src="" style="display: none;"></iframe>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Script de Lógica e Renderização -->
+    <script type="module">
+        import { GristTableLens } from '../libraries/grist-table-lens/grist-table-lens.js';
+
+        let currentCertId = null;
+        let currentTables = [];
+        let previewResultsGrid = null;
+        let maxErrorAllowed = 5.0;
+        let lastLoadCertId = null;
+
+        // --- DETECÇÃO DO MOTOR DE DADOS ---
+
+        function getDirectTableLens() {
+            if (window.parentTableLens) return window.parentTableLens;
+            try {
+                if (window.parent && window.parent.tableLens) return window.parent.tableLens;
+            } catch(e) {}
+            try {
+                if (window.top && window.top.tableLens) return window.top.tableLens;
+            } catch(e) {}
+            try {
+                let p = window.parent;
+                while (p && p !== window.top) {
+                    if (p.tableLens) return p.tableLens;
+                    p = p.parent;
+                }
+            } catch(e) {}
+            return null;
+        }
+
+        function createPostMessageTableLens() {
+            let reqId = 0;
+            const pending = new Map();
+
+            window.addEventListener('message', (e) => {
+                if (!e.data || e.data.action !== 'table-lens-response') return;
+                const { transactionId, result, error } = e.data;
+                if (pending.has(transactionId)) {
+                    const { resolve, reject, timer } = pending.get(transactionId);
+                    clearTimeout(timer);
+                    pending.delete(transactionId);
+                    if (error) reject(new Error(error));
+                    else resolve(result);
+                }
+            });
+
+            function callRpc(method, ...args) {
+                return new Promise((resolve, reject) => {
+                    const transactionId = 'tl_' + (++reqId) + '_' + Date.now();
+                    const timer = setTimeout(() => {
+                        if (pending.has(transactionId)) {
+                            pending.delete(transactionId);
+                            reject(new Error(`Timeout na chamada ${method}`));
+                        }
+                    }, 5000);
+                    pending.set(transactionId, { resolve, reject, timer });
+                    window.parent.postMessage({
+                        action: 'table-lens-request',
+                        method,
+                        args,
+                        transactionId
+                    }, '*');
+                });
+            }
+
+            return {
+                fetchRecordById: (tableId, id) => callRpc('fetchRecordById', tableId, id),
+                findRecord: (tableId, filter) => callRpc('findRecord', tableId, filter),
+                fetchTableRecords: (tableId) => callRpc('fetchTableRecords', tableId),
+                getAccessToken: () => callRpc('getAccessToken'),
+                getBaseUrl: () => callRpc('getBaseUrl')
+            };
+        }
+
+        async function ensureTableLens(timeoutMs = 200) {
+            let direct = getDirectTableLens();
+            if (direct) return direct;
+
+            const start = Date.now();
+            while (Date.now() - start < timeoutMs) {
+                await new Promise(r => setTimeout(r, 50));
+                direct = getDirectTableLens();
+                if (direct) return direct;
+            }
+
+            if (window.parent && window.parent !== window) {
+                return createPostMessageTableLens();
+            }
+
+            if (window.self === window.top && window.grist) {
+                try {
+                    window.grist.ready({ requiredAccess: 'full' });
+                    return new GristTableLens(window.grist);
+                } catch(e) {}
+            }
+
+            return null;
+        }
+
+        // --- HELPERS ---
+
+        function getField(obj, possibleKeys, defaultVal = null) {
+            if (!obj) return defaultVal;
+            for (const k of possibleKeys) {
+                if (obj[k] !== undefined && obj[k] !== null && obj[k] !== '') return obj[k];
+                const upper = k.toUpperCase();
+                if (obj[upper] !== undefined && obj[upper] !== null && obj[upper] !== '') return obj[upper];
+                const lower = k.toLowerCase();
+                if (obj[lower] !== undefined && obj[lower] !== null && obj[lower] !== '') return obj[lower];
+            }
+            return defaultVal;
+        }
+
+        function parseNum(val, def = 0) {
+            if (val === null || val === undefined || val === '') return def;
+            if (typeof val === 'number') return isNaN(val) ? def : val;
+            const str = String(val).replace(',', '.').trim();
+            const n = parseFloat(str);
+            return isNaN(n) ? def : n;
+        }
+
+        function formatDate(val) {
+            if (!val) return '-';
+            if (typeof val === 'number') {
+                const ms = val > 1e11 ? val : val * 1000;
+                const d = new Date(ms);
+                if (!isNaN(d.getTime())) {
+                    return d.toISOString().split('T')[0]; // YYYY-MM-DD
+                }
+            }
+            if (typeof val === 'string') {
+                if (/^\d{4}-\d{2}-\d{2}/.test(val)) return val.substring(0, 10);
+                const num = parseFloat(val);
+                if (!isNaN(num) && num > 1e8) {
+                    return formatDate(num);
+                }
+            }
+            return String(val);
+        }
+
+        async function fetchTableSafe(lens, candidateNames) {
+            for (const name of candidateNames) {
+                try {
+                    if (typeof lens.fetchTableRecords === 'function') {
+                        const recs = await lens.fetchTableRecords(name);
+                        if (Array.isArray(recs) && recs.length > 0) return recs;
+                    }
+                } catch(e) {}
+            }
+            return [];
+        }
+
+        // --- NAVEGAÇÃO ENTRE ABAS ---
+
+        document.querySelectorAll('.preview-tab-btn').forEach(btn => {
+            btn.onclick = () => {
+                document.querySelectorAll('.preview-tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.preview-tab-pane').forEach(p => p.classList.remove('active'));
+                btn.classList.add('active');
+                const targetId = btn.dataset.prevtab;
+                const target = document.getElementById(targetId);
+                if (target) target.classList.add('active');
+                if (targetId === 'prev-tab-xml' && previewResultsGrid) {
+                    setTimeout(() => previewResultsGrid.redraw(true), 50);
+                }
+            };
+        });
+
+        window.retryLoad = () => {
+            if (currentCertId) loadCertificateData(currentCertId);
+        };
+
+        // --- CARREGAMENTO RÁPIDO DO CERTIFICADO ---
+
+        async function loadCertificateData(certId, passedRecord = null) {
+            lastLoadCertId = certId;
+            console.log(`[CalibrationViewer] Carregando Certificado #${certId}...`);
+
+            const placeholder = document.getElementById('initial-placeholder');
+            const mainBody = document.getElementById('main-report-body');
+
+            try {
+                const lens = await ensureTableLens(1000);
+                if (!lens) {
+                    throw new Error("Conexão com o motor de dados não encontrada.");
+                }
+
+                const urlParams = new URLSearchParams(window.location.search);
+                const certTableId = urlParams.get('drawerTableId') || 'EXTERNAL_CALIBRATIONS';
+
+                // Dispara buscas paralelas de dados
+                const [certRecord, allCalTables, allResults, allIndivCriteria, allGenCriteria, allTypes] = await Promise.all([
+                    passedRecord ? Promise.resolve(passedRecord) : (
+                        lens.fetchRecordById ? lens.fetchRecordById(certTableId, certId) : lens.findRecord(certTableId, { id: certId })
+                    ),
+                    fetchTableSafe(lens, ['EXTERNAL_CAL_TABLES', 'external_cal_tables']),
+                    fetchTableSafe(lens, ['EXTERNAL_CAL_RESULTS', 'external_cal_results']),
+                    fetchTableSafe(lens, ['CRITERION_INSTRUMENTS', 'criterion_instruments']),
+                    fetchTableSafe(lens, ['CRITERION_ACCEPTANCE', 'criterion_acceptance']),
+                    fetchTableSafe(lens, ['INSTRUMENTS_TYPES', 'instruments_types'])
+                ]);
+
+                // Guard de concorrência
+                if (lastLoadCertId !== certId) return;
+
+                const cert = certRecord || await lens.findRecord('EXTERNAL_CALIBRATIONS', { id: certId });
+                if (!cert) {
+                    throw new Error(`Certificado #${certId} não encontrado.`);
+                }
+
+                const certCode = getField(cert, ['CODE', 'CERT_CODE', 'Numero', 'Numero_Certificado', 'Codigo']) || `Cert. #${certId}`;
+                const rawDate = getField(cert, ['DATE', 'CALIBRATION_DATE', 'Data', 'Data_Calibracao']);
+                const certDate = formatDate(rawDate);
+                const attRef = getField(cert, ['ATTACHMENT', 'FILE', 'ANEXO', 'PDF', 'Attachment', 'Anexo']);
+
+                // Identifica Instrumento
+                let instId = getField(cert, ['ID_INSTRUMENT', 'INSTRUMENT', 'Instrumento', 'Id_Instrument']);
+                if (Array.isArray(instId)) instId = instId[0];
+                else if (typeof instId === 'object' && instId !== null) instId = instId.id || instId.rowId;
+
+                let inst = null;
+                if (instId) {
+                    try {
+                        if (lens.fetchRecordById) inst = await lens.fetchRecordById('INSTRUMENTS', instId);
+                        if (!inst && lens.findRecord) inst = await lens.findRecord('INSTRUMENTS', { id: instId });
+                        if (!inst && lens.findRecord) inst = await lens.findRecord('instruments', { id: instId });
+                    } catch(e) {}
+                }
+
+                // Extrai dados do Instrumento com detecção flexível de colunas
+                let instCode = getField(inst, ['Code', 'CODE', 'TAG', 'Tag', 'IDENTIFIER', 'Identifier', 'Codigo', 'Tag', 'Identificador', 'Nome', 'NAME', 'label', 'gristHelper_DisplayValue']);
+                if (!instCode && inst) {
+                    for (const k of Object.keys(inst)) {
+                        if (/code|tag|ident|nome/i.test(k) && inst[k]) {
+                            instCode = inst[k];
+                            break;
+                        }
+                    }
+                }
+                if (!instCode) instCode = '-';
+
+                const instSerial = (inst && getField(inst, ['SERIAL_NUMBER', 'Serial', 'SERIAL', 'Numero_Serie', 'NumeroSerie', 'Serie'])) || '-';
+                const instTypeId = inst ? getField(inst, ['ID_INSTRUMENT_TYPE', 'INSTRUMENT_TYPE', 'Id_Instrument_Type', 'Tipo', 'z_disp_ID_INSTRUMENT_TYPE']) : null;
+
+                // Nome do Tipo de Instrumento
+                let instTypeName = '-';
+                if (instTypeId) {
+                    const matchedType = allTypes.find(t => String(t.id) === String(instTypeId) || String(t.ID) === String(instTypeId));
+                    if (matchedType) {
+                        instTypeName = getField(matchedType, ['NAME', 'Name', 'Nome', 'TYPE', 'Tipo', 'Descricao']) || String(instTypeId);
+                    } else if (typeof instTypeId === 'string' && isNaN(Number(instTypeId))) {
+                        instTypeName = instTypeId;
+                    }
+                }
+
+                // Critério de Aceitação / Erro Máximo Permitido
+                maxErrorAllowed = 5.0;
+                let matchedCriteria = [];
+                if (instId) {
+                    matchedCriteria = allIndivCriteria.filter(c => String(getField(c, ['ID_INSTRUMENT', 'INSTRUMENT', 'Id_Instrument'])) === String(instId));
+                }
+                if (matchedCriteria.length === 0 && instTypeId) {
+                    matchedCriteria = allGenCriteria.filter(c => String(getField(c, ['ID_INSTRUMENT_TYPE', 'INSTRUMENT_TYPE', 'Id_Instrument_Type'])) === String(instTypeId));
+                }
+                if (matchedCriteria.length > 0) {
+                    const limVal = getField(matchedCriteria[0], ['MAX_ERROR_MORE', 'MAX_ERROR', 'LIMIT', 'Erro_Maximo', 'Limite']);
+                    if (limVal !== null && limVal !== undefined) {
+                        const parsed = parseNum(limVal);
+                        if (parsed > 0) maxErrorAllowed = parsed;
+                    }
+                }
+
+                // Tabelas do Certificado
+                const certTables = allCalTables.filter(t => {
+                    const calRef = getField(t, ['ID_EXTERNAL_CALIBRATION', 'Id_External_Calibration', 'EXTERNAL_CALIBRATION', 'External_Calibration', 'CALIBRATION', 'Certificado', 'ID_CERTIFICADO']);
+                    return String(calRef) === String(certId);
+                });
+
+                currentTables = [];
+                if (certTables.length > 0) {
+                    for (const tbl of certTables) {
+                        const pts = allResults.filter(r => {
+                            const tblRef = getField(r, ['ID_EXTERNAL_CAL_TABLE', 'Id_External_Cal_Table', 'EXTERNAL_CAL_TABLE', 'TABLE_ID', 'Tabela']);
+                            return String(tblRef) === String(tbl.id);
+                        });
+                        currentTables.push({
+                            id: tbl.id,
+                            name: getField(tbl, ['NAME', 'Name', 'Nome', 'Descricao', 'TITULO']) || `Tabela #${tbl.id}`,
+                            points: pts
+                        });
+                    }
+                } else {
+                    // Fallback para quando os resultados apontam diretamente para o certificado
+                    const directPoints = allResults.filter(r => {
+                        const calRef = getField(r, ['ID_EXTERNAL_CALIBRATION', 'Id_External_Calibration', 'CALIBRATION', 'Certificado']);
+                        return String(calRef) === String(certId);
+                    });
+                    if (directPoints.length > 0) {
+                        currentTables.push({
+                            id: 1,
+                            name: "Pontos de Medição",
+                            points: directPoints
+                        });
+                    }
+                }
+
+                // Cálculo da Validação dos Pontos
+                let passCount = 0, warnCount = 0, failCount = 0;
+                currentTables.forEach(t => {
+                    t.points.forEach(p => {
+                        const pt = extractPointData(p);
+                        if (pt.status === 'REPROVADO') failCount++;
+                        else if (pt.status === 'ALERTA') warnCount++;
+                        else passCount++;
+                    });
+                });
+
+                let finalStatus = "Aprovado";
+                if (failCount > 0) finalStatus = "Reprovado";
+                else if (warnCount > 0) finalStatus = "Alerta";
+
+                // Atualização dos Painéis de Metadados
+                document.getElementById('header-cert-info').innerText = `${certCode} • ${certDate}`;
+                document.getElementById('preview-inst-code').innerText = instCode;
+                document.getElementById('preview-inst-serial').innerText = instSerial;
+                document.getElementById('preview-inst-type').innerText = instTypeName;
+
+                document.getElementById('preview-cert-code').innerText = certCode;
+                document.getElementById('preview-cert-date').innerText = certDate;
+                document.getElementById('preview-inst-limit').innerText = `${maxErrorAllowed}`;
+
+                document.getElementById('preview-count-pass').innerText = passCount;
+                document.getElementById('preview-count-warn').innerText = warnCount;
+                document.getElementById('preview-count-fail').innerText = failCount;
+
+                const finalBadge = document.getElementById('preview-final-status-badge');
+                finalBadge.innerText = finalStatus.toUpperCase();
+                finalBadge.className = 'badge ' + (finalStatus === 'Aprovado' ? 'approved' : finalStatus === 'Reprovado' ? 'rejected' : 'warning');
+
+                // Visualizador de PDF
+                const pdfFrame = document.getElementById('preview-pdf-frame');
+                const pdfEmpty = document.getElementById('pdf-empty-msg');
+                let hasPdf = false;
+
+                if (attRef) {
+                    let attId = null;
+                    if (Array.isArray(attRef)) attId = (attRef[0] === 'L') ? attRef[1] : attRef[0];
+                    else if (typeof attRef === 'number') attId = attRef;
+
+                    if (attId && typeof lens.getAccessToken === 'function' && typeof lens.getBaseUrl === 'function') {
+                        try {
+                            const token = await lens.getAccessToken();
+                            const baseUrl = await lens.getBaseUrl();
+                            if (baseUrl && token) {
+                                pdfFrame.src = `${baseUrl}/attachments/${attId}/download?auth=${token}`;
+                                pdfFrame.style.display = 'block';
+                                pdfEmpty.style.display = 'none';
+                                hasPdf = true;
+                            }
+                        } catch(e) {}
+                    }
+                }
+
+                if (!hasPdf) {
+                    pdfFrame.src = '';
+                    pdfFrame.style.display = 'none';
+                    pdfEmpty.style.display = 'flex';
+                }
+
+                // Seletor de Tabela
+                const selectContainer = document.getElementById('table-selector-container');
+                const selectEl = document.getElementById('table-select');
+                selectEl.innerHTML = '';
+
+                if (currentTables.length > 1) {
+                    currentTables.forEach((tbl, idx) => {
+                        const opt = document.createElement('option');
+                        opt.value = idx;
+                        opt.innerText = `${tbl.name} (${tbl.points.length} pontos)`;
+                        selectEl.appendChild(opt);
+                    });
+                    selectContainer.style.display = 'flex';
+                    selectEl.onchange = (e) => {
+                        renderTabulator(currentTables[parseInt(e.target.value, 10)].points);
+                    };
+                } else {
+                    selectContainer.style.display = 'none';
+                }
+
+                // Renderiza Tabela Tabulator
+                const initialPoints = (currentTables[0] && currentTables[0].points) || [];
+                renderTabulator(initialPoints);
+
+                // Exibe conteúdo
+                placeholder.style.display = 'none';
+                mainBody.style.display = 'flex';
+
+                // Garante ajuste do Tabulator
+                if (previewResultsGrid) {
+                    setTimeout(() => previewResultsGrid.redraw(true), 60);
+                }
+
+            } catch (err) {
+                console.error("[CalibrationViewer] Erro:", err);
+                placeholder.innerHTML = `
+                    <div style="display:flex; flex-direction:column; align-items:center; gap:8px; color:#c62828;">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                        <span style="font-weight:bold; font-size:13px;">Não foi possível carregar a análise: ${err.message}</span>
+                        <button onclick="retryLoad()" style="padding:6px 14px; background:#fff; border:1px solid #cbd5e1; border-radius:6px; font-weight:700; cursor:pointer; color:#1e293b; margin-top:6px;">Tentar Novamente</button>
+                    </div>
+                `;
+            }
+        }
+
+        function extractPointData(p) {
+            const ref = parseNum(getField(p, ['REFERENCE_VALUE', 'Referencia', 'ValorReferencia', 'Valor_de_Referencia', 'Ponto']));
+            const err = parseNum(getField(p, ['RESULT01', 'Result01', 'ERROR', 'Erro', 'Tendencia', 'TENDENCIA']));
+            const unc = parseNum(getField(p, ['RESULT02', 'Result02', 'UNCERTAINTY', 'Incerteza', 'Incerteza_U', 'U']));
+            const k = parseNum(getField(p, ['RESULT03', 'Result03', 'K_FACTOR', 'FatorK', 'Fator_k', 'K']), 2.0);
+
+            const indRaw = getField(p, ['INDICATED_VALUE', 'Indicacao', 'ValorIndicado', 'READ01', 'Read01']);
+            const ind = (indRaw !== null && indRaw !== undefined && indRaw !== '') ? parseNum(indRaw) : (ref + err);
+
+            const combined = Math.abs(err) + unc;
+
+            let status = "APROVADO";
+            if (combined > maxErrorAllowed) status = "REPROVADO";
+            else if (combined >= 0.9 * maxErrorAllowed) status = "ALERTA";
+
+            return {
+                REFERENCE_VALUE: ref,
+                INDICATED_VALUE: ind,
+                ERROR: err,
+                UNCERTAINTY: unc,
+                K_FACTOR: k,
+                _combined: combined,
+                status: status
+            };
+        }
+
+        function renderTabulator(points) {
+            const formattedData = (points || []).map(p => extractPointData(p));
+
+            if (previewResultsGrid) {
+                previewResultsGrid.setData(formattedData);
+                setTimeout(() => previewResultsGrid.redraw(true), 30);
+                return;
+            }
+
+            previewResultsGrid = new Tabulator("#preview-results-grid", {
+                data: formattedData,
+                layout: "fitColumns",
+                placeholder: "Nenhum ponto de medição registrado para esta tabela.",
+                columns: [
+                    { title: "Valor de Referência", field: "REFERENCE_VALUE", hozAlign: "right", headerHozAlign: "right" },
+                    { title: "Indicação Instrumento", field: "INDICATED_VALUE", hozAlign: "right", headerHozAlign: "right" },
+                    { title: "Tendência (Erro)", field: "ERROR", hozAlign: "right", headerHozAlign: "right" },
+                    { title: "Incerteza U", field: "UNCERTAINTY", hozAlign: "right", headerHozAlign: "right" },
+                    { title: "Fator K", field: "K_FACTOR", hozAlign: "center", headerHozAlign: "center", width: 90 }
+                ],
+                rowFormatter: function(row) {
+                    const data = row.getData();
+                    const combined = data._combined !== undefined ? data._combined : (Math.abs(parseFloat(data.ERROR || 0)) + parseFloat(data.UNCERTAINTY || 0));
+                    const el = row.getElement();
+
+                    if (combined > maxErrorAllowed) {
+                        el.style.backgroundColor = "#ffebee";
+                        el.style.color = "#b71c1c";
+                        el.style.fontWeight = "bold";
+                    } else if (combined >= 0.9 * maxErrorAllowed) {
+                        el.style.backgroundColor = "#fff3e0";
+                        el.style.color = "#e65100";
+                        el.style.fontWeight = "500";
+                    } else {
+                        el.style.backgroundColor = "#e8f5e9";
+                        el.style.color = "#1b5e20";
+                        el.style.fontWeight = "500";
+                    }
+                }
+            });
+        }
+
+        // --- INICIALIZAÇÃO ---
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            currentCertId = urlParams.get('drawerRecordId') || urlParams.get('recordId') || urlParams.get('id');
+
+            window.addEventListener('message', async (e) => {
+                if (!e.data) return;
+                if (e.data.action === 'drawer-context-update') {
+                    const newId = e.data.recordId;
+                    const rec = e.data.record;
+                    if (newId) {
+                        currentCertId = newId;
+                        await loadCertificateData(currentCertId, rec);
+                    }
+                }
+            });
+
+            if (currentCertId) {
+                setTimeout(async () => {
+                    if (lastLoadCertId !== currentCertId) {
+                        await loadCertificateData(currentCertId);
+                    }
+                }, 50);
+            }
+        });
+    </script>
+</body>
+</html>

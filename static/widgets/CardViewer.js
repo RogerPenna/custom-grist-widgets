@@ -380,10 +380,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             else if (type === 'indicators') {
                 const { IndicatorsRenderer } = await import('../libraries/grist-indicators-renderer/IndicatorsRenderer.js');
-                const [indRecords, configs] = await Promise.all([
+                let [indRecords, configs] = await Promise.all([
                     tableLens.fetchTableRecords(tableId),
                     tableLens.fetchTableRecords('Grf_config')
                 ]);
+                indRecords = IndicatorsRenderer.calculateFormulas(indRecords, currentConfig);
                 cardsContentArea.innerHTML = '';
                 const currentYear = new Date().getFullYear().toString();
                 const styling = currentConfig.styling || {};

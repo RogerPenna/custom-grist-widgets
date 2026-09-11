@@ -4,6 +4,10 @@ import { GristDataWriter } from '../../libraries/grist-data-writer.js';
 document.addEventListener('DOMContentLoaded', async () => {
     let allDeliveries = [];
     let suppliers = new Map();
+    let supplierDataMap = new Map();
+    let chartInstances = {};
+    let fornecedoresGlobal = [];
+    let materiaisGlobal = [];
     let lens;
     let dataWriter;
     let classificacaoRecords;
@@ -30,18 +34,34 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         try {
-            const [deliveries, fornecedores, classificacoes] = await Promise.all([
+            const [deliveries, fornecedores, classificacoes, materiais] = await Promise.all([
                 lens.fetchTableRecords('Dados'),
                 lens.fetchTableRecords('Fornecedores'),
-                lens.fetchTableRecords('Classificacao_Fornecedores')
+                lens.fetchTableRecords('Classificacao_Fornecedores'),
+                lens.fetchTableRecords('Tipos_de_Fornecedores')
             ]);
             allDeliveries = deliveries;
             classificacaoRecords = classificacoes;
+            fornecedoresGlobal = fornecedores;
+            materiaisGlobal = materiais;
 
-            const supplierNames = new Map(fornecedores.map(f => [f.id, f.Nome_Fornecedor]));
+            // Mapeia os dados dos fornecedores incluindo o campo Mat_Controlado
+            supplierDataMap = new Map(fornecedores.map(f => {
+                let isControlled = false;
+                if (Array.isArray(f.Mat_Controlado)) {
+                    isControlled = f.Mat_Controlado.slice(1).some(val => val === true || val === 1);
+                } else {
+                    isControlled = f.Mat_Controlado === true || f.Mat_Controlado === 1;
+                }
+                return [f.id, {
+                    nome: f.Nome_Fornecedor || 'Fornecedor Desconhecido',
+                    controlado: isControlled
+                }];
+            }));
 
             allDeliveries.forEach(d => {
-                d.Emitente_Nome_Fornecedor = supplierNames.get(d.Emitente) || 'Fornecedor Desconhecido';
+                const sData = supplierDataMap.get(d.Emitente) || { nome: 'Fornecedor Desconhecido', controlado: false };
+                d.Emitente_Nome_Fornecedor = sData.nome;
                 d.jsDate = new Date(d.Emissao * 1000);
                 d.jsYear = d.jsDate.getFullYear();
             });
@@ -57,6 +77,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         populateFilters();
         await renderDashboard(classificacaoRecords);
         setupFilterListeners(classificacaoRecords);
+        setupMainTabs();
+        initConfigTab();
     }
     
     function debounce(func, delay) {
@@ -67,6 +89,88 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
     }
 
+    function setupMainTabs() {
+        const tabSuppliersBtn = document.getElementById('tab-suppliers-btn');
+        const tabChartsBtn = document.getElementById('tab-charts-btn');
+        const tabConfigBtn = document.getElementById('tab-config-btn');
+        const tabSuppliers = document.getElementById('tab-suppliers');
+        const tabCharts = document.getElementById('tab-charts');
+        const tabConfig = document.getElementById('tab-config');
+
+        if (tabSuppliersBtn && tabChartsBtn && tabConfigBtn) {
+            tabSuppliersBtn.addEventListener('click', () => {
+                tabSuppliersBtn.classList.add('active');
+                tabChartsBtn.classList.remove('active');
+                tabConfigBtn.classList.remove('active');
+                tabSuppliers.classList.add('active');
+                tabCharts.classList.remove('active');
+                tabConfig.classList.remove('active');
+            });
+
+            tabChartsBtn.addEventListener('click', () => {
+                tabChartsBtn.classList.add('active');
+                tabSuppliersBtn.classList.remove('active');
+                tabConfigBtn.classList.remove('active');
+                tabCharts.classList.add('active');
+                tabSuppliers.classList.remove('active');
+                tabConfig.classList.remove('active');
+                renderChartsTab();
+            });
+
+            tabConfigBtn.addEventListener('click', () => {
+                tabConfigBtn.classList.add('active');
+                tabSuppliersBtn.classList.remove('active');
+                tabChartsBtn.classList.remove('active');
+                tabConfig.classList.add('active');
+                tabSuppliers.classList.remove('active');
+                tabCharts.classList.remove('active');
+                // Inicializa os dados da aba de config
+                populateConfigMaterials();
+                populateConfigSuppliersChecklist();
+                populateConfigIndividualSupplierSelect();
+                updateIndividualPanel();
+            });
+        }
+
+        // Ouvintes de filtros para a aba de gráficos
+        const chartsAnalysisType = document.getElementById('charts-analysis-type');
+        const chartsObraFilter = document.getElementById('charts-obra-filter');
+        const chartsPerfView = document.getElementById('charts-perf-view');
+        const chartsQualView = document.getElementById('charts-qual-view');
+
+        if (chartsAnalysisType) {
+            chartsAnalysisType.addEventListener('change', (e) => {
+                const analysisType = e.target.value;
+                document.getElementById('charts-perf-view-group').style.display = analysisType === 'performance' ? 'flex' : 'none';
+                document.getElementById('charts-qual-view-group').style.display = analysisType === 'quality' ? 'flex' : 'none';
+                renderChartsTab();
+            });
+        }
+        if (chartsObraFilter) chartsObraFilter.addEventListener('change', renderChartsTab);
+        if (chartsPerfView) chartsPerfView.addEventListener('change', renderChartsTab);
+        if (chartsQualView) chartsQualView.addEventListener('change', renderChartsTab);
+
+        // Atualizar gráficos quando mudar o filtro de ano do painel principal
+        const mainYearFilter = document.getElementById('year-filter');
+        if (mainYearFilter) {
+            mainYearFilter.addEventListener('change', () => {
+                if (tabCharts && tabCharts.classList.contains('active')) {
+                    renderChartsTab();
+                }
+            });
+        }
+        
+        // Atualizar gráficos quando mudar o filtro de materiais controlados do painel principal
+        const controladoFilter = document.getElementById('controlado-filter');
+        if (controladoFilter) {
+            controladoFilter.addEventListener('change', () => {
+                if (tabCharts && tabCharts.classList.contains('active')) {
+                    renderChartsTab();
+                }
+            });
+        }
+    }
+
     function setupFilterListeners(classificacaoRecords) {
         const debouncedRender = debounce(() => renderDashboard(classificacaoRecords), 300);
         document.getElementById('search-input').addEventListener('input', debouncedRender);
@@ -74,6 +178,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('obra-only-filter').addEventListener('change', () => renderDashboard(classificacaoRecords));
         document.getElementById('year-filter').addEventListener('change', () => renderDashboard(classificacaoRecords));
         document.getElementById('sort-order').addEventListener('change', () => renderDashboard(classificacaoRecords));
+        
+        // Novo filtro de material controlado
+        const controladoFilter = document.getElementById('controlado-filter');
+        if (controladoFilter) {
+            controladoFilter.addEventListener('change', () => renderDashboard(classificacaoRecords));
+        }
     }
 
     function processDeliveries() {
@@ -81,9 +191,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         allDeliveries.forEach(delivery => {
             const supplierId = delivery.Emitente;
             if (!suppliers.has(supplierId)) {
+                const sData = supplierDataMap.get(supplierId) || { nome: 'Fornecedor Desconhecido', controlado: false };
                 suppliers.set(supplierId, {
                     id: supplierId,
-                    name: delivery.Emitente_Nome_Fornecedor,
+                    name: sData.nome,
+                    controlado: sData.controlado,
                     deliveries: []
                 });
             }
@@ -127,6 +239,9 @@ async function renderDashboard(classificacaoRecords) {
     const obraOnly = document.getElementById('obra-only-filter').checked;
     const selectedYear = document.getElementById('year-filter').value;
     const sortOrder = document.getElementById('sort-order').value;
+    
+    const controladoFilter = document.getElementById('controlado-filter');
+    const controladoVal = controladoFilter ? controladoFilter.value : 'controlados';
 
     let supplierMetrics = Array.from(suppliers.values()).map(supplier => {
         const filteredDeliveries = supplier.deliveries.filter(d => {
@@ -172,6 +287,13 @@ async function renderDashboard(classificacaoRecords) {
         };
     }).filter(Boolean);
 
+    // Filtra por material controlado
+    if (controladoVal === 'controlados') {
+        supplierMetrics = supplierMetrics.filter(s => s.controlado === true);
+    } else if (controladoVal === 'nao_controlados') {
+        supplierMetrics = supplierMetrics.filter(s => s.controlado === false);
+    }
+
     if (searchTerm) {
         supplierMetrics = supplierMetrics.filter(s => s.name.toLowerCase().includes(searchTerm));
     }
@@ -213,10 +335,12 @@ async function renderDashboard(classificacaoRecords) {
             }
         }
 
+        const badgeHtml = supplier.controlado ? `<span class="badge-controlado">Controlado</span>` : '';
+
         card.innerHTML = `
             <div class="card-header">
                 <h3 class="supplier-name">${supplier.name}</h3>
-                <div class="card-status">${seal} ${outdatedIcon}</div>
+                <div class="card-status">${badgeHtml} ${seal} ${outdatedIcon}</div>
             </div>
             <div class="card-meta">
                 <div class="meta-item">
@@ -316,17 +440,37 @@ async function renderDashboard(classificacaoRecords) {
         const monitoramentoYearFilter = modalContent.querySelector('#monitoramento-year-filter');
         const years = [...new Set(supplier.deliveries.map(d => d.jsYear))].sort((a, b) => b - a);
         monitoramentoYearFilter.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
+        
+        // Sincroniza o ano selecionado no monitoramento com o filtro do painel principal
+        const mainYearFilter = document.getElementById('year-filter');
+        const mainSelectedYear = mainYearFilter ? mainYearFilter.value : '';
+        if (mainSelectedYear && years.map(String).includes(String(mainSelectedYear))) {
+            monitoramentoYearFilter.value = mainSelectedYear;
+        } else if (years.length > 0) {
+            monitoramentoYearFilter.value = String(years[0]);
+        }
+
+        // Filtra os dados iniciais antes de instanciar a tabela para evitar o aviso/erro de inicialização
+        const initialFilters = {
+            year: monitoramentoYearFilter.value,
+            obraFilter: '',
+            inspecaoFilter: '',
+            dateRange: '',
+            naoConformeOnly: false,
+            cutoffDate: null
+        };
+        const initialData = await filterDeliveriesAsync(supplier.deliveries, initialFilters);
 
         const tableContainer = modalContent.querySelector('#monitoramento-table-container');
         tableContainer.innerHTML = '<div id="monitoramento-table"></div>';
 
         const table = new Tabulator(modalContent.querySelector('#monitoramento-table'), {
-            data: [],
+            data: initialData,
             layout: "fitColumns",
             pagination: "local",
             paginationSize: 10,
             paginationSizeSelector: [15, 25, 50, 100],
-            placeholder: "Carregando...",
+            placeholder: "Nenhum registro encontrado",
             columns: [
                 { title: "Obra", field: "Obra_Local" },
                 { title: "Emitente", field: "Emitente_Nome_Fornecedor" },
@@ -336,7 +480,6 @@ async function renderDashboard(classificacaoRecords) {
         });
 
         const loadData = async () => {
-            table.setData([]); // Clear table and show placeholder
             const filters = {
                 year: modalContent.querySelector('#monitoramento-year-filter').value,
                 obraFilter: modalContent.querySelector('#monitoramento-obra-filter').value.toLowerCase(),
@@ -353,11 +496,15 @@ async function renderDashboard(classificacaoRecords) {
             filters.cutoffDate = cutoffDate;
 
             const filteredDeliveries = await filterDeliveriesAsync(supplier.deliveries, filters);
-            table.setData(filteredDeliveries);
+            
+            if (table.setData) {
+                table.setData(filteredDeliveries);
+            } else {
+                table.on("tableBuilt", () => {
+                    table.setData(filteredDeliveries);
+                });
+            }
         };
-
-        // Load data immediately
-        loadData();
 
         // Add event listeners to filters to reload data
         const debouncedLoadData = debounce(loadData, 300);
@@ -441,6 +588,559 @@ async function renderDashboard(classificacaoRecords) {
             console.error('Error adding classification:', e);
             alert('Erro ao adicionar classificação.');
         }
+    }
+
+    function populateChartsObraFilter() {
+        const chartsObraFilter = document.getElementById('charts-obra-filter');
+        if (!chartsObraFilter || chartsObraFilter.options.length > 1) return; // Já populado
+        
+        const obras = [...new Set(allDeliveries.map(d => d.Obra_Local))].sort();
+        obras.forEach(obra => {
+            if (obra) {
+                const opt = document.createElement('option');
+                opt.value = obra;
+                opt.textContent = obra;
+                chartsObraFilter.appendChild(opt);
+            }
+        });
+    }
+
+    function renderChartsTab() {
+        const analysisType = document.getElementById('charts-analysis-type').value;
+        const selectedObra = document.getElementById('charts-obra-filter').value;
+        const selectedYear = document.getElementById('year-filter').value;
+        
+        let filteredRecords = allDeliveries;
+        
+        // 1. Filtragem por ano
+        if (selectedYear) {
+            filteredRecords = filteredRecords.filter(d => d.jsYear === parseInt(selectedYear));
+        }
+        
+        // 2. Filtragem por obra
+        if (selectedObra && selectedObra !== 'all') {
+            filteredRecords = filteredRecords.filter(d => d.Obra_Local === selectedObra);
+        }
+
+        // 3. Filtragem por material controlado (sincronizado com o painel principal)
+        const controladoFilter = document.getElementById('controlado-filter');
+        const controladoVal = controladoFilter ? controladoFilter.value : 'controlados';
+        if (controladoVal === 'controlados') {
+            filteredRecords = filteredRecords.filter(d => {
+                const sData = supplierDataMap.get(d.Emitente);
+                return sData && sData.controlado;
+            });
+        } else if (controladoVal === 'nao_controlados') {
+            filteredRecords = filteredRecords.filter(d => {
+                const sData = supplierDataMap.get(d.Emitente);
+                return sData && !sData.controlado;
+            });
+        }
+
+        populateChartsObraFilter();
+
+        const perfContainer = document.querySelector('.performance-charts');
+        const qualContainer = document.querySelector('.quality-charts');
+        
+        if (analysisType === 'performance') {
+            perfContainer.style.display = 'grid';
+            qualContainer.style.display = 'none';
+            
+            const viewOption = document.getElementById('charts-perf-view').value;
+            perfContainer.className = 'performance-charts active';
+            if (viewOption !== 'both') {
+                perfContainer.classList.add('view-single', `view-${viewOption}`);
+            }
+        } else {
+            perfContainer.style.display = 'none';
+            qualContainer.style.display = 'grid';
+            
+            const viewOption = document.getElementById('charts-qual-view').value;
+            qualContainer.className = 'quality-charts active';
+            qualContainer.classList.add(`view-${viewOption}`);
+        }
+
+        // Processa dados de performance
+        const perfSummary = filteredRecords.reduce((acc, r) => {
+            const name = r.Emitente_Nome_Fornecedor;
+            if (!name || name === 'Fornecedor Desconhecido') return acc;
+            if (!acc[name]) acc[name] = { count: 0, totalValue: 0 };
+            acc[name].count++;
+            acc[name].totalValue += parseFloat(r.Valor) || 0;
+            return acc;
+        }, {});
+        
+        const perfArray = Object.keys(perfSummary).map(k => ({ name: k, ...perfSummary[k] }));
+        const sortedByCount = [...perfArray].sort((a, b) => b.count - a.count).slice(0, 15);
+        const sortedByValue = [...perfArray].sort((a, b) => b.totalValue - a.totalValue).slice(0, 15);
+        
+        drawBarChart('entregasChart', sortedByCount.map(d => d.name), sortedByCount.map(d => d.count), 'Top 15 Fornecedores por Nº de Entregas', 'number');
+        drawBarChart('valorChart', sortedByValue.map(d => d.name), sortedByValue.map(d => d.totalValue), 'Top 15 Fornecedores por Valor Total', 'currency');
+
+        // Processa dados de qualidade
+        const acceptanceSummary = filteredRecords.reduce((acc, r) => {
+            const obra = r.Obra_Local;
+            if (!obra) return acc;
+            if (!acc[obra]) acc[obra] = { total: 0, accepted: 0 };
+            acc[obra].total++;
+            if (r.Insp_Recebimento === 'A') acc[obra].accepted++;
+            return acc;
+        }, {});
+        
+        const acceptanceArray = Object.keys(acceptanceSummary).map(k => ({
+            obra: k,
+            percentage: (acceptanceSummary[k].accepted / acceptanceSummary[k].total) * 100 || 0
+        })).sort((a,b) => a.percentage - b.percentage).slice(0, 15);
+        
+        drawBarChart('acceptanceChart', acceptanceArray.map(d => d.obra), acceptanceArray.map(d => d.percentage), '% de Entregas Aceitas ("A") por Obra', 'percent', true);
+
+        const problemRecords = filteredRecords.filter(r => r.Insp_Recebimento !== 'A' && r.Emitente_Nome_Fornecedor && r.Emitente_Nome_Fornecedor !== 'Fornecedor Desconhecido');
+        const problemSummary = problemRecords.reduce((acc, r) => {
+            const name = r.Emitente_Nome_Fornecedor;
+            acc[name] = (acc[name] || 0) + 1;
+            return acc;
+        }, {});
+        
+        const problemArray = Object.keys(problemSummary).map(k => ({ name: k, count: problemSummary[k] })).sort((a, b) => b.count - a.count).slice(0, 15);
+        
+        drawBarChart('problemsChart', problemArray.map(d => d.name), problemArray.map(d => d.count), 'Top 15 Fornecedores por Nº de Não Conformidades', 'number');
+
+        // Redimensiona para garantir renderização correta
+        setTimeout(() => {
+            Object.values(chartInstances).forEach(chart => chart && chart.resize());
+        }, 50);
+    }
+
+    function drawBarChart(canvasId, labels, data, title, format, horizontal = false) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const chartConfig = {
+            type: 'bar',
+            data: { 
+                labels, 
+                datasets: [{ 
+                    label: title, 
+                    data, 
+                    backgroundColor: 'rgba(54, 162, 235, 0.6)', 
+                    borderColor: 'rgba(54, 162, 235, 1)', 
+                    borderWidth: 1 
+                }] 
+            },
+            options: {
+                indexAxis: horizontal ? 'y' : 'x',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    title: { display: true, text: title, font: { size: 14 } },
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => {
+                                let value = horizontal ? context.parsed.x : context.parsed.y;
+                                if (format === 'currency') return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+                                if (format === 'percent') return value.toFixed(1) + '%';
+                                return value + (value === 1 ? ' ocorrência' : ' ocorrências');
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    [horizontal ? 'x' : 'y']: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: (value) => {
+                                if (format === 'currency') return value >= 1000 ? `R$ ${value / 1000}k` : `R$ ${value}`;
+                                if (format === 'percent') return value + '%';
+                                return Number.isInteger(value) ? value : null;
+                            }
+                        }
+                    },
+                    [horizontal ? 'y' : 'x']: { ticks: { autoSkip: false } }
+                }
+            }
+        };
+        
+        if (chartInstances[canvasId]) {
+            chartInstances[canvasId].data.labels = labels;
+            chartInstances[canvasId].data.datasets[0].data = data;
+            chartInstances[canvasId].options.plugins.title.text = title;
+            chartInstances[canvasId].update();
+        } else {
+            chartInstances[canvasId] = new Chart(ctx, chartConfig);
+        }
+    }
+
+    function initConfigTab() {
+        const batchBtn = document.getElementById('batch-link-btn');
+        if (batchBtn) {
+            batchBtn.addEventListener('click', handleBatchLink);
+        }
+
+        const batchMaterial = document.getElementById('batch-material');
+        if (batchMaterial) {
+            batchMaterial.addEventListener('change', checkBatchButtonState);
+        }
+
+        const selectAllBtn = document.getElementById('checklist-select-all');
+        if (selectAllBtn) {
+            selectAllBtn.addEventListener('click', () => {
+                document.querySelectorAll('.supplier-check').forEach(cb => cb.checked = true);
+                checkBatchButtonState();
+            });
+        }
+
+        const clearBtn = document.getElementById('checklist-clear');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => {
+                document.querySelectorAll('.supplier-check').forEach(cb => cb.checked = false);
+                checkBatchButtonState();
+            });
+        }
+
+        const searchInput = document.getElementById('config-supplier-search');
+        if (searchInput) {
+            searchInput.addEventListener('input', debounce(populateConfigSuppliersChecklist, 200));
+        }
+
+        const indSupplierSelect = document.getElementById('config-individual-supplier');
+        if (indSupplierSelect) {
+            indSupplierSelect.addEventListener('change', updateIndividualPanel);
+        }
+
+        const indClasseSelect = document.getElementById('individual-classe');
+        if (indClasseSelect) {
+            indClasseSelect.addEventListener('change', handleIndividualClasseChange);
+        }
+
+        const indAddMaterialBtn = document.getElementById('individual-add-material-btn');
+        if (indAddMaterialBtn) {
+            indAddMaterialBtn.addEventListener('click', handleAddMaterialIndividual);
+        }
+    }
+
+    function populateConfigMaterials() {
+        const batchMaterialSelect = document.getElementById('batch-material');
+        const indMaterialSelect = document.getElementById('individual-add-material-select');
+        
+        if (!batchMaterialSelect || !indMaterialSelect) return;
+        
+        // Preserve values
+        const currentBatchVal = batchMaterialSelect.value;
+        const currentIndVal = indMaterialSelect.value;
+        
+        batchMaterialSelect.innerHTML = '<option value="">Selecione um material...</option>';
+        indMaterialSelect.innerHTML = '<option value="">Adicionar material...</option>';
+        
+        materiaisGlobal.sort((a, b) => a.Tipo_Fornecedor.localeCompare(b.Tipo_Fornecedor)).forEach(mat => {
+            const label = `${mat.Tipo_Fornecedor} ${mat.Controlado_ ? '⚠️' : '⚪'}`;
+            const opt = document.createElement('option');
+            opt.value = mat.id;
+            opt.textContent = label;
+            batchMaterialSelect.appendChild(opt.cloneNode(true));
+            indMaterialSelect.appendChild(opt);
+        });
+        
+        batchMaterialSelect.value = currentBatchVal;
+        indMaterialSelect.value = currentIndVal;
+    }
+
+    function populateConfigSuppliersChecklist() {
+        const listContainer = document.getElementById('config-supplier-list');
+        if (!listContainer) return;
+        
+        // Preserve checked states before clearing
+        const checkedIds = new Set(Array.from(document.querySelectorAll('.supplier-check:checked')).map(cb => cb.value));
+        
+        listContainer.innerHTML = '';
+        const searchVal = document.getElementById('config-supplier-search').value.toLowerCase();
+        
+        const filtered = fornecedoresGlobal
+            .filter(f => !searchVal || f.Nome_Fornecedor.toLowerCase().includes(searchVal))
+            .sort((a, b) => a.Nome_Fornecedor.localeCompare(b.Nome_Fornecedor));
+            
+        filtered.forEach(supplier => {
+            const item = document.createElement('label');
+            item.className = 'config-checklist-item';
+            
+            let isControlled = false;
+            if (Array.isArray(supplier.Mat_Controlado)) {
+                isControlled = supplier.Mat_Controlado.slice(1).some(val => val === true || val === 1);
+            } else {
+                isControlled = supplier.Mat_Controlado === true || supplier.Mat_Controlado === 1;
+            }
+            const badgeHtml = isControlled ? '<span style="color:#009688; font-weight:bold; margin-right:4px;">[C]</span>' : '';
+            const checkedAttr = checkedIds.has(String(supplier.id)) ? 'checked' : '';
+            
+            item.innerHTML = `
+                <input type="checkbox" class="supplier-check" value="${supplier.id}" ${checkedAttr}>
+                <span>${badgeHtml}${supplier.Nome_Fornecedor}</span>
+            `;
+            
+            item.querySelector('input').addEventListener('change', checkBatchButtonState);
+            listContainer.appendChild(item);
+        });
+        
+        checkBatchButtonState();
+    }
+    
+    function checkBatchButtonState() {
+        const batchBtn = document.getElementById('batch-link-btn');
+        const selectedMaterial = document.getElementById('batch-material').value;
+        const checkedCount = document.querySelectorAll('.supplier-check:checked').length;
+        
+        if (batchBtn) {
+            batchBtn.disabled = !selectedMaterial || checkedCount === 0;
+            if (!batchBtn.disabled) {
+                batchBtn.textContent = `Vincular em Lote (${checkedCount})`;
+            } else {
+                batchBtn.textContent = 'Vincular Selecionados';
+            }
+        }
+    }
+
+    async function handleBatchLink() {
+        const materialId = parseInt(document.getElementById('batch-material').value, 10);
+        const classeVal = document.getElementById('batch-classe').value;
+        const checkedBoxes = document.querySelectorAll('.supplier-check:checked');
+        
+        if (!materialId || checkedBoxes.length === 0) return;
+        
+        const supplierIds = Array.from(checkedBoxes).map(cb => parseInt(cb.value, 10));
+        
+        showNotification('Vinculando fornecedores em lote...', 'info');
+        
+        try {
+            const updatePromises = supplierIds.map(async (supplierId) => {
+                const supplier = fornecedoresGlobal.find(f => f.id === supplierId);
+                if (!supplier) return;
+                
+                let currentTipo = supplier.Tipo;
+                if (!Array.isArray(currentTipo) || currentTipo[0] !== 'L') {
+                    currentTipo = ['L'];
+                }
+                
+                if (!currentTipo.includes(materialId)) {
+                    currentTipo.push(materialId);
+                }
+                
+                const changes = { Tipo: currentTipo };
+                if (classeVal) {
+                    changes.Classe = classeVal;
+                }
+                
+                await lens.updateRecord('Fornecedores', supplierId, changes);
+            });
+            
+            await Promise.all(updatePromises);
+            showNotification('Vínculo em lote realizado com sucesso!', 'success');
+            
+            // Limpa as caixas de seleção da checklist
+            document.querySelectorAll('.supplier-check').forEach(cb => cb.checked = false);
+            
+            await refreshData();
+            
+        } catch (error) {
+            console.error('Erro no vínculo em lote:', error);
+            showNotification('Erro ao vincular fornecedores.', 'error');
+        }
+    }
+
+    function populateConfigIndividualSupplierSelect() {
+        const select = document.getElementById('config-individual-supplier');
+        if (!select) return;
+        
+        const currentVal = select.value;
+        select.innerHTML = '<option value="">Selecione um fornecedor...</option>';
+        
+        fornecedoresGlobal.sort((a, b) => a.Nome_Fornecedor.localeCompare(b.Nome_Fornecedor)).forEach(f => {
+            const opt = document.createElement('option');
+            opt.value = f.id;
+            opt.textContent = f.Nome_Fornecedor;
+            select.appendChild(opt);
+        });
+        
+        select.value = currentVal;
+    }
+
+    async function updateIndividualPanel() {
+        const supplierIdVal = document.getElementById('config-individual-supplier').value;
+        const panel = document.getElementById('individual-config-panel');
+        
+        if (!supplierIdVal) {
+            panel.style.display = 'none';
+            return;
+        }
+        
+        panel.style.display = 'block';
+        const supplierId = parseInt(supplierIdVal, 10);
+        const supplier = fornecedoresGlobal.find(f => f.id === supplierId);
+        
+        if (!supplier) return;
+        
+        // 1. Classe
+        const classeSelect = document.getElementById('individual-classe');
+        classeSelect.value = supplier.Classe || '';
+        
+        // 2. Materiais
+        const tagsContainer = document.getElementById('individual-materials-list');
+        tagsContainer.innerHTML = '';
+        
+        let linkedIds = [];
+        if (Array.isArray(supplier.Tipo) && supplier.Tipo[0] === 'L') {
+            linkedIds = supplier.Tipo.slice(1);
+        }
+        
+        if (linkedIds.length === 0) {
+            tagsContainer.innerHTML = '<span class="config-help">Nenhum material vinculado.</span>';
+        } else {
+            linkedIds.forEach(id => {
+                const mat = materiaisGlobal.find(m => m.id === id);
+                if (mat) {
+                    const tag = document.createElement('div');
+                    tag.className = 'tag-item' + (mat.Controlado_ ? ' controlled' : '');
+                    tag.innerHTML = `
+                        <span>${mat.Tipo_Fornecedor} ${mat.Controlado_ ? '⚠️' : ''}</span>
+                        <button class="tag-delete-btn" data-material-id="${mat.id}">&times;</button>
+                    `;
+                    
+                    tag.querySelector('.tag-delete-btn').addEventListener('click', () => handleRemoveMaterial(supplierId, mat.id));
+                    tagsContainer.appendChild(tag);
+                }
+            });
+        }
+    }
+
+    async function handleIndividualClasseChange() {
+        const supplierIdVal = document.getElementById('config-individual-supplier').value;
+        if (!supplierIdVal) return;
+        const supplierId = parseInt(supplierIdVal, 10);
+        const classeVal = document.getElementById('individual-classe').value;
+        
+        try {
+            await lens.updateRecord('Fornecedores', supplierId, { Classe: classeVal || null });
+            showNotification('Classe atualizada com sucesso!', 'success');
+            await refreshData();
+        } catch (error) {
+            console.error('Erro ao atualizar classe:', error);
+            showNotification('Erro ao atualizar classe.', 'error');
+        }
+    }
+
+    async function handleAddMaterialIndividual() {
+        const supplierIdVal = document.getElementById('config-individual-supplier').value;
+        const materialIdVal = document.getElementById('individual-add-material-select').value;
+        
+        if (!supplierIdVal || !materialIdVal) return;
+        
+        const supplierId = parseInt(supplierIdVal, 10);
+        const materialId = parseInt(materialIdVal, 10);
+        
+        const supplier = fornecedoresGlobal.find(f => f.id === supplierId);
+        if (!supplier) return;
+        
+        let currentTipo = supplier.Tipo;
+        if (!Array.isArray(currentTipo) || currentTipo[0] !== 'L') {
+            currentTipo = ['L'];
+        }
+        
+        if (currentTipo.includes(materialId)) {
+            showNotification('Material já vinculado a este fornecedor.', 'info');
+            return;
+        }
+        
+        currentTipo.push(materialId);
+        
+        try {
+            await lens.updateRecord('Fornecedores', supplierId, { Tipo: currentTipo });
+            showNotification('Material adicionado com sucesso!', 'success');
+            document.getElementById('individual-add-material-select').value = '';
+            await refreshData();
+        } catch (error) {
+            console.error('Erro ao adicionar material:', error);
+            showNotification('Erro ao adicionar material.', 'error');
+        }
+    }
+
+    async function handleRemoveMaterial(supplierId, materialId) {
+        const supplier = fornecedoresGlobal.find(f => f.id === supplierId);
+        if (!supplier) return;
+        
+        let currentTipo = supplier.Tipo;
+        if (!Array.isArray(currentTipo) || currentTipo[0] !== 'L') return;
+        
+        const updatedTipo = currentTipo.filter(id => id !== materialId);
+        
+        try {
+            await lens.updateRecord('Fornecedores', supplierId, { Tipo: updatedTipo });
+            showNotification('Material removido com sucesso!', 'success');
+            await refreshData();
+        } catch (error) {
+            console.error('Erro ao remover material:', error);
+            showNotification('Erro ao remover material.', 'error');
+        }
+    }
+
+    async function refreshData() {
+        try {
+            const [fornecedores, classificacoes] = await Promise.all([
+                lens.fetchTableRecords('Fornecedores'),
+                lens.fetchTableRecords('Classificacao_Fornecedores')
+            ]);
+            fornecedoresGlobal = fornecedores;
+            classificacaoRecords = classificacoes;
+            
+            // Atualiza o map de controle
+            supplierDataMap = new Map(fornecedores.map(f => {
+                let isControlled = false;
+                if (Array.isArray(f.Mat_Controlado)) {
+                    isControlled = f.Mat_Controlado.slice(1).some(val => val === true || val === 1);
+                } else {
+                    isControlled = f.Mat_Controlado === true || f.Mat_Controlado === 1;
+                }
+                return [f.id, {
+                    nome: f.Nome_Fornecedor || 'Fornecedor Desconhecido',
+                    controlado: isControlled
+                }];
+            }));
+            
+            processDeliveries();
+            await renderDashboard(classificacaoRecords);
+            
+            // Repopula e atualiza a aba de config
+            populateConfigSuppliersChecklist();
+            populateConfigIndividualSupplierSelect();
+            updateIndividualPanel();
+        } catch (e) {
+            console.error('Error refreshing data:', e);
+        }
+    }
+
+    function showNotification(message, type = 'success') {
+        let container = document.getElementById('notification-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'notification-container';
+            document.body.appendChild(container);
+        }
+        
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.textContent = message;
+        container.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.style.opacity = '1';
+            toast.style.transform = 'translateY(0)';
+        }, 10);
+        
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(-20px)';
+            setTimeout(() => toast.remove(), 300);
+        }, 3500);
+        
+        return toast;
     }
 
     initialize();

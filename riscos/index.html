@@ -4,44 +4,91 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Widget Unificado - Matriz e Lista de Riscos</title>
+    
+    <!-- Tabulator CSS -->
+    <link rel="stylesheet" href="../libraries/tabulator/tabulator.min.css">
+    
+    <!-- Grist Core & Config Styles -->
+    <link rel="stylesheet" href="../libraries/grist-config-manager/ConfigManagerComponent.css">
+    <link rel="stylesheet" href="../libraries/grist-style-utils/icons.css">
+    
+    <!-- Table Widget CSS -->
+    <link rel="stylesheet" href="../table-widget/style.css">
+    
+    <!-- Custom style.css -->
+    <link rel="stylesheet" href="./style.css">
+
     <!-- API Grist -->
     <script src="../libraries/external/grist-plugin-api.js"></script>
-
-    <!-- === PATH CORRIGIDO === -->
-    <!-- style.css está AGORA no mesmo diretório que index.html -->
-    <link rel="stylesheet" href="./style.css">
-    <!-- Ou apenas "style.css" também deve funcionar -->
-
+    
+    <!-- Luxon & Tabulator JS -->
+    <script src="../libraries/external/luxon.min.js"></script>
+    <script src="../libraries/tabulator/tabulator.min.js"></script>
+    
+    <!-- Chart.js CDN para gráficos do Dashboard -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
+    <!-- NAVEGAÇÃO DE ABAS PRINCIPAIS (VERTICAIS À ESQUERDA) -->
+    <div class="main-tabs-nav">
+        <button class="main-tab-button active" data-main-tab="geral">Visão Geral</button>
+        <button class="main-tab-button" data-main-tab="dashboard">Dashboard</button>
+    </div>
+
     <!-- Container Principal -->
     <div id="main-container">
-        <!-- FILTRO DE DEPARTAMENTOS -->
-        <div id="filter-container">
-            <div id="department-dropdown">
-                <div id="department-dropdown-btn" class="dropdown-btn"></div>
-                <div id="department-dropdown-options" class="dropdown-options"></div>
+        
+        <!-- ABA 1: VISÃO GERAL (MATRIZ + TABELA JUNTOS) -->
+        <div id="tab-content-geral" class="main-tab-content active">
+            <!-- FILTRO DE DEPARTAMENTOS (LINHA ÚNICA) -->
+            <div id="filter-container">
+                <div id="department-dropdown">
+                    <div id="department-dropdown-btn" class="dropdown-btn">Todos Departamentos</div>
+                    <div id="department-dropdown-options" class="dropdown-options"></div>
+                </div>
+                <div class="filter-buttons">
+                    <button id="btn-select-all-depts" title="Selecionar Todos">Todos</button>
+                    <button id="btn-remove-all-depts" title="Remover Todos">Nenhum</button>
+                </div>
             </div>
-            <div class="filter-buttons">
-                <button id="btn-select-all-depts">Selecionar Todos</button>
-                <button id="btn-remove-all-depts">Remover Todos</button>
+
+            <!-- ÁREA PRINCIPAL COM MATRIZ E TABELA LADO A LADO -->
+            <div id="content-area">
+                <div id="matrix-section">
+                    <p class="loading-message">Carregando matriz...</p>
+                </div>
+                <div id="table-container">
+                    <p class="loading-message">Carregando tabela de riscos...</p>
+                </div>
             </div>
         </div>
 
-        <!-- ÁREA PRINCIPAL COM MATRIZ E CARTÕES -->
-        <div id="content-area">
-            <div id="matrix-section">
-                <!-- Matriz de Riscos será renderizada aqui -->
-                <p class="loading-message">Carregando matriz...</p>
-            </div>
-            <div id="cards-section">
-                <!-- Lista de Riscos (Cards) será renderizada aqui -->
-                 <p class="loading-message">Carregando riscos...</p>
+        <!-- ABA 2: DASHBOARD -->
+        <div id="tab-content-dashboard" class="main-tab-content">
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <h4>Riscos por Departamento</h4>
+                    <div class="chart-wrapper">
+                        <canvas id="chart-dept"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <h4>Tratamento de Riscos</h4>
+                    <div class="chart-wrapper">
+                        <canvas id="chart-tratamento"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <h4>Criticidade dos Riscos</h4>
+                    <div class="chart-wrapper">
+                        <canvas id="chart-grau"></canvas>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Painel lateral (inicialmente escondido via CSS) -->
+    <!-- Painel lateral (Drawer) -->
     <div id="side-panel">
         <div class="panel-header">
             <strong id="side-panel-title">Detalhes do Risco</strong>
@@ -50,6 +97,7 @@
 
         <div class="tabs-nav">
             <button class="tab-button active" data-tab="detalhes">Detalhes</button>
+            <button class="tab-button" data-tab="evolucao">Evolução</button>
             <button class="tab-button" data-tab="analises">Análises</button>
             <button class="tab-button" data-tab="acoes">Ações</button>
             <button class="tab-button" data-tab="contingencia">Contingência</button>
@@ -58,6 +106,13 @@
         <div id="tab-detalhes" class="tab-content active">
             <p class="loading-message">Selecione um risco.</p>
         </div>
+        
+        <div id="tab-evolucao" class="tab-content">
+            <div id="drawer-matrix-container">
+                <p class="loading-message">Carregando evolução do risco...</p>
+            </div>
+        </div>
+        
         <div id="tab-analises" class="tab-content">
              <p class="loading-message">Clique para carregar.</p>
         </div>
@@ -69,10 +124,7 @@
         </div>
     </div>
 
-    <!-- Script Principal (tipo module para usar import/export) -->
-    <!-- === PATH CORRIGIDO === -->
-    <!-- A pasta 'js' está AGORA dentro do mesmo diretório 'riscos' -->
+    <!-- Script Principal -->
     <script type="module" src="./js/main.js"></script>
-
 </body>
 </html>

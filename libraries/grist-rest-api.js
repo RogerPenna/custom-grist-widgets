@@ -23,11 +23,18 @@ export const GristRestApi = (() => {
     async function requireApiKey() {
         if (_apiKey) return _apiKey;
         
+        // Se estiver rodando localmente, usamos uma chave fictícia pois o proxy_server.py
+        // irá injetar a chave de API real a partir do arquivo .env automaticamente.
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            _apiKey = 'dummy-local-key';
+            return _apiKey;
+        }
+        
         return new Promise((resolve, reject) => {
             const key = prompt(
-                "🔑 AUTORIZAÇÃO NECESSÁRIA\\n\\n" +
-                "Para criar colunas automaticamente, o widget precisa da sua API Key do Grist.\\n" +
-                "Vá em Profile Settings no Grist, crie/copie sua chave e cole abaixo:\\n" +
+                "🔑 AUTORIZAÇÃO NECESSÁRIA\n\n" +
+                "Para criar colunas automaticamente, o widget precisa da sua API Key do Grist.\n" +
+                "Vá em Profile Settings no Grist, crie/copie sua chave e cole abaixo:\n" +
                 "(Ela não será salva, ficará apenas na memória desta sessão)"
             );
 
@@ -43,7 +50,17 @@ export const GristRestApi = (() => {
     async function request(path, options = {}) {
         await requireApiKey();
         
-        const url = `${_baseUrl}${path}`;
+        let url = `${_baseUrl}${path}`;
+        
+        // Se estiver rodando no localhost, reescrever para passar pelo proxy e evitar CORS
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            const apiIndex = _baseUrl.indexOf('/api/');
+            if (apiIndex !== -1) {
+                const docPath = _baseUrl.substring(apiIndex);
+                url = `${window.location.origin}/grist-proxy${docPath}${path}`;
+            }
+        }
+
         const response = await fetch(url, {
             ...options,
             headers: {

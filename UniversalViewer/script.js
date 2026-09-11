@@ -15,6 +15,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const urlParams = new URLSearchParams(window.location.search);
     const urlConfigId = urlParams.get('configId');
     const urlDocId = urlParams.get('docId');
+    const urlFilterColumn = urlParams.get('filterColumn');
+    const urlFilterValue = urlParams.get('filterValue');
 
     let tableLens;
     let currentConfig = null;
@@ -23,7 +25,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- NAVIGATION STATE ---
     const navigationStack = [];
-    let currentFilter = null;
+    let currentFilter = (urlFilterColumn && urlFilterValue !== null && urlFilterValue !== undefined) ? {
+        column: urlFilterColumn,
+        value: urlFilterValue
+    } : null;
 
     // --- 0. CARREGAMENTO DE ÍCONES ---
     async function loadIcons() {
@@ -55,7 +60,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         tableLens = new GristTableLens(window.grist);
     }
 
-    // Expor openDrawer globalmente
+    // Expor tableLens e openDrawer globalmente
+    window.tableLens = tableLens;
     window.GristDrawer = { open: openDrawer };
 
     // --- 1. SUBSCRIPÇÕES GLOBAIS ---
@@ -612,6 +618,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const url = new URL(window.location);
                 url.searchParams.set('configId', configId);
                 window.history.pushState({}, '', url);
+                if (isInitialized) await initializeAndUpdate();
+            }
+        } else if (event.data.action === 'drawer-context-update') {
+            const { recordId } = event.data;
+            if (urlFilterColumn && recordId !== undefined && recordId !== null) {
+                currentFilter = {
+                    column: urlFilterColumn,
+                    value: recordId
+                };
                 if (isInitialized) await initializeAndUpdate();
             }
         } else if (event.data.action === 'reload-records') {

@@ -34,6 +34,10 @@ function _ensureTools(options = {}) {
     } else if (!dataWriter) {
         try { dataWriter = new GristDataWriter(window.grist); } catch (e) { console.warn("[Drawer] Falha ao criar DataWriter", e); }
     }
+    if (tableLens) {
+        window.tableLens = tableLens;
+        window.parentTableLens = tableLens;
+    }
 }
 
 // --- HELPERS DE ESTILO ---
@@ -62,12 +66,42 @@ function _switchToTab(tabElement, panelElement) {
         t.style.color = '#64748b';
         t.style.borderBottomColor = 'transparent';
     });
-    drawerPanel.querySelectorAll('.drawer-tab-content').forEach(p => p.style.display = 'none');
+    drawerPanel.querySelectorAll('.drawer-tab-content').forEach(p => {
+        p.classList.remove('is-active');
+        p.style.display = 'none';
+    });
     
     tabElement.classList.add('is-active');
     tabElement.style.color = '#3b82f6';
     tabElement.style.borderBottomColor = '#3b82f6';
-    panelElement.style.display = 'block';
+    panelElement.classList.add('is-active');
+    if (panelElement.classList.contains('has-widget')) {
+        panelElement.style.display = 'flex';
+        panelElement.style.flex = '1 1 100%';
+        panelElement.style.height = '100%';
+        panelElement.style.minHeight = '500px';
+        panelElement.style.flexDirection = 'column';
+    } else {
+        panelElement.style.display = 'block';
+        panelElement.style.flex = '';
+        panelElement.style.height = '';
+        panelElement.style.minHeight = '';
+    }
+
+    if (panelElement.classList.contains('has-widget')) {
+        const iframe = panelElement.querySelector('iframe');
+        if (iframe && iframe.contentWindow) {
+            try {
+                iframe.contentWindow.parentTableLens = tableLens;
+                iframe.contentWindow.postMessage({
+                    action: 'drawer-context-update',
+                    tableId: currentTableId,
+                    recordId: currentRecordId,
+                    record: currentRecord
+                }, '*');
+            } catch (e) {}
+        }
+    }
 }
 
 function _updateButtonVisibility() {
@@ -237,73 +271,140 @@ async function _renderDrawerContent() {
             tabEl.onclick = () => _switchToTab(tabEl, panelEl);
             if (index === 0) _switchToTab(tabEl, panelEl);
 
-            tabConfig.fields.forEach(fieldId => {
-                const col = schema[fieldId];
-                if (!col || hiddenFields.includes(fieldId)) return;
+            // --- WIDGET TAB: render an iframe instead of form fields ---
+            if (tabConfig.type === 'widget' && (tabConfig.targetConfigId || tabConfig.widgetUrl)) {
+                panelEl.classList.add('has-widget');
+                let resolvedUrl = tabConfig.widgetUrl || '';
+                if (tabConfig.targetConfigId === 'native:calibration_analysis') {
+                    resolvedUrl = `../CalibrationWidget/calibration-viewer.html`;
+                } else if (tabConfig.targetConfigId) {
+                    resolvedUrl = `../UniversalViewer/index.html?configId=${encodeURIComponent(tabConfig.targetConfigId)}`;
+                    if (tabConfig.filterColumn) {
+                        resolvedUrl += `&filterColumn=${encodeURIComponent(tabConfig.filterColumn)}&filterValue=${encodeURIComponent(currentRecordId)}`;
+                    }
+                } else if (resolvedUrl && tabConfig.filterColumn) {
+                    const sep = resolvedUrl.includes('?') ? '&' : '?';
+                    resolvedUrl += `${sep}filterColumn=${encodeURIComponent(tabConfig.filterColumn)}&filterValue=${encodeURIComponent(currentRecordId)}`;
+                }
 
-                const fOpts = fieldOptions[fieldId] || {};
-                const displayLabel = fOpts.customLabel || col.label || col.colId;
-
-                const row = document.createElement('div');
-                row.className = 'drawer-field-row';
+                const iframe = document.createElement('iframe');
+                const separator = resolvedUrl.includes('?') ? '&' : '?';
+                iframe.src = `${resolvedUrl}${separator}drawerTableId=${encodeURIComponent(currentTableId)}&drawerRecordId=${encodeURIComponent(currentRecordId)}`;
+                iframe.className = 'drawer-widget-iframe';
                 
-                const gap = layoutConfig.gap ? layoutConfig.gap + 'px' : '20px';
-                row.style.marginBottom = gap;
-                
-                const isRefList = col.type.startsWith('RefList:');
-                const isLeftAligned = !isRefList && layoutConfig.labelPosition === 'left';
-                
-                if (isLeftAligned) {
-                    const lWidth = layoutConfig.labelWidth || '30';
-                    const lAlign = layoutConfig.labelAlign || 'left';
-                    row.style.display = 'flex';
-                    row.style.alignItems = 'baseline';
-                    row.style.gap = '15px';
-                    
-                    row.innerHTML = `
-                        <label style="flex: 0 0 ${lWidth}%; text-align:${lAlign}; font-weight:800; font-size:11px; color:#94a3b8; text-transform:uppercase; letter-spacing:0.025em; box-sizing:border-box;">
-                            ${displayLabel}
-                        </label>
-                        <div class="field-val" style="flex: 1; min-width: 0; min-height:24px; font-size:14px; color:#1e293b;"></div>
-                    `;
+                const heightVal = tabConfig.height || '100%';
+                if (heightVal === '100%') {
+                    iframe.style.height = '100%';
+                    iframe.style.flex = '1 1 100%';
+                    iframe.style.minHeight = '500px';
+                } else if (heightVal.endsWith('%')) {
+                    iframe.style.height = heightVal;
+                    iframe.style.flex = `0 0 ${heightVal}`;
+                    iframe.style.minHeight = '450px';
                 } else {
-                    row.innerHTML = `
-                        <label style="display:block; font-weight:800; font-size:11px; color:#94a3b8; text-transform:uppercase; margin-bottom:6px; letter-spacing:0.025em;">
-                            ${displayLabel}
-                        </label>
-                        <div class="field-val" style="min-height:24px; font-size:14px; color:#1e293b;"></div>
-                    `;
+                    iframe.style.height = heightVal;
+                    iframe.style.minHeight = heightVal;
                 }
-                
-                panelEl.appendChild(row);
+                panelEl.style.display = 'flex';
+                panelEl.style.flex = '1 1 100%';
+                panelEl.style.height = '100%';
+                panelEl.style.minHeight = '500px';
+                panelEl.appendChild(iframe);
 
-                const widgetCfg = widgetOverrides[fieldId] || {};
-                const sOverride = styleOverrides[fieldId] || {};
-                
-                let widgetType = widgetCfg.widget;
-                if (!widgetType) {
-                    if (fOpts.colorPicker) widgetType = 'Color Picker';
-                    else if (fOpts.progressBar) widgetType = 'Progress Bar';
-                }
+                // Injeta referência do tableLens diretamente na janela filha (se mesmo domínio)
+                try {
+                    if (iframe.contentWindow) {
+                        iframe.contentWindow.parentTableLens = tableLens;
+                    }
+                } catch (e) {}
 
-                const mergedFieldConfig = {
-                    widget: widgetType,
-                    widgetOptions: widgetCfg.options || fOpts,
-                    dataStyle: sOverride,
-                    refListConfig: refListFieldConfig[fieldId]
-                };
-
-                renderField({
-                    container: row.querySelector('.field-val'),
-                    colSchema: col,
-                    record: currentRecord,
-                    isEditing: isEditing,
-                    isLocked: lockedFields.includes(fieldId),
-                    tableLens: tableLens,
-                    fieldStyle: mergedFieldConfig,
-                    styling: config.styling
+                // Send record context to iframe once it loads
+                iframe.addEventListener('load', () => {
+                    try {
+                        if (iframe.contentWindow) {
+                            iframe.contentWindow.parentTableLens = tableLens;
+                        }
+                        iframe.contentWindow.postMessage({
+                            action: 'drawer-context-update',
+                            tableId: currentTableId,
+                            recordId: currentRecordId,
+                            record: currentRecord
+                        }, '*');
+                    } catch (e) {
+                        console.warn('[Drawer] Failed to postMessage to widget iframe:', e);
+                    }
                 });
-            });
+            }
+            // --- STANDARD TAB: render form fields ---
+            else {
+                (tabConfig.fields || []).forEach(fieldId => {
+                    const col = schema[fieldId];
+                    if (!col || hiddenFields.includes(fieldId)) return;
+
+                    const fOpts = fieldOptions[fieldId] || {};
+                    const displayLabel = fOpts.customLabel || col.label || col.colId;
+
+                    const row = document.createElement('div');
+                    row.className = 'drawer-field-row';
+                    
+                    const gap = layoutConfig.gap ? layoutConfig.gap + 'px' : '20px';
+                    row.style.marginBottom = gap;
+                    
+                    const isRefList = col.type.startsWith('RefList:');
+                    const isLeftAligned = !isRefList && layoutConfig.labelPosition === 'left';
+                    
+                    if (isLeftAligned) {
+                        const lWidth = layoutConfig.labelWidth || '30';
+                        const lAlign = layoutConfig.labelAlign || 'left';
+                        row.style.display = 'flex';
+                        row.style.alignItems = 'baseline';
+                        row.style.gap = '15px';
+                        
+                        row.innerHTML = `
+                            <label style="flex: 0 0 ${lWidth}%; text-align:${lAlign}; font-weight:800; font-size:11px; color:#94a3b8; text-transform:uppercase; letter-spacing:0.025em; box-sizing:border-box;">
+                                ${displayLabel}
+                            </label>
+                            <div class="field-val" style="flex: 1; min-width: 0; min-height:24px; font-size:14px; color:#1e293b;"></div>
+                        `;
+                    } else {
+                        row.innerHTML = `
+                            <label style="display:block; font-weight:800; font-size:11px; color:#94a3b8; text-transform:uppercase; margin-bottom:6px; letter-spacing:0.025em;">
+                                ${displayLabel}
+                            </label>
+                            <div class="field-val" style="min-height:24px; font-size:14px; color:#1e293b;"></div>
+                        `;
+                    }
+                    
+                    panelEl.appendChild(row);
+
+                    const widgetCfg = widgetOverrides[fieldId] || {};
+                    const sOverride = styleOverrides[fieldId] || {};
+                    
+                    let widgetType = widgetCfg.widget;
+                    if (!widgetType) {
+                        if (fOpts.colorPicker) widgetType = 'Color Picker';
+                        else if (fOpts.progressBar) widgetType = 'Progress Bar';
+                    }
+
+                    const mergedFieldConfig = {
+                        widget: widgetType,
+                        widgetOptions: widgetCfg.options || fOpts,
+                        dataStyle: sOverride,
+                        refListConfig: refListFieldConfig[fieldId]
+                    };
+
+                    renderField({
+                        container: row.querySelector('.field-val'),
+                        colSchema: col,
+                        record: currentRecord,
+                        isEditing: isEditing,
+                        isLocked: lockedFields.includes(fieldId),
+                        tableLens: tableLens,
+                        fieldStyle: mergedFieldConfig,
+                        styling: config.styling
+                    });
+                });
+            }
         });
 
     } catch (e) {
@@ -340,9 +441,9 @@ function _initializeDrawerDOM() {
                 <button class="drawer-close-btn" style="background:none; border:none; font-size:24px; cursor:pointer; color:#999;">&times;</button>
             </div>
         </div>
-        <div class="drawer-body" style="flex:1; overflow-y:auto; padding:20px;">
-            <div class="drawer-tabs" style="display:flex; gap:15px; margin-bottom:20px; border-bottom:1px solid #eee; padding-bottom:10px;"></div>
-            <div class="drawer-tab-panels"></div>
+        <div class="drawer-body" style="flex:1; display:flex; flex-direction:column; overflow:hidden; padding:15px 20px;">
+            <div class="drawer-tabs" style="display:flex; gap:15px; margin-bottom:12px; border-bottom:1px solid #eee; padding-bottom:10px; flex-shrink:0;"></div>
+            <div class="drawer-tab-panels" style="flex:1; min-height:0; display:flex; flex-direction:column; overflow-y:auto;"></div>
         </div>`;
 
     document.body.appendChild(drawerOverlay);
@@ -437,3 +538,27 @@ window.GristDrawer = {
     open: openDrawer,
     close: closeDrawer
 };
+
+// Ponte de mensagens para iframes filhos que requisitarem dados via postMessage
+window.addEventListener('message', async (event) => {
+    if (!event.data || event.data.action !== 'table-lens-request') return;
+    const { method, args = [], transactionId } = event.data;
+    try {
+        if (tableLens && typeof tableLens[method] === 'function') {
+            const result = await tableLens[method](...args);
+            event.source?.postMessage({
+                action: 'table-lens-response',
+                transactionId,
+                result
+            }, '*');
+        } else {
+            throw new Error(`Método ${method} não encontrado no tableLens do Drawer`);
+        }
+    } catch (err) {
+        event.source?.postMessage({
+            action: 'table-lens-response',
+            transactionId,
+            error: err.message
+        }, '*');
+    }
+});

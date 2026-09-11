@@ -27,6 +27,9 @@ const modalContent = document.getElementById('modal-content');
 const modalTitle = document.getElementById('modal-title');
 const closeModalBtn = document.getElementById('close-modal');
 const yearSelector = document.getElementById('year-selector');
+const searchContainer = document.getElementById('search-container');
+const searchColumnSelect = document.getElementById('search-column-select');
+const searchInput = document.getElementById('search-input');
 
 // --- NAVIGATION STATE ---
 const navigationStack = [];
@@ -93,6 +96,28 @@ yearSelector.onchange = (e) => {
     debouncedInitialize();
 };
 
+function updateSearchUI(searchFields) {
+    if (!searchContainer || !searchColumnSelect || !searchInput) return;
+    if (!searchFields || searchFields.length === 0) {
+        searchContainer.style.display = 'none';
+        return;
+    }
+    searchContainer.style.display = 'flex';
+    
+    const previousVal = searchColumnSelect.value;
+    let optionsHtml = '<option value="ALL">(Todos os campos)</option>';
+    searchFields.forEach(f => {
+        optionsHtml += `<option value="${f}">${f}</option>`;
+    });
+    searchColumnSelect.innerHTML = optionsHtml;
+    
+    if (previousVal && (previousVal === 'ALL' || searchFields.includes(previousVal))) {
+        searchColumnSelect.value = previousVal;
+    } else {
+        searchColumnSelect.value = 'ALL';
+    }
+}
+
 // --- Modal Helpers ---
 function openIndicatorChart(record) {
     openDetailModal(record);
@@ -105,6 +130,7 @@ function openIndicatorEditor(record) {
         config: widgetConfig,
         selectedYear: currentYear,
         periodicity: metrics.periodicity,
+        allRecords: currentRecords,
         onSave: async (newData) => {
             await handleSaveMasterData(record, newData);
         }
@@ -116,6 +142,17 @@ async function start() {
     populateYearSelector();
     tableLens = new GristTableLens(window.grist);
     dataWriter = new GristDataWriter(window.grist);
+
+    if (searchInput) {
+        searchInput.oninput = () => {
+            renderGrid([]);
+        };
+    }
+    if (searchColumnSelect) {
+        searchColumnSelect.onchange = () => {
+            renderGrid([]);
+        };
+    }
 
     configBtn.onclick = () => GristLauncherUtils.renderSettingsPopover({
         grist: window.grist,
@@ -346,7 +383,13 @@ async function initialize() {
         const groupFields = widgetConfig.groupFields || [];
         updateGrouperUI(groupFields);
 
+        const searchFields = widgetConfig.searchFields || [];
+        updateSearchUI(searchFields);
+
         let records = await tableLens.fetchTableRecords(widgetConfig.tableId);
+        
+        // Calculate formulas in memory
+        records = IndicatorsRenderer.calculateFormulas(records, widgetConfig);
         
         // Sync calculated fields for ALL fetched records before filtering
         await updateCalculatedFields(records);
@@ -523,7 +566,26 @@ async function renderGrid(receivedConfigs = []) {
         <div class="years-container sticky-col-right">${previousYears.map(y => `<div class="year-label">${y}</div>`).join('')}</div>`;
     indicatorsViewEl.appendChild(gridHeader);
 
-    const grouped = await groupRecords(currentRecords, activeGrouper);
+    let filteredRecords = currentRecords;
+    if (searchInput && searchInput.value.trim() !== '') {
+        const query = searchInput.value.toLowerCase().trim();
+        const selectedCol = searchColumnSelect.value;
+        const searchFields = widgetConfig.searchFields || [];
+        
+        filteredRecords = currentRecords.filter(rec => {
+            if (selectedCol === 'ALL') {
+                return searchFields.some(col => {
+                    const val = rec[col];
+                    return String(val || '').toLowerCase().includes(query);
+                });
+            } else {
+                const val = rec[selectedCol];
+                return String(val || '').toLowerCase().includes(query);
+            }
+        });
+    }
+
+    const grouped = await groupRecords(filteredRecords, activeGrouper);
     for (const [groupName, records] of Object.entries(grouped)) {
         const groupSection = document.createElement('div');
         groupSection.className = 'group-section';
@@ -554,7 +616,7 @@ function attachRowEvents(rowEl, record) {
     if (viewChartBtn) viewChartBtn.onclick = () => openDetailModal(record);
     if (editDataBtn) editDataBtn.onclick = () => {
         const metrics = IndicatorsRenderer.getIndicatorMetrics(record, widgetConfig, currentYear);
-        IndicatorsEditor.open({ record, config: widgetConfig, selectedYear: currentYear, periodicity: metrics.periodicity, onSave: async (newData) => { await handleSaveMasterData(record, newData); } });
+        IndicatorsEditor.open({ record, config: widgetConfig, selectedYear: currentYear, periodicity: metrics.periodicity, allRecords: currentRecords, onSave: async (newData) => { await handleSaveMasterData(record, newData); } });
     };
     rowEl.ondblclick = (e) => {
         if (e.target.closest('.action-btn')) return;

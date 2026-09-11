@@ -16,7 +16,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentRecords = [];
     let isInitialized = false;
 
-    // Expor openDrawer globalmente para o CardSystem
+    // Expor openDrawer e tableLens globalmente para o CardSystem e iframes
+    window.tableLens = tableLens;
     window.GristDrawer = { open: openDrawer };
 
     async function initializeAndUpdate() {

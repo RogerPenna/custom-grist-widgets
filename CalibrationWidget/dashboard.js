@@ -1,4 +1,4 @@
-import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js?v=1.3.29';
+import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js?v=1.3.32';
 
 let currentRecords = [];
 let STAGES = [];
@@ -323,9 +323,9 @@ function renderKanban() {
                     const updates = { METROLOGICAL_STAGE: targetStage };
                     
                     if (targetStage.includes("5. Enviado")) {
-                        updates.ID_STATUS = 3;
-                    } else if (targetStage.includes("1. Planejado")) {
-                        updates.ID_STATUS = 1;
+                        updates.ID_STATUS = 3; // Em Laboratório Externo
+                    } else {
+                        updates.ID_STATUS = 1; // Disponível
                     }
 
                     const occurrenceData = {
@@ -522,12 +522,24 @@ function renderDashboard(configRecord = null) {
                     gridView.style.display = 'none';
                     detailView.style.display = 'flex';
                     detailTitle.innerText = label;
-                    detailIframe.src = `../UniversalViewer/index.html?configId=${cfgId}`;
+                    
+                    const currentSrc = detailIframe.getAttribute('src');
+                    if (!currentSrc || currentSrc === '') {
+                        detailIframe.src = `../UniversalViewer/index.html?configId=${cfgId}`;
+                    } else {
+                        detailIframe.contentWindow.postMessage({
+                            action: 'change-config',
+                            configId: cfgId
+                        }, '*');
+                    }
                 };
             });
 
             backBtn.onclick = () => {
-                detailIframe.src = '';
+                // Keep the iframe loaded, just tell it to clear data if needed
+                if (detailIframe.contentWindow && detailIframe.getAttribute('src') !== '') {
+                    detailIframe.contentWindow.postMessage({ action: 'change-config', configId: '' }, '*');
+                }
                 detailView.style.display = 'none';
                 gridView.style.display = 'grid';
             };

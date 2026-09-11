@@ -1674,11 +1674,15 @@ export const CardSystem = (() => {
             c2: styling.widgetBackgroundGradientColor2 
           });
 
-    if (!options.isRefList) {
+    if (!options.isRefList && !options.isEmbedded) {
         document.body.style.background = backgroundStyle;
         document.body.style.minHeight = "100vh";
+        if (container) container.style.background = 'transparent';
+    } else {
+        if (container) {
+            container.style.background = backgroundStyle;
+        }
     }
-    if (container) container.style.background = 'transparent';
   }
 
   function _resolveBackgroundValue(mode, solid, grad) {
@@ -1779,18 +1783,16 @@ export const CardSystem = (() => {
           } else {
             let finalDisplayColId = null;
             const displayColIdNum = colSchema.displayCol;
-            if (displayColIdNum) {
-                const sourceTableId = record.gristHelper_tableId;
-                if (sourceTableId) {
-                    const sourceSchema = await tableLens.getTableSchema(sourceTableId);
-                    const displayColHelperSchema = Object.values(sourceSchema).find(c => c.id === displayColIdNum);
-                    if (displayColHelperSchema) {
-                        if (displayColHelperSchema.isFormula && displayColHelperSchema.formula?.includes('.')) {
-                            const formulaParts = displayColHelperSchema.formula.split('.');
-                            finalDisplayColId = formulaParts[formulaParts.length - 1];
-                        } else {
-                            finalDisplayColId = displayColHelperSchema.colId;
-                        }
+            const sourceTableId = record.gristHelper_tableId;
+            if (displayColIdNum && sourceTableId) {
+                const sourceSchema = await tableLens.getTableSchema(sourceTableId);
+                const displayColHelperSchema = Object.values(sourceSchema).find(c => c.id === displayColIdNum);
+                if (displayColHelperSchema) {
+                    if (displayColHelperSchema.isFormula && displayColHelperSchema.formula?.includes('.')) {
+                        const formulaParts = displayColHelperSchema.formula.split('.');
+                        finalDisplayColId = formulaParts[formulaParts.length - 1];
+                    } else {
+                        finalDisplayColId = displayColHelperSchema.colId;
                     }
                 }
             }

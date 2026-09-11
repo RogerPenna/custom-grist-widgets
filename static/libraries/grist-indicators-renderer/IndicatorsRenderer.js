@@ -1013,13 +1013,18 @@ export const IndicatorsRenderer = (() => {
         const lastMonthIdx = MONTH_KEYS.indexOf(periodicity.months[periodicity.months.length - 1]);
         const yearlyTarget = targetLine[lastMonthIdx] || 0;
 
-        for (let i = 0; i < 12; i++) {
+        const periodicityKey = getRecordPeriodicityKey(record, config);
+        const cellsLayout = PERIODICITY_CELLS_CONFIG[periodicityKey] || PERIODICITY_CELLS_CONFIG['MONTHLY'];
+
+        for (const cellInfo of cellsLayout) {
+            const i = cellInfo.endMonthIdx;
             const m = MONTH_KEYS[i];
             const monthlyVal = metrics.monthlyValues[i];
             const cumulativeVal = metrics.cumulativeResults[i];
             
             const monthCell = document.createElement('div');
             monthCell.className = 'timeline-cell month-cell';
+            monthCell.style.gridColumn = `span ${cellInfo.span}`;
             
             let chipsHtml = '';
             if (isSum) {
@@ -1071,7 +1076,339 @@ export const IndicatorsRenderer = (() => {
         return row;
     }
 
-    return { renderIndicatorDetails, renderIndicatorRow, getIndicatorMetrics, calculateProgressiveTargets, PERIODICITY_CONFIG };
+    const PERIOD_SUB_MONTHS = {
+        'MONTHLY': {
+            'jan': ['jan'], 'fev': ['fev'], 'mar': ['mar'], 'abr': ['abr'], 'mai': ['mai'], 'jun': ['jun'],
+            'jul': ['jul'], 'ago': ['ago'], 'set': ['set'], 'out': ['out'], 'nov': ['nov'], 'dez': ['dez']
+        },
+        'BIMONTHLY': {
+            'fev': ['jan', 'fev'], 'abr': ['mar', 'abr'], 'jun': ['mai', 'jun'],
+            'ago': ['jul', 'ago'], 'out': ['set', 'out'], 'dez': ['nov', 'dez']
+        },
+        'QUARTERLY': {
+            'mar': ['jan', 'fev', 'mar'], 'jun': ['abr', 'mai', 'jun'],
+            'set': ['jul', 'ago', 'set'], 'dez': ['out', 'nov', 'dez']
+        },
+        'QUADRIMESTRAL': {
+            'abr': ['jan', 'fev', 'mar', 'abr'], 'ago': ['mai', 'jun', 'jul', 'ago'],
+            'dez': ['set', 'out', 'nov', 'dez']
+        },
+        'SEMIANNUAL': {
+            'jun': ['jan', 'fev', 'mar', 'abr', 'mai', 'jun'],
+            'dez': ['jul', 'ago', 'set', 'out', 'nov', 'dez']
+        },
+        'ANNUAL': {
+            'dez': ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
+        }
+    };
+
+    const PERIODICITY_CELLS_CONFIG = {
+        'MONTHLY': [
+            { span: 1, endMonthIdx: 0 }, { span: 1, endMonthIdx: 1 }, { span: 1, endMonthIdx: 2 },
+            { span: 1, endMonthIdx: 3 }, { span: 1, endMonthIdx: 4 }, { span: 1, endMonthIdx: 5 },
+            { span: 1, endMonthIdx: 6 }, { span: 1, endMonthIdx: 7 }, { span: 1, endMonthIdx: 8 },
+            { span: 1, endMonthIdx: 9 }, { span: 1, endMonthIdx: 10 }, { span: 1, endMonthIdx: 11 }
+        ],
+        'BIMONTHLY': [
+            { span: 2, endMonthIdx: 1 }, { span: 2, endMonthIdx: 3 }, { span: 2, endMonthIdx: 5 },
+            { span: 2, endMonthIdx: 7 }, { span: 2, endMonthIdx: 9 }, { span: 2, endMonthIdx: 11 }
+        ],
+        'QUARTERLY': [
+            { span: 3, endMonthIdx: 2 }, { span: 3, endMonthIdx: 5 }, { span: 3, endMonthIdx: 8 }, { span: 3, endMonthIdx: 11 }
+        ],
+        'QUADRIMESTRAL': [
+            { span: 4, endMonthIdx: 3 }, { span: 4, endMonthIdx: 7 }, { span: 4, endMonthIdx: 11 }
+        ],
+        'SEMIANNUAL': [
+            { span: 6, endMonthIdx: 5 }, { span: 6, endMonthIdx: 11 }
+        ],
+        'ANNUAL': [
+            { span: 12, endMonthIdx: 11 }
+        ]
+    };
+
+    function comparePeriodicity(p1, p2) {
+        const ORDER = ['ANNUAL', 'SEMIANNUAL', 'QUADRIMESTRAL', 'QUARTERLY', 'BIMONTHLY', 'MONTHLY'];
+        const idx1 = ORDER.indexOf(p1);
+        const idx2 = ORDER.indexOf(p2);
+        return idx1 - idx2;
+    }
+
+    function getRecordPeriodicityKey(rec, config) {
+        const mapping = config.mapping || config || {};
+        const rawPeriodicity = rec[mapping.periodicityField || config.periodicityField];
+        return mapping.periodicityMap?.[rawPeriodicity] || 'MONTHLY';
+    }
+
+    function getParentValue(parentRec, year, month, type, resultsField, targetField) {
+        const rawData = parentRec[type === 'results' ? resultsField : targetField];
+        if (!rawData) return null;
+        
+        let data;
+        try {
+            data = (typeof rawData === 'string' && rawData.trim().startsWith('{')) ? JSON.parse(rawData) : (typeof rawData === 'object' ? rawData : {});
+        } catch(e) {
+            return null;
+        }
+        
+        const yearNode = data[year] || {};
+        const results = yearNode.results || ( (yearNode.jan !== undefined) ? yearNode : (data.jan !== undefined ? data : {}) );
+        
+        let entry;
+        if (type === 'results') {
+            entry = results[month];
+        } else {
+            entry = yearNode[month];
+        }
+        
+        if (entry === null || entry === undefined) return null;
+        return (typeof entry === 'object') ? entry.v : entry;
+    }
+
+    function getAlignedValue(parentRec, parentId, destRec, destMonth, destYear, align, type, resultsField, targetField, config) {
+        const parentPeriodicity = getRecordPeriodicityKey(parentRec, config);
+        const destPeriodicity = getRecordPeriodicityKey(destRec, config);
+
+        if (parentPeriodicity === destPeriodicity) {
+            return getParentValue(parentRec, destYear, destMonth, type, resultsField, targetField);
+        }
+
+        const parentMonths = PERIOD_SUB_MONTHS[parentPeriodicity] ? Object.keys(PERIOD_SUB_MONTHS[parentPeriodicity]) : [];
+        const destSubMonths = PERIOD_SUB_MONTHS[destPeriodicity] ? PERIOD_SUB_MONTHS[destPeriodicity][destMonth] : [];
+
+        const isHigherToLower = comparePeriodicity(parentPeriodicity, destPeriodicity) > 0;
+        const isLowerToHigher = comparePeriodicity(parentPeriodicity, destPeriodicity) < 0;
+
+        if (isHigherToLower) {
+            const parentValues = [];
+            destSubMonths.forEach(m => {
+                const parentPeriod = parentMonths.find(p => {
+                    const sub = PERIOD_SUB_MONTHS[parentPeriodicity][p] || [];
+                    return sub.includes(m);
+                });
+                if (parentPeriod) {
+                    const val = getParentValue(parentRec, destYear, parentPeriod, type, resultsField, targetField);
+                    if (val !== null) parentValues.push(val);
+                }
+            });
+
+            if (parentValues.length === 0) return null;
+
+            const agg = align.aggregation || 'AVG';
+            if (agg === 'SUM') {
+                return parentValues.reduce((a, b) => a + b, 0);
+            } else if (agg === 'LAST') {
+                return parentValues[parentValues.length - 1];
+            } else { // AVG
+                return parentValues.reduce((a, b) => a + b, 0) / parentValues.length;
+            }
+        } else if (isLowerToHigher) {
+            const parentPeriod = parentMonths.find(p => {
+                const sub = PERIOD_SUB_MONTHS[parentPeriodicity][p] || [];
+                return sub.includes(destMonth);
+            });
+
+            if (!parentPeriod) return null;
+            const parentVal = getParentValue(parentRec, destYear, parentPeriod, type, resultsField, targetField);
+            if (parentVal === null) return null;
+
+            const dist = align.distribution || 'REPETIR';
+            if (dist === 'REPETIR') {
+                return parentVal;
+            } else if (dist === 'DISTRIBUIR') {
+                const sub = PERIOD_SUB_MONTHS[parentPeriodicity][parentPeriod] || [];
+                const count = sub.length || 1;
+                return parentVal / count;
+            } else { // IGNORAR
+                return (destMonth === parentPeriod) ? parentVal : null;
+            }
+        }
+
+        return null;
+    }
+
+    function evaluateExpression(expr, variables) {
+        let resolvedExpr = expr;
+        for (const [id, val] of Object.entries(variables)) {
+            if (val === null || val === undefined) {
+                return null;
+            }
+            resolvedExpr = resolvedExpr.replace(new RegExp(`\\{${id}\\}`, 'g'), val.toString());
+        }
+
+        const sanitized = resolvedExpr.replace(/\s+/g, '');
+        if (/^[0-9+\-*/().]+$/.test(sanitized)) {
+            try {
+                const result = new Function(`return (${resolvedExpr})`)();
+                if (typeof result === 'number' && !isNaN(result) && isFinite(result)) {
+                    return result;
+                }
+            } catch (e) {
+                console.warn("Error evaluating formula expression:", resolvedExpr, e);
+            }
+        }
+        return null;
+    }
+
+    function calculateFormulas(records, config) {
+        const mapping = config.mapping || config || {};
+        const formulaField = mapping.formulaField || config.formulaField;
+        const resultsField = mapping.resultsField || config.resultsField;
+        const targetField = mapping.targetField || config.targetField;
+
+        if (!formulaField) return records;
+
+        const recordsMap = {};
+        records.forEach(r => {
+            recordsMap[r.id] = r;
+        });
+
+        const sortedRecords = [];
+        const visited = {};
+
+        function getDependencies(rec) {
+            const formulaString = rec[formulaField];
+            if (!formulaString) return [];
+            let expr = '';
+            if (formulaString.trim().startsWith('{')) {
+                try {
+                    expr = JSON.parse(formulaString).expression || '';
+                } catch (e) {
+                    expr = formulaString;
+                }
+            } else {
+                expr = formulaString;
+            }
+            const matches = [...expr.matchAll(/\{(\d+)\}/g)].map(m => m[1]);
+            return [...new Set(matches)].map(Number);
+        }
+
+        function visit(id) {
+            if (visited[id] === 1) {
+                console.error(`Circular dependency detected for indicator ID ${id}!`);
+                return;
+            }
+            if (visited[id] === 2) return;
+
+            visited[id] = 1;
+            const rec = recordsMap[id];
+            if (rec) {
+                const deps = getDependencies(rec);
+                deps.forEach(depId => {
+                    if (recordsMap[depId]) {
+                        visit(depId);
+                    }
+                });
+            }
+            visited[id] = 2;
+            sortedRecords.push(id);
+        }
+
+        records.forEach(r => {
+            if (!visited[r.id]) {
+                visit(r.id);
+            }
+        });
+
+        sortedRecords.forEach(id => {
+            const rec = recordsMap[id];
+            if (!rec || !rec[formulaField]) return;
+
+            const formulaString = rec[formulaField];
+            let expr = '';
+            let alignments = {};
+            if (formulaString.trim().startsWith('{')) {
+                try {
+                    const parsed = JSON.parse(formulaString);
+                    expr = parsed.expression || '';
+                    alignments = parsed.alignments || {};
+                } catch (e) {
+                    expr = formulaString;
+                }
+            } else {
+                expr = formulaString;
+            }
+
+            const matches = [...expr.matchAll(/\{(\d+)\}/g)].map(m => m[1]);
+            const parentIds = [...new Set(matches)];
+            if (parentIds.length === 0) return;
+
+            const yearsSet = new Set();
+            parentIds.forEach(pId => {
+                const pRec = recordsMap[pId];
+                if (!pRec) return;
+                ['results', 'targets'].forEach(type => {
+                    const raw = pRec[type === 'results' ? resultsField : targetField];
+                    if (raw) {
+                        try {
+                            const parsed = (typeof raw === 'string' && raw.trim().startsWith('{')) ? JSON.parse(raw) : (typeof raw === 'object' ? raw : {});
+                            Object.keys(parsed).forEach(y => {
+                                if (!isNaN(parseInt(y))) yearsSet.add(y);
+                            });
+                        } catch(e) {}
+                    }
+                });
+            });
+
+            const years = [...yearsSet].sort();
+            if (years.length === 0) return;
+
+            const destPeriodicity = getRecordPeriodicityKey(rec, config);
+            const destMonths = PERIOD_SUB_MONTHS[destPeriodicity] ? Object.keys(PERIOD_SUB_MONTHS[destPeriodicity]) : ['dez'];
+
+            const newResultsMaster = {};
+            const newTargetsMaster = {};
+
+            years.forEach(year => {
+                const results = {};
+                const targets = {};
+
+                destMonths.forEach(destMonth => {
+                    const resultVars = {};
+                    const targetVars = {};
+
+                    parentIds.forEach(pId => {
+                        const pRec = recordsMap[pId];
+                        if (!pRec) {
+                            resultVars[pId] = null;
+                            targetVars[pId] = null;
+                            return;
+                        }
+                        const align = alignments[pId] || { aggregation: 'AVG', distribution: 'REPETIR' };
+                        resultVars[pId] = getAlignedValue(pRec, pId, rec, destMonth, year, align, 'results', resultsField, targetField, config);
+                        targetVars[pId] = getAlignedValue(pRec, pId, rec, destMonth, year, align, 'targets', resultsField, targetField, config);
+                    });
+
+                    const computedResult = evaluateExpression(expr, resultVars);
+                    if (computedResult !== null) {
+                        results[destMonth] = { v: computedResult, d: new Date().toISOString().split('T')[0] };
+                    }
+
+                    const computedTarget = evaluateExpression(expr, targetVars);
+                    if (computedTarget !== null) {
+                        targets[destMonth] = { v: computedTarget, m: true };
+                    }
+                });
+
+                if (Object.keys(results).length > 0) {
+                    newResultsMaster[year] = {
+                        periodicity: destPeriodicity,
+                        results: results
+                    };
+                }
+                if (Object.keys(targets).length > 0) {
+                    newTargetsMaster[year] = targets;
+                }
+            });
+
+            rec[resultsField] = JSON.stringify(newResultsMaster);
+            rec[targetField] = JSON.stringify(newTargetsMaster);
+        });
+
+        return records;
+    }
+
+    return { renderIndicatorDetails, renderIndicatorRow, getIndicatorMetrics, calculateProgressiveTargets, PERIODICITY_CONFIG, calculateFormulas };
 
 })();
 window.IndicatorsRenderer = IndicatorsRenderer;

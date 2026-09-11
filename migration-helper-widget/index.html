@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapeador de Migração de Indicadores</title>
+    <script src="../libraries/external/grist-plugin-api.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 20px;
+            background-color: #f8fafc;
+            color: #1e293b;
+        }
+        h1, h2, h3 {
+            color: #0f172a;
+        }
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .btn {
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .btn:hover {
+            background-color: #1d4ed8;
+        }
+        .btn-success {
+            background-color: #10b981;
+        }
+        .btn-success:hover {
+            background-color: #059669;
+        }
+        pre {
+            background-color: #0f172a;
+            color: #38bdf8;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 13px;
+            max-height: 400px;
+        }
+        .flex-container {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .flex-child {
+            flex: 1;
+            min-width: 300px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            text-align: left;
+            padding: 8px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 13px;
+        }
+        th {
+            background-color: #f1f5f9;
+            font-weight: 600;
+        }
+        .formula-badge {
+            background-color: #dbeafe;
+            color: #1e40af;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-family: monospace;
+        }
+        .status-msg {
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-weight: 500;
+        }
+        .status-info {
+            background-color: #eff6ff;
+            color: #1d4ed8;
+            border: 1px solid #bfdbfe;
+        }
+        .status-error {
+            background-color: #fef2f2;
+            color: #b91c1c;
+            border: 1px solid #fca5a5;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🔄 Mapeador de Migração de Indicadores</h1>
+    <p>Este app captura as estruturas das tabelas <strong>Indicadores</strong> e <strong>DadosIndicadores</strong>, obtém os dados mais recentes (incluindo fórmulas e valores) e gera um relatório formatado para alimentar a IA (Gemini).</p>
+
+    <div id="status-box" class="status-msg status-info">Conectando ao Grist...</div>
+
+    <div class="card">
+        <h2>Passo 1: Analisar Estrutura & Dados</h2>
+        <p>Busca metadados de colunas, fórmulas cadastradas e o último resultado inserido para cada indicador.</p>
+        <button id="btn-analyze" class="btn">Analisar Tabelas do Grist</button>
+    </div>
+
+    <div class="flex-container">
+        <div class="flex-child card">
+            <h2>Tabela: Indicadores</h2>
+            <div id="indicadores-summary">Aguardando análise...</div>
+            <table id="indicadores-table" style="display:none;">
+                <thead>
+                    <tr>
+                        <th>Coluna</th>
+                        <th>Tipo</th>
+                        <th>Fórmula / Config</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <div class="flex-child card">
+            <h2>Tabela: DadosIndicadores</h2>
+            <div id="dados-summary">Aguardando análise...</div>
+            <table id="dados-table" style="display:none;">
+                <thead>
+                    <tr>
+                        <th>Coluna</th>
+                        <th>Tipo</th>
+                        <th>Fórmula / Config</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Passo 2: Dados Consolidados para a IA (Gemini)</h2>
+        <p>Copie o JSON abaixo e forneça ao chat para instruir os próximos passos de migração e criação da nova tabela unificada.</p>
+        <button id="btn-copy-json" class="btn btn-success" disabled>Copiar JSON para a IA</button>
+        <button id="btn-download-json" class="btn" style="margin-left: 10px;" disabled>Download JSON</button>
+        <pre id="json-output">// O JSON gerado aparecerá aqui após a análise</pre>
+    </div>
+
+    <div class="card">
+        <h2>Passo 3: Executar Migração & Criar Tabela "Indicators"</h2>
+        <p>Este passo irá criar a nova tabela <strong>Indicators</strong> (se ela não existir) e importar todos os dados unificando o histórico no campo JSON <code>results</code>, usando as datas puras das colunas <strong>A</strong> e <strong>dt_result</strong>.</p>
+
+        <button id="btn-migrate" class="btn btn-success" disabled>Criar Tabela & Migrar Dados Agora</button>
+        <div id="migration-log" style="margin-top: 15px; max-height: 250px; overflow-y: auto; background: #0f172a; color: #10b981; font-family: monospace; padding: 10px; border-radius: 6px; font-size: 12px; display: none;"></div>
+    </div>
+
+    <script type="module" src="script.js"></script>
+</body>
+</html>

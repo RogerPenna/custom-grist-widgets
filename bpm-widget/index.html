@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BPM Studio Widget pro Grist</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <!-- Grist Plugin API -->
+  <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+</head>
+<body>
+  <div id="bpm-app" class="bpm-container">
+    <!-- Top Header & Navigation -->
+    <header class="bpm-header">
+      <div class="brand">
+        <div class="logo-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>Grist BPM <span>Studio</span></h1>
+          <p id="active-process-title">Conectado ao Grist</p>
+        </div>
+      </div>
+
+      <nav class="bpm-tabs" id="bpm-tabs">
+        <button class="tab-btn active" data-tab="inbox">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-6l-2 3h-4l-2-3H2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6z"></path><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
+          Minha Fila <span class="badge" id="inbox-count">0</span>
+        </button>
+        <button class="tab-btn" data-tab="designer">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+          Modelador Visual
+        </button>
+        <button class="tab-btn" data-tab="instances">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+          Instâncias Ativas
+        </button>
+        <button class="tab-btn" data-tab="analytics">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+          Analytics & SLA
+        </button>
+      </nav>
+
+      <div class="header-actions">
+        <button class="btn btn-secondary" id="btn-setup-tables" title="Criar tabelas de apoio do BPM no Grist caso não existam">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+          Tabelas Grist
+        </button>
+        <button class="btn btn-secondary" id="btn-refresh" title="Atualizar dados">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+          Atualizar
+        </button>
+        <button class="btn btn-primary" id="btn-new-instance">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          Iniciar Processo
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="bpm-main">
+      <!-- Tab 1: Task Inbox (Minha Fila de Trabalho) -->
+      <section class="tab-content active" id="tab-inbox">
+        <div class="section-toolbar">
+          <div class="search-box">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="text" id="task-search" placeholder="Buscar tarefas pendentes por processo, id ou título...">
+          </div>
+          <div class="filter-group">
+            <select id="sla-filter">
+              <option value="all">Todos os Prazos SLA</option>
+              <option value="critical">🔴 SLA Crítico / Vencido</option>
+              <option value="warning">🟡 Alerta de Vencimento Próximo</option>
+              <option value="ok">🟢 No Prazo</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <select id="process-filter">
+              <option value="all">Todos os Processos</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="tasks-grid" id="tasks-container">
+          <!-- Populated by script.js -->
+        </div>
+      </section>
+
+      <!-- Tab 2: Visual BPMN Modeler -->
+      <section class="tab-content" id="tab-designer">
+        <div class="designer-toolbar">
+          <div class="template-selector">
+            <label for="flow-template-select">Carregar Modelo Predefinido:</label>
+            <select id="flow-template-select">
+              <option value="">Selecione um modelo...</option>
+              <option value="compra">Aprovação de Compras / Suprimentos</option>
+              <option value="ferias">Solicitação de Férias</option>
+              <option value="chamado">Atendimento de Chamados / TI</option>
+              <option value="onboarding">Onboarding de Clientes</option>
+            </select>
+          </div>
+          <div class="designer-actions">
+            <button class="btn btn-secondary btn-sm" id="btn-export-json">Exportar JSON</button>
+            <button class="btn btn-secondary btn-sm" id="btn-clear-canvas">Limpar Canvas</button>
+            <button class="btn btn-primary btn-sm" id="btn-save-flow">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+              Salvar Processo no Grist
+            </button>
+          </div>
+        </div>
+
+        <div class="designer-layout">
+          <aside class="designer-palette">
+            <h4>Elementos BPMN</h4>
+            <div class="palette-item" draggable="true" data-type="start">
+              <span class="icon-node node-start">🟢</span> Início
+            </div>
+            <div class="palette-item" draggable="true" data-type="user-task">
+              <span class="icon-node node-task">🟦</span> Tarefa de Usuário
+            </div>
+            <div class="palette-item" draggable="true" data-type="service-task">
+              <span class="icon-node node-service">⚙️</span> Automação / Script
+            </div>
+            <div class="palette-item" draggable="true" data-type="gateway">
+              <span class="icon-node node-gateway">🔷</span> Decisão (Gateway)
+            </div>
+            <div class="palette-item" draggable="true" data-type="end">
+              <span class="icon-node node-end">🔴</span> Fim do Processo
+            </div>
+            <hr class="palette-divider">
+            <p class="palette-tip">💡 Dica: Arraste os elementos para o canvas ou clique neles para adicionar.</p>
+          </aside>
+
+          <div class="designer-canvas-wrapper">
+            <div class="canvas-header">
+              <span id="canvas-process-name">Novo Fluxo de Processo</span>
+              <div class="canvas-zoom">
+                <button id="zoom-out">-</button>
+                <span id="zoom-level">100%</span>
+                <button id="zoom-in">+</button>
+              </div>
+            </div>
+            <div class="designer-canvas" id="bpm-canvas">
+              <svg id="canvas-svg-connections" class="connections-layer"></svg>
+              <div id="canvas-nodes-container" class="nodes-layer"></div>
+            </div>
+          </div>
+
+          <aside class="designer-properties">
+            <h4>Propriedades da Etapa</h4>
+            <div id="properties-editor" class="properties-editor">
+              <p class="muted">Clique em uma etapa no fluxo para editar suas configurações e regras de transição.</p>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- Tab 3: Active Instances -->
+      <section class="tab-content" id="tab-instances">
+        <div class="instances-toolbar">
+          <input type="text" id="instance-search" placeholder="Filtrar instâncias por ID, processo ou responsável...">
+          <select id="instance-status-filter">
+            <option value="all">Todos os Status</option>
+            <option value="Em_Andamento">Em Andamento</option>
+            <option value="Concluido">Concluído</option>
+            <option value="Cancelado">Cancelado</option>
+            <option value="Suspenso">Suspenso</option>
+          </select>
+        </div>
+        <div class="instances-table-card">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>ID Instância</th>
+                <th>Processo</th>
+                <th>Registro Grist ID</th>
+                <th>Etapa Atual</th>
+                <th>Status SLA</th>
+                <th>Data Início</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="instances-table-body">
+              <!-- Dynamically rendered -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Tab 4: Analytics & SLA -->
+      <section class="tab-content" id="tab-analytics">
+        <div class="analytics-grid">
+          <div class="metric-card">
+            <div class="metric-icon">🚀</div>
+            <div class="metric-info">
+              <div class="metric-title">Instâncias Ativas</div>
+              <div class="metric-value" id="kpi-active">0</div>
+              <div class="metric-sub text-success">Em execução no Grist</div>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon">⏱️</div>
+            <div class="metric-info">
+              <div class="metric-title">Tempo Médio de Ciclo</div>
+              <div class="metric-value" id="kpi-cycle">18.4h</div>
+              <div class="metric-sub text-info">Início até Conclusão</div>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon">🎯</div>
+            <div class="metric-info">
+              <div class="metric-title">Compliance de SLA</div>
+              <div class="metric-value" id="kpi-sla">94%</div>
+              <div class="metric-sub text-success">Dentro do prazo contratado</div>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon">⚠️</div>
+            <div class="metric-info">
+              <div class="metric-title">Gargalo Principal</div>
+              <div class="metric-value" id="kpi-bottleneck">Aprovação Diretoria</div>
+              <div class="metric-sub text-warning">Tempo médio: 42h</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Visual Distribution Cards -->
+        <div class="analytics-panels">
+          <div class="panel-card">
+            <h3>Distribuição por Etapa</h3>
+            <div id="chart-step-distribution" class="progress-bars-list">
+              <!-- Rendered via script -->
+            </div>
+          </div>
+          <div class="panel-card">
+            <h3>Desempenho de SLA por Responsável</h3>
+            <div id="chart-sla-performance" class="progress-bars-list">
+              <!-- Rendered via script -->
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Task Action Modal / Drawer -->
+  <div id="task-modal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <span class="modal-badge" id="modal-task-badge">TAREFA</span>
+          <h2 id="modal-task-title">Aprovação de Pedido</h2>
+          <p id="modal-task-sub">Instância #INST-1002 • Processo Compras</p>
+        </div>
+        <button class="modal-close" id="btn-modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="task-detail-grid">
+          <div class="detail-box">
+            <span class="detail-label">Responsável</span>
+            <span class="detail-val" id="modal-assignee">Gestor Direto</span>
+          </div>
+          <div class="detail-box">
+            <span class="detail-label">SLA Restante</span>
+            <span class="detail-val" id="modal-sla">14h 30m</span>
+          </div>
+          <div class="detail-box">
+            <span class="detail-label">Registro Grist</span>
+            <span class="detail-val" id="modal-grist-ref">Ref #15</span>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h3>Dados do Formulário de Ação</h3>
+          <div id="dynamic-task-form">
+            <div class="form-group">
+              <label for="form-comment">Parecer / Observações do Responsável:</label>
+              <textarea id="form-comment" rows="3" placeholder="Digite seu parecer ou justificativa antes de tomar a ação..."></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="history-section">
+          <h3>Histórico da Instância</h3>
+          <div class="timeline-trail" id="modal-timeline">
+            <!-- Timeline items -->
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer" id="modal-actions-footer">
+        <button class="btn btn-secondary" id="btn-task-reject">Rejeitar / Devolver</button>
+        <button class="btn btn-primary" id="btn-task-approve">Aprovar / Concluir</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

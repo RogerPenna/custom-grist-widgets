@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Dashboard de Fornecedores</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 15px; background-color: #f9f9f9; color: #333; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; }
+        .container { display: flex; flex-direction: column; flex-grow: 1; gap: 15px; }
+        .controls { display: flex; flex-direction: column; gap: 15px; padding-bottom: 10px; border-bottom: 1px solid #ddd; }
+        .control-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; }
+        .control-group { display: flex; align-items: center; gap: 10px; }
+        .controls label { font-weight: bold; font-size: 14px; }
+        #obraFilter { padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; background-color: white; font-size: 14px; min-width: 200px; }
+        .view-options input[type="radio"] { margin-left: 5px; }
+        .charts-container { display: grid; gap: 20px; flex-grow: 1; min-height: 0; }
+        .chart-wrapper { position: relative; background-color: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        #loading, #config-prompt { text-align: center; padding: 40px; font-size: 16px; color: #777; }
+
+        /* --- Lógica de Visibilidade --- */
+        .performance-charts, .quality-charts, #performanceViewOptions, #qualityViewOptions { display: none; }
+        
+        /* Mostra os elementos corretos com base na classe do container */
+        .container.show-performance .performance-charts,
+        .container.show-performance #performanceViewOptions { display: grid; }
+        .container.show-quality .quality-charts,
+        .container.show-quality #qualityViewOptions { display: grid; }
+        
+        /* Layout dos gráficos de performance */
+        .performance-charts { grid-template-columns: 1fr 1fr; }
+        .performance-charts.view-single { grid-template-columns: 1fr; }
+        .performance-charts.view-count .valor-chart-wrapper { display: none; }
+        .performance-charts.view-value .entregas-chart-wrapper { display: none; }
+
+        /* Layout dos gráficos de qualidade (sempre 1 coluna) */
+        .quality-charts { grid-template-columns: 1fr; }
+        .quality-charts.view-acceptance .problems-chart-wrapper { display: none; }
+        .quality-charts.view-problems .acceptance-chart-wrapper { display: none; }
+
+        @media (max-width: 800px) {
+            .performance-charts { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div id="loading">Carregando dados...</div>
+    <div id="config-prompt" style="display: none;">
+        <h2>Configure o Widget</h2>
+        <p>Por favor, vá ao "Creator Panel" e mapeie as colunas para "Obra", "Fornecedor", "Valor" e "Inspeção".</p>
+    </div>
+
+    <div class="container" style="display: none;">
+        <div class="controls">
+            <div class="control-row">
+                <div class="control-group">
+                    <label>Tipo de Análise:</label>
+                    <input type="radio" id="analysisPerformance" name="analysisType" value="performance" checked><label for="analysisPerformance">Performance</label>
+                    <input type="radio" id="analysisQuality" name="analysisType" value="quality"><label for="analysisQuality">Qualidade</label>
+                </div>
+                <div class="control-group">
+                    <label for="obraFilter">Filtrar por Obra:</label>
+                    <select id="obraFilter"></select>
+                </div>
+            </div>
+            <div class="control-row">
+                <div class="control-group" id="performanceViewOptions">
+                    <label>Visualizar:</label>
+                    <input type="radio" id="viewBoth" name="performanceView" value="both" checked><label for="viewBoth">Ambos</label>
+                    <input type="radio" id="viewCount" name="performanceView" value="count"><label for="viewCount">Por Quantidade</label>
+                    <input type="radio" id="viewValue" name="performanceView" value="value"><label for="viewValue">Por Valor</label>
+                </div>
+                <div class="control-group" id="qualityViewOptions">
+                    <label>Visualizar:</label>
+                    <input type="radio" id="viewAcceptance" name="qualityView" value="acceptance" checked><label for="viewAcceptance">% Aceitação por Obra</label>
+                    <input type="radio" id="viewProblems" name="qualityView" value="problems"><label for="viewProblems">Problemas por Fornecedor</label>
+                </div>
+            </div>
+        </div>
+        <div class="charts-container">
+            <!-- Gráficos de Performance -->
+            <div class="performance-charts">
+                <div class="chart-wrapper entregas-chart-wrapper"><canvas id="entregasChart"></canvas></div>
+                <div class="chart-wrapper valor-chart-wrapper"><canvas id="valorChart"></canvas></div>
+            </div>
+            <!-- Gráficos de Qualidade -->
+            <div class="quality-charts">
+                <div class="chart-wrapper acceptance-chart-wrapper"><canvas id="acceptanceChart"></canvas></div>
+                <div class="chart-wrapper problems-chart-wrapper"><canvas id="problemsChart"></canvas></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        let allRecords = [];
+        let mappings = {};
+        let chartInstances = {}; // Um objeto para guardar todas as instâncias de gráficos
+        const mainContainer = document.querySelector('.container');
+
+        grist.ready({
+            columns: [
+                { name: "obraColumn", title: "Coluna de Obra" },
+                { name: "emitenteColumn", title: "Coluna de Fornecedor" },
+                { name: "valorColumn", title: "Coluna de Valor" },
+                { name: "inspecaoColumn", title: "Coluna de Inspeção" }, // Novo mapeamento
+            ],
+            requiredAccess: 'full',
+        });
+
+        grist.onRecords(function(records, newMappings) {
+            allRecords = records;
+            mappings = newMappings;
+            if (!mappings.obraColumn || !mappings.emitenteColumn || !mappings.valorColumn || !mappings.inspecaoColumn) {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('config-prompt').style.display = 'block';
+                mainContainer.style.display = 'none';
+                return;
+            }
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('config-prompt').style.display = 'none';
+            mainContainer.style.display = 'flex';
+            main();
+        });
+
+        function main() {
+            populateFilter(allRecords);
+            addEventListeners();
+            updateDisplay();
+            renderAllCharts(allRecords);
+        }
+
+        function addEventListeners() {
+            document.getElementById('obraFilter').addEventListener('change', () => {
+                const selectedObra = document.getElementById('obraFilter').value;
+                const filteredData = selectedObra === 'all' ? allRecords : allRecords.filter(r => r[mappings.obraColumn] === selectedObra);
+                renderAllCharts(filteredData);
+            });
+            document.querySelectorAll('input[name="analysisType"], input[name="performanceView"], input[name="qualityView"]').forEach(radio => {
+                radio.addEventListener('change', updateDisplay);
+            });
+        }
+
+        function updateDisplay() {
+            const analysisType = document.querySelector('input[name="analysisType"]:checked').value;
+            
+            // Controla a visibilidade dos seletores e dos containers de gráficos
+            mainContainer.classList.toggle('show-performance', analysisType === 'performance');
+            mainContainer.classList.toggle('show-quality', analysisType === 'quality');
+
+            if (analysisType === 'performance') {
+                const perfView = document.querySelector('input[name="performanceView"]:checked').value;
+                const perfCharts = document.querySelector('.performance-charts');
+                perfCharts.className = 'performance-charts'; // Reset
+                if (perfView !== 'both') perfCharts.classList.add('view-single', `view-${perfView}`);
+            } else { // analysisType === 'quality'
+                const qualityView = document.querySelector('input[name="qualityView"]:checked').value;
+                const qualityCharts = document.querySelector('.quality-charts');
+                qualityCharts.className = 'quality-charts'; // Reset
+                qualityCharts.classList.add(`view-${qualityView}`);
+            }
+
+            // Redimensiona todos os gráficos para se ajustarem ao novo layout
+            setTimeout(() => {
+                Object.values(chartInstances).forEach(chart => chart && chart.resize());
+            }, 50);
+        }
+
+        function populateFilter(records) {
+            const obraColumn = mappings.obraColumn;
+            const obras = new Set(records.map(r => r[obraColumn]));
+            const filterSelect = document.getElementById('obraFilter');
+            const selectedValue = filterSelect.value;
+            filterSelect.innerHTML = '<option value="all">Todas as Obras</option>';
+            Array.from(obras).sort().forEach(obra => {
+                if (obra) filterSelect.innerHTML += `<option value="${obra}">${obra}</option>`;
+            });
+            filterSelect.value = selectedValue && Array.from(filterSelect.options).some(o => o.value === selectedValue) ? selectedValue : 'all';
+        }
+        
+        function renderAllCharts(records) {
+            // -- Análise de Performance --
+            const perfSummary = records.reduce((acc, r) => {
+                const emitente = r[mappings.emitenteColumn];
+                if (!emitente) return acc;
+                if (!acc[emitente]) acc[emitente] = { count: 0, totalValue: 0 };
+                acc[emitente].count++;
+                acc[emitente].totalValue += parseFloat(r[mappings.valorColumn]) || 0;
+                return acc;
+            }, {});
+            const perfArray = Object.keys(perfSummary).map(k => ({ emitente: k, ...perfSummary[k] }));
+            const sortedByCount = [...perfArray].sort((a, b) => b.count - a.count).slice(0, 15);
+            const sortedByValue = [...perfArray].sort((a, b) => b.totalValue - a.totalValue).slice(0, 15);
+            drawBarChart('entregasChart', sortedByCount.map(d => d.emitente), sortedByCount.map(d => d.count), 'Top 15 Fornecedores por Nº de Entregas', 'number');
+            drawBarChart('valorChart', sortedByValue.map(d => d.emitente), sortedByValue.map(d => d.totalValue), 'Top 15 Fornecedores por Valor Total', 'currency');
+
+            // -- Análise de Qualidade --
+            // 1. % Aceitação por Obra
+            const acceptanceSummary = records.reduce((acc, r) => {
+                const obra = r[mappings.obraColumn];
+                if (!obra) return acc;
+                if (!acc[obra]) acc[obra] = { total: 0, accepted: 0 };
+                acc[obra].total++;
+                if (r[mappings.inspecaoColumn] === 'A') acc[obra].accepted++;
+                return acc;
+            }, {});
+            const acceptanceArray = Object.keys(acceptanceSummary).map(k => ({
+                obra: k,
+                percentage: (acceptanceSummary[k].accepted / acceptanceSummary[k].total) * 100 || 0
+            })).sort((a,b) => a.percentage - b.percentage);
+            drawBarChart('acceptanceChart', acceptanceArray.map(d => d.obra), acceptanceArray.map(d => d.percentage), '% de Entregas Aceitas ("A") por Obra', 'percent', true);
+
+            // 2. Problemas por Fornecedor
+            const problemRecords = records.filter(r => r[mappings.inspecaoColumn] !== 'A' && r[mappings.emitenteColumn]);
+            const problemSummary = problemRecords.reduce((acc, r) => {
+                const emitente = r[mappings.emitenteColumn];
+                acc[emitente] = (acc[emitente] || 0) + 1;
+                return acc;
+            }, {});
+            const problemArray = Object.keys(problemSummary).map(k => ({ emitente: k, count: problemSummary[k] })).sort((a, b) => b.count - a.count).slice(0, 15);
+            drawBarChart('problemsChart', problemArray.map(d => d.emitente), problemArray.map(d => d.count), 'Top 15 Fornecedores por Nº de Não Conformidades', 'number');
+        }
+
+        function drawBarChart(canvasId, labels, data, title, format, horizontal = false) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            const chartConfig = {
+                type: 'bar',
+                data: { labels, datasets: [{ label: title, data, backgroundColor: 'rgba(54, 162, 235, 0.6)', borderColor: 'rgba(54, 162, 235, 1)', borderWidth: 1 }] },
+                options: {
+                    indexAxis: horizontal ? 'y' : 'x',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        title: { display: true, text: title, font: { size: 16 } },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => {
+                                    let value = horizontal ? context.parsed.x : context.parsed.y;
+                                    if (format === 'currency') return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+                                    if (format === 'percent') return value.toFixed(1) + '%';
+                                    return value + (value === 1 ? ' ocorrência' : ' ocorrências');
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        [horizontal ? 'x' : 'y']: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: (value) => {
+                                    if (format === 'currency') return value >= 1000 ? `R$ ${value / 1000}k` : `R$ ${value}`;
+                                    if (format === 'percent') return value + '%';
+                                    return Number.isInteger(value) ? value : null;
+                                }
+                            }
+                        },
+                        [horizontal ? 'y' : 'x']: { ticks: { autoSkip: false } }
+                    }
+                }
+            };
+            if (chartInstances[canvasId]) {
+                chartInstances[canvasId].data.labels = labels;
+                chartInstances[canvasId].data.datasets[0].data = data;
+                chartInstances[canvasId].options.plugins.title.text = title; // Garante que o título seja atualizado
+                chartInstances[canvasId].update();
+            } else {
+                chartInstances[canvasId] = new Chart(ctx, chartConfig);
+            }
+        }
+    </script>
+</body>
+</html>

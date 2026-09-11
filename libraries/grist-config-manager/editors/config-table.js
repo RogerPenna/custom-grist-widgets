@@ -222,6 +222,15 @@ export const TableConfigEditor = (() => {
                 </div>
                 <div class="tab-pane" id="pane-styling" style="display:none;">
                     <div class="config-section">
+                        <h3>Preset de Estilo <button type="button" id="tb-save-style-btn" class="btn btn-sm btn-primary" style="margin-left: 10px;">Salvar como Preset (Estilo + Ações)</button></h3>
+                        <div style="margin-top: 10px; display: flex; align-items: center; gap: 10px;">
+                            <select id="tb-load-style-select" style="flex-grow: 1; padding: 4px;">
+                                <option value="">-- Carregar Preset Salvo --</option>
+                            </select>
+                            <button type="button" id="tb-load-style-btn" class="btn btn-sm btn-secondary">Carregar</button>
+                        </div>
+                    </div>
+                    <div class="config-section">
                         <h3>Layout e Estilo</h3>
                         <div class="col-config-grid">
                             <div class="col-config-section">
@@ -423,6 +432,72 @@ export const TableConfigEditor = (() => {
         };
 
         renderActionsLayout();
+
+        // --- PRESETS DE ESTILO DE TABELA ---
+        const loadStyleSelect = container.querySelector('#tb-load-style-select');
+        const loadStyleBtn = container.querySelector('#tb-load-style-btn');
+        const saveStyleBtn = container.querySelector('#tb-save-style-btn');
+
+        const tableStyles = _allConfigs.filter(c => c.componentType === 'Table Style');
+        tableStyles.forEach(styleConfig => {
+            const option = document.createElement('option');
+            option.value = styleConfig.configId;
+            option.textContent = styleConfig.widgetTitle;
+            loadStyleSelect.appendChild(option);
+        });
+
+        if (saveStyleBtn) {
+            saveStyleBtn.addEventListener('click', () => {
+                try {
+                    const currentStyling = readStylingTab(container);
+                    const currentActions = readActionsTab(container);
+
+                    const event = new CustomEvent('grf-save-card-style', {
+                        detail: {
+                            widgetTitle: null,
+                            configJson: JSON.stringify({ 
+                                styling: currentStyling,
+                                actions: currentActions
+                            }),
+                            componentType: 'Table Style',
+                            description: '[PRESET] Estilo e Ações de Tabela'
+                        },
+                        bubbles: true
+                    });
+                    container.dispatchEvent(event);
+                } catch (e) {
+                    console.error('Error saving table preset:', e);
+                    alert('Error saving table preset: ' + e.message);
+                }
+            });
+        }
+
+        if (loadStyleBtn) {
+            loadStyleBtn.addEventListener('click', () => {
+                const selectedConfigId = loadStyleSelect.value;
+                if (!selectedConfigId) { alert('Selecione um estilo para carregar.'); return; }
+                const selectedStyle = tableStyles.find(s => s.configId === selectedConfigId);
+                if (selectedStyle) {
+                    try {
+                        const parsed = JSON.parse(selectedStyle.configJson);
+                        const loadedStyling = parsed.styling;
+                        const loadedActions = parsed.actions;
+
+                        if (loadedStyling) {
+                            populateStylingTab(container, loadedStyling);
+                        }
+                        if (loadedActions) {
+                            populateActionsTab(container, loadedActions);
+                        }
+                        
+                        alert(`Preset de Tabela "${selectedStyle.widgetTitle}" carregado com sucesso!`);
+                    } catch (e) {
+                        console.error('Error loading table style:', e);
+                        alert('Error loading table style: ' + e.message);
+                    }
+                } else { alert('Preset não encontrado.'); }
+            });
+        }
     }
 
     function read(container) {
@@ -1031,6 +1106,142 @@ export const TableConfigEditor = (() => {
             _iconPickerPopup.remove(); 
             _iconPickerPopup = null; 
         });
+    }
+
+    function readStylingTab(container) {
+        const tableLayoutConfig = {
+            themeStyle: container.querySelector('#theme-style-select')?.value || 'minimal',
+            gridLines: container.querySelector('#grid-lines-select')?.value || 'horizontal',
+            density: container.querySelector('#density-select')?.value || 'comfortable',
+            headerStyle: container.querySelector('#header-style-select')?.value || 'minimal',
+            hoverEffect: container.querySelector('#hover-effect-select')?.value || 'row-highlight',
+            stripedRows: container.querySelector('#striped-rows-checkbox')?.checked !== false,
+            customStyles: {
+                fontFamily: container.querySelector('#custom-font-select')?.value || '',
+                fontSize: container.querySelector('#custom-font-size-checkbox')?.checked ? (container.querySelector('#custom-font-size-input')?.value + 'px') : '',
+                headerBgColor: container.querySelector('#custom-header-bg-enabled')?.checked ? container.querySelector('#custom-header-bg-input')?.value : '',
+                headerTextColor: container.querySelector('#custom-header-text-enabled')?.checked ? container.querySelector('#custom-header-text-input')?.value : '',
+                rowBgColor: container.querySelector('#custom-row-bg-enabled')?.checked ? container.querySelector('#custom-row-bg-input')?.value : '',
+                rowAltBgColor: container.querySelector('#custom-row-alt-bg-enabled')?.checked ? container.querySelector('#custom-row-alt-bg-input')?.value : '',
+                rowTextColor: container.querySelector('#custom-row-text-enabled')?.checked ? container.querySelector('#custom-row-text-input')?.value : '',
+                lineHeight: container.querySelector('#custom-line-height-checkbox')?.checked ? parseInt(container.querySelector('#custom-line-height-input')?.value, 10) : ''
+            }
+        };
+
+        return {
+            resizableColumns: container.querySelector('#resizable-cols-checkbox')?.checked !== false,
+            headerFilter: container.querySelector('#header-filter-checkbox')?.checked || false,
+            hideEmptyPlaceholder: container.querySelector('#hide-empty-placeholder-checkbox')?.checked || false,
+            rowSelection: container.querySelector('#row-selection-checkbox')?.checked || false,
+            tableLayoutConfig: tableLayoutConfig,
+            pagination: {
+                enabled: container.querySelector('#pagination-enabled-select')?.value || 'local',
+                pageSize: parseInt(container.querySelector('#pagination-size-input')?.value, 10) || 10
+            }
+        };
+    }
+
+    function readActionsTab(container) {
+        return {
+            editMode: container.querySelector('#edit-mode-checkbox')?.checked || false,
+            useSaveButton: container.querySelector('#use-save-btn-checkbox')?.checked || false,
+            drawerId: container.querySelector('#drawer-config-select')?.value || '',
+            enableAddNewBtn: container.querySelector('#enable-add-btn-checkbox')?.checked || false,
+            customButtons: _customButtons
+        };
+    }
+
+    function populateStylingTab(container, styling) {
+        const tlc = styling.tableLayoutConfig || {};
+        if (container.querySelector('#theme-style-select')) container.querySelector('#theme-style-select').value = tlc.themeStyle || 'minimal';
+        if (container.querySelector('#grid-lines-select')) container.querySelector('#grid-lines-select').value = tlc.gridLines || 'horizontal';
+        if (container.querySelector('#density-select')) container.querySelector('#density-select').value = tlc.density || 'comfortable';
+        if (container.querySelector('#header-style-select')) container.querySelector('#header-style-select').value = tlc.headerStyle || 'minimal';
+        if (container.querySelector('#hover-effect-select')) container.querySelector('#hover-effect-select').value = tlc.hoverEffect || 'row-highlight';
+        if (container.querySelector('#striped-rows-checkbox')) container.querySelector('#striped-rows-checkbox').checked = tlc.stripedRows !== false;
+        
+        if (container.querySelector('#resizable-cols-checkbox')) container.querySelector('#resizable-cols-checkbox').checked = styling.resizableColumns !== false;
+        if (container.querySelector('#header-filter-checkbox')) container.querySelector('#header-filter-checkbox').checked = !!styling.headerFilter;
+        if (container.querySelector('#hide-empty-placeholder-checkbox')) container.querySelector('#hide-empty-placeholder-checkbox').checked = !!styling.hideEmptyPlaceholder;
+        if (container.querySelector('#row-selection-checkbox')) container.querySelector('#row-selection-checkbox').checked = !!styling.rowSelection;
+
+        if (styling.pagination) {
+            if (container.querySelector('#pagination-enabled-select')) {
+                container.querySelector('#pagination-enabled-select').value = styling.pagination.enabled || 'local';
+                container.querySelector('#pagination-enabled-select').dispatchEvent(new Event('change'));
+            }
+            if (container.querySelector('#pagination-size-input')) container.querySelector('#pagination-size-input').value = styling.pagination.pageSize || 10;
+        }
+
+        const cs = tlc.customStyles || {};
+        if (container.querySelector('#custom-font-select')) container.querySelector('#custom-font-select').value = cs.fontFamily || '';
+        
+        if (container.querySelector('#custom-font-size-checkbox')) {
+            container.querySelector('#custom-font-size-checkbox').checked = !!cs.fontSize;
+            container.querySelector('#custom-font-size-checkbox').dispatchEvent(new Event('change'));
+        }
+        if (cs.fontSize && container.querySelector('#custom-font-size-input')) {
+            container.querySelector('#custom-font-size-input').value = parseInt(cs.fontSize, 10) || 12;
+        }
+
+        if (container.querySelector('#custom-header-bg-enabled')) {
+            container.querySelector('#custom-header-bg-enabled').checked = !!cs.headerBgColor;
+            container.querySelector('#custom-header-bg-enabled').dispatchEvent(new Event('change'));
+        }
+        if (cs.headerBgColor && container.querySelector('#custom-header-bg-input')) {
+            container.querySelector('#custom-header-bg-input').value = cs.headerBgColor;
+        }
+
+        if (container.querySelector('#custom-header-text-enabled')) {
+            container.querySelector('#custom-header-text-enabled').checked = !!cs.headerTextColor;
+            container.querySelector('#custom-header-text-enabled').dispatchEvent(new Event('change'));
+        }
+        if (cs.headerTextColor && container.querySelector('#custom-header-text-input')) {
+            container.querySelector('#custom-header-text-input').value = cs.headerTextColor;
+        }
+
+        if (container.querySelector('#custom-row-bg-enabled')) {
+            container.querySelector('#custom-row-bg-enabled').checked = !!cs.rowBgColor;
+            container.querySelector('#custom-row-bg-enabled').dispatchEvent(new Event('change'));
+        }
+        if (cs.rowBgColor && container.querySelector('#custom-row-bg-input')) {
+            container.querySelector('#custom-row-bg-input').value = cs.rowBgColor;
+        }
+
+        if (container.querySelector('#custom-row-alt-bg-enabled')) {
+            container.querySelector('#custom-row-alt-bg-enabled').checked = !!cs.rowAltBgColor;
+            container.querySelector('#custom-row-alt-bg-enabled').dispatchEvent(new Event('change'));
+        }
+        if (cs.rowAltBgColor && container.querySelector('#custom-row-alt-bg-input')) {
+            container.querySelector('#custom-row-alt-bg-input').value = cs.rowAltBgColor;
+        }
+
+        if (container.querySelector('#custom-row-text-enabled')) {
+            container.querySelector('#custom-row-text-enabled').checked = !!cs.rowTextColor;
+            container.querySelector('#custom-row-text-enabled').dispatchEvent(new Event('change'));
+        }
+        if (cs.rowTextColor && container.querySelector('#custom-row-text-input')) {
+            container.querySelector('#custom-row-text-input').value = cs.rowTextColor;
+        }
+
+        if (container.querySelector('#custom-line-height-checkbox')) {
+            container.querySelector('#custom-line-height-checkbox').checked = !!cs.lineHeight;
+            container.querySelector('#custom-line-height-checkbox').dispatchEvent(new Event('change'));
+        }
+        if (cs.lineHeight && container.querySelector('#custom-line-height-input')) {
+            container.querySelector('#custom-line-height-input').value = cs.lineHeight;
+        }
+    }
+
+    function populateActionsTab(container, actions) {
+        if (container.querySelector('#edit-mode-checkbox')) container.querySelector('#edit-mode-checkbox').checked = actions.editMode === true || actions.editMode === 'excel';
+        if (container.querySelector('#use-save-btn-checkbox')) container.querySelector('#use-save-btn-checkbox').checked = !!actions.useSaveButton;
+        if (container.querySelector('#drawer-config-select')) container.querySelector('#drawer-config-select').value = actions.drawerId || '';
+        if (container.querySelector('#enable-add-btn-checkbox')) container.querySelector('#enable-add-btn-checkbox').checked = !!actions.enableAddNewBtn;
+        
+        _customButtons = Array.isArray(actions.customButtons) ? actions.customButtons : [];
+        _activeButtonIdx = -1;
+        renderActionsLayout();
     }
 
     function getFieldCategory(type) { if (!type) return 'text'; const t = type.toLowerCase(); if (t === 'bool') return 'bool'; if (['int', 'float', 'numeric'].some(x => t.startsWith(x))) return 'number'; if (t.startsWith('date')) return 'date'; return 'text'; }

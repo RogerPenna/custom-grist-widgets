@@ -194,8 +194,21 @@ export async function renderRefList(options) {
                     }
                 }
                 if (!finalDisplayColId) {
-                    const firstSensibleColumn = Object.values(refSchema).find(c => c && c.type === 'Text' && !c.isFormula);
-                    finalDisplayColId = firstSensibleColumn ? firstSensibleColumn.colId : 'id';
+                    const cols = Object.values(refSchema).filter(c => c && c.colId !== 'id' && !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos');
+                    const commonNames = ['nome', 'name', 'titulo', 'title', 'label', 'descricao', 'description'];
+                    const foundByName = cols.find(c => commonNames.some(name => c.colId.toLowerCase().includes(name)));
+                    if (foundByName) {
+                        finalDisplayColId = foundByName.colId;
+                    } else {
+                        const textOrAnyCol = cols.find(c => c.type === 'Text' || c.type === 'Any' || c.type === 'Choice');
+                        if (textOrAnyCol) {
+                            finalDisplayColId = textOrAnyCol.colId;
+                        } else if (cols.length > 0) {
+                            finalDisplayColId = cols[0].colId;
+                        } else {
+                            finalDisplayColId = 'id';
+                        }
+                    }
                 }
 
                 // 3. Obtém registros já vinculados

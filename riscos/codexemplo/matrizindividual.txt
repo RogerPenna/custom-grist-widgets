@@ -1,0 +1,275 @@
+def gerar_matriz_riscos_individual():
+    # Obter o risco selecionado
+    risco_selecionado = rec  # 'rec' é o risco selecionado na tabela
+
+    # Obter a probabilidade e impacto do risco inerente
+    impacto_inerente = risco_selecionado.Impacto_Inerente_Num
+    probabilidade_inerente = risco_selecionado.Probabilidade_Inerente_Num
+
+    # Obter todas as análises de risco vinculadas ao risco selecionado, ordenadas por Data_Analise
+    analises = Analise_Risco.lookupRecords(RiscoFK=risco_selecionado.id, sort_by="Data_Analise")
+
+    max_valor = 5  # Máximo valor para probabilidade e impacto
+
+    # Função para determinar a cor da célula de acordo com o nível de risco
+    def obter_cor_risco(risk_score):
+        if risk_score == 0:
+            return ('#d3d3d3', 'Inexistente')
+        elif risk_score <= 2:
+            return ('#157AFB', 'Muito Baixo')
+        elif risk_score <= 5:
+            return ('#2AE028', 'Baixo')
+        elif risk_score <= 10:
+            return ('#E8D62F', 'Moderado')
+        elif risk_score <= 16:
+            return ('#FD9D28', 'Elevado')
+        else:
+            return ('#E00A17', 'Extremo')
+
+    # Função para determinar a cor de borda baseada na ordem global da análise
+    def obter_cor_borda(ordem, total):
+        # Calcula a intensidade com base na ordem
+        intensidade = int(255 * (ordem / total))  # Varia de 0 a 255
+        # De azul para vermelho
+        return f'rgb({intensidade}, 0, {255 - intensidade})'
+
+    # Pré-processar as análises para atribuir uma ordem global
+    ordem_map = {}
+    ordem_global = 1  # Iniciar a ordem em 1
+
+    # Se o risco inerente está presente, atribuir a primeira ordem
+    inerente_presente = (probabilidade_inerente > 0 and impacto_inerente > 0)
+    if inerente_presente:
+        ordem_map['inerente'] = ordem_global
+        ordem_global += 1
+
+    # Atribuir ordens às análises
+    for analise in analises:
+        ordem_map[analise.id] = ordem_global
+        ordem_global += 1
+
+    total_ordens = ordem_global - 1  # Total de elementos com ordem
+
+    # Dicionário para armazenar IDs dos elementos e suas classes
+    elemento_classes = {}
+    ids_in_order = []
+
+    # Iniciar o contêiner principal para matriz
+    html = '''
+    <div id="container-principal" style="position: relative; width: 100%; height: 100%;">
+        <!-- Container da Matriz -->
+        <div id="matriz-risco" style="position: relative; z-index: 1;">
+    '''
+
+    # Iniciar HTML da tabela da matriz
+    html += '<table id="tabela-matriz" style="border-collapse: separate; border-spacing: 2px; width: 100%; height: 100%; table-layout: fixed;">'
+
+    # Cabeçalho da tabela para impacto e probabilidade
+    html += '''
+    <tr>
+        <th rowspan="2" colspan="2" style="background-color: #4f4f4f; width: 80px; height: 100px; border: 1px solid white; border-radius: 8px; box-shadow: inset 0 0 0 2px #3d3d3d; color: white; text-align: center; vertical-align: middle;">
+            Evolução do Risco
+        </th>
+        <th colspan="5" style="background-color: #4f4f4f; color: white; text-align: center; border: 1px solid white; border-radius: 8px; box-shadow: inset 0 0 0 2px #3d3d3d;">IMPACTO</th>
+    </tr>
+    '''
+
+    html += '<tr>'
+    for impacto in range(1, max_valor + 1):
+        html += f'<th style="background-color: #4f4f4f; color: white; text-align: center; width: 80px; border: 1px solid white; border-radius: 8px; box-shadow: inset 0 0 0 2px #3d3d3d;">{impacto}</th>'
+    html += '</tr>'
+
+    # Construir a matriz
+    for probabilidade in range(max_valor, 0, -1):
+        html += '<tr>'
+        if probabilidade == max_valor:
+            html += '<th rowspan="5" style="background-color: #4f4f4f; color: white; text-align: center; vertical-align: middle; writing-mode: vertical-rl; transform: rotate(180deg); border: 1px solid white; border-radius: 8px; box-shadow: inset 0 0 0 2px #3d3d3d;">PROBABILIDADE</th>'
+        html += f'<th style="background-color: #4f4f4f; color: white; text-align: center; width: 40px; border: 1px solid white; border-radius: 8px; box-shadow: inset 0 0 0 2px #3d3d3d;">{probabilidade}</th>'
+
+        for impacto in range(1, max_valor + 1):
+            risk_score = impacto * probabilidade
+            cor_celula, nivel_risco = obter_cor_risco(risk_score)  # Obter a cor e o nível de risco
+
+            # Definir o estilo da célula sem alterar
+            cell_style = f'background-color: {cor_celula}; border-radius: 8px; border: 1px solid white; position: relative; height: 60px;'
+
+            # Verificar se a célula contém o risco inerente ou análises
+            elementos_na_celula = []
+
+            # Adicionar o risco inerente
+            if inerente_presente and (probabilidade_inerente == probabilidade) and (impacto_inerente == impacto):
+                ordem = ordem_map['inerente']
+                cor_borda = obter_cor_borda(ordem, total_ordens)
+                espessura_borda = 2 + ordem
+                tooltip_inerente = f"Inerente\nProb: {probabilidade_inerente}\nImp: {impacto_inerente}"
+                class_name = f'elemento-{ordem}'
+                elementos_na_celula.append(f'''
+                    <div class="elemento-matriz {class_name}" data-id="{ordem}" data-tooltip="{tooltip_inerente}" 
+                        style="
+                            background-color: rgba(255, 255, 255, 0.75); 
+                            width: 20px; 
+                            height: 20px; 
+                            border: {espessura_borda}px solid {cor_borda}; 
+                            border-radius: 4px; 
+                            font-size: 10px; 
+                            text-align: center; 
+                            line-height: 20px; 
+                            position: relative; 
+                            vertical-align: middle; 
+                            z-index: 3;">
+                        {ordem}
+                    </div>
+                ''')
+                elemento_classes[ordem] = class_name
+                ids_in_order.append(ordem)
+
+            # Adicionar cada análise do risco com o número e data
+            for analise in analises:
+                probabilidade_analise = analise.ProbNum
+                impacto_analise = analise.ImpactNum
+                data_analise = analise.Data_Analise.strftime('%d-%m-%y')  # Formata a data com 2 dígitos para o ano
+                tratamento_analise = analise.Tratamento
+
+                if (probabilidade_analise == probabilidade) and (impacto_analise == impacto):
+                    ordem = ordem_map[analise.id]
+                    cor_borda = obter_cor_borda(ordem, total_ordens)
+                    espessura_borda = 2 + ordem
+                    tooltip_analise = f"{data_analise}\nProb: {probabilidade_analise}\nImp: {impacto_analise}\nTrat: {tratamento_analise}"
+                    class_name = f'elemento-{ordem}'
+                    elementos_na_celula.append(f'''
+                        <div class="elemento-matriz {class_name}" data-id="{ordem}" data-tooltip="{tooltip_analise}" 
+                            style="
+                                background-color: rgba(255, 255, 255, 0.75); 
+                                width: 20px; 
+                                height: 20px; 
+                                border: {espessura_borda}px solid {cor_borda}; 
+                                border-radius: 4px; 
+                                font-size: 10px; 
+                                text-align: center; 
+                                line-height: 20px; 
+                                position: relative; 
+                                vertical-align: middle; 
+                                z-index: 3;">
+                            {ordem}
+                        </div>
+                    ''')
+                    elemento_classes[ordem] = class_name
+                    ids_in_order.append(ordem)
+
+            # Construir o HTML para a célula
+            html += f'<td style="{cell_style}">'
+
+            # Adicionar os elementos (caixas internas) na célula
+            for elemento in elementos_na_celula:
+                # Aplicar uma margem inferior fixa para separar as caixas
+                html += f'<div class="container-elemento" style="margin: 0 auto 5px auto; width: 50%; display: flex; justify-content: center;">{elemento}</div>'
+
+            html += '</td>'
+        html += '</tr>'
+
+    html += '</table></div>'
+
+    # Adicionar estilos para o tooltip e elementos
+    html += '''
+    <style>
+        #container-principal {
+            position: relative;
+        }
+        .elemento-matriz {
+            position: relative;
+            cursor: pointer;
+        }
+        .elemento-matriz:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            left: 50%;
+            top: -5px;
+            transform: translateX(-50%) translateY(-100%);
+            background-color: rgba(0, 0, 0, 0.75);
+            color: #fff;
+            padding: 5px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            z-index: 100;
+            width: max-content;
+            max-width: 200px;
+        }
+        /* Estilos para as setas */
+        .seta-direita::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 100%;
+            width: 30px; /* Ajuste conforme necessário */
+            height: 2px;
+            background-color: blue;
+            transform: translateY(-50%);
+            z-index: 2;
+        }
+        .seta-direita::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 100%;
+            width: 0;
+            height: 0;
+            border-top: 5px solid transparent;
+            border-bottom: 5px solid transparent;
+            border-left: 10px solid blue;
+            transform: translateY(-50%);
+            z-index: 2;
+        }
+    </style>
+    '''
+
+    # Adicionar as setas usando CSS
+    # Vamos assumir que as setas apontam para a direita
+    # Adicionar a classe 'seta-direita' ao elemento atual para criar a seta
+    for i in range(len(ids_in_order) - 1):
+        start_id = ids_in_order[i]
+        end_id = ids_in_order[i + 1]
+        start_class = elemento_classes[start_id]
+        end_class = elemento_classes[end_id]
+
+        # Adicionar uma classe para a seta apenas ao elemento inicial
+        # Para evitar múltiplas setas no mesmo elemento, verificamos se o elemento já tem uma seta
+        html += f'''
+        <style>
+            .{start_class}.seta-direita::after {{
+                content: '';
+                position: absolute;
+                top: 50%;
+                left: 100%;
+                width: 30px; /* Comprimento da seta */
+                height: 2px;
+                background-color: blue;
+                transform: translateY(-50%);
+                z-index: 2;
+            }}
+            .{start_class}.seta-direita::before {{
+                content: '';
+                position: absolute;
+                top: 50%;
+                left: 100%;
+                width: 0;
+                height: 0;
+                border-top: 5px solid transparent;
+                border-bottom: 5px solid transparent;
+                border-left: 10px solid blue;
+                transform: translateY(-50%);
+                z-index: 2;
+            }}
+        </style>
+        '''
+        # Aplicar a classe 'seta-direita' ao elemento correspondente
+        # Isso pode ser feito adicionando a classe diretamente no HTML, mas como estamos gerando o HTML dinamicamente,
+        # precisamos incorporar a classe nas divs de 'elemento-matriz'.
+        # Para simplificar, vamos inserir um <style> para cada seta.
+
+    # Container para setas sobrepostas (SVG) removido, pois estamos usando CSS apenas
+
+    html += '</div>'  # Fechamento do container principal
+
+    return html
+
+return gerar_matriz_riscos_individual()

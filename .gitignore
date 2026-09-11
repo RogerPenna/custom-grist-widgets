@@ -4,3 +4,5 @@ proxy_debug.txt
 __pycache__/
 .DS_Store
 .env
+/exemplos ignore/
+PQC exporter/

@@ -1,6 +1,6 @@
-import { GristTableLens } from '../grist-table-lens/grist-table-lens.js?v=1.3.29';
-import { GristDataWriter } from '../grist-data-writer.js?v=1.3.29';
-import { publish } from '../grist-event-bus/grist-event-bus.js?v=1.3.29';
+import { GristTableLens } from '../grist-table-lens/grist-table-lens.js?v=1.3.32';
+import { GristDataWriter } from '../grist-data-writer.js?v=1.3.32';
+import { publish } from '../grist-event-bus/grist-event-bus.js?v=1.3.32';
 import { GristRestApi } from '../grist-rest-api.js';
 
 // Import editor modules
@@ -14,7 +14,9 @@ import { ProgressBarConfigEditor } from './editors/config-progress-bar.js?v=1.0.
 import { ColorOptionsConfigEditor } from './editors/config-color-options.js?v=1.0.3';
 import { TimelineConfigEditor } from './editors/config-timeline.js';
 import { GanttConfigEditor } from './editors/config-gantt.js';
-import { DashboardConfigEditor } from './editors/config-dashboard.js?v=1.3.29';
+import { DashboardConfigEditor } from './editors/config-dashboard.js?v=1.3.32';
+import { RiscosConfigEditor } from './editors/config-riscos.js';
+import { DMSConfigEditor } from './editors/config-dms.js';
 
 let overlay = null;
 let _grist = null;
@@ -23,6 +25,7 @@ const COMPONENT_TYPE_COLORS = {
     'CardSystem': '#0d6efd', // blue
     'Drawer': '#198754', // green
     'CardStyle': '#6c757d', // grey
+    'TableStyle': '#6c757d', // grey
     'Table': '#fd7e14', // orange
     'BSC': '#6f42c1', // purple
     'Indicators': '#d63384', // pink
@@ -32,6 +35,8 @@ const COMPONENT_TYPE_COLORS = {
     'Timeline': '#0dcaf0', // cyan
     'Gantt': '#ffc107', // gold
     'Dashboard': '#2c5e5a', // dark teal
+    'Riscos': '#a855f7', // purple
+    'DMS': '#0d9488', // Teal
     'default': '#6c757d' // grey
 };
 
@@ -161,8 +166,8 @@ export async function renderMainUI(grist, container, initialConfigId, componentT
         }
 
         // --- MASTER LISTS ---
-        const MASTER_WIDGET_TYPES = ['Card System', 'Drawer', 'Table', 'BSC', 'Indicators', 'Timeline', 'Gantt', 'Dashboard'];
-        const MASTER_COMPONENT_TYPES = ['Progress Bar', 'Color Options', 'Card Style', 'Status Icons'];
+        const MASTER_WIDGET_TYPES = ['Card System', 'Drawer', 'Table', 'BSC', 'Indicators', 'Timeline', 'Gantt', 'Dashboard', 'Riscos', 'DMS'];
+        const MASTER_COMPONENT_TYPES = ['Progress Bar', 'Color Options', 'Card Style', 'Status Icons', 'Table Style'];
 
         // --- NOVA VERIFICAÇÃO DE COLUNAS (TRIPARTIÇÃO) ---
         const tableSchema = await tableLens.getTableSchema(CONFIG_TABLE, { mode: 'raw' });
@@ -180,7 +185,8 @@ export async function renderMainUI(grist, container, initialConfigId, componentT
             console.log("ConfigManager: Caught grf-save-card-style event", e.detail);
             const { configJson, componentType, description } = e.detail;
             
-            const styleName = prompt("Insira um nome para este novo Estilo de Card:", "Meu Novo Estilo");
+            const promptLabel = componentType === 'Table Style' ? "Insira um nome para este novo Estilo de Tabela:" : "Insira um nome para este novo Estilo de Card:";
+            const styleName = prompt(promptLabel, "Meu Novo Estilo");
             if (!styleName) return;
 
             const newRecord = {
@@ -323,6 +329,8 @@ export async function renderMainUI(grist, container, initialConfigId, componentT
             'Timeline': TimelineConfigEditor,
             'Gantt': GanttConfigEditor,
             'Dashboard': DashboardConfigEditor,
+            'Riscos': RiscosConfigEditor,
+            'DMS': DMSConfigEditor,
             // Design System Components
             'ProgressBar': ProgressBarConfigEditor,
             'ColorOptions': ColorOptionsConfigEditor,

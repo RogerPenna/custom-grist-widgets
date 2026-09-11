@@ -28,6 +28,8 @@ export function renderBool(options) {
             // Para todos os outros casos não editáveis, mostrar texto simples.
             container.textContent = cellValue ? '✓ Sim' : '☐ Não';
             container.style.fontFamily = 'monospace';
+            container.style.width = '100%';
+            container.style.textAlign = 'left';
         }
         
         // Aplica feedback visual se necessário.

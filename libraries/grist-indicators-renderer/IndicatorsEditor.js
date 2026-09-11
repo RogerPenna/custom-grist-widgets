@@ -1,6 +1,7 @@
 // libraries/grist-indicators-renderer/IndicatorsEditor.js
 import { GristDataWriter } from '../grist-data-writer.js';
 import { IndicatorsRenderer } from './IndicatorsRenderer.js';
+import { IndicatorFormulaBuilder } from './IndicatorFormulaBuilder.js';
 
 export const IndicatorsEditor = (() => {
     let _modalOverlay = null;
@@ -11,15 +12,17 @@ export const IndicatorsEditor = (() => {
     let _startYear = null;
     let _endYear = null;
     let _periodicity = null;
+    let _allRecords = [];
 
     function open(options) {
-        const { record, config, selectedYear, periodicity, onSave } = options;
+        const { record, config, selectedYear, periodicity, allRecords, onSave } = options;
         _onSaveCallback = onSave;
         _currentRecord = record;
         _currentConfig = config;
         _startYear = parseInt(selectedYear);
         _endYear = parseInt(selectedYear);
         _periodicity = periodicity;
+        _allRecords = allRecords || [];
 
         _createModalDOM(record.Nome);
         _initTabulator();
@@ -42,6 +45,21 @@ export const IndicatorsEditor = (() => {
             yearOptions.push(`<option value="${y}">${y}</option>`);
         }
 
+        const mapping = _currentConfig.mapping || _currentConfig || {};
+        const formulaField = mapping.formulaField || _currentConfig.formulaField;
+        const formulaString = formulaField ? (_currentRecord[formulaField] || '') : '';
+        const hasFormula = !!formulaString && formulaString.trim() !== '' && formulaString !== '{}';
+
+        let formulaText = 'Fórmula não configurada (Manual)';
+        if (hasFormula) {
+            try {
+                const parsed = JSON.parse(formulaString);
+                formulaText = `Calculado: ${parsed.expression}`;
+            } catch (e) {
+                formulaText = `Calculado: ${formulaString}`;
+            }
+        }
+
         _modalOverlay.innerHTML = `
             <div class="grf-editor-modal">
                 <div class="grf-editor-header">
@@ -55,6 +73,15 @@ export const IndicatorsEditor = (() => {
                     <button class="grf-editor-close">&times;</button>
                 </div>
                 <div class="grf-editor-body">
+                    <div class="formula-section" style="margin-bottom:15px; padding:12px; background:#f1f5f9; border-radius:6px; border:1px solid #cbd5e1; display:flex; justify-content:space-between; align-items:center;">
+                        <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; color:#334155;">
+                            ⚙️ <strong>Fórmula:</strong> <span id="formula-preview-text" title="${formulaText}">${formulaText}</span>
+                        </div>
+                        ${formulaField ? 
+                            `<button class="btn btn-secondary" id="editor-formula-btn" style="padding:4px 10px; font-size:11px; margin-left:10px;">Configurar Fórmula</button>` :
+                            `<span style="font-size:10px; color:#94a3b8; margin-left:10px;">(Mapeie a coluna Fórmula para usar)</span>`
+                        }
+                    </div>
                     <div id="tabulator-editor"></div>
                 </div>
                 <div class="grf-editor-footer">
@@ -93,6 +120,34 @@ export const IndicatorsEditor = (() => {
             _initTabulator();
         };
 
+        const formulaBtn = _modalOverlay.querySelector('#editor-formula-btn');
+        if (formulaBtn) {
+            formulaBtn.onclick = () => {
+                IndicatorFormulaBuilder.open({
+                    record: _currentRecord,
+                    formulaString: formulaString,
+                    allRecords: _allRecords,
+                    config: _currentConfig,
+                    onSave: async (newFormulaJson) => {
+                        const writer = new GristDataWriter(window.grist);
+                        try {
+                            formulaBtn.disabled = true;
+                            formulaBtn.textContent = 'Salvando...';
+                            await writer.updateRecords(_currentConfig.tableId, [{
+                                id: _currentRecord.id,
+                                fields: { [formulaField]: newFormulaJson }
+                            }]);
+                            _close();
+                        } catch (err) {
+                            alert("Erro ao salvar fórmula: " + err.message);
+                            formulaBtn.disabled = false;
+                            formulaBtn.textContent = 'Configurar Fórmula';
+                        }
+                    }
+                });
+            };
+        }
+
         _modalOverlay.querySelector('.grf-editor-close').onclick = _close;
         _modalOverlay.querySelector('#editor-cancel-btn').onclick = _close;
         _modalOverlay.querySelector('#editor-save-btn').onclick = _handleSave;
@@ -106,9 +161,9 @@ export const IndicatorsEditor = (() => {
         const mapping = config.mapping || config || {};
         const resultsField = mapping.resultsField || config.resultsField;
         const targetField = mapping.targetField || config.targetField;
-        
-        const rawResultsJson = record[resultsField];
-        const rawTargetsJson = record[targetField];
+        const formulaField = mapping.formulaField || config.formulaField;
+        const formulaString = formulaField ? (record[formulaField] || '') : '';
+        const hasFormula = !!formulaString && formulaString.trim() !== '' && formulaString !== '{}';
         
         const _parseJson = (val) => {
             try {
@@ -116,8 +171,8 @@ export const IndicatorsEditor = (() => {
             } catch(e) { return {}; }
         };
 
-        const resultsMaster = _parseJson(rawResultsJson);
-        const targetsMaster = _parseJson(rawTargetsJson);
+        const resultsMaster = _parseJson(record[resultsField]);
+        const targetsMaster = _parseJson(record[targetField]);
         const monthKeys = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 
         const tableData = [];
@@ -152,7 +207,7 @@ export const IndicatorsEditor = (() => {
             data: tableData,
             layout: "fitColumns",
             height: "400px",
-            clipboard: "paste",
+            clipboard: !hasFormula ? "paste" : false,
             clipboardPasteAction: "update",
             clipboardPasteParser: "table",
             columns: [
@@ -175,10 +230,17 @@ export const IndicatorsEditor = (() => {
                         cell.getRow().update({ isManualTarget: true });
                     }
                 },
-                { title: "Resultado", field: "result", editor: "number", headerSort: false, cellEdited: (cell) => {
-                    const row = cell.getRow();
-                    row.update({ updatedAt: new Date().toISOString().split('T')[0] });
-                }},
+                { 
+                    title: "Resultado", 
+                    field: "result", 
+                    editor: hasFormula ? null : "number", 
+                    cssClass: hasFormula ? "readonly-col" : "",
+                    headerSort: false, 
+                    cellEdited: (cell) => {
+                        const row = cell.getRow();
+                        row.update({ updatedAt: new Date().toISOString().split('T')[0] });
+                    }
+                },
                 { title: "Última Atualização", field: "updatedAt", width: 150, headerSort: false, cssClass: "readonly-col", clipboard: false }
             ],
         });

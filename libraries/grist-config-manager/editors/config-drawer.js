@@ -149,7 +149,10 @@ export const DrawerConfigEditor = (() => {
 
                 <div class="config-section-title">Regras e Ordem dos Campos</div>
                 <div class="drawer-config-section">
-                    <button type="button" id="addTabBtn" class="btn btn-primary add-tab-btn">📑 + Adicionar Aba</button>
+                    <div style="display:flex; gap:8px; margin-bottom:10px;">
+                        <button type="button" id="addTabBtn" class="btn btn-primary add-tab-btn">📑 + Aba de Campos</button>
+                        <button type="button" id="addWidgetTabBtn" class="btn btn-secondary add-tab-btn" style="background:#e0e7ff; border-color:#818cf8; color:#4338ca;">🧩 + Aba de Widget</button>
+                    </div>
                     <ul id="unifiedFieldList" class="field-order-list"></ul>
                 </div>
             </div>
@@ -245,12 +248,17 @@ export const DrawerConfigEditor = (() => {
         const usedFields = new Set();
 
         for (const tab of tabs) {
-            unifiedListEl.appendChild(createTabCard(tab.title, tab.isHidden));
-            for (const fieldId of tab.fields) {
-                const col = allCols.find(c => c.colId === fieldId);
-                if (col) {
-                    unifiedListEl.appendChild(createFieldCard(col, configData, lens));
-                    usedFields.add(fieldId);
+            // Widget tabs: pass full config to createTabCard, no field cards needed
+            if (tab.type === 'widget') {
+                unifiedListEl.appendChild(createTabCard(tab));
+            } else {
+                unifiedListEl.appendChild(createTabCard(tab.title, tab.isHidden));
+                for (const fieldId of (tab.fields || [])) {
+                    const col = allCols.find(c => c.colId === fieldId);
+                    if (col) {
+                        unifiedListEl.appendChild(createFieldCard(col, configData, lens));
+                        usedFields.add(fieldId);
+                    }
                 }
             }
         }
@@ -419,11 +427,30 @@ export const DrawerConfigEditor = (() => {
         listItems.forEach(item => {
             if (item.classList.contains('tab-card')) {
                 if (currentTab) drawerConfig.tabs.push(currentTab);
-                currentTab = { 
-                    title: item.querySelector('.tab-card-input').value, 
-                    isHidden: item.querySelector('.is-tab-hidden-checkbox')?.checked || false,
-                    fields: [] 
-                };
+
+                // Check if this is a widget tab
+                if (item.dataset.tabType === 'widget') {
+                    const selectVal = item.querySelector('.widget-config-select')?.value || '';
+                    const isCustom = (selectVal === '__custom__');
+                    const heightSelect = item.querySelector('.widget-height-select')?.value || '100%';
+                    const customHeight = item.querySelector('.widget-height-custom-input')?.value.trim();
+                    const resolvedHeight = (heightSelect === 'custom' && customHeight) ? customHeight : (heightSelect !== 'custom' ? heightSelect : '100%');
+                    currentTab = {
+                        title: item.querySelector('.tab-card-input')?.value || 'Aba',
+                        isHidden: item.querySelector('.is-tab-hidden-checkbox')?.checked || false,
+                        type: 'widget',
+                        targetConfigId: isCustom ? '' : selectVal,
+                        filterColumn: item.querySelector('.widget-filter-col-input')?.value.trim() || '',
+                        widgetUrl: isCustom ? (item.querySelector('.widget-url-input')?.value.trim() || '') : '',
+                        height: resolvedHeight
+                    };
+                } else {
+                    currentTab = { 
+                        title: item.querySelector('.tab-card-input').value, 
+                        isHidden: item.querySelector('.is-tab-hidden-checkbox')?.checked || false,
+                        fields: [] 
+                    };
+                }
             } else if (item.classList.contains('field-card')) {
                 if (!currentTab) currentTab = { title: 'Principal', isHidden: false, fields: [] };
                 const colId = item.dataset.colId;
@@ -605,6 +632,12 @@ export const DrawerConfigEditor = (() => {
         container.querySelector('#addTabBtn').addEventListener('click', () => { 
             const list = container.querySelector('#unifiedFieldList'); 
             list.appendChild(createTabCard('Nova Aba')); 
+            updateDebugJson();
+        });
+        container.querySelector('#addWidgetTabBtn')?.addEventListener('click', () => { 
+            const list = container.querySelector('#unifiedFieldList'); 
+            list.appendChild(createTabCard({ title: 'Novo Widget', type: 'widget', targetConfigId: '', filterColumn: '', height: '100%' })); 
+            updateDebugJson();
         });
         const posSelector = container.querySelector('#layoutLabelPositionSelector');
         if (posSelector) {
@@ -615,21 +648,121 @@ export const DrawerConfigEditor = (() => {
         }
     }
 
-    function createTabCard(title, isHidden = false) { 
+    function createTabCard(titleOrConfig, isHidden = false) { 
+        // Support both old signature (title, isHidden) and new signature (tabConfig object)
+        let tabTitle, tabIsHidden, tabType, tabTargetConfigId, tabFilterColumn, tabWidgetUrl, tabWidgetHeight;
+        if (typeof titleOrConfig === 'object' && titleOrConfig !== null) {
+            tabTitle = titleOrConfig.title || 'Nova Aba';
+            tabIsHidden = titleOrConfig.isHidden || false;
+            tabType = titleOrConfig.type || 'fields';
+            tabTargetConfigId = titleOrConfig.targetConfigId || '';
+            tabFilterColumn = titleOrConfig.filterColumn || '';
+            tabWidgetUrl = titleOrConfig.widgetUrl || '';
+            tabWidgetHeight = titleOrConfig.height || '100%';
+        } else {
+            tabTitle = titleOrConfig || 'Nova Aba';
+            tabIsHidden = isHidden;
+            tabType = 'fields';
+            tabTargetConfigId = '';
+            tabFilterColumn = '';
+            tabWidgetUrl = '';
+            tabWidgetHeight = '100%';
+        }
+
+        const isWidget = tabType === 'widget';
+
         const card = document.createElement('li'); card.className = 'tab-card'; card.draggable = true; 
+        if (isWidget) card.dataset.tabType = 'widget';
         
         const svgEyeOpen = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#22c55e"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
         const svgEyeClosed = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#94a3b8"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`;
 
+        let configOptions = '';
+        if (isWidget && Array.isArray(_allConfigs)) {
+            const widgetConfigs = _allConfigs.filter(c => c.componentType !== 'Dashboard' && c.componentType !== 'CardStyle' && c.componentType !== 'Drawer');
+            configOptions = widgetConfigs.map(c => {
+                const title = c.widgetTitle || c.configId;
+                const type = c.componentType || 'Widget';
+                const isSelected = (tabTargetConfigId === c.configId);
+                return `<option value="${c.configId}" ${isSelected ? 'selected' : ''}>${title} (${type} - ${c.configId})</option>`;
+            }).join('');
+        }
+
+        const widgetFieldsHtml = isWidget ? `
+            <div class="widget-tab-config" style="display:flex; flex-wrap:wrap; gap:6px; flex:1; min-width:0; align-items:center;">
+                <input type="text" class="tab-card-input" value="${tabTitle}" placeholder="Título da Aba" style="width:130px; font-weight:600; padding:3px 6px; font-size:12px;" title="Título exibido na aba do Drawer">
+                <select class="widget-config-select" style="flex:2; min-width:180px; font-size:11px; padding:4px 6px; border:1px solid #cbd5e1; border-radius:4px; background:#fff;" title="Selecione a configuração do Widget">
+                    <option value="">-- Selecione o Widget / Tabela --</option>
+                    <optgroup label="✨ Widgets Nativos Especializados">
+                        <option value="native:calibration_analysis" ${tabTargetConfigId === 'native:calibration_analysis' ? 'selected' : ''}>📊 Análise Metrológica de Calibração (Laudo, Tabela e PDF)</option>
+                    </optgroup>
+                    <optgroup label="📋 Widgets e Tabelas do Sistema (Grf_config)">
+                        ${configOptions}
+                        <option value="__custom__" ${(!tabTargetConfigId && tabWidgetUrl) ? 'selected' : ''}>🔗 URL Personalizada...</option>
+                    </optgroup>
+                </select>
+                <input type="text" class="widget-filter-col-input" value="${tabFilterColumn}" placeholder="Coluna de Filtro (ex: ID_PAI)" style="flex:1; min-width:130px; font-size:11px; padding:4px 6px; border:1px solid #cbd5e1; border-radius:4px; display:${tabTargetConfigId.startsWith('native:') ? 'none' : 'block'};" title="Coluna na tabela do widget que vincula ao ID deste registro (opcional)">
+                <select class="widget-height-select" style="width:125px; font-size:11px; padding:4px 6px; border:1px solid #cbd5e1; border-radius:4px; background:#fff;" title="Altura do widget em relação à Gaveta">
+                    <option value="100%" ${tabWidgetHeight === '100%' || !tabWidgetHeight || tabWidgetHeight === '400px' ? 'selected' : ''}>100% da Gaveta</option>
+                    <option value="90%" ${tabWidgetHeight === '90%' ? 'selected' : ''}>90% da Gaveta</option>
+                    <option value="80%" ${tabWidgetHeight === '80%' ? 'selected' : ''}>80% da Gaveta</option>
+                    <option value="75%" ${tabWidgetHeight === '75%' ? 'selected' : ''}>75% da Gaveta</option>
+                    <option value="60%" ${tabWidgetHeight === '60%' ? 'selected' : ''}>60% da Gaveta</option>
+                    <option value="50%" ${tabWidgetHeight === '50%' ? 'selected' : ''}>50% da Gaveta</option>
+                    <option value="custom" ${!['100%','90%','80%','75%','60%','50%'].includes(tabWidgetHeight) && tabWidgetHeight && tabWidgetHeight !== '400px' ? 'selected' : ''}>Outro %...</option>
+                </select>
+                <input type="text" class="widget-height-custom-input" value="${!['100%','90%','80%','75%','60%','50%'].includes(tabWidgetHeight) && tabWidgetHeight && tabWidgetHeight !== '400px' ? tabWidgetHeight : ''}" placeholder="Ex: 85%" style="display:${!['100%','90%','80%','75%','60%','50%'].includes(tabWidgetHeight) && tabWidgetHeight && tabWidgetHeight !== '400px' ? 'block' : 'none'}; width:65px; font-size:11px; padding:4px 6px; border:1px solid #cbd5e1; border-radius:4px;" title="Digite a altura em %">
+                <input type="text" class="widget-url-input" value="${tabWidgetUrl}" placeholder="URL Personalizada (ex: ../MeuWidget/index.html)" style="display:${(!tabTargetConfigId && tabWidgetUrl) ? 'block' : 'none'}; width:100%; font-size:11px; padding:3px 6px; border:1px solid #cbd5e1; border-radius:4px; margin-top:4px;">
+            </div>
+        ` : `
+            <input type="text" class="tab-card-input" value="${tabTitle}">
+        `;
+
         card.innerHTML = ` 
-            <span class="tab-card-icon">📑</span> 
-            <input type="text" class="tab-card-input" value="${title}"> 
-            <input type="checkbox" class="is-tab-hidden-checkbox" style="display:none;" ${isHidden ? 'checked' : ''}>
+            <span class="tab-card-icon">${isWidget ? '🧩' : '📑'}</span> 
+            ${widgetFieldsHtml}
+            <input type="checkbox" class="is-tab-hidden-checkbox" style="display:none;" ${tabIsHidden ? 'checked' : ''}>
             <div class="icon-toggle icon-tab-hidden" title="Visibilidade da Aba" style="cursor:pointer; display:flex; align-items:center; justify-content:center; width:24px; height:24px; margin-left:8px;">
-                ${isHidden ? svgEyeClosed : svgEyeOpen}
+                ${tabIsHidden ? svgEyeClosed : svgEyeOpen}
             </div>
             <button type="button" class="delete-tab-btn" title="Deletar Aba">🗑️</button> 
         `; 
+        
+        const configSelect = card.querySelector('.widget-config-select');
+        const customUrlInput = card.querySelector('.widget-url-input');
+        const filterColInput = card.querySelector('.widget-filter-col-input');
+        const heightSelect = card.querySelector('.widget-height-select');
+        const heightCustomInput = card.querySelector('.widget-height-custom-input');
+
+        function updateWidgetFieldStates() {
+            if (configSelect) {
+                const val = configSelect.value;
+                if (customUrlInput) {
+                    customUrlInput.style.display = (val === '__custom__') ? 'block' : 'none';
+                }
+                if (filterColInput) {
+                    const isNative = val.startsWith('native:');
+                    filterColInput.style.display = isNative ? 'none' : 'block';
+                }
+            }
+            if (heightSelect && heightCustomInput) {
+                heightCustomInput.style.display = (heightSelect.value === 'custom') ? 'block' : 'none';
+            }
+        }
+
+        if (configSelect) {
+            configSelect.addEventListener('change', () => {
+                updateWidgetFieldStates();
+                updateDebugJson();
+            });
+        }
+        if (heightSelect) {
+            heightSelect.addEventListener('change', () => {
+                updateWidgetFieldStates();
+                updateDebugJson();
+            });
+        }
+        updateWidgetFieldStates(); 
         
         card.querySelector('.delete-tab-btn').addEventListener('click', (e) => { 
             e.stopPropagation();

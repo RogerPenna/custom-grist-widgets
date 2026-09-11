@@ -1,6 +1,6 @@
 // libraries/grist-table-renderer/TableRenderer.js
-import { renderField } from '../grist-field-renderer/grist-field-renderer.js?v=1.3.29';
-import { publish } from '../grist-event-bus/grist-event-bus.js?v=1.3.29';
+import { renderField } from '../grist-field-renderer/grist-field-renderer.js?v=1.3.32';
+import { publish } from '../grist-event-bus/grist-event-bus.js?v=1.3.32';
 
 export const TableRenderer = (() => {
 
@@ -769,7 +769,7 @@ export const TableRenderer = (() => {
                 }
             }
 
-            const isEditable = actions.editMode === 'excel' && !colConfig.locked;
+            const isEditable = (actions.editMode === 'excel' || actions.editMode === true) && !colConfig.locked;
             
             // --- MAPEAMENTO DE EDITORES POR TIPO ---
             let editor = undefined;
@@ -830,7 +830,7 @@ export const TableRenderer = (() => {
                 editable: isEditable,
                 editor: editor,
                 editorParams: editorParams,
-                validator: (actions.editMode === 'excel' && colConfig.required) ? 'required' : undefined,
+                validator: ((actions.editMode === 'excel' || actions.editMode === true) && colConfig.required) ? 'required' : undefined,
                 formatter: formatter,
                 formatterParams: { ...(colConfig.formatterParams || {}), colConfig: colConfig },
                 tooltip: true,
@@ -1191,7 +1191,13 @@ export const TableRenderer = (() => {
             });
             // Force redraw after a short delay to ensure correct column alignment and width calculation
             setTimeout(() => {
-                tabulatorTable.redraw(true);
+                if (tabulatorTable && tableEl && document.body.contains(tableEl)) {
+                    try {
+                        tabulatorTable.redraw(true);
+                    } catch (e) {
+                        console.warn("TableRenderer: Redraw failed, table might be detached.", e);
+                    }
+                }
             }, 100);
         });
 

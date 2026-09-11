@@ -1,5 +1,4 @@
-// js/gristApiService.js
-import { PRIMARY_TABLE_NAME, ANALYSIS_TABLE_NAME } from './config.js'; // Importa nomes
+import { getTableId, getAnalysesTableId, getColumnKey } from './config.js';
 
 let allColumnsMetadataCache = null; // Cache para metadados das colunas
 let analysisTableIdCache = null;
@@ -40,28 +39,39 @@ async function fetchAllColumnsMetadata() {
 export async function findAnalysisLinkingColumn() {
     if (linkingColumnNameCache) return linkingColumnNameCache; // Retorna do cache se já encontrado
 
-    console.log(`API: Identificando coluna de ligação ${ANALYSIS_TABLE_NAME} -> ${PRIMARY_TABLE_NAME}...`);
+    const primaryTable = getTableId();
+    const analysesTable = getAnalysesTableId();
+
+    console.log(`API: Identificando coluna de ligação ${analysesTable} -> ${primaryTable}...`);
     try {
         const columnsMeta = await fetchAllColumnsMetadata();
         const tables = await grist.docApi.fetchTable('_grist_Tables'); // Precisa da lista de tabelas
 
-        const analysisTableMeta = tables.find(t => t.tableId === ANALYSIS_TABLE_NAME);
-        if (!analysisTableMeta) {
-            throw new Error(`Tabela de análise "${ANALYSIS_TABLE_NAME}" não encontrada em _grist_Tables.`);
+        let analysisTableMetaId = null;
+        if (tables && tables.id && tables.tableId) {
+            for (let i = 0; i < tables.id.length; i++) {
+                if (tables.tableId[i] === analysesTable) {
+                    analysisTableMetaId = tables.id[i];
+                    break;
+                }
+            }
         }
-        analysisTableIdCache = analysisTableMeta.id; // Cacheia o ID interno da tabela de análise
+        if (!analysisTableMetaId) {
+            throw new Error(`Tabela de análise "${analysesTable}" não encontrada em _grist_Tables.`);
+        }
+        analysisTableIdCache = analysisTableMetaId; // Cacheia o ID interno da tabela de análise
 
         let foundColumn = null;
         for (let i = 0; i < columnsMeta.id.length; i++) {
             // Verifica se a coluna pertence à tabela de Análise E é referência para a tabela de Riscos
-            if (columnsMeta.parentId[i] === analysisTableIdCache && columnsMeta.type[i] === `Ref:${PRIMARY_TABLE_NAME}`) {
+            if (columnsMeta.parentId[i] === analysisTableIdCache && columnsMeta.type[i] === `Ref:${primaryTable}`) {
                 foundColumn = columnsMeta.colId[i];
                 break;
             }
         }
 
         if (!foundColumn) {
-            throw new Error(`Não foi possível encontrar a coluna em "${ANALYSIS_TABLE_NAME}" que referencia "${PRIMARY_TABLE_NAME}". Verifique a configuração.`);
+            throw new Error(`Não foi possível encontrar a coluna em "${analysesTable}" que referencia "${primaryTable}". Verifique a configuração.`);
         }
 
         linkingColumnNameCache = foundColumn; // Cacheia o nome da coluna
@@ -79,9 +89,10 @@ export async function findAnalysisLinkingColumn() {
 let allAnalysesDataCache = null;
 export async function fetchAllAnalyses() {
     if (allAnalysesDataCache) return allAnalysesDataCache;
-    console.log(`API: Buscando TODAS as análises de "${ANALYSIS_TABLE_NAME}"...`);
+    const analysesTable = getAnalysesTableId();
+    console.log(`API: Buscando TODAS as análises de "${analysesTable}"...`);
     try {
-        allAnalysesDataCache = await fetchTableData(ANALYSIS_TABLE_NAME);
+        allAnalysesDataCache = await fetchTableData(analysesTable);
          if (!allAnalysesDataCache || !allAnalysesDataCache.id) {
              throw new Error("Dados de análise inválidos recebidos.");
          }
@@ -91,7 +102,6 @@ export async function fetchAllAnalyses() {
         allAnalysesDataCache = null; // Limpa cache em erro
         throw error;
     }
-
 }
 
 /**
@@ -116,7 +126,21 @@ export function filterAnalysesForRisk(riskId) {
 
     console.log(`API: Filtrando ${totalAnalyses} análises cacheadas para Risco ID ${riskId}...`);
     for (let i = 0; i < totalAnalyses; i++) {
-        if (linkingColumnValues[i] === riskId) {
+        let val = linkingColumnValues[i];
+        let refId = null;
+
+        if (typeof val === 'number') {
+            refId = val;
+        } else if (typeof val === 'object' && val !== null) {
+            if (val.id !== undefined) refId = val.id;
+            else if (val.displayValue !== undefined) refId = val.displayValue; // Fallback
+        } else if (Array.isArray(val) && val.length > 0) {
+            refId = val[0] === 'L' ? val[1] : val[0];
+        } else {
+            refId = val; // Direct fallback
+        }
+
+        if (Number(refId) === Number(riskId)) {
             const analysisRecord = {};
             columnNames.forEach(colName => {
                 analysisRecord[colName] = allAnalysesDataCache[colName][i];

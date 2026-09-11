@@ -1,0 +1,2684 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestor PQO - Plano da Qualidade da Obra</title>
+  <!-- Google Fonts Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Leaflet Map CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <!-- Leaflet Geocoder para buscas no mapa -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+  <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+  <!-- D3.js, d3-flextree & d3-org-chart for corporate hierarchical organograms -->
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/d3-flextree@2.1.2/build/d3-flextree.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/d3-org-chart@3"></script>
+  <script type="module" crossorigin src="./assets/index-CN5smkpJ.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-CdOoFVKt.css">
+</head>
+<body class="dark-theme">
+  <div class="app-container">
+    
+    <!-- BARRA LATERAL (SIDEBAR) -->
+    <aside class="sidebar">
+      <div class="brand">
+        <i class="fa-solid fa-helmet-safety logo-icon"></i>
+        <div class="brand-text">
+          <h1>GESTOR PQO</h1>
+          <span>Qualidade na Construção</span>
+        </div>
+      </div>
+      
+      <!-- Bloco Especial: Central de Obras & Obra Ativa -->
+      <div class="sidebar-block-central mb-3" style="background: var(--bg-hover); padding: 12px; border-radius: 10px; border: 1px solid var(--border-color);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <label style="font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin: 0;"><i class="fa-solid fa-building"></i> Gestão de Contratos</label>
+        </div>
+        <button id="btnAbrirCentralObras" class="nav-item active w-100" data-tab="obras" style="border: 1px solid var(--accent-color); background: rgba(59, 130, 246, 0.12); margin-bottom: 6px; padding: 10px 12px;">
+          <i class="fa-solid fa-cubes-stacked" style="color: var(--accent-color);"></i>
+          <span style="font-weight: 700; color: var(--text-primary);">🏢 Central de Obras (Cards)</span>
+        </button>
+        <div id="sidebarObraActiveDisplay" style="font-size: 11px; color: var(--text-secondary); background: var(--bg-dark); padding: 6px 10px; border-radius: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border: 1px dashed var(--border-color);">
+          <i class="fa-solid fa-folder-open" style="color: var(--accent-color);"></i> <strong id="sidebarObraNameLabel">Obra Ativa</strong>
+        </div>
+      </div>
+
+      <!-- Menu de Abas do PQO -->
+      <nav class="navigation-menu">
+        <div class="nav-section-title"><i class="fa-solid fa-file-pen"></i> Documento do PQO</div>
+        <ul class="mb-3">
+          <li class="nav-item" data-tab="capa">
+            <i class="fa-solid fa-address-card"></i>
+            <span>📌 Identificação & Capa</span>
+          </li>
+          <li class="nav-item" data-tab="estrutura">
+            <i class="fa-solid fa-sitemap"></i>
+            <span>🏗️ Estrutura & RACI</span>
+          </li>
+          <li class="nav-item" data-tab="canteiro">
+            <i class="fa-solid fa-map-location-dot"></i>
+            <span>🗺️ Projeto Canteiro</span>
+          </li>
+          <li class="nav-item" data-tab="materiais">
+            <i class="fa-solid fa-cubes"></i>
+            <span>🧱 Materiais Controlados</span>
+          </li>
+          <li class="nav-item" data-tab="servicos">
+            <i class="fa-solid fa-screwdriver-wrench"></i>
+            <span>🔨 Serviços Controlados</span>
+          </li>
+          <li class="nav-item" data-tab="equipamentos">
+            <i class="fa-solid fa-truck-monster"></i>
+            <span>🚜 Máquinas e Equipamentos</span>
+          </li>
+          <li class="nav-item" data-tab="controle">
+            <i class="fa-solid fa-flask"></i>
+            <span>🔬 Controle Tecnológico</span>
+          </li>
+          <li class="nav-item" data-tab="treinamentos">
+            <i class="fa-solid fa-graduation-cap"></i>
+            <span>📚 Matriz de Treinamentos</span>
+          </li>
+          <li class="nav-item" data-tab="metas">
+            <i class="fa-solid fa-bullseye"></i>
+            <span>🎯 Objetivos & Metas</span>
+          </li>
+          <li class="nav-item" data-tab="ssma">
+            <i class="fa-solid fa-shield-halved"></i>
+            <span>🛡️ SSMA (Saúde & Segurança)</span>
+          </li>
+        </ul>
+
+        <div class="nav-section-title"><i class="fa-solid fa-sliders"></i> Preparação & Emissão</div>
+        <ul>
+          <li class="nav-item nav-item-utility" data-tab="upload">
+            <i class="fa-solid fa-file-excel"></i>
+            <span>📊 Upload & Curva ABC</span>
+          </li>
+          <li class="nav-item nav-item-utility" data-tab="exportacao">
+            <i class="fa-solid fa-file-pdf"></i>
+            <span>📄 Exportar & Relatórios</span>
+          </li>
+        </ul>
+      </nav>
+
+      <!-- Rodapé da Sidebar (Configurações Gerais do Sistema) -->
+      <div class="sidebar-footer">
+        <button id="btnConfigGeraisGlobal" class="btn-theme" style="margin-bottom: 6px; text-align: left; justify-content: flex-start;"><i class="fa-solid fa-sliders"></i> ⚙️ Configurações Gerais</button>
+        <button id="themeToggle" class="btn-theme"><i class="fa-solid fa-sun"></i> Mudar Tema</button>
+        <button id="btnResetState" class="btn-reset" title="Restaurar dados de fábrica"><i class="fa-solid fa-rotate-left"></i> Redefinir Sistema</button>
+      </div>
+    </aside>
+
+    <!-- PAINEL PRINCIPAL (MAIN CONTENT) -->
+    <main class="main-content">
+      <header class="main-header">
+        <div class="header-left">
+          <button id="btnVoltarListaObrasHeader" class="btn btn-secondary btn-small mr-2" style="display: flex; align-items: center; gap: 6px;"><i class="fa-solid fa-grid-2"></i> 🏢 Alternar Obra</button>
+          <div>
+            <h2 id="currentObraTitle" style="display: inline-block; vertical-align: middle; margin-right: 8px;">Obra Ativa</h2>
+            <span class="badge badge-revision" id="currentRevBadge">REV 00</span>
+          </div>
+        </div>
+        <div class="header-right">
+          <div class="status-indicator">
+            <span class="status-dot online"></span>
+            <span id="saveStatus">Salvo Localmente</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Conteúdo da Aba Ativa -->
+      <div class="tab-content-container">
+        
+        <!-- ABA 0: CENTRAL DE GESTÃO DE OBRAS (CARDS) -->
+        <section id="tab-obras" class="tab-panel active">
+          <div class="card glassmorphism animate-fade-in mb-4">
+            <div class="card-header flex-header" style="flex-wrap: wrap; gap: 15px;">
+              <div>
+                <h3 style="font-size: 18px;"><i class="fa-solid fa-cubes-stacked text-accent"></i> Central de Obras da Pavicon</h3>
+                <p>Gerencie o status, progresso dos itens do PQO e selecione o empreendimento ativo.</p>
+              </div>
+              <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <button id="btnCriarNovaObraCards" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Nova Obra Manual</button>
+                <button id="btnIrImportarObrasConfig" class="btn btn-secondary"><i class="fa-solid fa-file-excel"></i> Importar Lote de Contratos</button>
+              </div>
+            </div>
+
+            <div class="card-body">
+              <!-- Banner / Barra de Status de Sincronização ERP (n8n) -->
+              <div id="erpSyncStatusBar" style="margin-bottom: 20px;"></div>
+
+              <!-- Barra de Filtros, Ordenação e Pesquisa -->
+              <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center; justify-content: space-between; background: var(--bg-hover); padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--border-color);">
+                
+                <div style="flex: 1; min-width: 240px; position: relative;">
+                  <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
+                  <input type="text" id="filterObraBuscaText" placeholder="Buscar por Código da Obra (ex: OBR-1000), Nome ou Gestor..." style="padding-left: 35px; width: 100%;">
+                </div>
+
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                  <div id="filterObraStatusContainer" style="position: relative; min-width: 220px;">
+                    <button id="filterObraStatusBtn" type="button" style="width: 100%; display: flex; justify-content: space-between; align-items: center; background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-primary); font-size: 13px; padding: 8px 12px; border-radius: 6px; cursor: pointer; text-align: left;">
+                      <span id="filterObraStatusLabel" style="font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Status: Todos</span>
+                      <i class="fa-solid fa-chevron-down" style="font-size: 11px; margin-left: 8px; color: var(--text-muted);"></i>
+                    </button>
+                    <div id="filterObraStatusMenu" style="display: none; position: absolute; top: calc(100% + 4px); left: 0; min-width: 260px; z-index: 1000; max-height: 320px; overflow-y: auto; background: var(--bg-card, #1e293b); border: 1px solid var(--border-color); border-radius: 8px; padding: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.6);">
+                      <!-- Opções de multiselect dinâmicas -->
+                    </div>
+                  </div>
+
+                  <select id="filterObraOrdenacao" style="min-width: 200px;">
+                    <option value="codigo">Ordenar por: Código (Mais Recentes)</option>
+                    <option value="nome">Ordenar por: Nome (A-Z)</option>
+                    <option value="progresso">Ordenar por: % Conclusão</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Grid Container de Cards de Obras -->
+              <div id="cardsObrasGridContainer" class="grid-2col" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px;">
+                <!-- Cards populados dinamicamente em main.js -->
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ABA 1: IDENTIFICAÇÃO & CAPA -->
+        <section id="tab-capa" class="tab-panel">
+          <!-- Banners de Versionamento e Bloqueio -->
+          <div id="pqo-version-banner" class="alert mt-2 mb-3 animate-fade-in" style="display:none; padding: 12px 18px; border-radius: 8px; font-weight: 500; font-size: 13px;"></div>
+
+          <div class="card glassmorphism animate-fade-in">
+            <div class="card-header">
+              <h3>📌 Identificação da Obra e Configuração do Documento</h3>
+              <p>Defina as informações centrais que serão plotadas na capa do documento PDF oficial do Plano de Qualidade da Obra.</p>
+            </div>
+            <div class="card-body">
+              <form id="form-identificacao" class="grid-form">
+                <div class="form-group col-2">
+                  <label for="ident-nomeObra">Nome da Obra / Empreendimento</label>
+                  <input type="text" id="ident-nomeObra" required placeholder="Ex: Edifício Bella Vista">
+                </div>
+                <div class="form-group col-2">
+                  <label for="ident-cliente">Cliente / Incorporador</label>
+                  <input type="text" id="ident-cliente" required placeholder="Ex: Construtora Exemplo S/A">
+                </div>
+                <div class="form-group col-3">
+                  <label for="ident-endereco">Endereço Completo</label>
+                  <input type="text" id="ident-endereco" required placeholder="Ex: Av. das Américas, 450 - Rio de Janeiro - RJ">
+                </div>
+                <div class="form-group">
+                  <label for="ident-numObra">Nº da Obra</label>
+                  <input type="text" id="ident-numObra" required placeholder="Ex: OBR-2026-004">
+                </div>
+                <div class="form-group">
+                  <label for="ident-dataInicial">Data Inicial</label>
+                  <input type="date" id="ident-dataInicial" required>
+                </div>
+                <div class="form-group">
+                  <label for="ident-revisao">Versão Atual</label>
+                  <input type="text" id="ident-revisao" readonly style="background-color: var(--bg-hover);" placeholder="Ex: v1.0">
+                </div>
+                <div class="form-group">
+                  <label for="ident-dataRevisao">Data da Versão</label>
+                  <input type="date" id="ident-dataRevisao" required>
+                </div>
+                <div class="form-group col-2">
+                  <label for="ident-responsavel">Responsável Técnico / Elaborador</label>
+                  <input type="text" id="ident-responsavel" required placeholder="Ex: Eng. João da Silva - CREA/RJ">
+                </div>
+                <div class="form-group col-2">
+                  <label for="ident-engenheiroObras">Engenheiro de Obras Vinculado</label>
+                  <input type="text" id="ident-engenheiroObras" required placeholder="Ex: Eng. Rodrigo Costa">
+                </div>
+                <div class="form-group col-2">
+                  <label for="ident-status">Status da Obra</label>
+                  <select id="ident-status" required>
+                    <option value="01 - Gerado">01 - Gerado</option>
+                    <option value="02 - Cadastrado">02 - Cadastrado</option>
+                    <option value="03 - A iniciar">03 - A iniciar</option>
+                    <option value="04 - Em Analise">04 - Em Analise</option>
+                    <option value="05 - Andamento">05 - Andamento</option>
+                    <option value="06 - Paralisado">06 - Paralisado</option>
+                    <option value="07 - Sem atividade">07 - Sem atividade</option>
+                    <option value="08 - Concluído">08 - Concluído</option>
+                    <option value="09 - Finalizado">09 - Finalizado</option>
+                    <option value="10 - Baixado">10 - Baixado</option>
+                    <option value="11 - Justiça">11 - Justiça</option>
+                  </select>
+                </div>
+                <div class="col-4 btn-container-right">
+                  <button type="submit" class="btn btn-primary" id="btnSalvarIdentificacao"><i class="fa-solid fa-floppy-disk"></i> Salvar Identificação</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- Card de Versionamento e Histórico -->
+          <div class="card glassmorphism animate-fade-in mt-4" id="card-pqo-versionamento">
+            <div class="card-header flex-header">
+              <div>
+                <h3>📋 Versionamento e Histórico do PQO</h3>
+                <p>Gerencie o ciclo de aprovação oficial do documento e visualize o histórico de revisões imutáveis.</p>
+              </div>
+              <div id="versionamento-actions-container">
+                <!-- Injetado dinamicamente: botões 'Homologar' ou 'Editar Versão' -->
+              </div>
+            </div>
+            <div class="card-body">
+              <!-- Form de homologação (oculto por padrão) -->
+              <div id="form-homologar-container" style="display: none; background: var(--bg-hover); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 15px;">
+                <h4 style="margin-top:0; margin-bottom:12px; color:var(--accent-color); font-size:14px;"><i class="fa-solid fa-stamp"></i> Homologar Versão Atual como Oficial</h4>
+                <form id="form-homologar-pqo" class="grid-form">
+                  <div class="form-group col-2">
+                    <label for="homolog-elaborado">Elaborado por (Nome)</label>
+                    <input type="text" id="homolog-elaborado" required placeholder="Ex: Eng. Fernanda Lima">
+                  </div>
+                  <div class="form-group col-2">
+                    <label for="homolog-aprovado">Aprovado por (Nome)</label>
+                    <input type="text" id="homolog-aprovado" required placeholder="Ex: Diretor Carlos Henrique">
+                  </div>
+                  <div class="form-group col-2">
+                    <label for="homolog-dataElab">Data de Elaboração</label>
+                    <input type="date" id="homolog-dataElab" required>
+                  </div>
+                  <div class="form-group col-2">
+                    <label for="homolog-dataAprov">Data de Aprovação</label>
+                    <input type="date" id="homolog-dataAprov" required>
+                  </div>
+                  <div class="form-group col-3">
+                    <label for="homolog-alteracoes">Descrição das Alterações / Motivo desta Versão</label>
+                    <input type="text" id="homolog-alteracoes" required placeholder="Ex: Emissão inicial com organograma e matriz RACI.">
+                  </div>
+                  <div class="form-group">
+                    <label for="homolog-tipoVersao">Tipo de Versão</label>
+                    <select id="homolog-tipoVersao">
+                      <option value="minor">Revisão Menor (ex: v1.0 -> v1.1)</option>
+                      <option value="major">Revisão Maior (ex: v1.0 -> v2.0)</option>
+                    </select>
+                  </div>
+                  <div class="col-4 btn-container-right mt-2">
+                    <button type="button" id="btnCancelarHomologacao" class="btn btn-secondary btn-small">Cancelar</button>
+                    <button type="submit" class="btn btn-primary btn-small">Homologar Versão Final</button>
+                  </div>
+                </form>
+              </div>
+
+              <!-- Tabela de Histórico de Versões -->
+              <div class="table-container">
+                <table class="data-table" id="tablePqoHistoricoVersoes">
+                  <thead>
+                    <tr>
+                      <th style="width: 10%;">Versão</th>
+                      <th style="width: 15%;">Data</th>
+                      <th style="width: 40%;">Alterações</th>
+                      <th style="width: 17%;">Elaborador</th>
+                      <th style="width: 18%;">Aprovador</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <!-- Dinâmico -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ABA 2: ESTRUTURA ORGANIZACIONAL & RACI -->
+        <section id="tab-estrutura" class="tab-panel">
+          <!-- Card Superior: Configurações Organizacionais da Obra -->
+          <div class="card glassmorphism animate-fade-in mb-4">
+            <div class="card-header">
+              <h3>⚙️ Configuração Organizacional da Obra</h3>
+              <p>Configure os cargos específicos e serviços de terceiros desta obra.</p>
+            </div>
+            <div class="card-body">
+              <form id="form-estrutura-especificos" class="grid-form">
+                <div class="form-group col-2">
+                  <label for="est-encarregado">Encarregado de Obras</label>
+                  <input type="text" id="est-encarregado" placeholder="Ex: Mestre Sebastião Souza">
+                </div>
+                <div class="form-group col-2">
+                  <label for="est-topografia">Topografia (Responsável/Empresa)</label>
+                  <input type="text" id="est-topografia" placeholder="Ex: TopoGeodésia Ltda">
+                </div>
+                
+                <!-- Serviços de Terceiros (Lista Dinâmica) -->
+                <div class="form-group col-4">
+                  <label style="font-weight: 600; display: block; margin-bottom: 8px;">Serviços de Terceiros Contratados:</label>
+                  <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                    <input type="text" id="est-terceiro-input" placeholder="Ex: Pinturas Silva Eireli" style="flex: 1;">
+                    <button type="button" id="btnAdicionarTerceiro" class="btn btn-accent btn-small"><i class="fa-solid fa-plus"></i> Adicionar</button>
+                  </div>
+                  <div id="est-terceiros-lista" style="display: flex; flex-wrap: wrap; gap: 6px; padding: 10px; background: var(--bg-hover); border-radius: 6px; border: 1px solid var(--border-color); min-height: 40px;">
+                    <!-- Badges com botão de delete -->
+                  </div>
+                </div>
+
+                <div class="col-4 btn-container-right">
+                  <button type="submit" class="btn btn-primary" id="btnSalvarCargosObra"><i class="fa-solid fa-floppy-disk"></i> Salvar Cargos da Obra</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- Organograma (Largura Total) -->
+          <div class="card glassmorphism animate-fade-in mb-4">
+            <div class="card-header flex-header">
+              <div>
+                <h3>🏗️ Organograma da Equipe de Obra</h3>
+                <p>Visualização gráfica do modelo de organograma selecionado para esta obra.</p>
+              </div>
+              <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <div style="display: flex; gap: 10px; align-items: center; background: var(--bg-hover); padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-color);">
+                  <label for="selectModeloOrganograma" style="font-weight: 600; font-size: 13px; margin: 0; color: var(--accent-color);"><i class="fa-solid fa-sitemap"></i> Modelo de Organograma:</label>
+                  <select id="selectModeloOrganograma" class="style-select-mini" style="font-size: 12px; padding: 6px 10px; width: 220px; font-weight: 600;"></select>
+                </div>
+                <button id="btnLockOrganograma" class="btn-lock-capture" title="Congela o organograma como imagem estática para impressão e PDF. Impede alterações acidentais.">
+                  <i class="fa-solid fa-camera"></i>
+                  <span>Capturar para PDF</span>
+                </button>
+              </div>
+            </div>
+            <div class="card-body">
+              <!-- Diagrama Gráfico Hierárquico Corporativo (D3 Org Chart) -->
+              <div id="org-panel-visual">
+                <div id="d3OrgChartContainer" style="background: var(--bg-hover); padding: 20px; border-radius: 8px; overflow-x: auto; border: 1px solid var(--border-color); width: 100%; min-height: 450px;">
+                  <!-- Renderização do Organograma D3 -->
+                </div>
+              </div>
+              <!-- Snapshot estático do organograma (visível quando bloqueado) -->
+              <div id="org-snapshot-view" class="snapshot-container" style="padding: 0;">
+                <img id="org-snapshot-img" alt="Snapshot do organograma" style="border-radius: 8px;" />
+                <div class="snapshot-badge"><i class="fa-solid fa-lock"></i> Organograma congelado para PDF</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Matriz RACI (Abaixo do Organograma em Largura Total) -->
+          <div class="card glassmorphism animate-fade-in">
+            <div class="card-header flex-header">
+              <div>
+                <h3>📋 Matriz RACI de Responsabilidades</h3>
+                <p>Atribua papéis de qualidade. Clique em cada célula para alternar entre: <strong>R</strong> (Responsável), <strong>A</strong> (Aprovador), <strong>C</strong> (Consultado), <strong>I</strong> (Informado) ou Limpar.</p>
+              </div>
+              <div style="display: flex; gap: 10px; align-items: center; background: var(--bg-hover); padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-color);">
+                <label for="selectModeloRaci" style="font-weight: 600; font-size: 13px; margin: 0; color: var(--accent-color);"><i class="fa-solid fa-table-cells"></i> Modelo de RACI:</label>
+                <select id="selectModeloRaci" class="style-select-mini" style="font-size: 12px; padding: 6px 10px; width: 220px; font-weight: 600;"></select>
+              </div>
+            </div>
+            <div class="card-body scrollable-x">
+              <table class="raci-table" id="raciTable">
+                <thead>
+                  <tr id="raciTableHeader">
+                    <!-- Gerado dinamicamente com base nas funções do organograma -->
+                  </tr>
+                </thead>
+                <tbody id="raciTableBody">
+                  <!-- Gerado dinamicamente -->
+                </tbody>
+              </table>
+              <div class="btn-container-right mt-3">
+                <button id="btnSalvarRaci" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Salvar Matriz RACI</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ABA 3: UPLOAD & CURVA ABC (CORE) -->
+        <section id="tab-upload" class="tab-panel">
+          <div class="grid-2col">
+            <!-- Upload Insumos -->
+            <div class="card glassmorphism animate-fade-in">
+              <div class="card-header">
+                <h3><i class="fa-solid fa-truck"></i> Curva ABC de Insumos (Materiais)</h3>
+                <p>Importe a planilha Excel (XLSX / XLS) ou CSV. O sistema detectará automaticamente os insumos mais representativos financeiramente (Classe A e B) e os mapeará de acordo com as normas NBR correspondentes.</p>
+              </div>
+              <div class="card-body">
+                <div class="upload-zone" id="uploadZoneInsumos">
+                  <input type="file" id="fileInsumos" accept=".xlsx, .xls, .csv" class="file-input-hidden">
+                  <i class="fa-solid fa-cloud-arrow-up upload-icon"></i>
+                  <p class="upload-text">Arraste ou clique para enviar <strong>Curva ABC de Insumos (XLSX, XLS, CSV)</strong></p>
+                  <span class="file-info" id="fileInfoInsumos">Nenhum arquivo carregado</span>
+                </div>
+                
+                <div class="upload-actions">
+                  <button id="btnModelInsumos" class="btn btn-secondary btn-small"><i class="fa-solid fa-download"></i> Baixar Excel Modelo</button>
+                  <button id="btnProcessarInsumos" class="btn btn-primary btn-small" disabled><i class="fa-solid fa-gears"></i> Processar Insumos</button>
+                </div>
+
+                <div class="upload-preview" id="previewInsumosContainer" style="display:none;">
+                  <h4>Itens Detectados na Planilha (Amostra):</h4>
+                  <div class="table-container max-height-200">
+                    <table id="tablePreviewInsumos" class="preview-table">
+                      <!-- Renderizado via JS -->
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Upload Serviços -->
+            <div class="card glassmorphism animate-fade-in">
+              <div class="card-header">
+                <h3><i class="fa-solid fa-hammer"></i> Curva ABC de Serviços</h3>
+                <p>Importe a Curva ABC (XLSX, XLS ou CSV) de serviços contratados. O sistema classificará as atividades mais críticas e vinculará as FVS (Fichas de Verificação de Serviço) correspondentes e o maquinário necessário de forma automatizada.</p>
+              </div>
+              <div class="card-body">
+                <div class="upload-zone" id="uploadZoneServicos">
+                  <input type="file" id="fileServicos" accept=".xlsx, .xls, .csv" class="file-input-hidden">
+                  <i class="fa-solid fa-cloud-arrow-up upload-icon"></i>
+                  <p class="upload-text">Arraste ou clique para enviar <strong>Curva ABC de Serviços (XLSX, XLS, CSV)</strong></p>
+                  <span class="file-info" id="fileInfoServicos">Nenhum arquivo carregado</span>
+                </div>
+                
+                <div class="upload-actions">
+                  <button id="btnModelServicos" class="btn btn-secondary btn-small"><i class="fa-solid fa-download"></i> Baixar Excel Modelo</button>
+                  <button id="btnProcessarServicos" class="btn btn-primary btn-small" disabled><i class="fa-solid fa-gears"></i> Processar Serviços</button>
+                </div>
+
+                <div class="upload-preview" id="previewServicosContainer" style="display:none;">
+                  <h4>Serviços Detectados na Planilha (Amostra):</h4>
+                  <div class="table-container max-height-200">
+                    <table id="tablePreviewServicos" class="preview-table">
+                      <!-- Renderizado via JS -->
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Mapeamento rápido do GDP -->
+          <div class="card glassmorphism animate-fade-in mt-4">
+            <div class="card-header">
+              <h3><i class="fa-solid fa-link"></i> Integração direta com GDP (GDPConnectorAdapter)</h3>
+              <p>Módulo simulador de chamadas de API do GDP. Caso o arquivo físico não esteja disponível, você pode requisitar as Curvas ABC diretamente do banco de dados corporativo do GDP.</p>
+            </div>
+            <div class="card-body flex-row-gap">
+              <button id="btnCarregarERP" class="btn btn-accent"><i class="fa-solid fa-network-wired"></i> Requisitar Curvas ABC via API GDP (GET /api/v1/gdp/curva-abc/...)</button>
+              <div class="console-box" id="erpConsole">
+                <span class="console-line text-muted">&gt; Aguardando comando...</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ABA 4: MATERIAIS CONTROLADOS -->
+        <section id="tab-materiais" class="tab-panel">
+          
+          <!-- STAGING AREA: INSUMOS BRUTOS (COLAPSÁVEL) -->
+          <div class="card glassmorphism animate-fade-in mb-4">
+            <div class="card-header flex-header" style="border-bottom: none; padding-bottom: 0;">
+              <div>
+                <h3>🧱 Insumos da Curva ABC (Staging Area)</h3>
+                <p>Veja e classifique os insumos brutos importados da planilha. Esta tabela <strong>NÃO</strong> é impressa no PQO final.</p>
+              </div>
+              <div style="display: flex; gap: 10px;">
+                <button id="btnToggleStaging" class="btn btn-secondary btn-small"><i class="fa-solid fa-eye-slash"></i> Recolher Insumos</button>
+                <button id="btnAddMaterial" class="btn btn-primary btn-small"><i class="fa-solid fa-plus"></i> Insumo Manual</button>
+              </div>
+            </div>
+            <div class="card-body" id="stagingAreaWrapper" style="margin-top: 15px;">
+              <div class="table-container max-height-300">
+                <table class="data-table" id="tableStagingMateriais">
+                  <thead>
+                    <tr>
+                      <th style="width: 15%;">Código</th>
+                      <th style="width: 45%;">Descrição do Insumo</th>
+                      <th style="width: 10%; text-align: center;">Qtd</th>
+                      <th style="width: 10%; text-align: center;">Und</th>
+                      <th style="width: 20%;">Classe de Material (Associação)</th>
+                      <th class="col-actions">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <!-- Gerado dinamicamente -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- TABELA CONSOLIDADA: IMPRESSA NO PQO -->
+          <div class="card glassmorphism animate-fade-in">
+            <div class="card-header">
+              <h3>📋 Plano de Materiais Controlados da Obra (Impresso no PQO)</h3>
+              <p>Esta tabela consolidada é montada dinamicamente com base nas classes de materiais associadas acima.</p>
+            </div>
+            <div class="card-body">
+              <div class="table-container">
+                <table class="data-table" id="tableMateriaisConsolidado">
+                  <thead>
+                    <tr>
+                      <th style="width: 35%;">Material Controlado (Classe)</th>
+                      <th style="width: 35%;">Procedimento de Inspeção e Recebimento</th>
+                      <th style="width: 30%;">Registros de Qualidade</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <!-- Gerado dinamicamente via Main.js -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ABA 5: SERVIÇOS CONTROLADOS -->
+        <section id="tab-servicos" class="tab-panel">
+          
+          <!-- STAGING AREA: SERVIÇOS BRUTOS (COLAPSÁVEL) -->
+          <div class="card glassmorphism animate-fade-in mb-4">
+            <div class="card-header flex-header" style="border-bottom: none; padding-bottom: 0;">
+              <div>
+                <h3>🔨 Insumos de Serviços (Staging Area)</h3>
+                <p>Mapeie os serviços brutos da planilha para seus respectivos agrupamentos. Esta tabela <strong>NÃO</strong> é impressa no PQO final.</p>
+              </div>
+              <div style="display: flex; gap: 10px;">
+                <button id="btnToggleStagingServicos" class="btn btn-secondary btn-small"><i class="fa-solid fa-eye-slash"></i> Recolher Serviços</button>
+                <button id="btnAddServico" class="btn btn-primary btn-small"><i class="fa-solid fa-plus"></i> Serviço Manual</button>
+              </div>
+            </div>
+            <div class="card-body" id="stagingServicosWrapper" style="margin-top: 15px;">
+              <div class="table-container max-height-300">
+                <table class="data-table" id="tableStagingServicos">
+                  <thead>
+                    <tr>
+                      <th style="width: 15%;">Código</th>
+                      <th style="width: 45%;">Descrição do Serviço</th>
+                      <th style="width: 10%; text-align: center;">Qtd</th>
+                      <th style="width: 10%; text-align: center;">Und</th>
+                      <th style="width: 20%;">Agrupamento de Serviço (Associação)</th>
+                      <th class="col-actions">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <!-- Gerado dinamicamente -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- TABELA FINAL: IMPRESSA NO PQO -->
+          <div class="card glassmorphism animate-fade-in mb-4">
+            <div class="card-header">
+              <h3>📋 Plano de Serviços Controlados da Obra (Impresso no PQO)</h3>
+              <p>Esta tabela exibe os agrupamentos de serviços ativos, ordenados por quantidade decrescente na obra, indicando criticidades e documentos vinculados.</p>
+            </div>
+            <div class="card-body">
+              <div class="table-container">
+                <table class="data-table" id="tableServicosConsolidado">
+                  <thead>
+                    <tr>
+                      <th style="width: 35%;">Serviço Controlado (Subgrupo)</th>
+                      <th style="width: 30%;">Procedimento (ITP / PQP)</th>
+                      <th style="width: 20%;">Registro de Inspeção</th>
+                      <th style="width: 15%; text-align: center;">Criticidade</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <!-- Gerado dinamicamente via Main.js -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- ESPECIFICIDADES DA EXECUÇÃO -->
+          <div class="card glassmorphism animate-fade-in">
+            <div class="card-header flex-header">
+              <div>
+                <h3>📋 Identificação das Especificidades da Execução (Impresso no PQO)</h3>
+                <p>Neste item devem ser descritas as especificidades (particularidades da obra), por exemplo, execução de um serviço diferente do procedimento previsto ou algum procedimento adicional necessário.</p>
+              </div>
+              <button id="btnAddEspecificidade" class="btn btn-primary btn-small"><i class="fa-solid fa-plus"></i> Nova Especificidade</button>
+            </div>
+            <div class="card-body">
+              <div class="table-container">
+                <table class="data-table" id="tableEspecificidades">
+                  <thead>
+                    <tr>
+                      <th style="width: 40%;">Serviço Diferente do Procedimento ou Adicional</th>
+                      <th style="width: 50%;">Especificidade (Particularidades da Obra)</th>
+                      <th style="width: 10%; text-align: center;" class="col-actions">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <!-- Gerado dinamicamente via Main.js -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ABA 6: MÁQUINAS E EQUIPAMENTOS -->
+        <section id="tab-equipamentos" class="tab-panel">
+          <div class="card glassmorphism animate-fade-in">
+            <div class="card-header flex-header">
+              <div>
+                <h3>🚜 Máquinas e Equipamentos</h3>
+                <p class="section-subtext-pavicon" style="margin-top: 5px; color: var(--accent-color); font-style: italic; font-weight: 500;">
+                  "Todas as máquinas e veículos da Pavicon tem suas revisões e manutenções controladas e programadas pelo setor de Manutenções da Pavicon."
+                </p>
+              </div>
+              <button id="btnAddEquipamento" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Nova Máquina</button>
+            </div>
+            <div class="card-body">
+              <div class="table-container">
+                <table class="data-table" id="tableEquipamentos">
+                  <thead>
+                    <tr>
+                      <th style="width: 25%;">Equipamento</th>
+                      <th style="width: 12%;">Horas na Obra</th>
+                      <th style="width: 18%;">
+                        Criticidade 
+                        <span class="help-tooltip-container" title="Para decidir a criticidade, avalie:&#10;1. Horas de Uso: volume alto de horas na obra?&#10;2. Disponibilidade / Frota: pouca oferta (ex: usina/vibroacabadora) ou fácil substituição (ex: caçamba)?&#10;3. Impacto de Parada: se quebrar, paralisa frentes inteiras?">
+                          <i class="fa-solid fa-circle-question help-icon"></i>
+                        </span>
+                      </th>
+                      <th style="width: 22%;">
+                        Particularidades de Manutenção 
+                        <span class="help-tooltip-container" title="Preencha APENAS se a obra impuser condições extremas que alterem a rotina padrão da Oficina Pavicon.&#10;Exemplos: ambiente salino/marítimo, poeira extrema/mineração, alta umidade contínua ou turnos 24h.">
+                          <i class="fa-solid fa-circle-question help-icon"></i>
+                        </span>
+                      </th>
+                      <th style="width: 23%;">Status do Plano / Ações de Controle</th>
+                      <th class="col-actions">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <!-- Gerado dinamicamente -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ABA 7: PROJETO CANTEIRO -->
+        <section id="tab-canteiro" class="tab-panel">
+          <div class="canteiro-grid">
+            
+            <!-- Painel de Controle (Esquerda) -->
+            <div class="canteiro-sidebar-panel">
+              
+              <!-- 1. Configurações de Infraestrutura -->
+              <div class="card glassmorphism animate-fade-in mb-3">
+                <div class="card-header">
+                  <h3>🛠️ Infraestrutura e Soluções Construtivas</h3>
+                  <p>Selecione a solução adotada para cada item de apoio da obra.</p>
+                </div>
+                <div class="card-body">
+                  <form id="form-canteiro-infra" class="grid-form row-gap-narrow">
+                    <div class="form-group col-2">
+                      <label for="cant-escritorio">1. Escritórios (Administrativo)</label>
+                      <select id="cant-escritorio" class="canteiro-select-input">
+                        <option value="-" selected>- Selecione -</option>
+                        <option value="Container Alugado">Container Alugado</option>
+                        <option value="Container Próprio">Container Próprio</option>
+                        <option value="Sede da Empresa">Sede da Empresa</option>
+                        <option value="Casa Alugada">Casa Alugada</option>
+                        <option value="Alvenaria, construído no local">Alvenaria, construído no local</option>
+                        <option value="N/A">N/A</option>
+                      </select>
+                    </div>
+                    <div class="form-group col-2">
+                      <label for="cant-sanitarios">2. Sanitários (Alojamentos)</label>
+                      <select id="cant-sanitarios" class="canteiro-select-input">
+                        <option value="-" selected>- Selecione -</option>
+                        <option value="Fixos no alojamento">Fixos no alojamento</option>
+                        <option value="Móveis">Móveis</option>
+                        <option value="Químicos">Químicos</option>
+                        <option value="Em container">Em container</option>
+                        <option value="N/A">N/A</option>
+                      </select>
+                    </div>
+                    <div class="form-group col-2">
+                      <label for="cant-dormitorios">3. Dormitórios (Alojamentos)</label>
+                      <select id="cant-dormitorios" class="canteiro-select-input">
+                        <option value="-" selected>- Selecione -</option>
+                        <option value="Hotel">Hotel</option>
+                        <option value="Albergue">Albergue</option>
+                        <option value="Casa Alugada">Casa Alugada</option>
+                        <option value="Alvenaria, construído no local">Alvenaria, construído no local</option>
+                        <option value="Container Alugado">Container Alugado</option>
+                        <option value="Container Próprio">Container Próprio</option>
+                        <option value="Galpão Alugado">Galpão Alugado</option>
+                        <option value="Galpão Construído">Galpão Construído</option>
+                        <option value="N/A">N/A</option>
+                      </select>
+                    </div>
+                    <div class="form-group col-2">
+                      <label for="cant-vestiarios">4. Vestiários (Alojamentos)</label>
+                      <select id="cant-vestiarios" class="canteiro-select-input">
+                        <option value="-" selected>- Selecione -</option>
+                        <option value="Hotel">Hotel</option>
+                        <option value="Albergue">Albergue</option>
+                        <option value="Casa Alugada">Casa Alugada</option>
+                        <option value="Alvenaria, construído no local">Alvenaria, construído no local</option>
+                        <option value="Container Alugado">Container Alugado</option>
+                        <option value="Container Próprio">Container Próprio</option>
+                        <option value="Galpão Alugado">Galpão Alugado</option>
+                        <option value="Galpão Construído">Galpão Construído</option>
+                        <option value="N/A">N/A</option>
+                      </select>
+                    </div>
+                    <div class="form-group col-2">
+                      <label for="cant-refeitorio">5. Refeitório (Alojamentos)</label>
+                      <select id="cant-refeitorio" class="canteiro-select-input">
+                        <option value="-" selected>- Selecione -</option>
+                        <option value="Hotel">Hotel</option>
+                        <option value="Albergue">Albergue</option>
+                        <option value="Casa Alugada">Casa Alugada</option>
+                        <option value="Alvenaria, construído no local">Alvenaria, construído no local</option>
+                        <option value="Container Alugado">Container Alugado</option>
+                        <option value="Container Próprio">Container Próprio</option>
+                        <option value="Galpão Alugado">Galpão Alugado</option>
+                        <option value="Galpão Construído">Galpão Construído</option>
+                        <option value="N/A">N/A</option>
+                      </select>
+                    </div>
+                    <div class="form-group col-2">
+                      <label for="cant-deposito">6. Depósito (Áreas Industriais)</label>
+                      <select id="cant-deposito" class="canteiro-select-input">
+                        <option value="Container Alugado">Container Alugado</option>
+                        <option value="Container Próprio">Container Próprio</option>
+                        <option value="Galpão Alugado">Galpão Alugado</option>
+                        <option value="Galpão Construído">Galpão Construído</option>
+                        <option value="Casa Alugada">Casa Alugada</option>
+                        <option value="Casa Construída">Casa Construída</option>
+                        <option value="Terreno">Terreno</option>
+                        <option value="N/A">N/A</option>
+                      </select>
+                    </div>
+                    <div class="form-group col-2">
+                      <label for="cant-descarte">7. Área Descarte (Áreas Industriais)</label>
+                      <select id="cant-descarte" class="canteiro-select-input">
+                        <option value="Container Alugado">Container Alugado</option>
+                        <option value="Container Próprio">Container Próprio</option>
+                        <option value="Galpão Alugado">Galpão Alugado</option>
+                        <option value="Galpão Construído">Galpão Construído</option>
+                        <option value="Casa Alugada">Casa Alugada</option>
+                        <option value="Casa Construída">Casa Construída</option>
+                        <option value="Terreno">Terreno</option>
+                        <option value="N/A">N/A</option>
+                      </select>
+                    </div>
+                  </form>
+                </div>
+              </div>
+
+              <!-- CARD: PONTO SELECIONADO (Edição Direta no Painel Lateral) -->
+              <div class="card glassmorphism animate-fade-in mb-3" id="card-canteiro-ponto-selected" style="display: none; border: 1.5px dashed var(--accent-color);">
+                <div class="card-header flex-header">
+                  <div>
+                    <h3 style="color: var(--accent-color);"><i class="fa-solid fa-circle-info"></i> Ponto de Instalação Selecionado</h3>
+                    <p>Altere o nome e vincule as instalações ativas a este ponto geográfico.</p>
+                  </div>
+                  <button id="btnDeselectPonto" class="btn btn-secondary btn-small" type="button" title="Fechar Edição"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="card-body">
+                  <input type="hidden" id="selected-cantp-id">
+                  
+                  <div class="form-group mb-2">
+                    <label for="selected-cantp-nome" style="font-size: 11px; font-weight: 600;">Nome do Ponto de Instalação</label>
+                    <input type="text" id="selected-cantp-nome" class="particularidades-input" style="width: 100%; padding: 6px; font-size: 12px;" placeholder="Ex: Canteiro Principal">
+                  </div>
+                  
+                  <div class="form-group">
+                    <label style="font-size: 11px; font-weight: 600; margin-bottom: 6px; display: block;">Instalações Agrupadas neste Ponto:</label>
+                    <div id="selected-cantp-instalacoes-checkboxes" class="checkbox-list-container" style="display: flex; flex-direction: column; gap: 8px; max-height: 180px; overflow-y: auto; padding: 10px; background: var(--bg-hover); border-radius: 6px; border: 1px solid var(--border-color);">
+                      <!-- Checkboxes dinâmicos -->
+                    </div>
+                  </div>
+                  
+                  <div class="flex-header mt-3" style="justify-content: flex-end; gap: 8px;">
+                    <button id="btnDeleteSelectedPonto" class="btn btn-danger btn-small" type="button"><i class="fa-solid fa-trash"></i> Excluir</button>
+                    <button id="btnSaveSelectedPonto" class="btn btn-primary btn-small" type="button"><i class="fa-solid fa-floppy-disk"></i> Salvar</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 2. Pontos Marcados no Mapa -->
+              <div class="card glassmorphism animate-fade-in mb-3">
+                <div class="card-header flex-header">
+                  <div>
+                    <h3>📍 Instalações Alocadas no Mapa</h3>
+                    <p>Mapeie pontos físicos clicando no mapa e associe as instalações ativas.</p>
+                  </div>
+                  <button id="btnCriarPontoMapa" class="btn btn-primary btn-small"><i class="fa-solid fa-location-dot"></i> Novo Ponto</button>
+                </div>
+                <div class="card-body">
+                  <div class="table-container max-height-200">
+                    <table class="data-table" id="tableCanteiroPontos">
+                      <thead>
+                        <tr>
+                          <th>Nome do Ponto</th>
+                          <th>Alocações</th>
+                          <th class="col-actions">Ações</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <!-- Dinâmico -->
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 3. Desenhos e Estilos -->
+              <div class="card glassmorphism animate-fade-in">
+                <div class="card-header">
+                  <h3>🎨 Elementos Gráficos Desenhar</h3>
+                  <p>Personalize caminhos, acessos e raios de cobertura no canteiro.</p>
+                </div>
+                <div class="card-body">
+                  <div class="table-container max-height-200">
+                    <table class="data-table" id="tableCanteiroDesenhos">
+                      <thead>
+                        <tr>
+                          <th>Tipo</th>
+                          <th style="width: 50%;">Customização de Estilos</th>
+                          <th class="col-actions">Ações</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <!-- Dinâmico -->
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Área do Mapa (Direita) -->
+            <div class="canteiro-map-panel">
+              <div class="card glassmorphism animate-fade-in" style="height: 100%; display: flex; flex-direction: column; min-height: 600px;">
+                <div class="card-header flex-header" style="padding: 12px 20px;">
+                  <div>
+                    <h3>🗺️ Mapa do Layout do Canteiro de Obras</h3>
+                    <p>Posicione pontos administrativos/industriais e trace vias de transporte ou raios de risco.</p>
+                  </div>
+                  
+                  <!-- Barra de Ferramentas do Mapa -->
+                  <div class="map-toolbar">
+                    <button id="tool-ponto" class="btn-tool" title="📍 Marcar Instalação no Mapa"><i class="fa-solid fa-location-dot"></i> Ponto</button>
+                    <button id="tool-linha" class="btn-tool" title="✏️ Desenhar Vias / Acessos"><i class="fa-solid fa-route"></i> Vias</button>
+                    <button id="tool-circulo" class="btn-tool" title="⭕ Desenhar Raios de Cobertura"><i class="fa-solid fa-circle"></i> Raio</button>
+                    <button id="tool-poligono" class="btn-tool" title="⬡ Desenhar Polígono (Áreas/Galpões)"><i class="fa-solid fa-draw-polygon"></i> Polígono</button>
+                    <button id="tool-clear" class="btn-tool btn-tool-danger" title="Limpar Desenhos em Progresso"><i class="fa-solid fa-arrow-rotate-left"></i> Cancelar</button>
+                    <div style="width:1px; background: rgba(255,255,255,0.15); margin: 0 4px; align-self: stretch;"></div>
+                    <button id="btnLockMapa" class="btn-tool btn-tool-lock" title="Congela o mapa como imagem estática para impressão e PDF. Impede alterações acidentais."><i class="fa-solid fa-camera"></i> Capturar para PDF</button>
+                  </div>
+                </div>
+                <div class="card-body" style="flex: 1; padding: 0; position: relative;">
+                  <!-- Elemento do Leaflet Map -->
+                  <div id="canteiro-map" style="width: 100%; height: 580px; border-radius: 0 0 12px 12px; z-index: 1;"></div>
+
+                  <!-- Snapshot estático do mapa (visível quando bloqueado) -->
+                  <div id="mapa-snapshot-view" class="snapshot-container mapa-snapshot">
+                    <img id="mapa-snapshot-img" alt="Snapshot do mapa do canteiro" />
+                    <div class="snapshot-badge"><i class="fa-solid fa-lock"></i> Mapa congelado para PDF</div>
+                  </div>
+
+                  <!-- Help Overlay -->
+                  <div id="map-status-overlay" class="map-status-overlay" style="display: none; cursor: pointer; pointer-events: auto;" title="Clique aqui para Concluir / Salvar o desenho">
+                    <i class="fa-solid fa-info-circle animate-pulse"></i> &nbsp;<span id="map-status-text">Clique no mapa para marcar...</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- ABA 7: CONTROLE TECNOLÓGICO -->
+        <section id="tab-controle" class="tab-panel">
+          <!-- Barra de Presets / Controles Padrões Multiseleção -->
+          <div class="card glassmorphism animate-fade-in mb-4">
+            <div class="card-header flex-header">
+              <div>
+                <h3>📋 Seleção Rápida de Modelos Padrões de Controle Tecnológico</h3>
+                <p>Marque os modelos de órgãos/entidades requeridos pelo edital (ex: DAER RS, DNIT) para <strong>marcar automaticamente os ensaios aplicáveis</strong>. A seleção é aditiva e você pode marcar adicionais manualmente.</p>
+              </div>
+              <button id="btnLimparCheckboxesCT" class="btn btn-secondary btn-small" type="button"><i class="fa-solid fa-eraser"></i> Desmarcar Todos</button>
+            </div>
+            <div class="card-body">
+              <div id="containerPresetsControleTecnologico" style="display: flex; flex-wrap: wrap; gap: 12px; background: var(--bg-hover); padding: 14px; border-radius: 8px; border: 1px solid var(--border-color);">
+                <!-- Checkboxes de Presets injetados em main.js -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Tabela Principal de Plano de Controle Tecnológico -->
+          <div class="card glassmorphism animate-fade-in mb-4">
+            <div class="card-header flex-header">
+              <div>
+                <h3>🧪 Tabela de Plano de Controle Tecnológico (Ensaios / Laudos)</h3>
+                <p>Marque os checkboxes na coluna <strong>USO</strong> para selecionar os ensaios aplicáveis a este PQO. A linha será destacada em amarelo e incluída no relatório final.</p>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="table-container mb-3">
+                <table class="data-table table-controle-tecnologico" id="tableControleTecnologico">
+                  <thead>
+                    <tr>
+                      <th style="width: 80px; text-align: center;">Nº</th>
+                      <th>ENSAIO / LAUDO</th>
+                      <th style="width: 80px; text-align: center;">USO</th>
+                      <th style="width: 80px; text-align: center;">PÁG.</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <!-- Renderizado dinamicamente via main.js -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Campo de Ensaios Específicos / Adicionais -->
+          <div class="card glassmorphism animate-fade-in">
+            <div class="card-header">
+              <h3>📝 Ensaios Específicos e Observações Adicionais do Edital</h3>
+              <p>Caso o edital exija algum ensaio específico, norma personalizada ou observação tecnológica que não consta na tabela acima, insira no campo abaixo para inclusão no PQO.</p>
+            </div>
+            <div class="card-body">
+              <div class="form-group mb-3">
+                <label for="ct-ensaios-especificos-input">Ensaios / Laudos Específicos Adicionais:</label>
+                <textarea id="ct-ensaios-especificos-input" rows="4" placeholder="Ex: Ensaio de Deflectometria FWD a cada 100m conforme especificação do edital nº 04/2026; Ensaio de extração de corpos de prova para determinação de teor de ligante por Ignição (NCAT)..." style="width: 100%; padding: 12px; border-radius: 8px; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary); font-family: var(--font-family); font-size: 13px; resize: vertical;"></textarea>
+              </div>
+              <div style="display: flex; justify-content: flex-end;">
+                <button id="btnSalvarEnsaiosEspecificosCT" class="btn btn-primary" type="button"><i class="fa-solid fa-floppy-disk"></i> Salvar Ensaios Adicionais</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ABA 8: MATRIZ DE TREINAMENTOS -->
+        <section id="tab-treinamentos" class="tab-panel">
+          <div class="card glassmorphism animate-fade-in">
+            <div class="card-header">
+              <h3>📚 Matriz de Treinamentos e Instruções de Trabalho (Geração Automática)</h3>
+              <p>Mapeamento automático de ITs e Procedimentos aplicáveis aos <strong>Serviços Controlados</strong> ativos nesta obra.</p>
+            </div>
+            <div class="card-body">
+              <div class="table-container mb-3">
+                <table class="data-table" id="tableTreinamentos">
+                  <thead>
+                    <tr>
+                      <th style="width: 30%;">Serviço Controlado</th>
+                      <th style="width: 35%;">Procedimento / IT Aplicável</th>
+                      <th style="width: 35%;">Público-Alvo Exigido (Funções)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <!-- Gerado 100% dinamicamente via Main.js -->
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Nota Oficial de Responsabilidade Pavicon -->
+              <div style="background: var(--bg-dark); border-left: 4px solid var(--accent-color); padding: 12px 16px; border-radius: 6px; font-size: 12px; color: var(--text-secondary); line-height: 1.5;">
+                <strong>📌 Declaração de Gestão Centralizada de Treinamentos:</strong><br>
+                <em>"Os treinamentos e integrações nas Instruções de Trabalho (ITs) aplicáveis aos serviços desta obra são geridos e controlados centralizadamente pelo setor de RH / Qualidade da Pavicon. Todo profissional alocado para as funções listadas nesta matriz passa por treinamento prévio de integração de função em seu prontuário, estando apto a atuar na execução dos serviços do canteiro de obras."</em>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ABA 8: OBJETIVOS E METAS DA QUALIDADE -->
+        <section id="tab-metas" class="tab-panel">
+          <div class="card glassmorphism animate-fade-in mb-4">
+            <div class="card-header flex-header">
+              <div>
+                <h3>🎯 Objetivos e Metas da Qualidade do PQO</h3>
+                <p>Metas e Indicadores de Desempenho do SGQ da obra. Metas <strong>Fixas</strong> vêm das diretrizes corporativas, enquanto metas <strong>Individualizadas</strong> devem ser ajustadas pelo Engenheiro abaixo.</p>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="table-container">
+                <table class="data-table" id="tableMetas">
+                  <thead>
+                    <tr>
+                      <th style="width: 25%;">Objetivo da Qualidade (SGQ)</th>
+                      <th style="width: 20%;">Indicador de Desempenho</th>
+                      <th style="width: 12%; text-align: center;">Tipo de Meta</th>
+                      <th style="width: 18%;">Meta de Desempenho</th>
+                      <th style="width: 10%;">Frequência</th>
+                      <th style="width: 15%;">Fonte do Indicador / Instrução</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <!-- Gerado dinamicamente via main.js -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ABA SSMA: SAÚDE, SEGURANÇA E MEIO AMBIENTE -->
+        <section id="tab-ssma" class="tab-panel">
+          <div class="card glassmorphism animate-fade-in mb-4">
+            <div class="card-header">
+              <h3>🛡️ Saúde, Segurança e Meio Ambiente (SSMA)</h3>
+              <p>Diretrizes corporativas de Segurança e Saúde Ocupacional geridas centralizadamente pelo setor de SESMT da Pavicon (PBQP-H SiAC 2021 - Item 8.1.1 j).</p>
+            </div>
+            <div class="card-body">
+              
+              <!-- Tabela de Herança Corporativa -->
+              <div class="mb-4" style="background: var(--bg-hover); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
+                <h4 style="font-size: 13px; color: var(--accent-color); margin-bottom: 8px;"><i class="fa-solid fa-building-user"></i> Diretrizes Corporativas Herdadas do SESMT Pavicon</h4>
+                <p style="font-size: 12px; margin-bottom: 5px;"><strong>Responsável Corporativo pelo SESMT:</strong> <span id="ssma-responsavel-display" class="text-accent" style="font-weight: 700;">-</span></p>
+                <p style="font-size: 12px; margin: 0;"><strong>Programas e Estruturas Globais:</strong> PGR / GRO (NR-18), PCMSO (NR-07) e CIPA / Designado (NR-05).</p>
+              </div>
+
+              <!-- Tabela de Metadados Específicos do Contrato (Preenchimento Enxuto) -->
+              <h4 style="font-size: 14px; margin-bottom: 10px; color: var(--text-primary);"><i class="fa-solid fa-list-check"></i> Programas e Metadados Específicos da Obra</h4>
+              <div class="table-container mb-4">
+                <table class="data-table" id="tableSSMAObra">
+                  <thead>
+                    <tr>
+                      <th style="width: 30%;">Programa / Diretriz de SST (Norma NR)</th>
+                      <th style="width: 25%;">Status / Modalidade da Obra</th>
+                      <th style="width: 20%;">Data de Emissão / Vigência</th>
+                      <th style="width: 25%;">Identificação / Protocolo / Responsável</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <!-- Row 1: Comunicação Prévia -->
+                    <tr>
+                      <td><strong>Comunicação Prévia à SRTE/MTE</strong> (NR-18)</td>
+                      <td>
+                        <select id="ssma-comunicacaoPrevia" style="width: 100%; padding: 6px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary);">
+                          <option value="Não" selected>Não se Aplica</option>
+                          <option value="Sim">Aplica-se à Obra (Sim)</option>
+                        </select>
+                      </td>
+                      <td style="text-align: center; color: var(--text-muted); font-size: 11px;">Protocolada na Implantação</td>
+                      <td>
+                        <input type="text" id="ssma-protocoloMte" placeholder="Nº Protocolo / MTE..." style="width: 100%; padding: 6px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary); font-size: 12px;">
+                      </td>
+                    </tr>
+                    <!-- Row 2: PGR -->
+                    <tr>
+                      <td><strong>PGR - Prog. de Gerenciamento de Riscos</strong> (NR-18)</td>
+                      <td>
+                        <select id="ssma-statusPgr" style="width: 100%; padding: 6px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary);">
+                          <option value="Ativo">Ativo / Vigente</option>
+                          <option value="Em Elaboração">Em Elaboração</option>
+                          <option value="Anexado">Anexado ao Prontuário</option>
+                        </select>
+                      </td>
+                      <td>
+                        <span id="ssma-vigenciaPgr" style="font-weight: 600; font-size: 11px; color: var(--accent-color); display: block; text-align: center;">-</span>
+                        <small class="text-muted" style="display: block; text-align: center; font-size: 10px;">Renovação a cada 2 anos</small>
+                      </td>
+                      <td style="font-size: 11px; color: var(--text-secondary); font-style: italic;">Gestão Centralizada SESMT</td>
+                    </tr>
+                    <!-- Row 3: PCMSO -->
+                    <tr>
+                      <td><strong>PCMSO - Prog. Controle Médico de Saúde Ocupacional</strong> (NR-07)</td>
+                      <td>
+                        <select id="ssma-statusPcmso" style="width: 100%; padding: 6px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary);">
+                          <option value="Ativo">Ativo / Vigente</option>
+                          <option value="Em Elaboração">Em Elaboração</option>
+                        </select>
+                      </td>
+                      <td>
+                        <span id="ssma-vigenciaPcmso" style="font-weight: 600; font-size: 11px; color: var(--accent-color); display: block; text-align: center;">-</span>
+                        <small class="text-muted" style="display: block; text-align: center; font-size: 10px;">Renovação a cada 1 ano</small>
+                      </td>
+                      <td style="font-size: 11px; color: var(--text-secondary); font-style: italic;">ASOs em Canteiro & Matriz</td>
+                    </tr>
+                    <!-- Row 4: CIPA / Designado -->
+                    <tr>
+                      <td><strong>CIPA / Designado de CIPA</strong> (NR-05)</td>
+                      <td>
+                        <select id="ssma-modalidadeCipa" style="width: 100%; padding: 6px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary);">
+                          <option value="Designado de CIPA" selected>Designado de CIPA (Obra)</option>
+                          <option value="Comissão da Obra">Comissão de CIPA Eleita</option>
+                        </select>
+                      </td>
+                      <td>
+                        <span id="ssma-vigenciaCipa" style="font-weight: 600; font-size: 11px; color: var(--accent-color); display: block; text-align: center;">-</span>
+                        <small class="text-muted" style="display: block; text-align: center; font-size: 10px;">Renovação a cada 1 ano (-1 mês)</small>
+                      </td>
+                      <td>
+                        <div id="container-ssma-responsavelCipa-auto" style="font-size: 11px; font-weight: 600; color: var(--accent-color);">
+                          <!-- Puxado dinamicamente das Configurações Gerais -->
+                        </div>
+                        <input type="text" id="ssma-responsavelCipa" placeholder="Nome dos membros da comissão..." style="display: none; width: 100%; padding: 6px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary); font-size: 12px;">
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Declaração Fixa de Garantia Legal -->
+              <div style="background: rgba(34, 197, 94, 0.1); border-left: 4px solid var(--success-color); padding: 14px; border-radius: 6px;">
+                <p style="font-size: 11px; color: var(--text-primary); margin: 0; line-height: 1.5;">
+                  <i class="fa-solid fa-circle-check" style="color: var(--success-color); margin-right: 6px;"></i>
+                  <strong>Declaração Fixa de Garantia Legal (SESMT Pavicon):</strong><br>
+                  <span id="ssma-declaracao-display" style="font-style: italic; font-size: 11px;">"Os programas, laudos e diretrizes de Engenharia de Segurança e Medicina do Trabalho (PGR, PCMSO e CIPA) são elaborados, atualizados e geridos centralizadamente pelo setor de SESMT da Pavicon. As cópias dos programas vigentes e os ASOs (Atestados de Saúde Ocupacional) de todos os colaboradores alocados encontram-se arquivados no canteiro de obras e na matriz à disposição da fiscalização e auditorias."</span>
+                </p>
+              </div>
+
+            </div>
+          </div>
+        </section>
+
+        <!-- ABA 9: EXPORTAÇÃO & RELATÓRIOS -->
+        <section id="tab-exportacao" class="tab-panel">
+          <div class="grid-2col">
+            <!-- Controle de Versões e Exportações -->
+            <div class="card glassmorphism animate-fade-in flex-column-gap">
+              <div class="card-header">
+                <h3>📄 Emissão do Documento Oficial do PQO</h3>
+                <p>Gerencie o histórico de revisões oficiais e faça o download do arquivo PDF formatado para impressão ou armazenamento no padrão A4 corporativo.</p>
+              </div>
+              <div class="card-body flex-column-gap">
+                
+                <!-- Histórico de revisões na exportação -->
+                <div class="revisoes-history-container">
+                  <div class="flex-header mb-2">
+                    <h4>Histórico de Emissões / Revisões</h4>
+                    <button id="btnNovaRevisao" class="btn btn-secondary btn-small"><i class="fa-solid fa-plus"></i> Registrar Nova Revisão</button>
+                  </div>
+                  <table class="preview-table font-75" id="tableRevisoesExport">
+                    <thead>
+                      <tr>
+                        <th>Rev.</th>
+                        <th>Data</th>
+                        <th>Descrição da Revisão</th>
+                        <th>Responsável</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <!-- Inserido dinamicamente -->
+                    </tbody>
+                  </table>
+                </div>
+
+                <div class="action-buttons-group">
+                  <button id="btnBaixarPDF" class="btn btn-primary btn-large"><i class="fa-solid fa-file-pdf"></i> Baixar Relatório PDF Oficial</button>
+                  <button id="btnBaixarPDFTeste" class="btn btn-secondary btn-large" style="background: rgba(245, 158, 11, 0.15); border: 1px solid #f59e0b; color: #f59e0b;" title="Gera o PDF para conferência/testes sem incrementar revisão nem oficializar o PQO"><i class="fa-solid fa-vial"></i> Emitir PDF Rascunho / Teste</button>
+                  <button id="btnEnviarErpPdf" class="btn btn-accent btn-large"><i class="fa-solid fa-cloud-arrow-up"></i> Enviar PQO para o GDP da Empresa</button>
+                </div>
+
+                <div class="console-box" id="erpPdfConsole">
+                  <span class="console-line text-muted">&gt; Aguardando ação de exportação GDP...</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Visualização do PDF Real via iframe -->
+            <div class="card glassmorphism animate-fade-in">
+              <div class="card-header flex-header">
+                <div>
+                  <h3>🔍 Pré-visualização do Relatório PDF Oficial</h3>
+                  <p>Clique em "Visualizar" para gerar e exibir o PDF real do PQO antes de baixar.</p>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <button id="btnVisualizarPDFRascunho" class="btn btn-secondary btn-small" title="Gera o PDF para conferência/testes sem incrementar revisão nem oficializar o PQO">
+                    <i class="fa-solid fa-eye"></i> Visualizar Rascunho
+                  </button>
+                  <button id="btnVisualizarPDFOficial" class="btn btn-primary btn-small">
+                    <i class="fa-solid fa-file-pdf"></i> Visualizar PDF Oficial
+                  </button>
+                </div>
+              </div>
+              <div class="card-body" style="padding: 0; background: #1e293b; border-radius: 0 0 12px 12px;">
+                <!-- Placeholder exibido antes da primeira geração -->
+                <div id="pdfPreviewPlaceholder" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 500px; color: #64748b; gap: 16px;">
+                  <i class="fa-solid fa-file-pdf" style="font-size: 64px; opacity: 0.3;"></i>
+                  <p style="margin: 0; font-size: 14px;">Clique em "Visualizar" para gerar o PDF e exibir aqui.</p>
+                </div>
+                <!-- Spinner de geração -->
+                <div id="pdfPreviewSpinner" style="display: none; flex-direction: column; align-items: center; justify-content: center; height: 500px; color: #94a3b8; gap: 16px;">
+                  <i class="fa-solid fa-spinner fa-spin" style="font-size: 48px; color: #0284c7;"></i>
+                  <p style="margin: 0; font-size: 14px;">Gerando PDF, aguarde...</p>
+                </div>
+                <!-- iframe onde o PDF real é exibido -->
+                <iframe id="pdfPreviewIframe"
+                  style="display: none; width: 100%; height: 780px; border: none; border-radius: 0 0 12px 12px;"
+                  title="Pré-visualização do PQO">
+                </iframe>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ABA 8: CONFIGURAÇÕES GERAIS -->
+        <section id="tab-configuracoes" class="tab-panel">
+          <!-- Toggle Sub-abas de Configuração -->
+          <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; flex-wrap: wrap;">
+            <button id="btnConfigTabMateriais" class="btn btn-primary btn-small"><i class="fa-solid fa-box"></i> Configurações de Materiais</button>
+            <button id="btnConfigTabServicos" class="btn btn-secondary btn-small"><i class="fa-solid fa-list-check"></i> Configurações de Serviços</button>
+            <button id="btnConfigTabControleTec" class="btn btn-secondary btn-small"><i class="fa-solid fa-flask"></i> Modelos de Controle Tecnológico</button>
+            <button id="btnConfigTabTreinamentos" class="btn btn-secondary btn-small"><i class="fa-solid fa-graduation-cap"></i> Biblioteca de Treinamentos (ITs)</button>
+            <button id="btnConfigTabObjetivos" class="btn btn-secondary btn-small"><i class="fa-solid fa-bullseye"></i> Objetivos & Metas Global</button>
+            <button id="btnConfigTabSesmt" class="btn btn-secondary btn-small"><i class="fa-solid fa-shield-halved"></i> Diretrizes SESMT (SSMA)</button>
+            <button id="btnConfigTabObras" class="btn btn-secondary btn-small"><i class="fa-solid fa-file-excel"></i> Importar Lista de Obras</button>
+            <button id="btnConfigTabCargos" class="btn btn-secondary btn-small"><i class="fa-solid fa-users-gear"></i> Cargos / RACI</button>
+            <button id="btnConfigTabVersionamento" class="btn btn-secondary btn-small"><i class="fa-solid fa-code-compare"></i> Regras de Versionamento</button>
+            <button id="btnConfigTabBackup" class="btn btn-secondary btn-small"><i class="fa-solid fa-database"></i> Exportar / Importar Dados</button>
+          </div>
+
+          <!-- PAINEL MATERIAIS -->
+          <div id="config-panel-materiais">
+            <div class="grid-2col">
+              <!-- Prefixos de Insumos -->
+              <div class="card glassmorphism animate-fade-in">
+                <div class="card-header">
+                  <h3>⚙️ Prefixos de Captura de Insumos</h3>
+                  <p>Configure os prefixos de códigos que o sistema lerá como Materiais durante a importação (padrão: <code>IM</code>).</p>
+                </div>
+                <div class="card-body">
+                  <div class="form-group">
+                    <label for="cfg-prefixos-input">Prefixos Permitidos (Separados por vírgula)</label>
+                    <input type="text" id="cfg-prefixos-input" placeholder="Ex: IM, MAT, IN">
+                    <small class="text-muted" style="margin-top: 5px; display: block;">Qualquer insumo iniciando por estes prefixos será classificado como Material.</small>
+                  </div>
+                  <div class="mt-2">
+                    <button id="btnSalvarPrefixos" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Salvar Prefixos</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Cadastro de Classes de Materiais -->
+              <div class="card glassmorphism animate-fade-in">
+                <div class="card-header flex-header">
+                  <div>
+                    <h3>⚙️ Classes de Materiais e Diretrizes</h3>
+                    <p>Cadastre e gerencie as classes de materiais da empresa, com seus respectivos procedimentos de inspeção e registros de qualidade.</p>
+                  </div>
+                  <button id="btnNovaClasseConfig" class="btn btn-accent btn-small"><i class="fa-solid fa-plus"></i> Nova Classe</button>
+                </div>
+                <div class="card-body">
+                  <div class="table-container max-height-300">
+                    <table class="data-table" id="tableClassesConfig">
+                      <thead>
+                        <tr>
+                          <th>Classe de Material</th>
+                          <th>Procedimento de Inspeção</th>
+                          <th>Registro de Qualidade</th>
+                          <th class="col-actions">Ações</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <!-- Renderizado dinamicamente -->
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Mapeamento Persistente de Códigos para Classes -->
+            <div class="card glassmorphism animate-fade-in mt-4">
+              <div class="card-header">
+                <h3>⚙️ Associações Persistentes de Códigos de Insumos</h3>
+                <p>Mapeamento persistente entre os códigos físicos das planilhas de insumos e as classes de materiais. Ao re-importar qualquer planilha, o sistema aplicará estas associações.</p>
+              </div>
+              <div class="card-body">
+                <div class="table-container max-height-300">
+                  <table class="data-table" id="tableAssociacoesConfig">
+                    <thead>
+                      <tr>
+                        <th>Código do Insumo</th>
+                        <th>Classe Associada</th>
+                        <th class="col-actions">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <!-- Renderizado dinamicamente -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- PAINEL SERVIÇOS -->
+          <div id="config-panel-servicos" style="display: none;">
+            <div class="grid-2col">
+              <!-- Cadastro de Subgrupos de Serviços -->
+              <div class="card glassmorphism animate-fade-in">
+                <div class="card-header flex-header">
+                  <div>
+                    <h3>⚙️ Agrupamentos de Serviços (Subgrupos)</h3>
+                    <p>Gerencie os agrupamentos de serviços controlados da empresa, seus respectivos códigos FVS e frequências de inspeção.</p>
+                  </div>
+                  <button id="btnNovoSubgrupoConfig" class="btn btn-accent btn-small"><i class="fa-solid fa-plus"></i> Novo Agrupamento</button>
+                </div>
+                <div class="card-body">
+                  <div class="table-container max-height-300">
+                    <table class="data-table" id="tableSubgruposConfig">
+                      <thead>
+                        <tr>
+                          <th style="width: 25%;">Tipo</th>
+                          <th style="width: 35%;">Agrupamento (Subgrupo)</th>
+                          <th style="width: 15%;">FVS Vinculada</th>
+                          <th style="width: 15%;">Frequência de Inspeção</th>
+                          <th class="col-actions">Ações</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <!-- Renderizado dinamicamente -->
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Mapeamento Persistente de Códigos para Subgrupos -->
+              <div class="card glassmorphism animate-fade-in">
+                <div class="card-header">
+                  <h3>⚙️ Associações Persistentes de Códigos de Serviços</h3>
+                  <p>Mapeamento persistente entre os códigos físicos das planilhas de serviços e os agrupamentos de serviços configurados.</p>
+                </div>
+                <div class="card-body">
+                  <div class="table-container max-height-300">
+                    <table class="data-table" id="tableServicosAssociacoesConfig">
+                      <thead>
+                        <tr>
+                          <th>Código do Serviço</th>
+                          <th>Agrupamento Associado</th>
+                          <th class="col-actions">Ações</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <!-- Renderizado dinamicamente -->
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Procedimentos por Tipo de Agrupamento -->
+            <div class="card glassmorphism animate-fade-in mt-4">
+              <div class="card-header">
+                <h3>⚙️ Procedimentos por Tipo de Agrupamento</h3>
+                <p>Configure os procedimentos de qualidade gerais (PQP) para cada macro-categoria / Tipo de Agrupamento de serviços.</p>
+              </div>
+              <div class="card-body">
+                <div class="table-container max-height-300">
+                  <table class="data-table" id="tableProcedimentosTiposConfig">
+                    <thead>
+                      <tr>
+                        <th>Tipo de Agrupamento</th>
+                        <th>Procedimento Geral Vinculado (PQP)</th>
+                        <th class="col-actions">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <!-- Renderizado dinamicamente -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- PAINEL BIBLIOTECA GLOBAL DE TREINAMENTOS (ITs) -->
+          <div id="config-panel-treinamentos" style="display: none;">
+            <div class="card glassmorphism animate-fade-in">
+              <div class="card-header flex-header">
+                <div>
+                  <h3>🎓 Biblioteca Global de Treinamentos e Instruções de Trabalho (ITs)</h3>
+                  <p>Cadastre os procedimentos, ITs e públicos-alvo corporativos. O sistema vinculará automaticamente estes treinamentos aos PQOs de acordo com a Curva ABC de Serviços da obra.</p>
+                </div>
+                <button id="btnNovoTreinamentoConfig" class="btn btn-accent btn-small"><i class="fa-solid fa-plus"></i> Nova IT / Procedimento</button>
+              </div>
+              <div class="card-body">
+                <div class="table-container">
+                  <table class="data-table" id="tableTreinamentosConfig">
+                    <thead>
+                      <tr>
+                        <th style="width: 20%;">Grupo</th>
+                        <th style="width: 20%;">Serviço</th>
+                        <th style="width: 15%;">Código</th>
+                        <th style="width: 35%;">Público-Alvo / Funções</th>
+                        <th class="col-actions" style="width: 10%;">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <!-- Renderizado dinamicamente -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- PAINEL IMPORTAR OBRAS (EXCLUSIVO) -->
+          <div id="config-panel-obras" style="display: none;">
+            <!-- Mapeamento Configurável de Colunas do GDP -->
+            <div class="card glassmorphism animate-fade-in style-card-mb" style="margin-bottom: 20px;">
+              <div class="card-header flex-header">
+                <div>
+                  <h3>⚙️ Mapeamento de Colunas das Planilhas do GDP</h3>
+                  <p>Defina quais títulos de colunas da planilha do GDP correspondem a cada campo do PQO. Se novas colunas forem criadas ou renomeadas na exportação do GDP, ajuste os nomes abaixo e salve.</p>
+                </div>
+                <div id="gdpSyncMetadataBadge" style="font-size: 11px; color: var(--text-muted); background: var(--bg-hover); padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-color);">
+                  <i class="fa-solid fa-sync"></i> Última sincronização GDP: <strong id="lblGdpLastSyncDate">-</strong>
+                </div>
+              </div>
+              <div class="card-body">
+                <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 15px;">
+                  Configure os nomes das colunas conforme exportados no arquivo <code>contratos_prod.xlsx</code> do GDP:
+                </p>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px;">
+                  <div class="form-group">
+                    <label for="cfg-gdp-col-numObra" style="font-size: 11px; font-weight: 700;">1. Código da Obra (numObra)</label>
+                    <input type="text" id="cfg-gdp-col-numObra" placeholder="Ex: CODIGO OBRA, Código">
+                  </div>
+                  <div class="form-group">
+                    <label for="cfg-gdp-col-nomeObra" style="font-size: 11px; font-weight: 700;">2. Nome / Referência (nomeObra)</label>
+                    <input type="text" id="cfg-gdp-col-nomeObra" placeholder="Ex: REFERENCIA OBRA, Objeto">
+                  </div>
+                  <div class="form-group">
+                    <label for="cfg-gdp-col-cliente" style="font-size: 11px; font-weight: 700;">3. Cliente / Contratante</label>
+                    <input type="text" id="cfg-gdp-col-cliente" placeholder="Ex: CLIENTE, Contratante">
+                  </div>
+                  <div class="form-group">
+                    <label for="cfg-gdp-col-endereco" style="font-size: 11px; font-weight: 700;">4. Endereço Completo</label>
+                    <input type="text" id="cfg-gdp-col-endereco" placeholder="Ex: ENDEREÇO, Localização">
+                  </div>
+                  <div class="form-group">
+                    <label for="cfg-gdp-col-dataInicial" style="font-size: 11px; font-weight: 700;">5. Data Inicial / Contrato</label>
+                    <input type="text" id="cfg-gdp-col-dataInicial" placeholder="Ex: DATA INICIAL, Início">
+                  </div>
+                  <div class="form-group">
+                    <label for="cfg-gdp-col-responsavel" style="font-size: 11px; font-weight: 700;">6. Gestor / Responsável</label>
+                    <input type="text" id="cfg-gdp-col-responsavel" placeholder="Ex: GESTOR, Elaborador">
+                  </div>
+                  <div class="form-group">
+                    <label for="cfg-gdp-col-engenheiro" style="font-size: 11px; font-weight: 700;">7. Engenheiro de Obras</label>
+                    <input type="text" id="cfg-gdp-col-engenheiro" placeholder="Ex: ENGENHEIRO, Eng">
+                  </div>
+                  <div class="form-group">
+                    <label for="cfg-gdp-col-status" style="font-size: 11px; font-weight: 700;">8. Status do Contrato</label>
+                    <input type="text" id="cfg-gdp-col-status" placeholder="Ex: STATUS, Situação">
+                  </div>
+                </div>
+                <div class="mt-3 flex-header">
+                  <button id="btnSalvarMapeamentoGdp" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Salvar Mapeamento do GDP</button>
+                  <button id="btnRestaurarMapeamentoGdp" class="btn btn-secondary btn-small"><i class="fa-solid fa-rotate-left"></i> Restaurar Padrão</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="card glassmorphism animate-fade-in">
+              <div class="card-header">
+                <h3>📊 Importar Lista de Obras (Excel/CSV)</h3>
+                <p>Suba uma planilha contendo as colunas: <code>Obra, Número, Endereço, Cliente, Data Inicial, Responsável, Engenheiro, Status</code>.</p>
+              </div>
+              <div class="card-body">
+                <div class="upload-zone" id="uploadZoneObras" style="padding: 30px 20px; border: 2px dashed var(--border-color); border-radius: 8px; text-align: center; cursor: pointer;">
+                  <i class="fa-solid fa-file-excel" style="font-size: 32px; color: var(--accent-color); margin-bottom: 10px;"></i>
+                  <p style="font-size: 12px; margin: 5px 0; color: var(--text-primary);">Arraste a planilha de obras aqui ou clique para selecionar</p>
+                  <input type="file" id="fileObras" accept=".xlsx, .xls, .csv" style="display: none;">
+                  <span id="fileInfoObras" class="file-info-text" style="font-size: 11px; color: var(--text-muted); display: block; margin-top: 5px;">Nenhum arquivo selecionado</span>
+                </div>
+
+                <!-- Painel Colapsável de Mapeamento de Colunas (Drag and Drop) -->
+                <div id="mappingContainerObras" class="mt-3" style="display: none; background: var(--bg-hover); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
+                  <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" id="btnToggleMappingObras">
+                    <h4 style="font-size: 14px; margin: 0; color: var(--accent-color);"><i class="fa-solid fa-sliders"></i> Mapeamento de Colunas da Planilha (Drag & Drop)</h4>
+                    <i class="fa-solid fa-chevron-down" id="iconToggleMappingObras"></i>
+                  </div>
+
+                  <div id="mappingBodyObras" class="mt-3">
+                    <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 10px;">
+                      Arraste as <strong>pills (colunas detectadas)</strong> para os campos correspondentes do sistema:
+                    </p>
+
+                    <!-- Pills das colunas da planilha -->
+                    <div id="sourcePillsObras" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; padding: 10px; background: var(--bg-secondary); border-radius: 6px; min-height: 45px; align-items: center;">
+                      <!-- Populado via Javascript ao carregar o arquivo -->
+                    </div>
+
+                    <!-- Targets de Soltura para os 7 Campos Obrigatórios -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px;">
+                      
+                      <div class="drop-target-box" data-field="codigoObra" style="background: var(--bg-secondary); padding: 10px; border-radius: 6px; border: 1px dashed var(--border-color);">
+                        <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 4px;">1. Código da Obra</label>
+                        <div class="pill-drop-zone" style="min-height: 32px; border-radius: 4px; background: var(--bg-hover); display: flex; align-items: center; padding: 4px 8px; font-size: 12px;">
+                          <span class="text-muted" style="font-style: italic;">Arraste a pill aqui...</span>
+                        </div>
+                      </div>
+
+                      <div class="drop-target-box" data-field="obraObjeto" style="background: var(--bg-secondary); padding: 10px; border-radius: 6px; border: 1px dashed var(--border-color);">
+                        <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 4px;">2. Obra / Objeto</label>
+                        <div class="pill-drop-zone" style="min-height: 32px; border-radius: 4px; background: var(--bg-hover); display: flex; align-items: center; padding: 4px 8px; font-size: 12px;">
+                          <span class="text-muted" style="font-style: italic;">Arraste a pill aqui...</span>
+                        </div>
+                      </div>
+
+                      <div class="drop-target-box" data-field="cliente" style="background: var(--bg-secondary); padding: 10px; border-radius: 6px; border: 1px dashed var(--border-color);">
+                        <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 4px;">3. Cliente / Contratante</label>
+                        <div class="pill-drop-zone" style="min-height: 32px; border-radius: 4px; background: var(--bg-hover); display: flex; align-items: center; padding: 4px 8px; font-size: 12px;">
+                          <span class="text-muted" style="font-style: italic;">Arraste a pill aqui...</span>
+                        </div>
+                      </div>
+
+                      <div class="drop-target-box" data-field="gestorContrato" style="background: var(--bg-secondary); padding: 10px; border-radius: 6px; border: 1px dashed var(--border-color);">
+                        <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 4px;">4. Gestor do Contrato</label>
+                        <div class="pill-drop-zone" style="min-height: 32px; border-radius: 4px; background: var(--bg-hover); display: flex; align-items: center; padding: 4px 8px; font-size: 12px;">
+                          <span class="text-muted" style="font-style: italic;">Arraste a pill aqui...</span>
+                        </div>
+                      </div>
+
+                      <div class="drop-target-box" data-field="dataInicio" style="background: var(--bg-secondary); padding: 10px; border-radius: 6px; border: 1px dashed var(--border-color);">
+                        <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 4px;">5. Data Início</label>
+                        <div class="pill-drop-zone" style="min-height: 32px; border-radius: 4px; background: var(--bg-hover); display: flex; align-items: center; padding: 4px 8px; font-size: 12px;">
+                          <span class="text-muted" style="font-style: italic;">Arraste a pill aqui...</span>
+                        </div>
+                      </div>
+
+                      <div class="drop-target-box" data-field="statusObra" style="background: var(--bg-secondary); padding: 10px; border-radius: 6px; border: 1px dashed var(--border-color);">
+                        <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 4px;">6. Status Obra</label>
+                        <div class="pill-drop-zone" style="min-height: 32px; border-radius: 4px; background: var(--bg-hover); display: flex; align-items: center; padding: 4px 8px; font-size: 12px;">
+                          <span class="text-muted" style="font-style: italic;">Arraste a pill aqui...</span>
+                        </div>
+                      </div>
+
+                      <div class="drop-target-box" data-field="enderecoCompleto" style="background: var(--bg-secondary); padding: 10px; border-radius: 6px; border: 1px dashed var(--border-color);">
+                        <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 4px;">7. Endereço Completo</label>
+                        <div class="pill-drop-zone" style="min-height: 32px; border-radius: 4px; background: var(--bg-hover); display: flex; align-items: center; padding: 4px 8px; font-size: 12px;">
+                          <span class="text-muted" style="font-style: italic;">Arraste a pill aqui...</span>
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="mt-3 btn-container-right">
+                  <button id="btnProcessarObras" class="btn btn-primary" disabled><i class="fa-solid fa-cloud-arrow-up"></i> Sincronizar Obras com Mapeamento</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tabela de Obras Sincronizadas -->
+            <div class="card glassmorphism animate-fade-in mt-4">
+              <div class="card-header">
+                <h3>⚙️ Obras Sincronizadas no Banco Local</h3>
+                <p>Lista de obras mapeadas a partir de planilhas importadas ou cadastradas manualmente.</p>
+              </div>
+              <div class="card-body">
+                <div class="table-container max-height-300">
+                  <table class="data-table" id="tableObrasLocal">
+                    <thead>
+                      <tr>
+                        <th>Cód. Obra</th>
+                        <th>Obra / Objeto</th>
+                        <th>Cliente / Contratante</th>
+                        <th>Gestor do Contrato</th>
+                        <th>Data Início</th>
+                        <th>Status</th>
+                        <th>Endereço</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <!-- Dinâmico -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- PAINEL MODELOS DE CONTROLE TECNOLÓGICO -->
+          <div id="config-panel-controletec" style="display: none;">
+            <div class="card glassmorphism animate-fade-in mb-4">
+              <div class="card-header flex-header">
+                <div>
+                  <h3>🧪 Gerenciador de Modelos Padrões de Controle Tecnológico (Inspeção)</h3>
+                  <p>Cadastre e edite os modelos de controle de órgãos e entidades (ex: <strong>DAER RS, DNIT, Prefeituras</strong>). Defina os ensaios aplicáveis que serão marcados automaticamente nas obras.</p>
+                </div>
+                <button id="btnNovoModeloCT" class="btn btn-accent btn-small" type="button"><i class="fa-solid fa-plus"></i> Novo Modelo Padrão</button>
+              </div>
+              <div class="card-body">
+                <div class="table-container max-height-300 mb-3">
+                  <table class="data-table" id="tableModelosCTConfig">
+                    <thead>
+                      <tr>
+                        <th>Nome do Modelo</th>
+                        <th>Órgão / Entidade</th>
+                        <th>Nº de Ensaios Vinculados</th>
+                        <th class="col-actions">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <!-- Renderizado dinamicamente -->
+                    </tbody>
+                  </table>
+                </div>
+
+                <!-- Form Inline para Criar / Editar Modelo CT -->
+                <div id="inlineModeloCTContainer" style="display: none; background: var(--bg-dark); border: 1px solid var(--accent-color); border-radius: 10px; padding: 20px; margin-top: 15px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+                    <h4 id="inlineModeloCTTitle" style="color: var(--accent-color); margin: 0; font-size: 15px;"><i class="fa-solid fa-flask"></i> Configurar Modelo de Controle Tecnológico</h4>
+                    <button type="button" id="btnFecharInlineModeloCT" class="btn btn-secondary btn-small">&times; Fechar Editor</button>
+                  </div>
+
+                  <form id="formInlineModeloCT" class="grid-form mb-3">
+                    <input type="hidden" id="inlineModeloCTId">
+                    <div class="form-group col-2">
+                      <label for="inline-cfg-ct-nome">Nome do Modelo (ex: DAER - Asfalto)</label>
+                      <input type="text" id="inline-cfg-ct-nome" required placeholder="Ex: DAER - Asfalto / Pavimentação (CBUQ)">
+                    </div>
+                    <div class="form-group col-2">
+                      <label for="inline-cfg-ct-orgao">Órgão / Entidade Reguladora</label>
+                      <input type="text" id="inline-cfg-ct-orgao" required placeholder="Ex: DAER RS, DNIT, Prefeitura">
+                    </div>
+                    <div class="form-group col-4">
+                      <label style="font-weight: 700; color: var(--text-primary); margin-bottom: 8px; display: block;">Selecione os Ensaios / Laudos que pertencem a este modelo:</label>
+                      <div class="table-container max-height-300">
+                        <table class="data-table table-controle-tecnologico" id="tableInlineModeloCT">
+                          <thead>
+                            <tr>
+                              <th style="width: 80px; text-align: center;">Nº</th>
+                              <th>ENSAIO / LAUDO</th>
+                              <th style="width: 100px; text-align: center;">VINCULAR</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <!-- Renderizado dinamicamente via abrirEditorInlineModeloCT em main.js -->
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <div class="btn-container-right col-4 mt-2">
+                      <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Salvar Modelo de Controle Tecnológico</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- PAINEL CARGOS / RACI (EXCLUSIVO) -->
+          <div id="config-panel-cargos" style="display: none;">
+            <!-- Identidade Visual da Empresa -->
+            <div class="card glassmorphism animate-fade-in mb-4">
+              <div class="card-header">
+                <h3>🏢 Identidade Visual da Empresa</h3>
+                <p>Configure o logotipo e o nome da empresa que aparecerão na capa e nos cabeçalhos do PDF do PQO.</p>
+              </div>
+              <div class="card-body">
+                <div class="grid-form">
+                  <div class="form-group col-2">
+                    <label for="cfg-nome-empresa">Nome / Razão Social da Empresa</label>
+                    <input type="text" id="cfg-nome-empresa" placeholder="Ex: PAVICON Qualidade Civil Ltda.">
+                  </div>
+                  <div class="form-group col-2">
+                    <label>Logotipo da Empresa (PNG ou JPG — aparece na capa e cabeçalhos do PDF)</label>
+                    <div style="display: flex; gap: 16px; align-items: center;">
+                      <div id="logo-empresa-preview" style="width: 120px; height: 60px; border: 1px dashed var(--border-color); border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; background: var(--bg-hover); flex-shrink: 0;">
+                        <span style="font-size: 11px; color: var(--text-muted); text-align: center;">Sem logo</span>
+                      </div>
+                      <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <label for="inputLogoEmpresa" class="btn btn-secondary btn-small" style="cursor: pointer; margin: 0;">
+                          <i class="fa-solid fa-upload"></i> Carregar Logotipo
+                        </label>
+                        <input type="file" id="inputLogoEmpresa" accept="image/png,image/jpeg,image/gif,image/svg+xml" style="display:none;">
+                        <button type="button" id="btnRemoverLogoEmpresa" class="btn btn-outline-danger btn-small"><i class="fa-solid fa-trash"></i> Remover Logo</button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-4 btn-container-right">
+                    <button type="button" id="btnSalvarIdentidadeEmpresa" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Salvar Identidade Visual</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Funcionários Fixos da Corporação -->
+            <div class="card glassmorphism animate-fade-in mb-4">
+              <div class="card-header">
+                <h3>👥 Cargos Globais / Funcionários Fixos da Corporação</h3>
+                <p>Cadastre os responsáveis corporativos que assinam e participam da estrutura de todos os PQOs da empresa.</p>
+              </div>
+              <div class="card-body">
+                <form id="form-cargos-globais" class="grid-form">
+                  <div class="form-group col-2">
+                    <label for="global-diretorProd">Diretor de Produção (Aprovador Oficial)</label>
+                    <input type="text" id="global-diretorProd" placeholder="Ex: Eng. Carlos Eduardo Silva">
+                  </div>
+                  <div class="form-group col-2">
+                    <label for="global-planObras">Planejamento de Obras</label>
+                    <input type="text" id="global-planObras" placeholder="Ex: Engª Mariana Costa">
+                  </div>
+                  <div class="form-group col-2">
+                    <label for="global-logEquip">Logística de Equipamentos</label>
+                    <input type="text" id="global-logEquip" placeholder="Ex: Roberto Ferreira">
+                  </div>
+                  <div class="form-group col-2">
+                    <label for="global-tecSesmt">Técnico de Segurança (SESMT)</label>
+                    <input type="text" id="global-tecSesmt" placeholder="Ex: Lucas Mendes">
+                  </div>
+                  <div class="form-group col-2">
+                    <label for="global-laboratorista">Laboratorista de Solos/Concreto</label>
+                    <input type="text" id="global-laboratorista" placeholder="Ex: Pedro Alencar">
+                  </div>
+                  <div class="form-group col-2">
+                    <label for="global-encManut">Encarregado de Manutenção</label>
+                    <input type="text" id="global-encManut" placeholder="Ex: Sérgio Souza">
+                  </div>
+                  <div class="col-4 btn-container-right mt-2">
+                    <button type="submit" class="btn btn-primary" id="btnSalvarCargosGlobais"><i class="fa-solid fa-floppy-disk"></i> Salvar Funcionários Fixos</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+
+            <!-- Gerenciador de Modelos de Organograma (Expandível na própria página) -->
+            <div class="card glassmorphism animate-fade-in mt-4">
+              <div class="card-header flex-header">
+                <div>
+                  <h3>⚙️ Modelos de Organogramas da Empresa</h3>
+                  <p>Cadastre os modelos de estrutura organizacional corporativa e defina quem responde a quem.</p>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                  <button id="btnNovoModeloOrg" class="btn btn-accent btn-small" type="button"><i class="fa-solid fa-plus"></i> Novo Modelo</button>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="table-container max-height-300 mb-3">
+                  <table class="data-table" id="tableModelosOrg">
+                    <thead>
+                      <tr>
+                        <th>Nome do Modelo</th>
+                        <th>Nº de Cargos</th>
+                        <th>Padrão?</th>
+                        <th class="col-actions">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <!-- Renderizado dinamicamente -->
+                    </tbody>
+                  </table>
+                </div>
+
+                <!-- Painel Inline de Edição/Criação do Modelo (Sem Modal!) -->
+                <div id="inlineModeloOrgContainer" style="display: none; background: var(--bg-dark); border: 1px solid var(--accent-color); border-radius: 10px; padding: 20px; margin-top: 15px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+                    <h4 id="inlineModeloOrgTitle" style="color: var(--accent-color); margin: 0; font-size: 15px;"><i class="fa-solid fa-sitemap"></i> Editar Estrutura de Cargos do Modelo</h4>
+                    <button type="button" id="btnFecharInlineModeloOrg" class="btn btn-secondary btn-small">&times; Fechar Editor</button>
+                  </div>
+
+                  <form id="formInlineModeloOrgHeader" class="grid-form mb-3">
+                    <input type="hidden" id="inlineModeloOrgId">
+                    <div class="form-group col-2">
+                      <label for="inline-cfg-org-nome">Nome do Modelo</label>
+                      <input type="text" id="inline-cfg-org-nome" required placeholder="Ex: Padrão Obras Rodoviárias">
+                    </div>
+                    <div class="form-group col-2" style="display:flex; align-items:flex-end;">
+                      <label style="cursor: pointer; color: var(--text-primary); margin-bottom: 10px;">
+                        <input type="checkbox" id="inline-cfg-org-padrao" style="width:16px; height:16px; vertical-align: middle; accent-color: var(--accent-color);"> Definir como Modelo Padrão (Default)
+                      </label>
+                    </div>
+                  </form>
+
+                  <!-- Alternador de Modos de Edição (Árvore Visual vs Código JSON Direto) -->
+                  <div style="display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+                    <button type="button" id="btnInlineModeVisual" class="btn btn-primary btn-small"><i class="fa-solid fa-sitemap"></i> Árvore Visual</button>
+                    <button type="button" id="btnInlineModeJson" class="btn btn-secondary btn-small"><i class="fa-solid fa-code"></i> Editar Código JSON Direto</button>
+                  </div>
+
+                  <!-- MODO 1: ÁRVORE VISUAL -->
+                  <div id="inline-mode-visual-panel">
+                    <h5 style="font-size: 12px; color: var(--text-primary); margin-bottom: 10px;">Adicionar Novo Cargo à Árvore:</h5>
+                    <form id="form-inline-cfg-org-node" class="inline-form mb-3">
+                      <input type="text" id="inline-cfg-org-node-nome" placeholder="Nome Padrão / Tag (ex: {{DIRETOR_PRODUCAO}})" required style="flex: 1;">
+                      <input type="text" id="inline-cfg-org-node-cargo" placeholder="Cargo/Função (ex: Gerente de Contrato)" required style="flex: 1;">
+                      <select id="inline-cfg-org-node-parentId" style="flex: 1;">
+                        <option value="">Reporta-se a... (Nível Superior)</option>
+                      </select>
+                      <button type="submit" class="btn btn-primary btn-small"><i class="fa-solid fa-plus"></i> Inserir Cargo</button>
+                    </form>
+
+                    <div style="background: var(--bg-hover); padding: 10px; border-radius: 6px; margin-bottom: 10px; font-size: 11px; color: var(--text-secondary); border: 1px dashed var(--border-color);">
+                      💡 <strong>Dica de Tags Dinâmicas:</strong> Use <code>{{DIRETOR_PRODUCAO}}</code>, <code>{{PLANEJAMENTO_OBRAS}}</code>, <code>{{LOGISTICA_EQUIPAMENTOS}}</code>, <code>{{TECNICO_SESMT}}</code>, <code>{{LABORATORISTA}}</code>, <code>{{ENCARREGADO_MANUTENCAO}}</code> (Cargos Globais) ou <code>{{ENCARREGADO_OBRAS}}</code>, <code>{{TOPOGRAFIA}}</code> (Cargos da Obra) para puxar automaticamente os nomes!
+                    </div>
+
+                    <div class="org-tree-container" id="inlineCfgOrgTreeContainer" style="max-height: 280px; overflow-y: auto; background: var(--bg-secondary); border-radius: 8px; padding: 15px;">
+                      <!-- Renderizado dinamicamente -->
+                    </div>
+                  </div>
+
+                  <!-- MODO 2: CÓDIGO JSON DIRETO -->
+                  <div id="inline-mode-json-panel" style="display: none;">
+                    <label for="inline-cfg-org-json-code" style="font-size: 12px; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 5px;">Estrutura do Modelo em Código JSON:</label>
+                    <textarea id="inline-cfg-org-json-code" rows="12" style="font-family: monospace; font-size: 12px; background: #0b0c10; color: #4af626; border-radius: 8px; border: 1px solid var(--border-color); width: 100%; box-sizing: border-box; padding: 12px; outline: none;"></textarea>
+                    <small class="text-muted" style="margin-top: 5px; display: block;">Edite diretamente a lista de cargos em formato JSON. Exemplo: <code>[{"id": "1", "nome": "{{DIRETOR_PRODUCAO}}", "cargo": "Diretor", "parentId": null}]</code>.</small>
+                  </div>
+
+                  <div class="btn-container-right mt-3">
+                    <button type="button" id="btnSalvarInlineModeloOrgFinal" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Salvar Modelo de Organograma</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Gerenciador de Modelos de Matriz RACI da Empresa -->
+            <div class="card glassmorphism animate-fade-in mt-4">
+              <div class="card-header flex-header">
+                <div>
+                  <h3>📋 Modelos de Matriz RACI da Empresa</h3>
+                  <p>Cadastre e gerencie os modelos corporativos da Matriz RACI (Atividades da Qualidade × Cargos Responsáveis).</p>
+                </div>
+                <button id="btnNovoModeloRaci" class="btn btn-accent btn-small" type="button"><i class="fa-solid fa-plus"></i> Novo Modelo RACI</button>
+              </div>
+              <div class="card-body">
+                <div class="table-container max-height-300 mb-3">
+                  <table class="data-table" id="tableModelosRaci">
+                    <thead>
+                      <tr>
+                        <th>Nome do Modelo RACI</th>
+                        <th>Nº de Processos</th>
+                        <th>Nº de Cargos</th>
+                        <th>Padrão?</th>
+                        <th class="col-actions">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <!-- Renderizado dinamicamente -->
+                    </tbody>
+                  </table>
+                </div>
+
+                <!-- Painel Inline de Edição do Modelo RACI -->
+                <div id="inlineModeloRaciContainer" style="display: none; background: var(--bg-dark); border: 1px solid var(--accent-color); border-radius: 10px; padding: 20px; margin-top: 15px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+                    <h4 id="inlineModeloRaciTitle" style="color: var(--accent-color); margin: 0; font-size: 15px;"><i class="fa-solid fa-table-cells"></i> Editor de Modelo de Matriz RACI</h4>
+                    <button type="button" id="btnFecharInlineModeloRaci" class="btn btn-secondary btn-small">&times; Fechar Editor</button>
+                  </div>
+
+                  <form id="formInlineModeloRaciHeader" class="grid-form mb-3">
+                    <input type="hidden" id="inlineModeloRaciId">
+                    <div class="form-group col-2">
+                      <label for="inline-cfg-raci-nome">Nome do Modelo RACI</label>
+                      <input type="text" id="inline-cfg-raci-nome" required placeholder="Ex: Padrão Obras Civis / Pavimentação">
+                    </div>
+                    <div class="form-group col-2" style="display:flex; align-items:flex-end;">
+                      <label style="cursor: pointer; color: var(--text-primary); margin-bottom: 10px;">
+                        <input type="checkbox" id="inline-cfg-raci-padrao" style="width:16px; height:16px; vertical-align: middle; accent-color: var(--accent-color);"> Definir como Modelo Padrão (Default)
+                      </label>
+                    </div>
+                  </form>
+
+                  <!-- 1. Gestão da Lista de Cargos / Colunas -->
+                  <div style="background: var(--bg-hover); padding: 12px; border-radius: 8px; margin-bottom: 15px; border: 1px solid var(--border-color);">
+                    <h5 style="margin: 0 0 6px 0; color: var(--accent-color); font-size: 13px;"><i class="fa-solid fa-users"></i> 1. Cargos / Funções (Colunas da Tabela)</h5>
+                    <p style="font-size: 11px; color: var(--text-secondary); margin-bottom: 8px;">Dica: Você pode copiar várias células do Excel e colar diretamente na caixa abaixo (um cargo por linha).</p>
+                    <form id="form-raci-cfg-cargo" style="display: flex; gap: 10px; align-items: flex-start;" class="mb-2">
+                      <textarea id="input-raci-cfg-cargo" rows="2" placeholder="Cole cargos do Excel (um por linha)..." style="flex: 1; resize: vertical; font-size: 12px; padding: 8px; font-family: inherit;"></textarea>
+                      <button type="submit" class="btn btn-primary btn-small" style="height: 38px;"><i class="fa-solid fa-plus"></i> Adicionar Cargos</button>
+                    </form>
+                    <div id="raci-cfg-cargos-badges" style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;">
+                      <!-- Badges dos cargos -->
+                    </div>
+                  </div>
+
+                  <!-- 2. Gestão da Lista de Processos / Linhas -->
+                  <div style="background: var(--bg-hover); padding: 12px; border-radius: 8px; margin-bottom: 15px; border: 1px solid var(--border-color);">
+                    <h5 style="margin: 0 0 6px 0; color: var(--accent-color); font-size: 13px;"><i class="fa-solid fa-list-check"></i> 2. Processos / Atividades da Qualidade (Linhas da Tabela)</h5>
+                    <p style="font-size: 11px; color: var(--text-secondary); margin-bottom: 8px;">Dica: Você pode copiar várias linhas/células do Excel e colar diretamente abaixo (uma atividade por linha, vírgulas são preservadas no texto).</p>
+                    <form id="form-raci-cfg-processo" style="display: flex; gap: 10px; align-items: flex-start;" class="mb-2">
+                      <textarea id="input-raci-cfg-processo" rows="3" placeholder="Cole processos do Excel (um por linha)..." style="flex: 1; resize: vertical; font-size: 12px; padding: 8px; font-family: inherit;"></textarea>
+                      <button type="submit" class="btn btn-primary btn-small" style="height: 38px;"><i class="fa-solid fa-plus"></i> Adicionar Processos</button>
+                    </form>
+                    <div id="raci-cfg-processos-lista" style="display: flex; flex-direction: column; gap: 6px; margin-top: 8px;">
+                      <!-- Itens de processos com botão de apagar -->
+                    </div>
+                  </div>
+
+                  <!-- 3. Grade de Matriz RACI Interativa -->
+                  <div style="background: var(--bg-hover); padding: 12px; border-radius: 8px; margin-bottom: 15px; border: 1px solid var(--border-color);">
+                    <h5 style="margin: 0 0 6px 0; color: var(--accent-color); font-size: 13px;"><i class="fa-solid fa-grid-2"></i> 3. Cruzamentos RACI (Clique nas células para alternar R, A, C, I ou -)</h5>
+                    <p style="font-size: 11px; color: var(--text-secondary); margin-bottom: 10px;">Legenda: <strong>R</strong> (Responsável/Executor), <strong>A</strong> (Aprovador/Accountable), <strong>A/R</strong> (Aprovador e Responsável), <strong>C</strong> (Consultado), <strong>I</strong> (Informado)</p>
+                    
+                    <div class="scrollable-x">
+                      <table class="raci-table" id="tableCfgRaciGrid">
+                        <thead>
+                          <!-- Cabeçalho dinâmico de cargos -->
+                        </thead>
+                        <tbody>
+                          <!-- Grade dinâmica de cruzamentos -->
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div class="btn-container-right mt-3">
+                    <button type="button" id="btnSalvarInlineModeloRaciFinal" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Salvar Modelo RACI</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- PAINEL OBJETIVOS & METAS GLOBAL -->
+          <div id="config-panel-objetivos" style="display: none;">
+            <div class="card glassmorphism animate-fade-in mb-4">
+              <div class="card-header flex-header">
+                <div>
+                  <h3>🎯 Gerenciador Global de Objetivos e Metas da Qualidade</h3>
+                  <p>Cadastre os indicadores corporativos do SGQ. Defina se a meta é <strong>Fixa</strong> (padronizada corporativamente) ou <strong>Individualizada</strong> (especificada por cada obra no editor do PQO), e inclua a instrução de cálculo.</p>
+                </div>
+                <button id="btnNovoObjetivoGlobalConfig" class="btn btn-accent btn-small" type="button"><i class="fa-solid fa-plus"></i> Novo Objetivo / Indicador</button>
+              </div>
+              <div class="card-body">
+                <div class="table-container max-height-300 mb-3">
+                  <table class="data-table" id="tableObjetivosGlobalConfig">
+                    <thead>
+                      <tr>
+                        <th style="width: 25%;">Objetivo da Qualidade (SGQ)</th>
+                        <th style="width: 20%;">Indicador de Desempenho</th>
+                        <th style="width: 120px; text-align: center;">Tipo de Meta</th>
+                        <th style="width: 15%;">Meta Padrão</th>
+                        <th style="width: 10%;">Frequência</th>
+                        <th>Fonte / Instruções</th>
+                        <th class="col-actions">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <!-- Renderizado dinamicamente -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- PAINEL DIRETRIZES SESMT (SSMA) -->
+          <div id="config-panel-sesmt" style="display: none;">
+            <div class="card glassmorphism animate-fade-in mb-4">
+              <div class="card-header">
+                <h3>🛡️ Diretrizes Corporativas do SESMT (Saúde, Segurança e Meio Ambiente)</h3>
+                <p>Cadastre o Responsável Corporativo de SST e a Declaração Institucional que serão herdados automaticamente por todas as obras.</p>
+              </div>
+              <div class="card-body">
+                <form id="form-config-sesmt-global" class="grid-form">
+                  <div class="form-group col-4">
+                    <label for="cfg-sesmt-responsavel">Responsável Corporativo pelo SESMT (Nome / Registro CREA ou MTE)</label>
+                    <input type="text" id="cfg-sesmt-responsavel" required placeholder="Ex: Eng. Renato Peixoto - Reg. CREA/MTE nº 184529-RS">
+                  </div>
+                  <div class="form-group col-2">
+                    <label for="cfg-sesmt-tec1">Técnica de Segurança do Trabalho 01 (CIPA / Obras)</label>
+                    <input type="text" id="cfg-sesmt-tec1" required placeholder="Ex: Lucimara Jandres - Tec. Seg. Trabalho (MTE nº 001234/RS)">
+                  </div>
+                  <div class="form-group col-2">
+                    <label for="cfg-sesmt-tec2">Técnica de Segurança do Trabalho 02 (CIPA / Obras)</label>
+                    <input type="text" id="cfg-sesmt-tec2" required placeholder="Ex: Mariana Souza - Tec. Seg. Trabalho (MTE nº 005678/RS)">
+                  </div>
+                  <div class="form-group col-1">
+                    <label for="cfg-sesmt-dt-pgr">Data Inicial PGR (NR-18)</label>
+                    <input type="date" id="cfg-sesmt-dt-pgr" required>
+                    <small class="text-muted" style="display:block; margin-top:3px;">Renova a cada 2 anos</small>
+                  </div>
+                  <div class="form-group col-1">
+                    <label for="cfg-sesmt-dt-pcmso">Data Inicial PCMSO (NR-07)</label>
+                    <input type="date" id="cfg-sesmt-dt-pcmso" required>
+                    <small class="text-muted" style="display:block; margin-top:3px;">Renova a cada 1 ano</small>
+                  </div>
+                  <div class="form-group col-2">
+                    <label for="cfg-sesmt-dt-cipa">Data Inicial CIPA (NR-05)</label>
+                    <input type="date" id="cfg-sesmt-dt-cipa" required>
+                    <small class="text-muted" style="display:block; margin-top:3px;">Renova a cada 1 ano (1 mês antes do prazo final)</small>
+                  </div>
+                  <div class="form-group col-4">
+                    <label for="cfg-sesmt-nota">Declaração Fixa de Garantia Legal (Empresa e Obras)</label>
+                    <textarea id="cfg-sesmt-nota" rows="4" required style="width: 100%; padding: 10px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary); font-size: 12px; font-family: var(--font-family); resize: vertical;" placeholder="Texto da declaração legal corporativa..."></textarea>
+                  </div>
+                  <div class="col-4 btn-container-right mt-2">
+                    <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Salvar Diretrizes do SESMT</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <!-- PAINEL REGRAS DE VERSIONAMENTO (EXCLUSIVO) -->
+          <div id="config-panel-versionamento" style="display: none;">
+            <div class="card glassmorphism animate-fade-in mb-4">
+              <div class="card-header">
+                <h3>🔒 Regras de Permissão de Edição por Status da Obra (GDP)</h3>
+                <p>Selecione quais <strong>Status de Obra</strong> (importados do sistema principal/Excel do GDP) <strong>PERMITEM a edição do PQO</strong>. Obras com status não marcados (ex: <em>Concluída</em>, <em>Paralisada</em>, <em>Cancelada</em>) ficarão <strong>totalmente bloqueadas contra edições</strong>, exigindo a reabertura da obra no GDP para alterar o PQO.</p>
+              </div>
+              <div class="card-body">
+                <form id="form-config-status-versionamento">
+                  <div id="containerCheckboxesStatusVersionamento" style="display: flex; flex-wrap: wrap; gap: 15px; background: var(--bg-hover); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 12px;">
+                    <!-- Checkboxes injetados dinamicamente em main.js -->
+                  </div>
+                  <div class="btn-container-right">
+                    <button type="submit" class="btn btn-primary" id="btnSalvarStatusVersionamento"><i class="fa-solid fa-floppy-disk"></i> Salvar Regras de Permissão</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <!-- PAINEL EXPORTAR / IMPORTAR DADOS (BACKUP) -->
+          <div id="config-panel-backup" style="display: none;">
+            <div class="card glassmorphism animate-fade-in mb-4">
+              <div class="card-header">
+                <h3>💾 Exportar / Importar Dados de Configurações</h3>
+                <p>Faça o backup ou restauração de todas as configurações gerais do sistema, incluindo classes de materiais, serviços, regras e organogramas.</p>
+              </div>
+              <div class="card-body">
+                <div style="display: flex; flex-direction: column; gap: 15px;">
+                  
+                  <!-- Backup via Arquivo -->
+                  <div style="display: flex; gap: 15px; background: var(--bg-hover); padding: 20px; border-radius: 8px; border: 1px solid var(--border-color); justify-content: center; align-items: center;">
+                    <button id="btnExportarConfigJSON" class="btn btn-secondary" type="button" title="Exportar Backup de Configurações (JSON)"><i class="fa-solid fa-file-download"></i> Exportar Arquivo JSON</button>
+                    <button id="btnImportarConfigJSON" class="btn btn-secondary" type="button" title="Restaurar Backup de Configurações (JSON)"><i class="fa-solid fa-file-upload"></i> Importar Arquivo JSON</button>
+                    <input type="file" id="fileImportConfigJSON" accept=".json" style="display:none;">
+                  </div>
+
+                  <div style="text-align: center; font-weight: bold; margin: 5px 0; color: var(--text-muted);">OU via Texto (Copiar/Colar)</div>
+
+                  <!-- Backup via Texto -->
+                  <div style="display: flex; flex-direction: column; gap: 10px; background: var(--bg-hover); padding: 20px; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <label for="txtAreaBackupJSON" style="font-weight: 500; display: block; margin-bottom: 5px;">Dados de Configuração (JSON):</label>
+                    <textarea id="txtAreaBackupJSON" rows="10" placeholder="Clique em 'Gerar Texto JSON' para visualizar seus dados atuais ou cole o JSON aqui para importar..." style="font-family: monospace; font-size: 0.9rem; padding: 10px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); resize: vertical; width: 100%; box-sizing: border-box;"></textarea>
+                    
+                    <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 5px; flex-wrap: wrap;">
+                      <button id="btnGerarTextoJSON" class="btn btn-secondary" type="button"><i class="fa-solid fa-code"></i> Gerar Texto JSON</button>
+                      <button id="btnCopiarTextoJSON" class="btn btn-secondary" type="button" disabled><i class="fa-solid fa-copy"></i> Copiar Texto</button>
+                      <button id="btnSalvarTextoJSON" class="btn btn-primary" type="button"><i class="fa-solid fa-circle-check"></i> Importar Texto Colado</button>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+
+  </div>
+
+  <!-- ==========================================
+       MODAIS PARA EDIÇÃO E INSERÇÃO DE DADOS
+       ========================================== -->
+  
+  <!-- MODAL: INSUMO MANUAL / STAGING AREA -->
+  <div class="modal" id="modalMaterial">
+    <div class="modal-content glassmorphism animate-scale-up">
+      <div class="modal-header">
+        <h3 id="modalMaterialTitle">Adicionar Insumo Manual</h3>
+        <button class="modal-close" data-close="modalMaterial">&times;</button>
+      </div>
+      <form id="formModalMaterial" class="grid-form modal-body">
+        <input type="hidden" id="modalMaterialId">
+        <div class="form-group col-2">
+          <label for="m-material">Descrição do Insumo</label>
+          <input type="text" id="m-material" required placeholder="Ex: Cimento Portland CP II-32">
+        </div>
+        <div class="form-group">
+          <label for="m-codigo">Código do Insumo</label>
+          <input type="text" id="m-codigo" required placeholder="Ex: IM0050">
+        </div>
+        <div class="form-group">
+          <label for="m-unidade">Unidade</label>
+          <input type="text" id="m-unidade" required placeholder="Ex: t, m³, kg">
+        </div>
+        <div class="form-group col-4">
+          <label for="m-quantidade">Quantidade Prevista</label>
+          <input type="number" id="m-quantidade" step="any" required placeholder="Ex: 150">
+        </div>
+        <div class="col-4 btn-container-right mt-2">
+          <button type="button" class="btn btn-secondary" data-close="modalMaterial">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar Insumo</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: SERVIÇOS -->
+  <!-- MODAL: SERVIÇOS / STAGING AREA -->
+  <div class="modal" id="modalServico">
+    <div class="modal-content glassmorphism animate-scale-up">
+      <div class="modal-header">
+        <h3 id="modalServicoTitle">Adicionar Serviço Manual</h3>
+        <button class="modal-close" data-close="modalServico">&times;</button>
+      </div>
+      <form id="formModalServico" class="grid-form modal-body">
+        <input type="hidden" id="modalServicoId">
+        <div class="form-group col-2">
+          <label for="s-servico">Descrição do Serviço</label>
+          <input type="text" id="s-servico" required placeholder="Ex: Execução de meio fio de concreto">
+        </div>
+        <div class="form-group">
+          <label for="s-codigo">Código do Serviço</label>
+          <input type="text" id="s-codigo" required placeholder="Ex: SV0001">
+        </div>
+        <div class="form-group">
+          <label for="s-unidade">Unidade</label>
+          <input type="text" id="s-unidade" required placeholder="Ex: m, m², m³">
+        </div>
+        <div class="form-group col-4">
+          <label for="s-quantidade">Quantidade Prevista</label>
+          <input type="number" id="s-quantidade" step="any" required placeholder="Ex: 1500">
+        </div>
+        <div class="col-4 btn-container-right mt-2">
+          <button type="button" class="btn btn-secondary" data-close="modalServico">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar Serviço</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: EQUIPAMENTOS / MÁQUINAS -->
+  <div class="modal" id="modalEquipamento">
+    <div class="modal-content glassmorphism animate-scale-up">
+      <div class="modal-header">
+        <h3 id="modalEquipamentoTitle">Editar Máquina / Veículo</h3>
+        <button class="modal-close" data-close="modalEquipamento">&times;</button>
+      </div>
+      <form id="formModalEquipamento" class="grid-form modal-body">
+        <input type="hidden" id="modalEquipamentoId">
+        <div class="form-group col-2">
+          <label for="e-nome">Nome da Máquina / Veículo</label>
+          <input type="text" id="e-nome" required placeholder="Ex: Caminhão basculante truck 10 m³">
+        </div>
+        <div class="form-group">
+          <label for="e-codigo">Código do Insumo (IE)</label>
+          <input type="text" id="e-codigo" required placeholder="Ex: IE0003">
+        </div>
+        <div class="form-group">
+          <label for="e-horas">Horas Previstas na Obra</label>
+          <input type="number" id="e-horas" step="any" required placeholder="Ex: 240">
+        </div>
+        <div class="form-group col-2">
+          <label for="e-criticidade">Criticidade</label>
+          <select id="e-criticidade">
+            <option value="NÃO CRÍTICO">NÃO CRÍTICO</option>
+            <option value="CRÍTICO">CRÍTICO</option>
+          </select>
+        </div>
+        <div class="form-group col-4">
+          <label for="e-particularidades">Particularidades de Manutenção (Opcional)</label>
+          <textarea id="e-particularidades" rows="3" placeholder="Condições extremas da obra, turno 24h, ambiente salino..."></textarea>
+        </div>
+        <div class="col-4 btn-container-right mt-2">
+          <button type="button" class="btn btn-secondary" data-close="modalEquipamento">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar Máquina</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: ENSAIOS -->
+  <div class="modal" id="modalEnsaio">
+    <div class="modal-content glassmorphism animate-scale-up">
+      <div class="modal-header">
+        <h3 id="modalEnsaioTitle">Novo Ensaio</h3>
+        <button class="modal-close" data-close="modalEnsaio">&times;</button>
+      </div>
+      <form id="formModalEnsaio" class="grid-form modal-body">
+        <input type="hidden" id="modalEnsaioId">
+        <div class="form-group col-2">
+          <label for="ens-ensaio">Ensaio / Teste</label>
+          <input type="text" id="ens-ensaio" required>
+        </div>
+        <div class="form-group col-2">
+          <label for="ens-material">Material Ensaido</label>
+          <input type="text" id="ens-material" required>
+        </div>
+        <div class="form-group col-2">
+          <label for="ens-frequencia">Frequência Requerida</label>
+          <input type="text" id="ens-frequencia" required>
+        </div>
+        <div class="form-group col-2">
+          <label for="ens-norma">Norma de Referência</label>
+          <input type="text" id="ens-norma" required>
+        </div>
+        <div class="col-4 btn-container-right mt-2">
+          <button type="button" class="btn btn-secondary" data-close="modalEnsaio">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar Ensaio</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: TREINAMENTOS -->
+  <div class="modal" id="modalTreinamento">
+    <div class="modal-content glassmorphism animate-scale-up">
+      <div class="modal-header">
+        <h3 id="modalTreinamentoTitle">Novo Treinamento</h3>
+        <button class="modal-close" data-close="modalTreinamento">&times;</button>
+      </div>
+      <form id="formModalTreinamento" class="grid-form modal-body">
+        <input type="hidden" id="modalTreinamentoId">
+        <div class="form-group col-2">
+          <label for="tr-treinamento">Treinamento / Instrução Técnica</label>
+          <input type="text" id="tr-treinamento" required>
+        </div>
+        <div class="form-group col-2">
+          <label for="tr-funcao">Função Alvo / Equipe Destinada</label>
+          <input type="text" id="tr-funcao" required>
+        </div>
+        <div class="form-group col-4">
+          <label for="tr-periodicidade">Periodicidade Requerida</label>
+          <input type="text" id="tr-periodicidade" required>
+        </div>
+        <div class="col-4 btn-container-right mt-2">
+          <button type="button" class="btn btn-secondary" data-close="modalTreinamento">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar Treinamento</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: METAS -->
+  <div class="modal" id="modalMeta">
+    <div class="modal-content glassmorphism animate-scale-up">
+      <div class="modal-header">
+        <h3 id="modalMetaTitle">Novo Indicador</h3>
+        <button class="modal-close" data-close="modalMeta">&times;</button>
+      </div>
+      <form id="formModalMeta" class="grid-form modal-body">
+        <input type="hidden" id="modalMetaId">
+        <div class="form-group col-3">
+          <label for="mt-indicador">Indicador de Qualidade</label>
+          <input type="text" id="mt-indicador" required>
+        </div>
+        <div class="form-group">
+          <label for="mt-meta">Meta de Desempenho</label>
+          <input type="text" id="mt-meta" required>
+        </div>
+        <div class="form-group col-4">
+          <label for="mt-frequencia">Frequência de Acompanhamento</label>
+          <input type="text" id="mt-frequencia" required>
+        </div>
+        <div class="col-4 btn-container-right mt-2">
+          <button type="button" class="btn btn-secondary" data-close="modalMeta">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar Indicador</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: REGISTRO DE REVISÃO -->
+  <div class="modal" id="modalRevisao">
+    <div class="modal-content glassmorphism animate-scale-up">
+      <div class="modal-header">
+        <h3>Registrar Nova Revisão Oficial</h3>
+        <button class="modal-close" data-close="modalRevisao">&times;</button>
+      </div>
+      <form id="formModalRevisao" class="grid-form modal-body">
+        <div class="form-group">
+          <label for="rev-revisao">Código da Revisão</label>
+          <input type="text" id="rev-revisao" required placeholder="Ex: 01">
+        </div>
+        <div class="form-group col-3">
+          <label for="rev-responsavel">Responsável pela Alteração</label>
+          <input type="text" id="rev-responsavel" required placeholder="Ex: Eng. Fernanda Lima - CREA/SP">
+        </div>
+        <div class="form-group col-4">
+          <label for="rev-descricao">Descrição Detalhada das Alterações</label>
+          <textarea id="rev-descricao" rows="3" required placeholder="Ex: Inclusão dos materiais cerâmicos e reajuste da matriz RACI de concretagem."></textarea>
+        </div>
+        <div class="col-4 btn-container-right mt-2">
+          <button type="button" class="btn btn-secondary" data-close="modalRevisao">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar Revisão</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: CLASSE DE MATERIAL (CONFIG) -->
+  <div class="modal" id="modalClasseConfig">
+    <div class="modal-content glassmorphism animate-scale-up">
+      <div class="modal-header">
+        <h3 id="modalClasseConfigTitle">Editar Diretriz da Classe</h3>
+        <button class="modal-close" data-close="modalClasseConfig">&times;</button>
+      </div>
+      <form id="formModalClasseConfig" class="grid-form modal-body">
+        <input type="hidden" id="modalClasseConfigId">
+        <div class="form-group col-2">
+          <label for="cfg-classe-nome">Nome da Classe de Material</label>
+          <input type="text" id="cfg-classe-nome" required placeholder="Ex: Aço, Cimento, Areia">
+        </div>
+        <div class="form-group col-2">
+          <label for="cfg-classe-procedimento">Procedimento de Inspeção (Código/Nome)</label>
+          <input type="text" id="cfg-classe-procedimento" required placeholder="Ex: PQP-OBRS-009">
+        </div>
+        <div class="form-group col-4">
+          <label for="cfg-classe-registro">Registros de Qualidade Gerados</label>
+          <input type="text" id="cfg-classe-registro" required placeholder="Ex: Registro de Inspeção no App GDP">
+        </div>
+        <div class="col-4 btn-container-right mt-2">
+          <button type="button" class="btn btn-secondary" data-close="modalClasseConfig">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar Diretriz</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: SUBGRUPO DE SERVIÇO (CONFIG) -->
+  <div class="modal" id="modalSubgrupoConfig">
+    <div class="modal-content glassmorphism animate-scale-up">
+      <div class="modal-header">
+        <h3 id="modalSubgrupoConfigTitle">Editar Diretriz do Agrupamento</h3>
+        <button class="modal-close" data-close="modalSubgrupoConfig">&times;</button>
+      </div>
+      <form id="formModalSubgrupoConfig" class="grid-form modal-body">
+        <input type="hidden" id="modalSubgrupoConfigId">
+        <div class="form-group col-2">
+          <label for="cfg-subgrupo-tipo">Tipo de Agrupamento</label>
+          <input type="text" id="cfg-subgrupo-tipo" required placeholder="Ex: Viárias, Saneamento Linear">
+        </div>
+        <div class="form-group col-2">
+          <label for="cfg-subgrupo-nome">Nome do Agrupamento (Subgrupo)</label>
+          <input type="text" id="cfg-subgrupo-nome" required placeholder="Ex: Regularização do sub-leito">
+        </div>
+        <div class="form-group col-2">
+          <label for="cfg-subgrupo-fvs">Código FVS Vinculada</label>
+          <input type="text" id="cfg-subgrupo-fvs" required placeholder="Ex: FVS-PAV-001">
+        </div>
+        <div class="form-group col-2">
+          <label for="cfg-subgrupo-frequencia">Frequência de Inspeção de Campo</label>
+          <input type="text" id="cfg-subgrupo-frequencia" required placeholder="Ex: 100% dos trechos executados">
+        </div>
+        <div class="col-4 btn-container-right mt-2">
+          <button type="button" class="btn btn-secondary" data-close="modalSubgrupoConfig">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar Diretriz</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: ESPECIFICIDADE DA EXECUÇÃO -->
+  <div class="modal" id="modalEspecificidade">
+    <div class="modal-content glassmorphism animate-scale-up">
+      <div class="modal-header">
+        <h3 id="modalEspecificidadeTitle">Adicionar Especificidade da Execução</h3>
+        <button class="modal-close" data-close="modalEspecificidade">&times;</button>
+      </div>
+      <form id="formModalEspecificidade" class="grid-form modal-body">
+        <input type="hidden" id="modalEspecificidadeId">
+        <div class="form-group col-4">
+          <label for="esp-servico">Serviço Diferente do Procedimento ou Adicional</label>
+          <input type="text" id="esp-servico" required placeholder="Ex: Execução de base de pavimentação com escória de aciaria">
+        </div>
+        <div class="form-group col-4">
+          <label for="esp-descricao">Especificidade (Particularidades da Obra)</label>
+          <textarea id="esp-descricao" rows="4" required placeholder="Descreva as diretrizes técnicas especiais, tolerâncias ou justificativa..."></textarea>
+        </div>
+        <div class="col-4 btn-container-right mt-2">
+          <button type="button" class="btn btn-secondary" data-close="modalEspecificidade">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar Especificidade</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: PROCEDIMENTO POR TIPO DE AGRUPAMENTO (CONFIG) -->
+  <div class="modal" id="modalProcedimentoTipoConfig">
+    <div class="modal-content glassmorphism animate-scale-up">
+      <div class="modal-header">
+        <h3 id="modalProcedimentoTipoConfigTitle">Editar Procedimento do Tipo</h3>
+        <button class="modal-close" data-close="modalProcedimentoTipoConfig">&times;</button>
+      </div>
+      <form id="formModalProcedimentoTipoConfig" class="grid-form modal-body">
+        <input type="hidden" id="modalProcedimentoTipoConfigId">
+        <div class="form-group col-2">
+          <label for="cfg-proctipo-tipo">Tipo de Agrupamento</label>
+          <input type="text" id="cfg-proctipo-tipo" required readonly style="background-color: var(--bg-hover);" placeholder="Ex: Viárias">
+        </div>
+        <div class="form-group col-2">
+          <label for="cfg-proctipo-pqp">Procedimento Geral Vinculado (PQP)</label>
+          <input type="text" id="cfg-proctipo-pqp" required placeholder="Ex: PQP-OBRS-003">
+        </div>
+        <div class="col-4 btn-container-right mt-2">
+          <button type="button" class="btn btn-secondary" data-close="modalProcedimentoTipoConfig">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar Procedimento</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: TREINAMENTO / IT (CONFIG) -->
+  <div class="modal" id="modalTreinamentoConfig">
+    <div class="modal-content glassmorphism animate-scale-up" style="max-width: 650px;">
+      <div class="modal-header">
+        <h3 id="modalTreinamentoConfigTitle">Cadastrar / Editar Procedimento e IT</h3>
+        <button class="modal-close" data-close="modalTreinamentoConfig">&times;</button>
+      </div>
+      <form id="formModalTreinamentoConfig" class="grid-form modal-body">
+        <input type="hidden" id="modalTreinamentoConfigId">
+        
+        <div class="form-group col-2">
+          <label for="cfg-tr-grupo">Grupo / Serviço Relacionado</label>
+          <select id="cfg-tr-grupo" required>
+            <!-- Preenchido dinamicamente com os agrupamentos de serviços controlados -->
+          </select>
+        </div>
+
+        <div class="form-group col-2">
+          <label for="cfg-tr-codigo">Código / Nome do Procedimento</label>
+          <input type="text" id="cfg-tr-codigo" required placeholder="Ex: IT-CBUQ-01, IT-TER-02">
+        </div>
+
+        <div class="form-group col-4">
+          <label for="cfg-tr-descricao">Descrição da IT / Procedimento</label>
+          <input type="text" id="cfg-tr-descricao" required placeholder="Ex: Execução e Controle de Pavimentação Asfáltica CBUQ">
+        </div>
+
+        <div class="form-group col-4">
+          <label for="cfg-tr-publico">Público-Alvo / Funções Exigidas</label>
+          <input type="text" id="cfg-tr-publico" required placeholder="Ex: Greidista, Operador de Vibroacabadora, Encarregado, Rolo">
+          <small class="text-muted" style="margin-top: 4px; display: block;">Insira as funções alvos separadas por vírgula ou texto descritivo.</small>
+        </div>
+
+        <div class="col-4 btn-container-right mt-3">
+          <button type="button" class="btn btn-secondary" data-close="modalTreinamentoConfig">Cancelar</button>
+          <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Salvar na Biblioteca</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: OBJETIVO E META GLOBAL (CONFIG) -->
+  <div class="modal" id="modalObjetivoConfig">
+    <div class="modal-content glassmorphism animate-scale-up" style="max-width: 650px;">
+      <div class="modal-header">
+        <h3 id="modalObjetivoConfigTitle">Cadastrar / Editar Objetivo e Meta de Qualidade</h3>
+        <button class="modal-close" data-close="modalObjetivoConfig">&times;</button>
+      </div>
+      <form id="formModalObjetivoConfig" class="grid-form modal-body">
+        <input type="hidden" id="modalObjetivoConfigId">
+        
+        <div class="form-group col-2">
+          <label for="cfg-obj-objetivo">Objetivo da Qualidade (SGQ / ISO 9001)</label>
+          <input type="text" id="cfg-obj-objetivo" required placeholder="Ex: Satisfazer as necessidades dos clientes;">
+        </div>
+
+        <div class="form-group col-2">
+          <label for="cfg-obj-indicador">Indicador de Desempenho</label>
+          <input type="text" id="cfg-obj-indicador" required placeholder="Ex: Satisfação dos Clientes">
+        </div>
+
+        <div class="form-group col-2">
+          <label for="cfg-obj-tipoMeta">Tipo de Meta</label>
+          <select id="cfg-obj-tipoMeta" required>
+            <option value="FIXA">Meta Fixa Corporativa (Toda a Empresa)</option>
+            <option value="INDIVIDUALIZADA">Meta Individualizada (Inserida na Obra)</option>
+          </select>
+        </div>
+
+        <div class="form-group col-2">
+          <label for="cfg-obj-frequencia">Frequência de Medição</label>
+          <select id="cfg-obj-frequencia" required>
+            <option value="Mensal">Mensal</option>
+            <option value="Bimestral">Bimestral</option>
+            <option value="Trimestral">Trimestral</option>
+            <option value="Semestral">Semestral</option>
+            <option value="Anual">Anual</option>
+            <option value="Por Etapa / Evento">Por Etapa / Evento</option>
+          </select>
+        </div>
+
+        <div class="form-group col-4" id="grp-cfg-obj-metaPadrao">
+          <label for="cfg-obj-metaPadrao">Meta Corporativa Padrão</label>
+          <input type="text" id="cfg-obj-metaPadrao" placeholder="Ex: ≥ 92% das fichas emitidas no mês">
+          <small class="text-muted" style="margin-top: 4px; display: block;">Se for Individualizada, este valor serve como valor de sugestão padrão.</small>
+        </div>
+
+        <div class="form-group col-4">
+          <label for="cfg-obj-descricao">Informações Adicionais / Como Calcular o Indicador</label>
+          <textarea id="cfg-obj-descricao" rows="3" placeholder="Ex: (Nº de FVS liberadas de primeira / Total de FVS emitidas) * 100. Deve ser auditado mensalmente pelo laboratório..." style="width:100%; padding:8px; border-radius:6px; background:var(--bg-input); border:1px solid var(--border-color); color:var(--text-primary); font-size:12px; font-family:var(--font-family); resize:vertical;"></textarea>
+        </div>
+
+        <div class="col-4 btn-container-right mt-3">
+          <button type="button" class="btn btn-secondary" data-close="modalObjetivoConfig">Cancelar</button>
+          <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Salvar Objetivo / Meta</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <!-- MODAL: MODELO DE ORGANOGRAMA (CONFIG) -->
+  <div class="modal" id="modalModeloOrg">
+    <div class="modal-content glassmorphism animate-scale-up" style="max-width: 850px; width: 90%;">
+      <div class="modal-header">
+        <h3 id="modalModeloOrgTitle">Cadastrar / Editar Modelo de Organograma</h3>
+        <button class="modal-close" data-close="modalModeloOrg">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="formModalModeloOrgHeader" class="grid-form mb-3">
+          <input type="hidden" id="modalModeloOrgId">
+          <div class="form-group col-2">
+            <label for="cfg-org-nome">Nome do Modelo</label>
+            <input type="text" id="cfg-org-nome" required placeholder="Ex: Padrão Obras Rodoviárias">
+          </div>
+          <div class="form-group col-2" style="display:flex; align-items:flex-end;">
+            <label style="cursor: pointer; color: var(--text-primary); margin-bottom: 10px;">
+              <input type="checkbox" id="cfg-org-padrao" style="width:16px; height:16px; vertical-align: middle; accent-color: var(--accent-color);"> Definir como Modelo Padrão (Default)
+            </label>
+          </div>
+        </form>
+
+        <div style="border-top: 1px solid var(--border-color); padding-top: 15px; margin-top: 10px;">
+          <h4 style="font-size: 13px; color: var(--accent-color); margin-bottom: 10px;"><i class="fa-solid fa-sitemap"></i> Estrutura de Cargos do Modelo</h4>
+          
+          <form id="form-cfg-org-node" class="inline-form mb-3">
+            <input type="text" id="cfg-org-node-nome" placeholder="Nome Padrão / Dinâmico (ex: {{DIRETOR_PRODUCAO}})" required style="flex: 1;">
+            <input type="text" id="cfg-org-node-cargo" placeholder="Cargo/Função (ex: Gerente de Contrato)" required style="flex: 1;">
+            <select id="cfg-org-node-parentId" style="flex: 1;">
+              <option value="">Reporta-se a... (Nível Superior)</option>
+            </select>
+            <button type="submit" class="btn btn-primary btn-small"><i class="fa-solid fa-plus"></i> Inserir Cargo</button>
+          </form>
+
+          <div style="background: var(--bg-hover); padding: 10px; border-radius: 6px; margin-bottom: 10px; font-size: 11px; color: var(--text-secondary); border: 1px dashed var(--border-color);">
+            💡 <strong>Dica de Campos Dinâmicos:</strong> Você pode usar tags como <code>{{DIRETOR_PRODUCAO}}</code>, <code>{{PLANEJAMENTO_OBRAS}}</code>, <code>{{LOGISTICA_EQUIPAMENTOS}}</code>, <code>{{TECNICO_SESMT}}</code>, <code>{{LABORATORISTA}}</code>, <code>{{ENCARREGADO_MANUTENCAO}}</code> (Cargos Globais) ou <code>{{ENCARREGADO_OBRAS}}</code>, <code>{{TOPOGRAFIA}}</code> (Cargos da Obra) no nome do profissional para puxar automaticamente das configurações!
+          </div>
+
+          <div class="org-tree-container" id="cfgOrgTreeContainer" style="max-height: 250px; overflow-y: auto; background: var(--bg-dark); border-radius: 8px; padding: 15px;">
+            <!-- Renderizado dinamicamente -->
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer btn-container-right" style="padding: 15px; border-top: 1px solid var(--border-color);">
+        <button type="button" class="btn btn-secondary btn-small" data-close="modalModeloOrg">Cancelar</button>
+        <button type="button" id="btnSalvarModeloOrgFinal" class="btn btn-primary btn-small">Salvar Modelo</button>
+      </div>
+    </div>
+  </div>
+
+
+
+  <!-- MODAL: CONFIRMAÇÃO E ESCOLHA DE EMISSÃO DE PDF -->
+  <div class="modal" id="modalConfirmarEmissaoPDF">
+    <div class="modal-content glassmorphism animate-scale-up" style="max-width: 580px;">
+      <div class="modal-header">
+        <h3 id="emissaoModalTitle"><i class="fa-solid fa-file-pdf" style="color: #0284c7;"></i> Emissão Oficial do PQO</h3>
+        <button class="modal-close" data-close="modalConfirmarEmissaoPDF">&times;</button>
+      </div>
+      <div class="modal-body" style="font-size: 13px; line-height: 1.6; color: var(--text-primary);">
+        
+        <!-- Conteúdo Rascunho v0.0 -->
+        <div id="emissaoConteudoRascunho" style="display: none;">
+          <div style="background: rgba(2, 132, 199, 0.1); border-left: 4px solid #0284c7; padding: 12px; margin-bottom: 15px; border-radius: 4px;">
+            <strong style="color: #0284c7;">📋 Primeira Emissão Oficial (v1.0)</strong><br>
+            Este PQO encontra-se atualmente como <strong>Rascunho de Trabalho (v0.0)</strong>.
+          </div>
+          <p>Ao emitir o <strong>PDF Oficial</strong>, este documento sairá do status de rascunho e será oficializado como <strong>Versão 1.0 (Oficial)</strong> no histórico de controle da empresa.</p>
+          <p style="color: var(--text-secondary); font-size: 12px;">Deseja confirmar a emissão oficial e salvar o PQO como <strong>Versão 1.0</strong>?</p>
+        </div>
+
+        <!-- Conteúdo Já Oficial (Escolha entre Revisão v1.1 vs Versão v2.0 vs Manter) -->
+        <div id="emissaoConteudoOficial" style="display: none;">
+          <div style="background: rgba(245, 158, 11, 0.1); border-left: 4px solid #f59e0b; padding: 12px; margin-bottom: 15px; border-radius: 4px;">
+            <strong style="color: #f59e0b;">⚠️ Este PQO já possui versão oficial emitida (<span id="emissaoVersaoAtualSpan">v1.0</span>)</strong>
+          </div>
+          <p style="margin-bottom: 12px;">Selecione como deseja registrar a emissão deste relatório PDF:</p>
+          
+          <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px;">
+            <label style="display: flex; align-items: flex-start; gap: 10px; background: var(--bg-hover); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); cursor: pointer;">
+              <input type="radio" name="radioTipoEmissao" value="NOVA_REVISAO" checked style="margin-top: 3px; accent-color: var(--accent-color);">
+              <div>
+                <strong style="color: #0284c7;">🔹 Nova Revisão (ex: <span id="emissaoExemploRev">v1.1</span>)</strong>
+                <p style="font-size: 11px; color: var(--text-secondary); margin: 2px 0 0 0;">Usado para <strong>correções/ajustes no próprio documento PQO</strong> (ex: ajuste de texto, inclusão de foto, mudança de responsável).</p>
+              </div>
+            </label>
+
+            <label style="display: flex; align-items: flex-start; gap: 10px; background: var(--bg-hover); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); cursor: pointer;">
+              <input type="radio" name="radioTipoEmissao" value="NOVA_VERSAO" style="margin-top: 3px; accent-color: var(--accent-color);">
+              <div>
+                <strong style="color: #10b981;">🔸 Nova Versão (ex: <span id="emissaoExemploVersao">v2.0</span>)</strong>
+                <p style="font-size: 11px; color: var(--text-secondary); margin: 2px 0 0 0;">Usado para <strong>mudanças físicas na obra/escopo</strong> que estão sendo refletidas no PQO (ex: novo escopo de serviço, mudança no canteiro).</p>
+              </div>
+            </label>
+
+            <label style="display: flex; align-items: flex-start; gap: 10px; background: var(--bg-hover); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); cursor: pointer;">
+              <input type="radio" name="radioTipoEmissao" value="MANTER" style="margin-top: 3px; accent-color: var(--accent-color);">
+              <div>
+                <strong>⚪ Reemitir Versão Atual (Sem alterar versão)</strong>
+                <p style="font-size: 11px; color: var(--text-secondary); margin: 2px 0 0 0;">Download de via adicional da versão atual sem criar novo registro de revisão.</p>
+              </div>
+            </label>
+          </div>
+
+          <div class="form-group" id="groupMotivoEmissao">
+            <label for="inputMotivoEmissao">Descrição/Motivo da Alteração</label>
+            <input type="text" id="inputMotivoEmissao" placeholder="Ex: Ajuste de layout de canteiro / Atualização do responsável">
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-footer btn-container-right" style="padding: 15px; border-top: 1px solid var(--border-color);">
+        <button type="button" class="btn btn-secondary btn-small" data-close="modalConfirmarEmissaoPDF">Cancelar</button>
+        <button type="button" id="btnConfirmarEmissaoPDFFinal" class="btn btn-primary btn-small"><i class="fa-solid fa-download"></i> Confirmar & Baixar PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Script principal carregado via Módulo Vite -->
+</body>
+</html>
