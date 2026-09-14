@@ -1,4 +1,4 @@
-import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js?v=1.3.32';
+import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js?v=1.4.2';
 
 let currentRecords = [];
 let STAGES = [];
@@ -77,6 +77,9 @@ window.onInstrumentsDataLoaded = (data) => {
     STAGES = rawChoices.filter(c => c !== "0. Em Uso" && c !== "Em Uso" && c !== "-");
     console.log("[Dashboard Debug] Resolved STAGES list:", STAGES, "Records count:", currentRecords.length);
     
+    // Atualiza contadores dos chips, badge de pendências e gaveta
+    updatePendencias(currentRecords);
+
     // Safely check if the Kanban tab is active using either data-tab or data-tab-type
     const activeBtn = document.querySelector('.tab-btn.active');
     const activeTab = activeBtn ? activeBtn.getAttribute('data-tab') : '';
@@ -262,7 +265,7 @@ function renderKanban() {
                     ...drawerCfg, 
                     tableLens: mockTableLens,
                     dataWriter: mockDataWriter,
-                    mode: drawerCfg?.mode || 'edit' // Default to edit mode so they can edit
+                    mode: 'view'
                 });
             } catch (err) {
                 console.error("[Dashboard] Erro ao abrir gaveta de detalhes:", err);
@@ -587,3 +590,313 @@ window.onDashboardConfigLoaded = (configRecord) => {
 if (window.cachedDashboardConfig) {
     window.onDashboardConfigLoaded(window.cachedDashboardConfig);
 }
+
+// ==========================================================================
+// PENDÊNCIAS DE CALIBRAÇÃO & SMART FILTER CHIPS
+// ==========================================================================
+
+let pendenciasData = {
+    allCount: 0,
+    expiredCount: 0,
+    warningCount: 0,
+    okCount: 0,
+    inactiveCount: 0,
+    expiredList: [],
+    warningList: []
+};
+
+let currentDrawerFilter = 'all';
+
+// --- VERIFICAÇÃO DE INSTRUMENTO FORA DE OPERAÇÃO ---
+function isInstrumentOutOfService(record) {
+    const sitId = record.ID_SITUATION || record.ID_STATUS || record.SITUATION_ID || record.STATUS_ID;
+    if (sitId !== undefined && sitId !== null) {
+        const numId = parseInt(sitId, 10);
+        // 1 = Ativo; 2 = Inativo, 3 = Descartado, 4 = Danificado, 5 = Extraviado
+        if (numId > 1) return true;
+    }
+    const statusText = String(record.SITUATION || record.STATUS || record.SITUACAO || record.STATE || '').toLowerCase();
+    const outOfServiceKeywords = [
+        'danificado', 'estragado', 'extraviado', 'descartado', 
+        'inativo', 'fora de uso', 'perdido', 'baixado', 'obsoleto'
+    ];
+    return outOfServiceKeywords.some(kw => statusText.includes(kw));
+}
+
+// --- CÁLCULO DE STATUS DE CALIBRAÇÃO ---
+function getCalibrationStatus(record) {
+    if (isInstrumentOutOfService(record)) {
+        return { status: 'inactive', label: 'Fora de Uso', daysRemaining: null, color: '#64748b' };
+    }
+    const nextCal = record.NEXT_CALIBRATION || record.PROXIMA_CALIBRACAO;
+    if (!nextCal) {
+        return { status: 'none', label: 'Sem Data', daysRemaining: null, color: '#94a3b8' };
+    }
+    const nextDate = new Date(nextCal);
+    if (isNaN(nextDate.getTime())) {
+        return { status: 'none', label: 'Data Inválida', daysRemaining: null, color: '#94a3b8' };
+    }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const target = new Date(nextDate);
+    target.setHours(0, 0, 0, 0);
+    const diffTime = target.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays <= 0) {
+        return { status: 'expired', label: 'Vencida', daysRemaining: diffDays, color: '#ef4444' };
+    } else if (diffDays <= 30) {
+        return { status: 'warning', label: 'A Vencer', daysRemaining: diffDays, color: '#f59e0b' };
+    } else {
+        return { status: 'ok', label: 'Em Dia', daysRemaining: diffDays, color: '#10b981' };
+    }
+}
+
+// --- ATUALIZAÇÃO DA UI DE PENDÊNCIAS E CONTADORES ---
+function updatePendencias(records) {
+    if (!records || !Array.isArray(records)) return;
+
+    let allCount = records.length;
+    let expiredCount = 0;
+    let warningCount = 0;
+    let okCount = 0;
+    let inactiveCount = 0;
+    let expiredList = [];
+    let warningList = [];
+
+    records.forEach(record => {
+        const calInfo = getCalibrationStatus(record);
+        if (calInfo.status === 'inactive') {
+            inactiveCount++;
+        } else if (calInfo.status === 'expired') {
+            expiredCount++;
+            expiredList.push({ record, calInfo });
+        } else if (calInfo.status === 'warning') {
+            warningCount++;
+            warningList.push({ record, calInfo });
+        } else if (calInfo.status === 'ok') {
+            okCount++;
+        }
+    });
+
+    // Ordenar listas por prazo (vencidas há mais tempo primeiro, e as que vencem logo primeiro)
+    expiredList.sort((a, b) => (a.calInfo.daysRemaining || 0) - (b.calInfo.daysRemaining || 0));
+    warningList.sort((a, b) => (a.calInfo.daysRemaining || 0) - (b.calInfo.daysRemaining || 0));
+
+    pendenciasData = {
+        allCount,
+        expiredCount,
+        warningCount,
+        okCount,
+        inactiveCount,
+        expiredList,
+        warningList
+    };
+
+    // Atualizar Contadores dos Chips
+    const countAllEl = document.getElementById('count-all');
+    if (countAllEl) countAllEl.innerText = allCount;
+    const countExpEl = document.getElementById('count-expired');
+    if (countExpEl) countExpEl.innerText = expiredCount;
+    const countWarnEl = document.getElementById('count-warning');
+    if (countWarnEl) countWarnEl.innerText = warningCount;
+    const countOkEl = document.getElementById('count-ok');
+    if (countOkEl) countOkEl.innerText = okCount;
+    const countInactEl = document.getElementById('count-inactive');
+    if (countInactEl) countInactEl.innerText = inactiveCount;
+
+    // Atualizar Badge do Sino de Pendências (apenas Vencidos + A Vencer)
+    const totalPendencias = expiredCount + warningCount;
+    const badgeCountEl = document.getElementById('badge-pendencias-count');
+    if (badgeCountEl) {
+        badgeCountEl.innerText = totalPendencias;
+        badgeCountEl.style.display = totalPendencias > 0 ? 'inline-block' : 'none';
+    }
+
+    // Atualizar Contadores da Gaveta
+    const tabAllEl = document.getElementById('drawer-tab-all-count');
+    if (tabAllEl) tabAllEl.innerText = totalPendencias;
+    const tabExpEl = document.getElementById('drawer-tab-expired-count');
+    if (tabExpEl) tabExpEl.innerText = expiredCount;
+    const tabWarnEl = document.getElementById('drawer-tab-warning-count');
+    if (tabWarnEl) tabWarnEl.innerText = warningCount;
+
+    // Banner da Sessão (se não tiver sido dispensado na sessão atual)
+    const sessionBanner = document.getElementById('session-alert-banner');
+    const isDismissed = sessionStorage.getItem('pendencias_banner_dismissed') === 'true';
+    if (sessionBanner && totalPendencias > 0 && !isDismissed) {
+        const bannerText = document.getElementById('session-alert-text');
+        if (bannerText) {
+            let msg = `Atenção: Existem `;
+            if (expiredCount > 0 && warningCount > 0) {
+                msg += `<strong>${expiredCount}</strong> calibrações vencidas e <strong>${warningCount}</strong> a vencer nos próximos 30 dias.`;
+            } else if (expiredCount > 0) {
+                msg += `<strong>${expiredCount}</strong> calibrações vencidas.`;
+            } else {
+                msg += `<strong>${warningCount}</strong> calibrações a vencer nos próximos 30 dias.`;
+            }
+            bannerText.innerHTML = msg;
+        }
+        sessionBanner.style.display = 'flex';
+    }
+
+    renderDrawerPendenciasList();
+}
+
+// --- RENDERIZAÇÃO DOS CARDS NA GAVETA DE PENDÊNCIAS ---
+function renderDrawerPendenciasList() {
+    const listContainer = document.getElementById('drawer-pendencias-list');
+    if (!listContainer) return;
+    listContainer.innerHTML = '';
+
+    let itemsToShow = [];
+    if (currentDrawerFilter === 'all') {
+        itemsToShow = [...pendenciasData.expiredList, ...pendenciasData.warningList];
+    } else if (currentDrawerFilter === 'expired') {
+        itemsToShow = pendenciasData.expiredList;
+    } else if (currentDrawerFilter === 'warning') {
+        itemsToShow = pendenciasData.warningList;
+    }
+
+    if (itemsToShow.length === 0) {
+        listContainer.innerHTML = `
+            <div class="pendencia-empty">
+                <span>🎉 Nenhuma pendência nesta categoria!</span>
+            </div>
+        `;
+        return;
+    }
+
+    itemsToShow.forEach(item => {
+        const r = item.record;
+        const cal = item.calInfo;
+        const isExp = cal.status === 'expired';
+        const card = document.createElement('div');
+        card.className = `pendencia-card ${isExp ? 'card-expired' : 'card-warning'}`;
+
+        const code = r.CODE || r.TAG || `ID #${r.id}`;
+        const type = r.TYPE || r.DESCRIPTION || r.MODEL || 'Instrumento';
+        const nextCalDate = r.NEXT_CALIBRATION ? String(r.NEXT_CALIBRATION).split('T')[0] : 'S/ Data';
+        const days = cal.daysRemaining;
+        const daysText = isExp 
+            ? (days === 0 ? 'Vence hoje' : `Venceu há ${Math.abs(days)}d`) 
+            : `Vence em ${days}d`;
+
+        card.innerHTML = `
+            <div class="pendencia-header">
+                <span>${code}</span>
+                <span style="font-size: 11px; font-weight: normal; color: #64748b;">📅 ${nextCalDate}</span>
+            </div>
+            <div class="pendencia-type">${type}</div>
+            <div class="pendencia-footer">
+                <span class="badge-status-pend ${isExp ? 'badge-expired' : 'badge-warning'}">
+                    ${isExp ? '🔴 ' : '🟡 '}${cal.label}
+                </span>
+                <span style="font-weight: 600; color: ${isExp ? '#dc2626' : '#d97706'}; font-size: 11px;">
+                    ${daysText}
+                </span>
+            </div>
+        `;
+
+        // Clique no card abre a gaveta de detalhes do instrumento
+        card.addEventListener('click', async () => {
+            closePendenciasDrawer();
+            try {
+                const mapping = currentDashboardConfig?.mapping || {};
+                const drawerId = mapping.kanbanDrawerConfigId || "drawerinstruments";
+                const drawerCfg = await mockTableLens.fetchConfig(drawerId);
+                await openDrawer('INSTRUMENTS', r.id, { 
+                    ...drawerCfg, 
+                    tableLens: mockTableLens,
+                    dataWriter: mockDataWriter,
+                    mode: 'view'
+                });
+            } catch (err) {
+                console.error("[Dashboard] Erro ao abrir gaveta de detalhes da pendência:", err);
+            }
+        });
+
+        listContainer.appendChild(card);
+    });
+}
+
+function openPendenciasDrawer() {
+    const drawer = document.getElementById('pendencias-drawer');
+    const overlay = document.getElementById('pendencias-drawer-overlay');
+    if (drawer && overlay) {
+        overlay.style.display = 'block';
+        setTimeout(() => drawer.classList.add('open'), 10);
+    }
+}
+
+function closePendenciasDrawer() {
+    const drawer = document.getElementById('pendencias-drawer');
+    const overlay = document.getElementById('pendencias-drawer-overlay');
+    if (drawer && overlay) {
+        drawer.classList.remove('open');
+        setTimeout(() => { overlay.style.display = 'none'; }, 300);
+    }
+}
+
+// --- ENVIA FILTRO PARA O IFRAME DO UNIVERSALVIEWER ---
+function notifyIframeCalibrationFilter(filterType) {
+    const viewerIframe = document.querySelector('#pane-0 iframe') || document.querySelector('#pane-inventario iframe');
+    if (viewerIframe && viewerIframe.contentWindow) {
+        viewerIframe.contentWindow.postMessage({
+            action: 'filter-calibration-status',
+            status: filterType
+        }, '*');
+    }
+}
+
+// --- EVENT LISTENERS DA GAVETA E DOS CHIPS ---
+document.addEventListener('DOMContentLoaded', () => {
+    // Abrir/fechar gaveta de pendências
+    const btnOpen = document.getElementById('btn-open-pendencias');
+    if (btnOpen) btnOpen.addEventListener('click', openPendenciasDrawer);
+
+    const btnClose = document.getElementById('btn-close-pendencias');
+    if (btnClose) btnClose.addEventListener('click', closePendenciasDrawer);
+
+    const overlay = document.getElementById('pendencias-drawer-overlay');
+    if (overlay) overlay.addEventListener('click', closePendenciasDrawer);
+
+    // Abas dentro da gaveta de pendências
+    document.querySelectorAll('.drawer-tab-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            document.querySelectorAll('.drawer-tab-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentDrawerFilter = btn.getAttribute('data-drawer-filter');
+            renderDrawerPendenciasList();
+        });
+    });
+
+    // Pílulas de filtro rápido (Chips)
+    document.querySelectorAll('.chip-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.chip-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const filterType = btn.getAttribute('data-filter');
+            console.log("[Dashboard] Aplicando filtro rápido de calibração:", filterType);
+            notifyIframeCalibrationFilter(filterType);
+        });
+    });
+
+    // Banner de sessão
+    const btnBannerView = document.getElementById('btn-banner-view');
+    if (btnBannerView) {
+        btnBannerView.addEventListener('click', () => {
+            openPendenciasDrawer();
+        });
+    }
+
+    const btnBannerDismiss = document.getElementById('btn-banner-dismiss');
+    if (btnBannerDismiss) {
+        btnBannerDismiss.addEventListener('click', () => {
+            const banner = document.getElementById('session-alert-banner');
+            if (banner) banner.style.display = 'none';
+            sessionStorage.setItem('pendencias_banner_dismissed', 'true');
+        });
+    }
+});
+

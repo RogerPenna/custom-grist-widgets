@@ -6,7 +6,7 @@ import { GristRestAdapter } from '../libraries/headless-rest-adapter.js?v=1.3.23
 import { GristLauncherUtils } from '../libraries/grist-launcher-utils.js?v=1.3.23';
 import { subscribe } from '../libraries/grist-event-bus/grist-event-bus.js?v=1.3.23';
 import { open as openConfigManager } from '../libraries/grist-config-manager/ConfigManagerComponent.js?v=1.3.23';
-import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js?v=1.3.23';
+import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js?v=1.4.2';
 import { GristFilterBar } from '../libraries/grist-filter-bar/grist-filter-bar.js?v=1.3.23';
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -29,6 +29,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         column: urlFilterColumn,
         value: urlFilterValue
     } : null;
+    let currentCalibrationStatusFilter = 'all';
 
     // --- 0. CARREGAMENTO DE ÍCONES ---
     async function loadIcons() {
@@ -277,7 +278,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     });
                 }
 
-                // Post data to parent window (Dashboard) to render Kanban board
+                // Post data to parent window (Dashboard) to render Kanban board and update Pendencias badges
                 if (window.parent && window.parent !== window && tableId === 'INSTRUMENTS') {
                     const stageCol = schema['METROLOGICAL_STAGE'];
                     const choices = stageCol?.widgetOptions ? (
@@ -288,6 +289,37 @@ document.addEventListener('DOMContentLoaded', async () => {
                         records: records,
                         choices: choices
                     }, '*');
+                }
+
+                // Filtrar instrumentos conforme pílula de calibração selecionada
+                if (currentCalibrationStatusFilter && currentCalibrationStatusFilter !== 'all' && tableId === 'INSTRUMENTS') {
+                    records = records.filter(r => {
+                        const sitId = r.ID_SITUATION || r.ID_STATUS || r.SITUATION_ID || r.STATUS_ID;
+                        const isOutOfService = (sitId !== undefined && sitId !== null && parseInt(sitId, 10) > 1) || (() => {
+                            const s = String(r.SITUATION || r.STATUS || r.SITUACAO || r.STATE || '').toLowerCase();
+                            return ['danificado', 'estragado', 'extraviado', 'descartado', 'inativo', 'fora de uso', 'perdido', 'baixado', 'obsoleto'].some(kw => s.includes(kw));
+                        })();
+
+                        if (currentCalibrationStatusFilter === 'inactive') {
+                            return isOutOfService;
+                        }
+                        if (isOutOfService) return false; // Fora de uso nunca entra como vencido ou pendente
+
+                        const nextCal = r.NEXT_CALIBRATION || r.PROXIMA_CALIBRACAO;
+                        if (!nextCal) return false;
+                        const nextDate = new Date(nextCal);
+                        if (isNaN(nextDate.getTime())) return false;
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const target = new Date(nextDate);
+                        target.setHours(0, 0, 0, 0);
+                        const diffDays = Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+                        if (currentCalibrationStatusFilter === 'expired') return diffDays <= 0;
+                        if (currentCalibrationStatusFilter === 'warning') return diffDays > 0 && diffDays <= 30;
+                        if (currentCalibrationStatusFilter === 'ok') return diffDays > 30;
+                        return true;
+                    });
                 }
 
                 rendererContainer.innerHTML = '';
@@ -301,13 +333,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     tableLens,
                     onRowClick: async (record, mode) => {
                         const actions = currentConfig.actions || {};
-                        const drawerId = currentConfig.drawerId || actions.drawerId;
+                        const drawerId = currentConfig.drawerId || actions.drawerId || actions.sidePanel?.drawerConfigId;
                         if (drawerId) {
                             const drawerCfg = await tableLens.fetchConfig(drawerId);
                             window.GristDrawer.open(currentConfig.tableId, record.id, { 
                                 ...drawerCfg, 
                                 tableLens,
-                                mode: mode || 'view'
+                                mode: mode === 'edit' ? 'edit' : 'view'
                             });
                         }
                     },
@@ -630,6 +662,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (isInitialized) await initializeAndUpdate();
             }
         } else if (event.data.action === 'reload-records') {
+            if (isInitialized) await initializeAndUpdate();
+        } else if (event.data.action === 'filter-calibration-status') {
+            currentCalibrationStatusFilter = event.data.status || 'all';
             if (isInitialized) await initializeAndUpdate();
         } else if (event.data.action === 'table-lens-request') {
             const { method, args, transactionId } = event.data;
