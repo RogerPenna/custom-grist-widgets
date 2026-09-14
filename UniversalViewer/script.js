@@ -293,27 +293,51 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 // Filtrar instrumentos conforme pílula de calibração selecionada
                 if (currentCalibrationStatusFilter && currentCalibrationStatusFilter !== 'all' && tableId === 'INSTRUMENTS') {
+                    const parseDateValue = (val) => {
+                        if (val === null || val === undefined || val === '') return null;
+                        if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
+                        if (typeof val === 'number') return new Date(val < 10000000000 ? val * 1000 : val);
+                        const num = Number(val);
+                        if (!isNaN(num) && num > 0) return new Date(num < 10000000000 ? num * 1000 : num);
+                        const d = new Date(val);
+                        return isNaN(d.getTime()) ? null : d;
+                    };
+
+                    const getField = (r, ...names) => {
+                        for (const n of names) {
+                            if (r[n] !== undefined && r[n] !== null) return r[n];
+                            if (r.fields && r.fields[n] !== undefined && r.fields[n] !== null) return r.fields[n];
+                        }
+                        const lowerMap = {};
+                        for (const k of Object.keys(r)) lowerMap[k.toLowerCase()] = r[k];
+                        if (r.fields) for (const k of Object.keys(r.fields)) lowerMap[k.toLowerCase()] = r.fields[k];
+                        for (const n of names) {
+                            const val = lowerMap[n.toLowerCase()];
+                            if (val !== undefined && val !== null) return val;
+                        }
+                        return null;
+                    };
+
                     records = records.filter(r => {
-                        const sitId = r.ID_SITUATION || r.ID_STATUS || r.SITUATION_ID || r.STATUS_ID;
-                        const isOutOfService = (sitId !== undefined && sitId !== null && parseInt(sitId, 10) > 1) || (() => {
-                            const s = String(r.SITUATION || r.STATUS || r.SITUACAO || r.STATE || '').toLowerCase();
-                            return ['danificado', 'estragado', 'extraviado', 'descartado', 'inativo', 'fora de uso', 'perdido', 'baixado', 'obsoleto'].some(kw => s.includes(kw));
-                        })();
+                        const sitId = getField(r, 'ID_SITUATION', 'Id_Situation', 'ID_STATUS', 'SITUATION_ID', 'STATUS_ID');
+                        const sitDisp = String(getField(r, 'z_disp_ID_SITUATION', 'SITUATION', 'STATUS', 'SITUACAO', 'STATE') || '').toLowerCase();
+                        const isOutOfService = (sitId !== undefined && sitId !== null && parseInt(sitId, 10) > 1) || 
+                            sitDisp.includes('❌') || sitDisp.includes('🪦') || sitDisp.includes('💣') || sitDisp.includes('❓') ||
+                            ['danificado', 'estragado', 'extraviado', 'descartado', 'inativo', 'fora de uso', 'perdido', 'baixado', 'obsoleto'].some(kw => sitDisp.includes(kw));
 
                         if (currentCalibrationStatusFilter === 'inactive') {
                             return isOutOfService;
                         }
                         if (isOutOfService) return false; // Fora de uso nunca entra como vencido ou pendente
 
-                        const nextCal = r.NEXT_CALIBRATION || r.PROXIMA_CALIBRACAO;
-                        if (!nextCal) return false;
-                        const nextDate = new Date(nextCal);
-                        if (isNaN(nextDate.getTime())) return false;
+                        const nextCal = getField(r, 'NEXT_CALIBRATION', 'Next_Calibration', 'PROXIMA_CALIBRACAO', 'Proxima_Calibracao');
+                        const targetDate = parseDateValue(nextCal);
+                        if (!targetDate) return false;
                         const today = new Date();
                         today.setHours(0, 0, 0, 0);
-                        const target = new Date(nextDate);
+                        const target = new Date(targetDate);
                         target.setHours(0, 0, 0, 0);
-                        const diffDays = Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                        const diffDays = Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
                         if (currentCalibrationStatusFilter === 'expired') return diffDays <= 0;
                         if (currentCalibrationStatusFilter === 'warning') return diffDays > 0 && diffDays <= 30;

@@ -607,48 +607,90 @@ let pendenciasData = {
 
 let currentDrawerFilter = 'all';
 
+// Helper para extrair campo de forma robusta e case-insensitive, seja direto no record ou em record.fields
+function getRecordField(r, ...fieldNames) {
+    if (!r) return null;
+    for (const fn of fieldNames) {
+        if (r[fn] !== undefined && r[fn] !== null) return r[fn];
+        if (r.fields && r.fields[fn] !== undefined && r.fields[fn] !== null) return r.fields[fn];
+    }
+    // Case-insensitive search
+    const lowerMap = {};
+    for (const k of Object.keys(r)) lowerMap[k.toLowerCase()] = r[k];
+    if (r.fields) {
+        for (const k of Object.keys(r.fields)) lowerMap[k.toLowerCase()] = r.fields[k];
+    }
+    for (const fn of fieldNames) {
+        const val = lowerMap[fn.toLowerCase()];
+        if (val !== undefined && val !== null) return val;
+    }
+    return null;
+}
+
+// Converter datas e timestamps (incluindo timestamps UNIX em segundos do Grist)
+function parseDateValue(val) {
+    if (val === null || val === undefined || val === '') return null;
+    if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
+    if (typeof val === 'number') {
+        // Grist armazena datas em segundos (< 10000000000)
+        return new Date(val < 10000000000 ? val * 1000 : val);
+    }
+    const num = Number(val);
+    if (!isNaN(num) && num > 0) {
+        return new Date(num < 10000000000 ? num * 1000 : num);
+    }
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? null : d;
+}
+
+function formatDateDisplay(d) {
+    if (!d) return 'S/ Data';
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+}
+
 // --- VERIFICAÇÃO DE INSTRUMENTO FORA DE OPERAÇÃO ---
 function isInstrumentOutOfService(record) {
-    const sitId = record.ID_SITUATION || record.ID_STATUS || record.SITUATION_ID || record.STATUS_ID;
+    const sitId = getRecordField(record, 'ID_SITUATION', 'Id_Situation', 'ID_STATUS', 'SITUATION_ID', 'STATUS_ID');
     if (sitId !== undefined && sitId !== null) {
         const numId = parseInt(sitId, 10);
         // 1 = Ativo; 2 = Inativo, 3 = Descartado, 4 = Danificado, 5 = Extraviado
         if (numId > 1) return true;
     }
-    const statusText = String(record.SITUATION || record.STATUS || record.SITUACAO || record.STATE || '').toLowerCase();
+    const sitDisp = String(getRecordField(record, 'z_disp_ID_SITUATION', 'SITUATION', 'STATUS', 'SITUACAO', 'STATE') || '').toLowerCase();
+    if (sitDisp.includes('❌') || sitDisp.includes('🪦') || sitDisp.includes('💣') || sitDisp.includes('❓')) return true;
     const outOfServiceKeywords = [
         'danificado', 'estragado', 'extraviado', 'descartado', 
         'inativo', 'fora de uso', 'perdido', 'baixado', 'obsoleto'
     ];
-    return outOfServiceKeywords.some(kw => statusText.includes(kw));
+    return outOfServiceKeywords.some(kw => sitDisp.includes(kw));
 }
 
 // --- CÁLCULO DE STATUS DE CALIBRAÇÃO ---
 function getCalibrationStatus(record) {
     if (isInstrumentOutOfService(record)) {
-        return { status: 'inactive', label: 'Fora de Uso', daysRemaining: null, color: '#64748b' };
+        return { status: 'inactive', label: 'Fora de Uso', daysRemaining: null, color: '#64748b', targetDate: null };
     }
-    const nextCal = record.NEXT_CALIBRATION || record.PROXIMA_CALIBRACAO;
-    if (!nextCal) {
-        return { status: 'none', label: 'Sem Data', daysRemaining: null, color: '#94a3b8' };
-    }
-    const nextDate = new Date(nextCal);
-    if (isNaN(nextDate.getTime())) {
-        return { status: 'none', label: 'Data Inválida', daysRemaining: null, color: '#94a3b8' };
+    const nextCal = getRecordField(record, 'NEXT_CALIBRATION', 'Next_Calibration', 'PROXIMA_CALIBRACAO', 'Proxima_Calibracao');
+    const targetDate = parseDateValue(nextCal);
+    if (!targetDate) {
+        return { status: 'none', label: 'Sem Data', daysRemaining: null, color: '#94a3b8', targetDate: null };
     }
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const target = new Date(nextDate);
+    const target = new Date(targetDate);
     target.setHours(0, 0, 0, 0);
     const diffTime = target.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
     
     if (diffDays <= 0) {
-        return { status: 'expired', label: 'Vencida', daysRemaining: diffDays, color: '#ef4444' };
+        return { status: 'expired', label: 'Vencida', daysRemaining: diffDays, color: '#ef4444', targetDate };
     } else if (diffDays <= 30) {
-        return { status: 'warning', label: 'A Vencer', daysRemaining: diffDays, color: '#f59e0b' };
+        return { status: 'warning', label: 'A Vencer', daysRemaining: diffDays, color: '#f59e0b', targetDate };
     } else {
-        return { status: 'ok', label: 'Em Dia', daysRemaining: diffDays, color: '#10b981' };
+        return { status: 'ok', label: 'Em Dia', daysRemaining: diffDays, color: '#10b981', targetDate };
     }
 }
 
@@ -774,18 +816,29 @@ function renderDrawerPendenciasList() {
         const card = document.createElement('div');
         card.className = `pendencia-card ${isExp ? 'card-expired' : 'card-warning'}`;
 
-        const code = r.CODE || r.TAG || `ID #${r.id}`;
-        const type = r.TYPE || r.DESCRIPTION || r.MODEL || 'Instrumento';
-        const nextCalDate = r.NEXT_CALIBRATION ? String(r.NEXT_CALIBRATION).split('T')[0] : 'S/ Data';
+        const code = getRecordField(r, 'Code', 'CODE', 'Tag', 'TAG', 'Codigo') || `ID #${r.id}`;
+        const type = getRecordField(r, 'z_disp_ID_INSTRUMENT_TYPE', 'TYPE', 'Type', 'DESCRIPTION', 'Description', 'Faixas') || 'Instrumento';
+        const nextCalDate = formatDateDisplay(cal.targetDate);
         const days = cal.daysRemaining;
-        const daysText = isExp 
-            ? (days === 0 ? 'Vence hoje' : `Venceu há ${Math.abs(days)}d`) 
-            : `Vence em ${days}d`;
+        let daysText = '';
+        if (isExp) {
+            const absDays = Math.abs(days);
+            if (absDays === 0) {
+                daysText = 'Vence hoje!';
+            } else if (absDays >= 365) {
+                const anos = (absDays / 365.25).toFixed(1);
+                daysText = `Venceu há ${anos} anos (${absDays}d)`;
+            } else {
+                daysText = `Venceu há ${absDays}d`;
+            }
+        } else {
+            daysText = days === 1 ? 'Vence amanhã' : `Vence em ${days}d`;
+        }
 
         card.innerHTML = `
             <div class="pendencia-header">
-                <span>${code}</span>
-                <span style="font-size: 11px; font-weight: normal; color: #64748b;">📅 ${nextCalDate}</span>
+                <span style="font-weight: 700; color: #1e293b;">${code}</span>
+                <span style="font-size: 11px; font-weight: 500; color: #64748b;">📅 ${nextCalDate}</span>
             </div>
             <div class="pendencia-type">${type}</div>
             <div class="pendencia-footer">
