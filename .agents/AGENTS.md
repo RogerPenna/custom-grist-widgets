@@ -14,10 +14,11 @@
   - **SSH Password**: `pavicon`
   - **PuTTY Tool**: `'C:\Program Files\PuTTY\plink.exe'`
   - **Remote Path**: `/home/homologacao/grist-assets/custom-grist-widgets`
-  - **Remote Web Server**: `http://192.168.0.95:3000`
+  - **Remote Grist Application URL**: `http://192.168.0.95:8484`
+  - **Remote Custom Widgets Assets URL**: `http://192.168.0.95:3000`
 - **Deployment Execution Command**:
   ```powershell
   echo y | & 'C:\Program Files\PuTTY\plink.exe' -pw pavicon homologacao@192.168.0.95 "cd /home/homologacao/grist-assets/custom-grist-widgets && git fetch origin && git reset --hard origin/main"
   ```
-- **Local Server Policy**: Do NOT launch or rely on a local dev server unless explicitly requested by the user. The primary system environment is always `http://192.168.0.95:3000`.
+- **Local Server Policy**: Do NOT launch or rely on a local dev server unless explicitly requested by the user. The primary system environment is always Grist at `http://192.168.0.95:8484` (assets on `:3000`).
 
