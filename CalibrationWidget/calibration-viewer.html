@@ -1383,6 +1383,8 @@
                             console.warn('[CalibrationViewer] Falha ao carregar PDF:', e);
                         }
                     }
+                }
+
                 if (!hasPdf && tablesDataPayload) {
                     const rawPdfUrl = tablesDataPayload.pdfDataUrl || tablesDataPayload.pdfUrl || tablesDataPayload.pdfData;
                     if (rawPdfUrl) {
