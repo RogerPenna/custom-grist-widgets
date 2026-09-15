@@ -745,13 +745,17 @@
                     let xmlFile = null;
                     let pdfFile = null;
 
-                    Object.keys(zip.files).forEach(name => {
+                    const fileList = Object.keys(zip.files);
+                    writeLog(`📦 Pacote .CAL carregado (${fileList.length} arquivo(s) interno(s)): ${fileList.join(', ')}`);
+
+                    fileList.forEach(name => {
                         if (name.toLowerCase().endsWith('.xml')) xmlFile = zip.files[name];
                         if (name.toLowerCase().endsWith('.pdf')) pdfFile = zip.files[name];
                     });
                     
                     if (!xmlFile) {
                         showMessage("Arquivo .XML não encontrado dentro do pacote .CAL", true);
+                        writeLog("❌ ERRO: Arquivo .XML de dados não foi encontrado dentro do pacote .CAL.");
                         return;
                     }
 
@@ -763,6 +767,9 @@
                         pendingPdfFilename = pdfFile.name;
                         if (tempPdfUrl) URL.revokeObjectURL(tempPdfUrl);
                         tempPdfUrl = URL.createObjectURL(pendingPdfBlob);
+                        const kbSize = (pdfBuffer.byteLength / 1024).toFixed(1);
+                        writeLog(`📄 PDF do certificado localizado no .CAL: "${pdfFile.name}" (${kbSize} KB)`);
+                        writeLog(`✅ PDF preparado para anexo e visualização.`);
                     } else {
                         pendingPdfBlob = null;
                         pendingPdfFilename = null;
@@ -770,11 +777,13 @@
                             URL.revokeObjectURL(tempPdfUrl);
                             tempPdfUrl = null;
                         }
+                        writeLog(`⚠️ NENHUM arquivo .PDF foi encontrado dentro do pacote .CAL. O certificado será importado sem documento PDF.`);
                     }
 
                     await prepareImportPreview(xmlText, tempPdfUrl);
                 } catch (e) {
                     showMessage("Erro ao ler pacote .CAL: " + e.message, true);
+                    writeLog("❌ ERRO ao abrir pacote .CAL: " + e.message);
                 }
             } else if (isXml) {
                 const reader = new FileReader();
@@ -785,6 +794,7 @@
                         URL.revokeObjectURL(tempPdfUrl);
                         tempPdfUrl = null;
                     }
+                    writeLog("ℹ️ Arquivo .XML avulso selecionado (sem anexo PDF no arquivo).");
                     await prepareImportPreview(e.target.result, null);
                 };
                 reader.readAsText(file);
@@ -1196,7 +1206,35 @@
             function findMatchingCol(keyName) {
                 if (schemaCols.length === 0) return keyName;
                 const normKey = normalizeStr(keyName);
-                return schemaCols.find(sc => normalizeStr(sc) === normKey) || null;
+                
+                // 1. Direct normalized match
+                let found = schemaCols.find(sc => normalizeStr(sc) === normKey);
+                if (found) return found;
+
+                // 2. Specific check for JSON payload columns (MUST NOT match DATE or DATA_CALIBRACAO)
+                if (/TABLES_DATA|DATA_JSON|XML_DATA|JSON_DATA/i.test(keyName)) {
+                    found = schemaCols.find(sc => /tables_data|data_json|xml_data|json_data/i.test(sc));
+                    if (found) return found;
+                    return keyName;
+                }
+
+                // 3. Alias group match for Attachment columns
+                if (/ATTACHMENT|FILE|ANEXO|PDF/i.test(keyName)) {
+                    found = schemaCols.find(sc => /attachment|anexo|file|pdf/i.test(sc) && !/has_|is_/i.test(sc));
+                    if (found) return found;
+                    return null;
+                }
+
+                // 4. Date columns alias (e.g. DATE -> DATA or DATA_CALIBRACAO)
+                if (normKey === 'date' || normKey === 'calibrationdate') {
+                    found = schemaCols.find(sc => {
+                        const n = normalizeStr(sc);
+                        return n === 'date' || n === 'data' || n === 'datacalibracao' || n === 'datacertificado';
+                    });
+                    if (found) return found;
+                }
+
+                return null;
             }
             
             const payload = {};
@@ -1209,6 +1247,13 @@
                     payload[matchedCol] = val;
                 }
             });
+
+            // Ensure TABLES_DATA and DATA_JSON are ALWAYS preserved on payload if passed
+            if (mapObj.TABLES_DATA) {
+                payload['TABLES_DATA'] = mapObj.TABLES_DATA;
+                payload['DATA_JSON'] = mapObj.TABLES_DATA;
+            }
+
             return payload;
         }
 
@@ -1275,6 +1320,9 @@
                             reader.onerror = () => resolve(null);
                             reader.readAsDataURL(pendingPdfBlob);
                         });
+                        if (pdfDataUrl) {
+                            writeLog(`✅ PDF incorporado em DataURL base64 (${(pdfDataUrl.length / 1024).toFixed(1)} KB).`);
+                        }
                     } catch(e) {}
                 }
 
@@ -1311,7 +1359,7 @@
                     }))
                 };
 
-                writeLog("Inserindo certificado no banco do Grist...");
+                writeLog("Inserindo/Atualizando certificado no banco do Grist...");
                 const certPayload = await buildPayload('EXTERNAL_CALIBRATIONS', {
                     CODE: certCode,
                     DATE: dateStr,

@@ -1385,6 +1385,16 @@
                     }
                 }
 
+                if (!hasPdf && attRef) {
+                    if (typeof attRef === 'string' && (attRef.startsWith('data:application/pdf') || attRef.startsWith('blob:') || (attRef.startsWith('http') && attRef.includes('.pdf')))) {
+                        currentBlobUrl = attRef;
+                        pdfFrame.src = currentBlobUrl;
+                        pdfFrame.style.display = 'block';
+                        pdfEmpty.style.display = 'none';
+                        hasPdf = true;
+                    }
+                }
+
                 if (!hasPdf && tablesDataPayload) {
                     const rawPdfUrl = tablesDataPayload.pdfDataUrl || tablesDataPayload.pdfUrl || tablesDataPayload.pdfData;
                     if (rawPdfUrl) {
