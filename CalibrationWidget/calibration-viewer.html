@@ -1396,6 +1396,19 @@
                     }
                 }
 
+                if (!hasPdf && cert) {
+                    for (const [k, v] of Object.entries(cert)) {
+                        if (typeof v === 'string' && (v.startsWith('data:application/pdf') || v.startsWith('blob:') || (v.startsWith('http') && v.includes('.pdf')))) {
+                            currentBlobUrl = v;
+                            pdfFrame.src = currentBlobUrl;
+                            pdfFrame.style.display = 'block';
+                            pdfEmpty.style.display = 'none';
+                            hasPdf = true;
+                            break;
+                        }
+                    }
+                }
+
                 if (hasPdf) {
                     if (actionBar) actionBar.style.display = 'flex';
                     const expandBtn = document.getElementById('pdf-expand-btn');
