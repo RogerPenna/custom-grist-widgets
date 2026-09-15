@@ -1333,21 +1333,67 @@
                     } catch(e) {}
                 }
 
-                if (pendingPdfBlob && window.grist && window.grist.docApi && window.grist.docApi.addAttachment) {
-                    try {
-                        writeLog("📎 Enviando anexo PDF para os anexos do Grist...");
-                        const attResult = await window.grist.docApi.addAttachment(pendingPdfBlob, pendingPdfFilename || `${certCode}.pdf`);
-                        const attId = (Array.isArray(attResult) ? attResult[0] : attResult);
-                        if (attId) {
-                            attachmentRef = ['L', attId];
-                            writeLog(`✅ PDF anexado no Grist com sucesso (ID Anexo: ${attId})`);
+                if (pendingPdfBlob) {
+                    let uploaded = false;
+
+                    // 1. Tenta API nativa docApi.addAttachment se disponível
+                    if (window.grist && window.grist.docApi && typeof window.grist.docApi.addAttachment === 'function') {
+                        try {
+                            writeLog("📎 Enviando anexo PDF para os anexos do Grist (docApi)...");
+                            const attResult = await window.grist.docApi.addAttachment(pendingPdfBlob, pendingPdfFilename || `${certCode}.pdf`);
+                            const attId = (Array.isArray(attResult) ? attResult[0] : attResult);
+                            if (attId) {
+                                attachmentRef = ['L', attId];
+                                uploaded = true;
+                                writeLog(`✅ PDF anexado no Grist via docApi com sucesso (ID Anexo: ${attId})`);
+                            }
+                        } catch(attErr) {
+                            writeLog(`⚠️ Falha no envio via docApi.addAttachment: ${attErr.message}`);
                         }
-                    } catch(attErr) {
-                        writeLog(`⚠️ Não foi possível salvar anexo nativo no Grist: ${attErr.message}`);
                     }
-                } else if (pendingPdfBlob) {
-                    writeLog(`⚠️ API grist.docApi.addAttachment não disponível. PDF não pode ser anexado nativamente.`);
-                    writeLog(`   grist: ${!!window.grist}, docApi: ${!!(window.grist && window.grist.docApi)}, addAttachment: ${!!(window.grist && window.grist.docApi && window.grist.docApi.addAttachment)}`);
+
+                    // 2. Fallback: REST API HTTP POST /attachments se docApi não expôs addAttachment
+                    if (!uploaded) {
+                        try {
+                            writeLog("📎 Tentando enviar anexo PDF via REST API do Grist...");
+                            const token = await tableLens.getAccessToken({ readOnly: false });
+                            const baseUrl = await tableLens.getBaseUrl();
+
+                            if (token && baseUrl) {
+                                const formData = new FormData();
+                                formData.append('upload', pendingPdfBlob, pendingPdfFilename || `${certCode}.pdf`);
+
+                                const restResp = await fetch(`${baseUrl}/attachments`, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Authorization': `Bearer ${token}`
+                                    },
+                                    body: formData
+                                });
+
+                                if (restResp.ok) {
+                                    const attIds = await restResp.json();
+                                    const attId = Array.isArray(attIds) ? attIds[0] : attIds;
+                                    if (attId) {
+                                        attachmentRef = ['L', attId];
+                                        uploaded = true;
+                                        writeLog(`✅ PDF anexado via REST API com sucesso (ID Anexo: ${attId})`);
+                                    }
+                                } else {
+                                    const errTxt = await restResp.text();
+                                    writeLog(`⚠️ REST API retornou erro HTTP ${restResp.status}: ${errTxt}`);
+                                }
+                            } else {
+                                writeLog(`⚠️ Impossível obter token/baseUrl para REST API (token: ${!!token}, baseUrl: ${!!baseUrl})`);
+                            }
+                        } catch(restErr) {
+                            writeLog(`⚠️ Erro ao enviar anexo via REST API: ${restErr.message}`);
+                        }
+                    }
+
+                    if (!uploaded) {
+                        writeLog(`⚠️ PDF não pôde ser anexado (nem por docApi nem por REST API). O certificado será salvo sem anexo.`);
+                    }
                 }
 
                 const tablesPayload = {

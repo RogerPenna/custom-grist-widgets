@@ -20,12 +20,14 @@ export const GristTableLens = function(gristInstance) {
     /**
      * [NOVO] Obtém um token de acesso temporário do Grist para download de anexos.
      */
-    this.getAccessToken = async function(forceRefresh = false) {
-        if (_metaState.accessToken && !forceRefresh) return _metaState.accessToken;
+    this.getAccessToken = async function(options = {}) {
+        const readOnly = (typeof options === 'object' && options.readOnly !== undefined) ? options.readOnly : false;
+        if (_metaState.accessToken && !options.forceRefresh && !_metaState.accessTokenIsReadOnly) return _metaState.accessToken;
         try {
-            const response = await _grist.docApi.getAccessToken({ readOnly: true });
+            const response = await _grist.docApi.getAccessToken({ readOnly });
             _metaState.accessToken = response.token;
             _metaState.baseUrl = response.baseUrl;
+            _metaState.accessTokenIsReadOnly = readOnly;
             return _metaState.accessToken;
         } catch (e) {
             console.error("GTL: Erro ao obter accessToken do Grist", e);
