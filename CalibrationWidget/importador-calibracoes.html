@@ -1356,24 +1356,34 @@
                     if (!uploaded) {
                         try {
                             writeLog("📎 Tentando enviar anexo PDF via REST API do Grist...");
-                            const token = await tableLens.getAccessToken({ readOnly: false });
-                            const baseUrl = await tableLens.getBaseUrl();
+                            let tokenInfo = null;
+                            if (window.grist && window.grist.docApi && window.grist.docApi.getAccessToken) {
+                                tokenInfo = await window.grist.docApi.getAccessToken({ readOnly: false });
+                            }
+                            if (!tokenInfo || !tokenInfo.token || !tokenInfo.baseUrl) {
+                                const token = await tableLens.getAccessToken({ readOnly: false });
+                                const baseUrl = await tableLens.getBaseUrl();
+                                if (token && baseUrl) {
+                                    tokenInfo = { token, baseUrl };
+                                }
+                            }
 
-                            if (token && baseUrl) {
+                            if (tokenInfo && tokenInfo.token && tokenInfo.baseUrl) {
                                 const formData = new FormData();
                                 formData.append('upload', pendingPdfBlob, pendingPdfFilename || `${certCode}.pdf`);
 
-                                const restResp = await fetch(`${baseUrl}/attachments`, {
+                                const uploadUrl = `${tokenInfo.baseUrl}/attachments?auth=${tokenInfo.token}`;
+                                const restResp = await fetch(uploadUrl, {
                                     method: 'POST',
                                     headers: {
-                                        'Authorization': `Bearer ${token}`
+                                        'X-Requested-With': 'XMLHttpRequest'
                                     },
                                     body: formData
                                 });
 
                                 if (restResp.ok) {
                                     const attIds = await restResp.json();
-                                    const attId = Array.isArray(attIds) ? attIds[0] : attIds;
+                                    const attId = Array.isArray(attIds) ? attIds[0] : (attIds.id || attIds);
                                     if (attId) {
                                         attachmentRef = ['L', attId];
                                         uploaded = true;
@@ -1384,7 +1394,7 @@
                                     writeLog(`⚠️ REST API retornou erro HTTP ${restResp.status}: ${errTxt}`);
                                 }
                             } else {
-                                writeLog(`⚠️ Impossível obter token/baseUrl para REST API (token: ${!!token}, baseUrl: ${!!baseUrl})`);
+                                writeLog(`⚠️ Impossível obter token/baseUrl para REST API.`);
                             }
                         } catch(restErr) {
                             writeLog(`⚠️ Erro ao enviar anexo via REST API: ${restErr.message}`);
