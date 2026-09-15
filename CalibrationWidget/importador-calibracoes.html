@@ -1215,7 +1215,7 @@
                 if (/TABLES_DATA|DATA_JSON|XML_DATA|JSON_DATA/i.test(keyName)) {
                     found = schemaCols.find(sc => /tables_data|data_json|xml_data|json_data/i.test(sc));
                     if (found) return found;
-                    return keyName;
+                    return null;
                 }
 
                 // 3. Alias group match for Attachment columns
@@ -1247,12 +1247,6 @@
                     payload[matchedCol] = val;
                 }
             });
-
-            // Ensure TABLES_DATA and DATA_JSON are ALWAYS preserved on payload if passed
-            if (mapObj.TABLES_DATA) {
-                payload['TABLES_DATA'] = mapObj.TABLES_DATA;
-                payload['DATA_JSON'] = mapObj.TABLES_DATA;
-            }
 
             return payload;
         }
