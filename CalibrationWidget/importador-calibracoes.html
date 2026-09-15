@@ -1255,6 +1255,19 @@
 
                 // Upload PDF Attachment to Grist if available
                 let attachmentRef = null;
+                let pdfDataUrl = null;
+
+                if (pendingPdfBlob) {
+                    try {
+                        pdfDataUrl = await new Promise((resolve) => {
+                            const reader = new FileReader();
+                            reader.onloadend = () => resolve(reader.result);
+                            reader.onerror = () => resolve(null);
+                            reader.readAsDataURL(pendingPdfBlob);
+                        });
+                    } catch(e) {}
+                }
+
                 if (pendingPdfBlob && window.grist && window.grist.docApi && window.grist.docApi.addAttachment) {
                     try {
                         writeLog("📎 Enviando anexo PDF para os anexos do Grist...");
@@ -1272,6 +1285,8 @@
                 const tablesPayload = {
                     statusId: validationStatus === 'Reprovado' ? 2 : (validationStatus === 'Alerta' ? 3 : 1),
                     statusText: validationStatus.toUpperCase(),
+                    pdfDataUrl: pdfDataUrl,
+                    pdfFilename: pendingPdfFilename || `${certCode}.pdf`,
                     tables: (tables || []).map((t, idx) => ({
                         id: t.id || (idx + 1),
                         name: t.name,
@@ -1298,7 +1313,7 @@
                     IS_CONFORM: validationStatus === 'Reprovado' ? 0 : 1,
                     ID_INSTRUMENT: selectedInstrumentId,
                     ID_SUPPLIER: supplierId,
-                    HAS_ATTACHMENT: (hasAttachment || attachmentRef) ? 1 : 0,
+                    HAS_ATTACHMENT: (hasAttachment || attachmentRef || pdfDataUrl) ? 1 : 0,
                     ATTACHMENT: attachmentRef,
                     FILE: attachmentRef,
                     ANEXO: attachmentRef,
@@ -1344,18 +1359,77 @@
                 }
                 writeLog("Pontos e tabelas de resultados gravados com sucesso!");
 
-                // Update Instrument RefList
-                writeLog("Conectando certificado ao Instrumento...");
+                // Update Instrument RefList and Next Calibration Due Date
+                writeLog("Conectando certificado e atualizando datas de calibração do Instrumento...");
                 const freshInstrument = await tableLens.fetchRecordById('INSTRUMENTS', selectedInstrumentId);
                 const rawCurrentRefs = getRecordFieldValue(freshInstrument, ['EXTERNAL_CALIBRATIONS']) || [];
                 const currentRefs = Array.isArray(rawCurrentRefs) ? rawCurrentRefs : [];
                 const updatedRefs = ['L', ...((currentRefs[0] === 'L') ? currentRefs.slice(1) : currentRefs), newCertId];
                 
-                await dataWriter.updateRecord('INSTRUMENTS', selectedInstrumentId, {
+                // Extract Calibration Frequency (Months or Days)
+                function getNumField(rec, keys) {
+                    if (!rec) return null;
+                    const recKeys = Object.keys(rec);
+                    for (const k of keys) {
+                        const normK = normalizeStr(k);
+                        const foundKey = recKeys.find(rk => normalizeStr(rk) === normK);
+                        if (foundKey && rec[foundKey] !== undefined && rec[foundKey] !== null) {
+                            const val = parseFloat(rec[foundKey]);
+                            if (!isNaN(val) && val > 0) return val;
+                        }
+                    }
+                    return null;
+                }
+
+                const freqMonths = getNumField(freshInstrument, [
+                    'CALIBRATION_FREQUENCY_MONTHS', 'Calibration Frequency Months',
+                    'CALIBRATION_FREQUENCY', 'FREQUENCY_MONTHS',
+                    'CALIBRATION_INTERVAL_MONTHS', 'FREQUENCIA_MESES', 'MESES_CALIBRACAO'
+                ]);
+
+                const freqDays = getNumField(freshInstrument, [
+                    'CALIBRATION_FREQUENCY_DAYS', 'Calibration Frequency Days',
+                    'FREQUENCY_DAYS', 'CALIBRATION_INTERVAL_DAYS',
+                    'FREQUENCIA_DIAS', 'DIAS_CALIBRACAO'
+                ]);
+
+                function calculateNextDate(baseDateIso, months, days) {
+                    if (!baseDateIso) return null;
+                    const cleanDate = baseDateIso.split('T')[0];
+                    const d = new Date(cleanDate + 'T12:00:00Z');
+                    if (isNaN(d.getTime())) return null;
+
+                    if (months && months > 0) {
+                        d.setUTCMonth(d.getUTCMonth() + parseInt(months, 10));
+                    } else if (days && days > 0) {
+                        d.setUTCDate(d.getUTCDate() + parseInt(days, 10));
+                    } else {
+                        d.setUTCMonth(d.getUTCMonth() + 12);
+                    }
+                    return d.toISOString().split('T')[0];
+                }
+
+                const nextCalDateStr = calculateNextDate(dateStr, freqMonths, freqDays);
+                writeLog(`📅 Frequência de Calibração: ${freqMonths ? freqMonths + ' meses' : (freqDays ? freqDays + ' dias' : '12 meses (padrão)')}`);
+                writeLog(`📅 Última Calibração: ${dateStr} | Próxima Calibração Vencimento: ${nextCalDateStr}`);
+
+                const instUpdateObj = {
                     EXTERNAL_CALIBRATIONS: updatedRefs,
                     METROLOGICAL_STAGE: "0. Em Uso",
-                    ID_STATUS: statusId
-                });
+                    ID_STATUS: statusId,
+                    LAST_CALIBRATION_DATE: dateStr,
+                    LAST_CALIBRATION: dateStr,
+                    DATA_ULTIMA_CALIBRACAO: dateStr,
+                    ULTIMA_CALIBRACAO: dateStr,
+                    NEXT_CALIBRATION_DATE: nextCalDateStr,
+                    NEXT_CALIBRATION: nextCalDateStr,
+                    PROXIMA_CALIBRACAO: nextCalDateStr,
+                    NEXT_CAL: nextCalDateStr
+                };
+
+                const instPayload = await buildPayload('INSTRUMENTS', instUpdateObj);
+                await dataWriter.updateRecord('INSTRUMENTS', selectedInstrumentId, instPayload);
+                writeLog("✅ Instrumento atualizado com histórico, última calibração e nova data de vencimento!");
                 
                 // Add final occurrence
                 const finalOccurrence = await buildPayload('INSTRUMENTS_OCCURRENCES', {
