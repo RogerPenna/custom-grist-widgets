@@ -1327,12 +1327,52 @@
                 });
 
                 writeLog("Payload do certificado gerado: " + JSON.stringify(certPayload));
-                const certResponse = await dataWriter.addRecord('EXTERNAL_CALIBRATIONS', certPayload);
-                const newCertId = (certResponse && certResponse.retValues && certResponse.retValues[0]) || (Array.isArray(certResponse) && certResponse[0]) || (certResponse && certResponse[0]);
-                if (!newCertId) {
-                    throw new Error("Erro ao criar cabeçalho do certificado no Grist.");
+
+                // Check if certificate with same code already exists for this instrument
+                let existingCertId = null;
+                try {
+                    const existingCerts = await tableLens.fetchTableRecords('EXTERNAL_CALIBRATIONS');
+                    const normCertCode = normalizeStr(certCode);
+                    const matchedCert = existingCerts.find(c => {
+                        const cCode = getRecordFieldValue(c, ['CODE', 'CERT_CODE', 'Numero', 'Numero_Certificado', 'Codigo']);
+                        const cInstId = getRecordFieldValue(c, ['ID_INSTRUMENT', 'INSTRUMENT', 'Instrumento']);
+                        return cCode && normalizeStr(cCode) === normCertCode && (!cInstId || String(cInstId) === String(selectedInstrumentId));
+                    });
+                    if (matchedCert) {
+                        existingCertId = matchedCert.id;
+                        writeLog(`ℹ️ Certificado "${certCode}" existente localizado (ID ${existingCertId}). Atualizando dados e anexo PDF...`);
+                    }
+                } catch(e) {}
+
+                let newCertId = existingCertId;
+                if (existingCertId) {
+                    await dataWriter.updateRecord('EXTERNAL_CALIBRATIONS', existingCertId, certPayload);
+                    writeLog(`Certificado ID ${existingCertId} atualizado no Grist com sucesso!`);
+
+                    // Clean up old child tables and results to prevent duplicates
+                    try {
+                        const oldTables = await tableLens.fetchTableRecords('EXTERNAL_CAL_TABLES');
+                        const childTables = oldTables.filter(t => String(getRecordFieldValue(t, ['ID_EXTERNAL_CALIBRATION', 'EXTERNAL_CALIBRATION', 'Certificado'])) === String(existingCertId));
+                        
+                        for (const ct of childTables) {
+                            const oldResults = await tableLens.fetchTableRecords('EXTERNAL_CAL_RESULTS');
+                            const childResults = oldResults.filter(r => String(getRecordFieldValue(r, ['ID_EXTERNAL_CAL_TABLE', 'EXTERNAL_CAL_TABLE', 'Tabela'])) === String(ct.id));
+                            for (const cr of childResults) {
+                                try { await dataWriter.deleteRecord('EXTERNAL_CAL_RESULTS', cr.id); } catch(err) {}
+                            }
+                            try { await dataWriter.deleteRecord('EXTERNAL_CAL_TABLES', ct.id); } catch(err) {}
+                        }
+                    } catch(err) {
+                        console.warn("Aviso ao limpar tabelas filhas antigas:", err);
+                    }
+                } else {
+                    const certResponse = await dataWriter.addRecord('EXTERNAL_CALIBRATIONS', certPayload);
+                    newCertId = (certResponse && certResponse.retValues && certResponse.retValues[0]) || (Array.isArray(certResponse) && certResponse[0]) || (certResponse && certResponse[0]);
+                    if (!newCertId) {
+                        throw new Error("Erro ao criar cabeçalho do certificado no Grist.");
+                    }
+                    writeLog(`Novo Certificado criado com ID: ${newCertId}`);
                 }
-                writeLog(`Certificado criado com ID: ${newCertId}`);
                 
                 // Insert tables and points
                 for (const t of tables) {
