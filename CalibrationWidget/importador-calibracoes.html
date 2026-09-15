@@ -1202,6 +1202,12 @@
                 const s = await tableLens.getTableSchema(tableId);
                 schemaCols = Object.keys(s || {});
             } catch(e) {}
+
+            if (schemaCols.length > 0) {
+                writeLog(`🔎 Schema da tabela "${tableId}": [${schemaCols.join(', ')}]`);
+            } else {
+                writeLog(`⚠️ Não foi possível obter schema da tabela "${tableId}". Usando nomes de campo conforme passados.`);
+            }
             
             function findMatchingCol(keyName) {
                 if (schemaCols.length === 0) return keyName;
@@ -1238,6 +1244,7 @@
             }
             
             const payload = {};
+            const droppedKeys = [];
             Object.keys(mapObj).forEach(k => {
                 const val = mapObj[k];
                 if (val === undefined || val === null) return;
@@ -1245,8 +1252,14 @@
                 const matchedCol = findMatchingCol(k);
                 if (matchedCol) {
                     payload[matchedCol] = val;
+                } else {
+                    droppedKeys.push(k);
                 }
             });
+
+            if (droppedKeys.length > 0) {
+                writeLog(`⚠️ Campos descartados (sem coluna correspondente em "${tableId}"): [${droppedKeys.join(', ')}]`);
+            }
 
             return payload;
         }
@@ -1332,6 +1345,9 @@
                     } catch(attErr) {
                         writeLog(`⚠️ Não foi possível salvar anexo nativo no Grist: ${attErr.message}`);
                     }
+                } else if (pendingPdfBlob) {
+                    writeLog(`⚠️ API grist.docApi.addAttachment não disponível. PDF não pode ser anexado nativamente.`);
+                    writeLog(`   grist: ${!!window.grist}, docApi: ${!!(window.grist && window.grist.docApi)}, addAttachment: ${!!(window.grist && window.grist.docApi && window.grist.docApi.addAttachment)}`);
                 }
 
                 const tablesPayload = {
