@@ -195,7 +195,12 @@
 </head>
 <body>
     <div class="container">
-        <h2>📥 Importar Calibração (.CAL / XML)</h2>
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--primary-color); padding-bottom: 8px; margin-bottom: 12px;">
+            <h2 style="margin: 0; border-bottom: none; padding-bottom: 0;">📥 Importar Calibração (.CAL / XML)</h2>
+            <a href="./batch-pdf-linker.html" style="font-size: 12px; font-weight: 700; color: var(--primary-color); text-decoration: none; display: flex; align-items: center; gap: 4px; background: #e8f5e9; padding: 5px 10px; border-radius: 4px; border: 1px solid #c8e6c9;">
+                📂 Vincular PDFs em Lote (.CAL) &rarr;
+            </a>
+        </div>
         <p style="color: #607d8b; font-size: 13px; margin-top: -5px;">
             Arraste um arquivo de calibração para visualizar o relatório completo (PDF, tabela XML e laudo) antes de confirmar a gravação.
         </p>
@@ -670,50 +675,52 @@
                         const tableName = getTagText(["name", "Nome", "Name", "Titulo", "Title"], `Tabela ${idx + 1}`);
 
                         const headerElements = Array.from(tbl.querySelectorAll("headers > header, header"));
-                        const headerTexts = headerElements.map(h => h.textContent.trim().toLowerCase());
+                        let readIdx = 1, resIdx = 1, txtIdx = 1;
+                        let headers = headerElements.map((h, hIdx) => {
+                            const hName = h.textContent.trim();
+                            const hType = parseInt(h.getAttribute('type') || 0, 10);
+                            let field = 'REFERENCE_VALUE';
+                            if (hType === 0) field = 'REFERENCE_VALUE';
+                            else if (hType === 1 || hType === 2) field = `READ${String(readIdx++).padStart(2, '0')}`;
+                            else if (hType === 3) field = `RESULT${String(resIdx++).padStart(2, '0')}`;
+                            else if (hType === 4) field = `TEXT${String(txtIdx++).padStart(2, '0')}`;
+                            else field = `RESULT${String(resIdx++).padStart(2, '0')}`;
+                            return { name: hName, type: hType, field: field, index: hIdx };
+                        });
 
-                        let refIdx = -1, indIdx = -1, errIdx = -1, uncIdx = -1, kIdx = -1;
-
-                        if (headerTexts.length > 0) {
-                            headerTexts.forEach((ht, i) => {
-                                const typeAttr = headerElements[i]?.getAttribute('type');
-                                if (ht.includes("referência") || ht.includes("referencia") || ht.includes("nominal")) {
-                                    if (refIdx === -1 || typeAttr === "3") refIdx = i;
-                                }
-                                if (ht.includes("indicação") || ht.includes("indicacao") || ht.includes("instrumento") || ht.includes("leitura")) {
-                                    if (indIdx === -1 || typeAttr === "3") indIdx = i;
-                                }
-                                if (ht.includes("tendência") || ht.includes("tendencia") || ht.includes("erro") || ht.includes("desvio")) {
-                                    if (errIdx === -1 || typeAttr === "3") errIdx = i;
-                                }
-                                if (ht.includes("incerteza") || ht.includes("uncertainty")) {
-                                    if (uncIdx === -1 || typeAttr === "3") uncIdx = i;
-                                }
-                                if (ht.includes("fator k") || ht.includes("fator_k") || ht === "k" || ht.includes("coverage")) {
-                                    if (kIdx === -1 || typeAttr === "3") kIdx = i;
-                                }
-                            });
+                        if (headers.length === 0) {
+                            headers = [
+                                { name: "Valor de Referência", type: 0, field: "REFERENCE_VALUE", index: 0 },
+                                { name: "Indicação Instrumento", type: 3, field: "INDICATED_VALUE", index: 1 },
+                                { name: "Tendência (Erro)", type: 3, field: "ERROR", index: 2 },
+                                { name: "Incerteza U", type: 3, field: "UNCERTAINTY", index: 3 },
+                                { name: "Fator K", type: 3, field: "K_FACTOR", index: 4 }
+                            ];
                         }
 
+                        const minEl = tbl.querySelector("band > minValue, minValue");
+                        const maxEl = tbl.querySelector("band > maxValue, maxValue");
+                        const unitEl = tbl.querySelector("band > unit, unit");
+                        const band = {
+                            min: parseNum(minEl?.textContent, 0),
+                            max: parseNum(maxEl?.textContent, 0),
+                            unit: unitEl?.textContent?.trim() || ''
+                        };
+
                         const rowElements = Array.from(tbl.querySelectorAll("rows > row, row, Ponto, Record, PontoMedicao, Medicao, Item"));
-                        const points = [];
+                        const rows = [];
 
                         rowElements.forEach(r => {
                             const valueElements = Array.from(r.querySelectorAll("value"));
-
-                            if (valueElements.length > 0 && refIdx !== -1) {
-                                const refVal = parseNum(valueElements[refIdx]?.textContent);
-                                const indVal = parseNum(valueElements[indIdx]?.textContent);
-                                const errVal = parseNum(valueElements[errIdx]?.textContent);
-                                const uncVal = parseNum(valueElements[uncIdx]?.textContent);
-                                const kVal = kIdx !== -1 ? parseNum(valueElements[kIdx]?.textContent, 2.0) : 2.0;
-
-                                points.push({
-                                    REFERENCE_VALUE: refVal,
-                                    INDICATED_VALUE: indVal,
-                                    ERROR: errVal,
-                                    UNCERTAINTY: uncVal,
-                                    K_FACTOR: kVal
+                            const rowObj = {};
+                            if (valueElements.length > 0) {
+                                headers.forEach((h, i) => {
+                                    const rawVal = valueElements[i]?.textContent;
+                                    if (h.type !== 4 && rawVal !== undefined && rawVal !== null && rawVal !== '') {
+                                        rowObj[h.field] = parseNum(rawVal);
+                                    } else {
+                                        rowObj[h.field] = rawVal || '';
+                                    }
                                 });
                             } else {
                                 function getFloat(parentEl, selectors, defaultVal = 0) {
@@ -724,24 +731,27 @@
                                     return defaultVal;
                                 }
 
-                                const refVal = getFloat(r, ["ValorReferencia", "Nominal", "Reference", "VPadrao", "Valor_Referencia", "ValorPadrao", "Ref", "StandardValue", "Valor_Nominal"]);
-                                const indVal = getFloat(r, ["Indicao", "Indicated", "Value", "VIndicado", "Valor_Indicado", "ValorIndicado", "Ind", "Indication", "ReadValue", "Leitura"]);
-                                const errVal = getFloat(r, ["Erro", "Error", "Tendence", "Tendencia", "Tendência", "Valor_Erro", "Erro_Medicao", "Desvio", "Bias"]);
-                                const uncVal = getFloat(r, ["Incerteza", "Uncertainty", "IncertezaExpandida", "Incerteza_Expandida", "Unc", "U", "IncertezaU", "Incerteza_U"]);
-                                const kVal   = getFloat(r, ["FatorK", "K", "Coverage", "Fator_K", "CoverageFactor", "Fator_Abrangencia", "FatorAbrangencia"], 2.0);
-
-                                points.push({
-                                    REFERENCE_VALUE: refVal,
-                                    INDICATED_VALUE: indVal,
-                                    ERROR: errVal,
-                                    UNCERTAINTY: uncVal,
-                                    K_FACTOR: kVal
-                                });
+                                rowObj.REFERENCE_VALUE = getFloat(r, ["ValorReferencia", "Nominal", "Reference", "VPadrao", "Valor_Referencia", "ValorPadrao", "Ref", "StandardValue", "Valor_Nominal"]);
+                                rowObj.INDICATED_VALUE = getFloat(r, ["Indicao", "Indicated", "Value", "VIndicado", "Valor_Indicado", "ValorIndicado", "Ind", "Indication", "ReadValue", "Leitura"]);
+                                rowObj.ERROR = getFloat(r, ["Erro", "Error", "Tendence", "Tendencia", "Tendência", "Valor_Erro", "Erro_Medicao", "Desvio", "Bias"]);
+                                rowObj.UNCERTAINTY = getFloat(r, ["Incerteza", "Uncertainty", "IncertezaExpandida", "Incerteza_Expandida", "Unc", "U", "IncertezaU", "Incerteza_U"]);
+                                rowObj.K_FACTOR = getFloat(r, ["FatorK", "K", "Coverage", "Fator_K", "CoverageFactor", "Fator_Abrangencia", "FatorAbrangencia"], 2.0);
                             }
+                            rows.push(rowObj);
                         });
 
-                        if (points.length > 0) {
-                            parsedTables.push({ name: tableName, points });
+                        const hasEval = headers.some(h => /tend[eê]ncia|erro|incert/i.test(h.name));
+
+                        if (rows.length > 0) {
+                            parsedTables.push({
+                                id: idx + 1,
+                                name: tableName,
+                                headers: headers,
+                                rows: rows,
+                                points: rows,
+                                band: band,
+                                hasEvaluation: hasEval
+                            });
                         }
                     });
                 }
@@ -1006,6 +1016,23 @@
                     }
                 }
 
+                const tablesPayload = {
+                    statusId: validationStatus === 'Reprovado' ? 2 : (validationStatus === 'Alerta' ? 3 : 1),
+                    statusText: validationStatus.toUpperCase(),
+                    tables: (tables || []).map((t, idx) => ({
+                        id: t.id || (idx + 1),
+                        name: t.name,
+                        statusId: validationStatus === 'Reprovado' ? 2 : 1,
+                        statusText: validationStatus.toUpperCase(),
+                        hasEvaluation: t.hasEvaluation,
+                        band: t.band || { min: 0, max: 0, unit: '' },
+                        modeError: t.modeError || 0,
+                        modeUncertainty: t.modeUncertainty || 0,
+                        headers: t.headers || [],
+                        rows: t.rows || t.points || []
+                    }))
+                };
+
                 writeLog("Inserindo certificado no banco do Grist...");
                 const certPayload = await buildPayload('EXTERNAL_CALIBRATIONS', {
                     CODE: certCode,
@@ -1014,6 +1041,7 @@
                     OBSERVATION: notes,
                     DESCRIPTION: notes,
                     VALIDATION_STATUS: validationStatus,
+                    STATUS: validationStatus === 'Reprovado' ? 'Reprovado' : (validationStatus === 'Alerta' ? 'Aprovado com Ressalva' : 'Aprovado'),
                     IS_CONFORM: validationStatus === 'Reprovado' ? 0 : 1,
                     ID_INSTRUMENT: selectedInstrumentId,
                     ID_SUPPLIER: supplierId,
@@ -1024,8 +1052,10 @@
                     PDF: attachmentRef,
                     IS_IMPORT: 1,
                     ID_CALIBRATION_TYPE: calTypeId,
-                    ID_STATUS: statusId,
-                    ID_STATUS_AUTOMATIC: statusId
+                    ID_STATUS: validationStatus === 'Reprovado' ? 2 : (validationStatus === 'Alerta' ? 3 : 1),
+                    ID_STATUS_AUTOMATIC: validationStatus === 'Reprovado' ? 2 : (validationStatus === 'Alerta' ? 3 : 1),
+                    TABLES_DATA: JSON.stringify(tablesPayload),
+                    DATA_JSON: JSON.stringify(tablesPayload)
                 });
 
                 writeLog("Payload do certificado gerado: " + JSON.stringify(certPayload));

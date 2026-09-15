@@ -34,6 +34,63 @@ async function handleEdit(tableId, recordId, onUpdate, dataWriter, tableLens, fi
 
 async function handleDelete(tableId, recordId, onUpdate, dataWriter) { if (confirm(`Excluir registro?`)) { await dataWriter.deleteRecords(tableId, [recordId]); onUpdate(); } }
 
+async function openRecordDrawer(targetTableId, targetRecId, tableLens, rawRefConfig = {}, fieldConfig = {}) {
+    try {
+        const drawerFn = window.GristDrawer?.open || window.parent?.GristDrawer?.open;
+        if (!drawerFn) {
+            console.warn("[RefList] GristDrawer.open não disponível.");
+            return;
+        }
+
+        let explicitDrawerId = rawRefConfig.drawerConfigId || rawRefConfig.detailDrawerConfigId || fieldConfig.drawerConfigId;
+        let drawerCfg = null;
+
+        if (explicitDrawerId && tableLens) {
+            try {
+                drawerCfg = await tableLens.fetchConfig(explicitDrawerId);
+            } catch (e) {
+                console.warn(`[RefList] Configuração de gaveta "${explicitDrawerId}" não encontrada. Tentando descoberta automática.`);
+            }
+        }
+
+        if (!drawerCfg && tableLens) {
+            try {
+                const allConfigs = await tableLens.fetchTableRecords('Grf_config');
+                const targetLower = targetTableId.toLowerCase();
+                const found = allConfigs.find(c => {
+                    const cType = c.componentType || '';
+                    if (cType !== 'Drawer' && !c.configId?.toLowerCase().includes('drawer')) return false;
+                    if (c.tableId === targetTableId) return true;
+                    if (c.configId?.toLowerCase().includes(targetLower)) return true;
+                    if (c.mappingJson) {
+                        try {
+                            const m = JSON.parse(c.mappingJson);
+                            if (m.tableId === targetTableId) return true;
+                        } catch (_) {}
+                    }
+                    return false;
+                });
+                
+                if (found) {
+                    drawerCfg = await tableLens.fetchConfig(found.configId);
+                }
+            } catch (err) {
+                console.warn("[RefList] Falha na auto-descoberta de gaveta:", err);
+            }
+        }
+
+        const options = {
+            ...(drawerCfg || {}),
+            tableLens: tableLens || window.tableLens || window.parentTableLens,
+            mode: 'view'
+        };
+
+        await drawerFn(targetTableId, targetRecId, options);
+    } catch (err) {
+        console.error("[RefList] Erro ao abrir gaveta do registro:", err);
+    }
+}
+
 export async function renderRefList(options) {
     const { container, record, colSchema, tableLens, isLocked, ruleIdToColIdMap } = options;
     const fieldConfig = options.fieldConfig || options.fieldStyle || {};
@@ -347,8 +404,12 @@ export async function renderRefList(options) {
                 data: relatedRecords,
                 layout: "fitColumns",
                 maxHeight: "400px",
+                rowClick: (e, row) => {
+                    if (e.target.closest('button') || e.target.closest('a')) return;
+                    openRecordDrawer(referencedTableId, row.getData().id, tableLens, rawRefConfig, fieldConfig);
+                },
                 columns: [
-                    { title: "Ações", width: 60, headerSort: false, hozAlign:"center", formatter: () => "⋮", cellClick: (e, cell) => handleEdit(referencedTableId, cell.getRow().getData().id, renderContent, dataWriter, tableLens, fieldConfig) },
+                    { title: "Ações", width: 60, headerSort: false, hozAlign:"center", formatter: () => "⋮", cellClick: (e, cell) => { e.stopPropagation(); handleEdit(referencedTableId, cell.getRow().getData().id, renderContent, dataWriter, tableLens, fieldConfig); } },
                     ...columnsToDisplay.map(c => ({
                         title: c.label, field: c.colId,
                         formatter: (cell) => {
@@ -394,16 +455,29 @@ export async function renderRefList(options) {
             const tbody = table.createTBody();
             relatedRecords.forEach(relRec => {
                 const tr = tbody.insertRow();
+                tr.style.cursor = 'pointer';
+                tr.title = 'Clique para ver detalhes';
+                tr.addEventListener('mouseenter', () => { tr.style.backgroundColor = '#f1f5f9'; });
+                tr.addEventListener('mouseleave', () => { tr.style.backgroundColor = ''; });
+
                 const actCell = tr.insertCell();
                 actCell.innerHTML = "⋮";
                 actCell.style.cursor = "pointer";
                 actCell.style.textAlign = "center";
-                actCell.onclick = () => handleEdit(referencedTableId, relRec.id, renderContent, dataWriter, tableLens, fieldConfig);
+                actCell.onclick = (e) => {
+                    e.stopPropagation();
+                    handleEdit(referencedTableId, relRec.id, renderContent, dataWriter, tableLens, fieldConfig);
+                };
                 
                 columnsToDisplay.forEach(c => {
                     const td = tr.insertCell();
                     renderField({ container: td, colSchema: c, record: relRec, tableLens, ruleIdToColIdMap: ruleIdToColIdMap, fieldConfig, isChild: true, tableSchema: relatedSchema });
                 });
+
+                tr.onclick = (e) => {
+                    if (e.target.closest('button') || e.target.closest('a') || actCell.contains(e.target)) return;
+                    openRecordDrawer(referencedTableId, relRec.id, tableLens, rawRefConfig, fieldConfig);
+                };
             });
             wrap.appendChild(table);
             container.appendChild(wrap);

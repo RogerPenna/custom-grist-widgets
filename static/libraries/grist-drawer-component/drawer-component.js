@@ -12,6 +12,7 @@ let currentDrawerOptions = {};
 let isEditing = false;
 let currentRecord = null;
 let isOpen = false;
+let drawerHistory = [];
 
 // Motores de dados
 let tableLens, dataWriter;
@@ -33,6 +34,10 @@ function _ensureTools(options = {}) {
         dataWriter = options.dataWriter;
     } else if (!dataWriter) {
         try { dataWriter = new GristDataWriter(window.grist); } catch (e) { console.warn("[Drawer] Falha ao criar DataWriter", e); }
+    }
+    if (tableLens) {
+        window.tableLens = tableLens;
+        window.parentTableLens = tableLens;
     }
 }
 
@@ -62,12 +67,42 @@ function _switchToTab(tabElement, panelElement) {
         t.style.color = '#64748b';
         t.style.borderBottomColor = 'transparent';
     });
-    drawerPanel.querySelectorAll('.drawer-tab-content').forEach(p => p.style.display = 'none');
+    drawerPanel.querySelectorAll('.drawer-tab-content').forEach(p => {
+        p.classList.remove('is-active');
+        p.style.display = 'none';
+    });
     
     tabElement.classList.add('is-active');
     tabElement.style.color = '#3b82f6';
     tabElement.style.borderBottomColor = '#3b82f6';
-    panelElement.style.display = 'block';
+    panelElement.classList.add('is-active');
+    if (panelElement.classList.contains('has-widget')) {
+        panelElement.style.display = 'flex';
+        panelElement.style.flex = '1 1 100%';
+        panelElement.style.height = '100%';
+        panelElement.style.minHeight = '500px';
+        panelElement.style.flexDirection = 'column';
+    } else {
+        panelElement.style.display = 'block';
+        panelElement.style.flex = '';
+        panelElement.style.height = '';
+        panelElement.style.minHeight = '';
+    }
+
+    if (panelElement.classList.contains('has-widget')) {
+        const iframe = panelElement.querySelector('iframe');
+        if (iframe && iframe.contentWindow) {
+            try {
+                iframe.contentWindow.parentTableLens = tableLens;
+                iframe.contentWindow.postMessage({
+                    action: 'drawer-context-update',
+                    tableId: currentTableId,
+                    recordId: currentRecordId,
+                    record: currentRecord
+                }, '*');
+            } catch (e) {}
+        }
+    }
 }
 
 function _updateButtonVisibility() {
@@ -87,6 +122,16 @@ function _updateButtonVisibility() {
         if (deleteBtn) deleteBtn.style.display = isEditing ? 'none' : 'inline-block';  
         if (saveBtn) saveBtn.style.display = isEditing ? 'inline-block' : 'none';
         if (cancelBtn) cancelBtn.style.display = isEditing ? 'inline-block' : 'none';  
+    }
+}
+
+function _updateBackButtonVisibility() {
+    const backBtn = drawerPanel?.querySelector('#drawer-back-btn');
+    if (!backBtn) return;
+    if (drawerHistory && drawerHistory.length > 0) {
+        backBtn.style.display = 'inline-flex';
+    } else {
+        backBtn.style.display = 'none';
     }
 }
 
@@ -161,6 +206,7 @@ async function _renderDrawerContent() {
     const hiddenFields = config.hiddenFields || config.mapping?.hiddenFields || [];
     const lockedFields = config.lockedFields || config.mapping?.lockedFields || [];
     const styling = config.styling || config.styling?.styling || {};
+    const layoutConfig = config.layout || config.mapping?.layout || {};
 
     try {
         const schema = await tableLens.getTableSchema(currentTableId);
@@ -170,6 +216,19 @@ async function _renderDrawerContent() {
             currentRecord = currentRecord || {};
         } else {
             currentRecord = await tableLens.fetchRecordById(currentTableId, currentRecordId);
+        }
+
+        // Auto-correção para calibrações reprovadas legadas no Grist
+        if (currentRecord && (currentTableId === 'EXTERNAL_CALIBRATIONS' || currentTableId === 'external_calibrations')) {
+            const rawStatusId = currentRecord.ID_STATUS || currentRecord.STATUS_ID || currentRecord.Status;
+            const rawIsConform = currentRecord.IS_CONFORM !== undefined ? currentRecord.IS_CONFORM : currentRecord.Is_Conform;
+            if (rawStatusId == 2 && (rawIsConform == 1 || rawIsConform === true || rawIsConform === '1')) {
+                currentRecord.IS_CONFORM = 0;
+                currentRecord.Is_Conform = 0;
+                if (dataWriter && dataWriter.updateRecord) {
+                    dataWriter.updateRecord(currentTableId, currentRecordId, { IS_CONFORM: 0 }).catch(() => {});
+                }
+            }
         }
 
         // Concurrency guard: if another drawer open request occurred during fetch, abort this rendering pass
@@ -198,6 +257,7 @@ async function _renderDrawerContent() {
             // Atualiza cor dos ícones de ação
             drawerPanel.querySelectorAll('.drawer-header-buttons svg').forEach(svg => {
                 svg.style.stroke = textCol;
+                svg.style.color = textCol;
             });
 
             // Título Dinâmico
@@ -209,7 +269,7 @@ async function _renderDrawerContent() {
         }
 
         panelsContainer.innerHTML = '';
-        const finalTabs = (tabs && tabs.length > 0) ? tabs : [{ 
+        let finalTabs = (tabs && tabs.length > 0) ? tabs : [{ 
             title: "Principal", 
             fields: Object.keys(schema).filter(id => {
                 const isTechnical = id.startsWith('gristHelper_') || id === 'id' || schema[id].type === 'ManualSortPos';
@@ -217,6 +277,8 @@ async function _renderDrawerContent() {
                 return !isTechnical && !isHidden;
             })
         }];
+        
+        finalTabs = finalTabs.filter(t => !t.isHidden);
 
         finalTabs.forEach((tabConfig, index) => {
             const tabEl = document.createElement('div');
@@ -233,49 +295,140 @@ async function _renderDrawerContent() {
             tabEl.onclick = () => _switchToTab(tabEl, panelEl);
             if (index === 0) _switchToTab(tabEl, panelEl);
 
-            tabConfig.fields.forEach(fieldId => {
-                const col = schema[fieldId];
-                if (!col || hiddenFields.includes(fieldId)) return;
-
-                const row = document.createElement('div');
-                row.className = 'drawer-field-row';
-                row.style.marginBottom = '20px';
-                row.innerHTML = `
-                    <label style="display:block; font-weight:800; font-size:11px; color:#94a3b8; text-transform:uppercase; margin-bottom:6px; letter-spacing:0.025em;">
-                        ${col.label || col.colId}
-                    </label>
-                    <div class="field-val" style="min-height:24px; font-size:14px; color:#1e293b;"></div>
-                `;
-                panelEl.appendChild(row);
-
-                const widgetCfg = widgetOverrides[fieldId] || {};
-                const fOpts = fieldOptions[fieldId] || {};
-                const sOverride = styleOverrides[fieldId] || {};
-                
-                let widgetType = widgetCfg.widget;
-                if (!widgetType) {
-                    if (fOpts.colorPicker) widgetType = 'Color Picker';
-                    else if (fOpts.progressBar) widgetType = 'Progress Bar';
+            // --- WIDGET TAB: render an iframe instead of form fields ---
+            if (tabConfig.type === 'widget' && (tabConfig.targetConfigId || tabConfig.widgetUrl)) {
+                panelEl.classList.add('has-widget');
+                let resolvedUrl = tabConfig.widgetUrl || '';
+                if (tabConfig.targetConfigId === 'native:calibration_analysis') {
+                    resolvedUrl = `../CalibrationWidget/calibration-viewer.html?v=1.4.6`;
+                } else if (tabConfig.targetConfigId) {
+                    resolvedUrl = `../UniversalViewer/index.html?configId=${encodeURIComponent(tabConfig.targetConfigId)}`;
+                    if (tabConfig.filterColumn) {
+                        resolvedUrl += `&filterColumn=${encodeURIComponent(tabConfig.filterColumn)}&filterValue=${encodeURIComponent(currentRecordId)}`;
+                    }
+                } else if (resolvedUrl && tabConfig.filterColumn) {
+                    const sep = resolvedUrl.includes('?') ? '&' : '?';
+                    resolvedUrl += `${sep}filterColumn=${encodeURIComponent(tabConfig.filterColumn)}&filterValue=${encodeURIComponent(currentRecordId)}`;
                 }
 
-                const mergedFieldConfig = {
-                    widget: widgetType,
-                    widgetOptions: widgetCfg.options || fOpts,
-                    dataStyle: sOverride,
-                    refListConfig: refListFieldConfig[fieldId]
-                };
+                const iframe = document.createElement('iframe');
+                const separator = resolvedUrl.includes('?') ? '&' : '?';
+                iframe.src = `${resolvedUrl}${separator}drawerTableId=${encodeURIComponent(currentTableId)}&drawerRecordId=${encodeURIComponent(currentRecordId)}`;
+                iframe.className = 'drawer-widget-iframe';
+                
+                const heightVal = tabConfig.height || '100%';
+                if (heightVal === '100%') {
+                    iframe.style.height = '100%';
+                    iframe.style.flex = '1 1 100%';
+                    iframe.style.minHeight = '500px';
+                } else if (heightVal.endsWith('%')) {
+                    iframe.style.height = heightVal;
+                    iframe.style.flex = `0 0 ${heightVal}`;
+                    iframe.style.minHeight = '450px';
+                } else {
+                    iframe.style.height = heightVal;
+                    iframe.style.minHeight = heightVal;
+                }
+                panelEl.style.flex = '1 1 100%';
+                panelEl.style.height = '100%';
+                panelEl.style.minHeight = '500px';
+                panelEl.style.display = (index === 0) ? 'flex' : 'none';
+                panelEl.appendChild(iframe);
 
-                renderField({
-                    container: row.querySelector('.field-val'),
-                    colSchema: col,
-                    record: currentRecord,
-                    isEditing: isEditing,
-                    isLocked: lockedFields.includes(fieldId),
-                    tableLens: tableLens,
-                    fieldStyle: mergedFieldConfig,
-                    styling: config.styling
+                // Injeta referência do tableLens diretamente na janela filha (se mesmo domínio)
+                try {
+                    if (iframe.contentWindow) {
+                        iframe.contentWindow.parentTableLens = tableLens;
+                    }
+                } catch (e) {}
+
+                // Send record context to iframe once it loads
+                iframe.addEventListener('load', () => {
+                    try {
+                        if (iframe.contentWindow) {
+                            iframe.contentWindow.parentTableLens = tableLens;
+                        }
+                        iframe.contentWindow.postMessage({
+                            action: 'drawer-context-update',
+                            tableId: currentTableId,
+                            recordId: currentRecordId,
+                            record: currentRecord
+                        }, '*');
+                    } catch (e) {
+                        console.warn('[Drawer] Failed to postMessage to widget iframe:', e);
+                    }
                 });
-            });
+            }
+            // --- STANDARD TAB: render form fields ---
+            else {
+                (tabConfig.fields || []).forEach(fieldId => {
+                    const col = schema[fieldId];
+                    if (!col || hiddenFields.includes(fieldId)) return;
+
+                    const fOpts = fieldOptions[fieldId] || {};
+                    const displayLabel = fOpts.customLabel || col.label || col.colId;
+
+                    const row = document.createElement('div');
+                    row.className = 'drawer-field-row';
+                    
+                    const gap = layoutConfig.gap ? layoutConfig.gap + 'px' : '20px';
+                    row.style.marginBottom = gap;
+                    
+                    const isRefList = col.type.startsWith('RefList:');
+                    const isLeftAligned = !isRefList && layoutConfig.labelPosition === 'left';
+                    
+                    if (isLeftAligned) {
+                        const lWidth = layoutConfig.labelWidth || '30';
+                        const lAlign = layoutConfig.labelAlign || 'left';
+                        row.style.display = 'flex';
+                        row.style.alignItems = 'baseline';
+                        row.style.gap = '15px';
+                        
+                        row.innerHTML = `
+                            <label style="flex: 0 0 ${lWidth}%; text-align:${lAlign}; font-weight:800; font-size:11px; color:#94a3b8; text-transform:uppercase; letter-spacing:0.025em; box-sizing:border-box;">
+                                ${displayLabel}
+                            </label>
+                            <div class="field-val" style="flex: 1; min-width: 0; min-height:24px; font-size:14px; color:#1e293b;"></div>
+                        `;
+                    } else {
+                        row.innerHTML = `
+                            <label style="display:block; font-weight:800; font-size:11px; color:#94a3b8; text-transform:uppercase; margin-bottom:6px; letter-spacing:0.025em;">
+                                ${displayLabel}
+                            </label>
+                            <div class="field-val" style="min-height:24px; font-size:14px; color:#1e293b;"></div>
+                        `;
+                    }
+                    
+                    panelEl.appendChild(row);
+
+                    const widgetCfg = widgetOverrides[fieldId] || {};
+                    const sOverride = styleOverrides[fieldId] || {};
+                    
+                    let widgetType = widgetCfg.widget;
+                    if (!widgetType) {
+                        if (fOpts.colorPicker) widgetType = 'Color Picker';
+                        else if (fOpts.progressBar) widgetType = 'Progress Bar';
+                    }
+
+                    const mergedFieldConfig = {
+                        widget: widgetType,
+                        widgetOptions: widgetCfg.options || fOpts,
+                        dataStyle: sOverride,
+                        refListConfig: refListFieldConfig[fieldId]
+                    };
+
+                    renderField({
+                        container: row.querySelector('.field-val'),
+                        colSchema: col,
+                        record: currentRecord,
+                        isEditing: isEditing,
+                        isLocked: lockedFields.includes(fieldId),
+                        tableLens: tableLens,
+                        fieldStyle: mergedFieldConfig,
+                        styling: config.styling
+                    });
+                });
+            }
         });
 
     } catch (e) {
@@ -297,11 +450,16 @@ function _initializeDrawerDOM() {
 
     drawerPanel = document.createElement('div');
     drawerPanel.id = 'grist-drawer-panel';
-    drawerPanel.style.cssText = "position:fixed; top:0; right:-100%; width:600px; height:100%; background:white; z-index:2147483641; transition:right 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow:-5px 0 25px rgba(0,0,0,0.15); display:flex; flex-direction:column; font-family:sans-serif;";
+    drawerPanel.style.cssText = "position:fixed; top:0; right:-100%; width:600px; height:100%; background:white; z-index:2147483641; transition:right 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow:-5px 0 25px rgba(0,0,0,0.15); display:flex; flex-direction:column; font-family:sans-serif; transform:none !important;";
 
     drawerPanel.innerHTML = `
         <div class="drawer-header" style="padding:20px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
-            <h2 id="drawer-title" style="margin:0; font-size:18px; font-weight:800; color:#1e293b;"></h2>
+            <div style="display:flex; align-items:center; gap:10px;">
+                <button id="drawer-back-btn" title="Voltar ao registro anterior" style="display:none; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer; padding:5px 10px; font-size:12px; font-weight:700; color:#334155; align-items:center; gap:5px;">
+                    ← Voltar
+                </button>
+                <h2 id="drawer-title" style="margin:0; font-size:18px; font-weight:800; color:#1e293b;"></h2>
+            </div>
             <div class="drawer-header-actions" style="display:flex; gap:10px; align-items:center;">
                 <div class="drawer-header-buttons" style="display:flex; gap:8px;">
                     <button id="drawer-delete-btn" title="Deletar" style="background:none; border:none; cursor:pointer;"><svg class="icon" style="width:20px; height:20px; stroke:#64748b; fill:none; stroke-width:2;"><use href="#icon-trashbin"></use></svg></button>
@@ -312,13 +470,26 @@ function _initializeDrawerDOM() {
                 <button class="drawer-close-btn" style="background:none; border:none; font-size:24px; cursor:pointer; color:#999;">&times;</button>
             </div>
         </div>
-        <div class="drawer-body" style="flex:1; overflow-y:auto; padding:20px;">
-            <div class="drawer-tabs" style="display:flex; gap:15px; margin-bottom:20px; border-bottom:1px solid #eee; padding-bottom:10px;"></div>
-            <div class="drawer-tab-panels"></div>
+        <div class="drawer-body" style="flex:1; display:flex; flex-direction:column; overflow:hidden; padding:15px 20px;">
+            <div class="drawer-tabs" style="display:flex; gap:15px; margin-bottom:12px; border-bottom:1px solid #eee; padding-bottom:10px; flex-shrink:0;"></div>
+            <div class="drawer-tab-panels" style="flex:1; min-height:0; display:flex; flex-direction:column; overflow-y:auto;"></div>
         </div>`;
 
     document.body.appendChild(drawerOverlay);
     document.body.appendChild(drawerPanel);
+
+    const backBtn = drawerPanel.querySelector('#drawer-back-btn');
+    if (backBtn) {
+        backBtn.onclick = async () => {
+            if (drawerHistory.length > 0) {
+                const prev = drawerHistory.pop();
+                await openDrawer(prev.tableId, prev.recordId, {
+                    ...(prev.options || {}),
+                    _isBackNavigation: true
+                });
+            }
+        };
+    }
 
     drawerPanel.querySelector('.drawer-close-btn').onclick = () => closeDrawer();
     drawerOverlay.onclick = () => closeDrawer();
@@ -345,10 +516,25 @@ export async function openDrawer(tableId, recordId, options = {}) {
     
     _ensureTools(options);
     _initializeDrawerDOM();
+
+    const isBackNavigation = options._isBackNavigation === true;
+    delete options._isBackNavigation;
+
+    if (isOpen && currentTableId && currentRecordId && !isBackNavigation) {
+        if (currentTableId !== tableId || String(currentRecordId) !== String(recordId)) {
+            drawerHistory.push({
+                tableId: currentTableId,
+                recordId: currentRecordId,
+                options: { ...currentDrawerOptions }
+            });
+        }
+    } else if (!isBackNavigation && !isOpen) {
+        drawerHistory = [];
+    }
     
     currentTableId = tableId;
     currentRecordId = recordId;
-    currentDrawerOptions = options;
+    currentDrawerOptions = { ...options };
     isEditing = (recordId === 'new' || options.mode === 'edit');
 
     if (recordId === 'new') {
@@ -367,6 +553,8 @@ export async function openDrawer(tableId, recordId, options = {}) {
     drawerPanel.style.right = `-${width}`;
 
     drawerOverlay.style.setProperty('display', 'block', 'important');
+    drawerOverlay.style.setProperty('opacity', '1', 'important');
+    drawerOverlay.style.setProperty('visibility', 'visible', 'important');
     
     setTimeout(() => {
         if (drawerPanel) drawerPanel.style.setProperty('right', '0px', 'important');
@@ -379,12 +567,16 @@ export async function openDrawer(tableId, recordId, options = {}) {
     }
     
     _updateButtonVisibility();
+    _updateBackButtonVisibility();
     await _renderDrawerContent();
 }
 
 export function closeDrawer() {
     currentRecordId = null;
     currentTableId = null;
+    currentDrawerOptions = {};
+    drawerHistory = [];
+    _updateBackButtonVisibility();
     isOpen = false;
     if (!drawerPanel) {
         drawerPanel = document.getElementById('grist-drawer-panel');
@@ -395,7 +587,11 @@ export function closeDrawer() {
     const width = drawerPanel.style.width || '600px';
     drawerPanel.style.setProperty('right', `-${width}`, 'important');
     setTimeout(() => {
-        if (drawerOverlay) drawerOverlay.style.setProperty('display', 'none', 'important');
+        if (drawerOverlay) {
+            drawerOverlay.style.setProperty('display', 'none', 'important');
+            drawerOverlay.style.setProperty('opacity', '0', 'important');
+            drawerOverlay.style.setProperty('visibility', 'hidden', 'important');
+        }
     }, 300);
 }
 
@@ -403,3 +599,27 @@ window.GristDrawer = {
     open: openDrawer,
     close: closeDrawer
 };
+
+// Ponte de mensagens para iframes filhos que requisitarem dados via postMessage
+window.addEventListener('message', async (event) => {
+    if (!event.data || event.data.action !== 'table-lens-request') return;
+    const { method, args = [], transactionId } = event.data;
+    try {
+        if (tableLens && typeof tableLens[method] === 'function') {
+            const result = await tableLens[method](...args);
+            event.source?.postMessage({
+                action: 'table-lens-response',
+                transactionId,
+                result
+            }, '*');
+        } else {
+            throw new Error(`Método ${method} não encontrado no tableLens do Drawer`);
+        }
+    } catch (err) {
+        event.source?.postMessage({
+            action: 'table-lens-response',
+            transactionId,
+            error: err.message
+        }, '*');
+    }
+});

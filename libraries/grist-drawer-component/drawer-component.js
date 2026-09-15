@@ -12,6 +12,7 @@ let currentDrawerOptions = {};
 let isEditing = false;
 let currentRecord = null;
 let isOpen = false;
+let drawerHistory = [];
 
 // Motores de dados
 let tableLens, dataWriter;
@@ -124,6 +125,16 @@ function _updateButtonVisibility() {
     }
 }
 
+function _updateBackButtonVisibility() {
+    const backBtn = drawerPanel?.querySelector('#drawer-back-btn');
+    if (!backBtn) return;
+    if (drawerHistory && drawerHistory.length > 0) {
+        backBtn.style.display = 'inline-flex';
+    } else {
+        backBtn.style.display = 'none';
+    }
+}
+
 async function _handleSave() {
     const changes = {};
     // MODIFICAÇÃO CRUCIAL: Seleciona apenas elementos de formulário reais que possuem o ID da coluna.
@@ -207,6 +218,19 @@ async function _renderDrawerContent() {
             currentRecord = await tableLens.fetchRecordById(currentTableId, currentRecordId);
         }
 
+        // Auto-correção para calibrações reprovadas legadas no Grist
+        if (currentRecord && (currentTableId === 'EXTERNAL_CALIBRATIONS' || currentTableId === 'external_calibrations')) {
+            const rawStatusId = currentRecord.ID_STATUS || currentRecord.STATUS_ID || currentRecord.Status;
+            const rawIsConform = currentRecord.IS_CONFORM !== undefined ? currentRecord.IS_CONFORM : currentRecord.Is_Conform;
+            if (rawStatusId == 2 && (rawIsConform == 1 || rawIsConform === true || rawIsConform === '1')) {
+                currentRecord.IS_CONFORM = 0;
+                currentRecord.Is_Conform = 0;
+                if (dataWriter && dataWriter.updateRecord) {
+                    dataWriter.updateRecord(currentTableId, currentRecordId, { IS_CONFORM: 0 }).catch(() => {});
+                }
+            }
+        }
+
         // Concurrency guard: if another drawer open request occurred during fetch, abort this rendering pass
         if (currentTableId !== tableIdAtStart || currentRecordId !== recordIdAtStart) {
             console.log(`[Drawer] Stale render pass aborted. Expected record ID ${recordIdAtStart} on table ${tableIdAtStart}, but current is ${currentRecordId} on table ${currentTableId}`);
@@ -276,7 +300,7 @@ async function _renderDrawerContent() {
                 panelEl.classList.add('has-widget');
                 let resolvedUrl = tabConfig.widgetUrl || '';
                 if (tabConfig.targetConfigId === 'native:calibration_analysis') {
-                    resolvedUrl = `../CalibrationWidget/calibration-viewer.html`;
+                    resolvedUrl = `../CalibrationWidget/calibration-viewer.html?v=1.4.6`;
                 } else if (tabConfig.targetConfigId) {
                     resolvedUrl = `../UniversalViewer/index.html?configId=${encodeURIComponent(tabConfig.targetConfigId)}`;
                     if (tabConfig.filterColumn) {
@@ -305,10 +329,10 @@ async function _renderDrawerContent() {
                     iframe.style.height = heightVal;
                     iframe.style.minHeight = heightVal;
                 }
-                panelEl.style.display = 'flex';
                 panelEl.style.flex = '1 1 100%';
                 panelEl.style.height = '100%';
                 panelEl.style.minHeight = '500px';
+                panelEl.style.display = (index === 0) ? 'flex' : 'none';
                 panelEl.appendChild(iframe);
 
                 // Injeta referência do tableLens diretamente na janela filha (se mesmo domínio)
@@ -430,7 +454,12 @@ function _initializeDrawerDOM() {
 
     drawerPanel.innerHTML = `
         <div class="drawer-header" style="padding:20px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
-            <h2 id="drawer-title" style="margin:0; font-size:18px; font-weight:800; color:#1e293b;"></h2>
+            <div style="display:flex; align-items:center; gap:10px;">
+                <button id="drawer-back-btn" title="Voltar ao registro anterior" style="display:none; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer; padding:5px 10px; font-size:12px; font-weight:700; color:#334155; align-items:center; gap:5px;">
+                    ← Voltar
+                </button>
+                <h2 id="drawer-title" style="margin:0; font-size:18px; font-weight:800; color:#1e293b;"></h2>
+            </div>
             <div class="drawer-header-actions" style="display:flex; gap:10px; align-items:center;">
                 <div class="drawer-header-buttons" style="display:flex; gap:8px;">
                     <button id="drawer-delete-btn" title="Deletar" style="background:none; border:none; cursor:pointer;"><svg class="icon" style="width:20px; height:20px; stroke:#64748b; fill:none; stroke-width:2;"><use href="#icon-trashbin"></use></svg></button>
@@ -448,6 +477,19 @@ function _initializeDrawerDOM() {
 
     document.body.appendChild(drawerOverlay);
     document.body.appendChild(drawerPanel);
+
+    const backBtn = drawerPanel.querySelector('#drawer-back-btn');
+    if (backBtn) {
+        backBtn.onclick = async () => {
+            if (drawerHistory.length > 0) {
+                const prev = drawerHistory.pop();
+                await openDrawer(prev.tableId, prev.recordId, {
+                    ...(prev.options || {}),
+                    _isBackNavigation: true
+                });
+            }
+        };
+    }
 
     drawerPanel.querySelector('.drawer-close-btn').onclick = () => closeDrawer();
     drawerOverlay.onclick = () => closeDrawer();
@@ -474,10 +516,25 @@ export async function openDrawer(tableId, recordId, options = {}) {
     
     _ensureTools(options);
     _initializeDrawerDOM();
+
+    const isBackNavigation = options._isBackNavigation === true;
+    delete options._isBackNavigation;
+
+    if (isOpen && currentTableId && currentRecordId && !isBackNavigation) {
+        if (currentTableId !== tableId || String(currentRecordId) !== String(recordId)) {
+            drawerHistory.push({
+                tableId: currentTableId,
+                recordId: currentRecordId,
+                options: { ...currentDrawerOptions }
+            });
+        }
+    } else if (!isBackNavigation && !isOpen) {
+        drawerHistory = [];
+    }
     
     currentTableId = tableId;
     currentRecordId = recordId;
-    currentDrawerOptions = options;
+    currentDrawerOptions = { ...options };
     isEditing = (recordId === 'new' || options.mode === 'edit');
 
     if (recordId === 'new') {
@@ -510,12 +567,16 @@ export async function openDrawer(tableId, recordId, options = {}) {
     }
     
     _updateButtonVisibility();
+    _updateBackButtonVisibility();
     await _renderDrawerContent();
 }
 
 export function closeDrawer() {
     currentRecordId = null;
     currentTableId = null;
+    currentDrawerOptions = {};
+    drawerHistory = [];
+    _updateBackButtonVisibility();
     isOpen = false;
     if (!drawerPanel) {
         drawerPanel = document.getElementById('grist-drawer-panel');

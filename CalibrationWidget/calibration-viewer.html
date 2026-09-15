@@ -9,6 +9,8 @@
     <link rel="stylesheet" href="../libraries/tabulator/tabulator.min.css">
     <script src="../libraries/external/grist-plugin-api.js"></script>
     <script src="../libraries/tabulator/tabulator.min.js"></script>
+    <script src="columns_map.js?v=1.4.6"></script>
+    <script src="calibrations_data.js?v=1.4.6"></script>
 
     <style>
         :root {
@@ -32,15 +34,15 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background-color: var(--bg-page);
             color: var(--text-color);
-            overflow: hidden;
+            overflow-y: auto;
+            overflow-x: hidden;
         }
 
         .report-container {
             display: flex;
             flex-direction: column;
-            height: 100%;
+            min-height: 100%;
             width: 100%;
-            overflow: hidden;
         }
 
         /* Top Header Bar */
@@ -76,7 +78,8 @@
             flex: 1;
             display: flex;
             flex-direction: column;
-            overflow: hidden;
+            overflow-y: auto;
+            overflow-x: hidden;
             padding: 10px;
             gap: 10px;
             background-color: #f1f5f9;
@@ -304,22 +307,122 @@
             width: 100%;
         }
 
+        #prev-tab-pdf {
+            flex: 1 1 auto;
+            display: flex;
+            flex-direction: column;
+            min-height: 850px;
+            height: 100%;
+        }
+
         .pdf-viewer-container {
-            flex: 1;
+            flex: 1 1 auto;
             width: 100%;
+            min-height: 850px;
             height: 100%;
             border: 1px solid var(--border-color);
-            border-radius: 4px;
+            border-radius: 6px;
             overflow: hidden;
             background-color: #525659;
             display: flex;
             flex-direction: column;
         }
 
-        .pdf-viewer-container iframe {
+        .pdf-viewer-container iframe,
+        #preview-pdf-frame {
+            flex: 1 1 auto;
+            width: 100%;
+            min-height: 800px;
+            height: 100%;
+            border: none;
+            background: #525659;
+        }
+
+        /* Fullscreen PDF Modal Overlay */
+        .pdf-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(4px);
+            z-index: 999999;
+            display: none;
+            flex-direction: column;
+            padding: 12px;
+            box-sizing: border-box;
+        }
+
+        .pdf-modal-content {
+            background: #1e293b;
+            border-radius: 8px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            border: 1px solid #334155;
+        }
+
+        .pdf-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 16px;
+            background: #0f172a;
+            color: #f8fafc;
+            border-bottom: 1px solid #334155;
+        }
+
+        .pdf-modal-header h4 {
+            margin: 0;
+            font-size: 13px;
+            font-weight: 600;
+            color: #e2e8f0;
+        }
+
+        .pdf-modal-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .pdf-modal-btn {
+            background: #334155;
+            color: #f8fafc;
+            border: 1px solid #475569;
+            border-radius: 4px;
+            padding: 5px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: background 0.15s;
+        }
+
+        .pdf-modal-btn:hover {
+            background: #475569;
+        }
+
+        .pdf-modal-close-btn {
+            background: #ef4444;
+            border-color: #dc2626;
+            color: #ffffff;
+        }
+
+        .pdf-modal-close-btn:hover {
+            background: #dc2626;
+        }
+
+        .pdf-modal-iframe {
+            flex: 1;
             width: 100%;
             height: 100%;
             border: none;
+            background: #525659;
         }
 
         .pdf-empty-placeholder {
@@ -353,7 +456,13 @@
         <!-- Barra de Título Superior -->
         <div class="report-header">
             <h2>Relatório de Importação de Certificado</h2>
-            <div id="header-cert-info">-</div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <button id="btn-toggle-summary" type="button" style="background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.3); color: #ffffff; border-radius: 4px; padding: 3px 8px; font-size: 11px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
+                    <span id="toggle-summary-icon">▲</span>
+                    <span id="toggle-summary-text">Ocultar Resumo</span>
+                </button>
+                <div id="header-cert-info">-</div>
+            </div>
         </div>
 
         <!-- Placeholder Inicial de Carregamento -->
@@ -403,7 +512,12 @@
 
                 <!-- Seção 3: Validação -->
                 <div class="side-panel-section">
-                    <h3>Resultado da Validação</h3>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                        <h3 style="margin:0;">Validação do Certificado</h3>
+                        <button id="btn-revalidate-auto" type="button" style="background:none; border:none; color:#0284c7; font-size:11px; font-weight:700; cursor:pointer; text-decoration:underline; padding:0;">
+                            Validar Auto
+                        </button>
+                    </div>
                     <div class="validation-summary-box">
                         <div class="summary-item">
                             <span class="dot green"></span>
@@ -421,12 +535,35 @@
                             <span id="preview-count-fail" class="value">0</span>
                         </div>
                     </div>
-                    <div class="final-status-container">
-                        <span style="font-size: 10px; font-weight: bold; color: #546e7a;">AVALIAÇÃO FINAL</span>
-                        <span id="preview-final-status-badge" class="badge approved">APROVADO</span>
+
+                    <div style="display:flex; flex-direction:column; gap:6px; margin-top:8px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                            <label for="cert-validation-select" style="font-size:11px; font-weight:700; color:#475569;">STATUS:</label>
+                            <select id="cert-validation-select" style="flex:1; padding:4px 8px; font-size:12px; font-weight:600; border:1px solid #cbd5e1; border-radius:4px; background:#fff;">
+                                <option value="1">Aprovado</option>
+                                <option value="2">Reprovado</option>
+                                <option value="3">Aprovado com ressalva</option>
+                                <option value="0">Não Avaliado</option>
+                            </select>
+                        </div>
+                        
+                        <div style="display:flex; flex-direction:column; gap:2px;">
+                            <label for="cert-validation-notes" style="font-size:10px; font-weight:700; color:#64748b;">OBSERVAÇÕES / RESTRIÇÕES:</label>
+                            <input id="cert-validation-notes" type="text" placeholder="Ex: Não utilizar acima de 12.000g" style="padding:4px 8px; font-size:11px; border:1px solid #cbd5e1; border-radius:4px;">
+                        </div>
+
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
+                            <span id="preview-final-status-badge" class="badge approved">APROVADO</span>
+                            <button id="btn-save-validation" type="button" style="padding:5px 12px; background:#2c5e5a; color:#fff; border:none; border-radius:4px; font-size:12px; font-weight:700; cursor:pointer;">
+                                Salvar
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
+
+            <!-- Banner Detalhado de Não Conformidades / Falhas -->
+            <div id="preview-failures-banner" style="display:none; margin: 0 0 15px 0; padding: 12px 16px; border-radius: 6px; font-size: 13px; line-height: 1.5; border: 1px solid #fecaca; background-color: #fef2f2; color: #991b1b;"></div>
 
             <!-- Painel de Conteúdo: Abas e Tabela/PDF com 100% de Largura e Altura -->
             <div class="preview-main-panel">
@@ -448,6 +585,15 @@
                     <!-- Tab 2: PDF -->
                     <div id="prev-tab-pdf" class="preview-tab-pane">
                         <div class="pdf-viewer-container">
+                            <div id="pdf-action-bar" style="display:none; justify-content:space-between; padding:6px 12px; background:#1e293b; gap:10px; align-items:center;">
+                                <span id="pdf-filename-label" style="color:#94a3b8; font-size:12px; font-weight:600;">Certificado PDF</span>
+                                <div style="display:flex; gap:8px; align-items:center;">
+                                    <button id="pdf-expand-btn" type="button" style="background:#334155; color:#38bdf8; border:1px solid #475569; border-radius:4px; padding:4px 10px; font-size:12px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:5px;">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+                                        ⛶ Expandir Tela Cheia
+                                    </button>
+                                </div>
+                            </div>
                             <div class="pdf-empty-placeholder" id="pdf-empty-msg">Nenhum documento PDF vinculado a este certificado.</div>
                             <iframe id="preview-pdf-frame" src="" style="display: none;"></iframe>
                         </div>
@@ -458,6 +604,8 @@
         </div>
     </div>
 
+
+
     <!-- Script de Lógica e Renderização -->
     <script type="module">
         import { GristTableLens } from '../libraries/grist-table-lens/grist-table-lens.js';
@@ -467,6 +615,7 @@
         let previewResultsGrid = null;
         let maxErrorAllowed = 5.0;
         let lastLoadCertId = null;
+        let currentBlobUrl = null;
 
         // --- DETECÇÃO DO MOTOR DE DADOS ---
 
@@ -610,6 +759,122 @@
             return [];
         }
 
+        // --- METADADOS E COLUNAS DO MYLOGICAL LITE ---
+        function getTableMetadata(table) {
+            if (!table) return null;
+            const map = window.MYLOGICAL_TABLES_MAP || {};
+            const byId = map.byId || {};
+            const byName = map.byName || {};
+
+            const tid = String(table.ID || table.id || '');
+            if (tid && byId[tid]) return byId[tid];
+
+            const tname = String(table.NAME || table.name || '').trim().toLowerCase();
+            if (tname && byName[tname]) return byName[tname];
+
+            return null;
+        }
+
+        async function getTableColumns(table, lens) {
+            // 1. Prioridade: busca do mapa síncrono do MyLogical (por ID ou por Nome)
+            const meta = getTableMetadata(table);
+            if (meta && meta.columns && meta.columns.length > 0) {
+                return meta.columns;
+            }
+
+            // 2. Fallback: busca da tabela EXTERNAL_CAL_COLUMNS no Grist
+            try {
+                const gristCols = await fetchTableSafe(lens, ['EXTERNAL_CAL_COLUMNS', 'external_cal_columns']);
+                if (Array.isArray(gristCols) && gristCols.length > 0) {
+                    const tid = String(table.ID || table.id || '');
+                    const matched = gristCols.filter(c => {
+                        const removed = getField(c, ['REMOVED', 'Removed']);
+                        if (removed == 1 || removed === '1') return false;
+                        const cTid = String(getField(c, ['ID_TABLE', 'Id_Table', 'Table_Id', 'TABLE_ID']));
+                        return cTid === tid;
+                    });
+                    if (matched.length > 0) {
+                        matched.sort((a, b) => parseInt(getField(a, ['COL_INDEX']) || 0) - parseInt(getField(b, ['COL_INDEX']) || 0));
+                        let readIdx = 1, resIdx = 1, txtIdx = 1;
+                        return matched.map(col => {
+                            const cType = parseInt(getField(col, ['ID_TYPE']) || 0);
+                            let field = 'REFERENCE_VALUE';
+                            if (cType === 0) field = 'REFERENCE_VALUE';
+                            else if (cType === 1 || cType === 2) field = `READ${String(readIdx++).padStart(2, '0')}`;
+                            else if (cType === 3) field = `RESULT${String(resIdx++).padStart(2, '0')}`;
+                            else if (cType === 4) field = `TEXT${String(txtIdx++).padStart(2, '0')}`;
+                            else field = `RESULT${String(resIdx++).padStart(2, '0')}`;
+                            return { name: getField(col, ['NAME', 'Nome']), field, type: cType };
+                        });
+                    }
+                }
+            } catch(e) {}
+
+            return null;
+        }
+
+        function getTableEvaluationInfo(table) {
+            const meta = getTableMetadata(table);
+            const cols = table.columns || (meta && meta.columns) || null;
+
+            if (!cols || cols.length === 0) {
+                return {
+                    hasEvaluation: false,
+                    errCols: [],
+                    uncCols: [],
+                    errCol: null,
+                    uncCol: null,
+                    refCol: null,
+                    indCol: null,
+                    kCol: null,
+                    cols: null,
+                    metaStatus: meta ? meta.status : null
+                };
+            }
+
+            const errCols = [];
+            const uncCols = [];
+            let refCol = null;
+            let indCol = null;
+            let kCol = null;
+
+            cols.forEach(c => {
+                const name = (c.name || '').trim();
+                const nameLower = name.toLowerCase();
+
+                // Ignora campos estatísticos e auxiliares
+                if (/veff|graus|fator\s*k|^k$|arred|maior\s*erro/i.test(nameLower)) {
+                    if (/fator\s*k|^k$/i.test(nameLower)) kCol = c;
+                    return;
+                }
+
+                if (/incerteza/i.test(nameLower)) {
+                    uncCols.push(c);
+                } else if (/tend[eê]ncia|erro|desvio|repetib|excentricidade|folga|posicionamento|espessura|diferen[cç]a/i.test(nameLower)) {
+                    errCols.push(c);
+                } else if (/refer[eê]ncia|nominal/i.test(nameLower)) {
+                    if (!refCol) refCol = c;
+                } else if (/indica[cç][aã]o/i.test(nameLower)) {
+                    if (!indCol) indCol = c;
+                }
+            });
+
+            const hasEvaluation = (errCols.length > 0 || uncCols.length > 0);
+
+            return {
+                hasEvaluation,
+                errCols,
+                uncCols,
+                errCol: errCols[0] || null,
+                uncCol: uncCols[0] || null,
+                refCol,
+                indCol,
+                kCol,
+                cols,
+                metaStatus: meta ? meta.status : null
+            };
+        }
+
         // --- NAVEGAÇÃO ENTRE ABAS ---
 
         document.querySelectorAll('.preview-tab-btn').forEach(btn => {
@@ -671,9 +936,19 @@
                 const certCode = getField(cert, ['CODE', 'CERT_CODE', 'Numero', 'Numero_Certificado', 'Codigo']) || `Cert. #${certId}`;
                 const rawDate = getField(cert, ['DATE', 'CALIBRATION_DATE', 'Data', 'Data_Calibracao']);
                 const certDate = formatDate(rawDate);
-                const attRef = getField(cert, ['ATTACHMENT', 'FILE', 'ANEXO', 'PDF', 'Attachment', 'Anexo']);
-
-                // Identifica Instrumento
+                let attRef = getField(cert, ['ATTACHMENT', 'ATTACHMENTS', 'Attachments', 'FILE', 'FILES', 'ANEXO', 'ANEXOS', 'PDF', 'Pdf', 'Attachment', 'Anexo', 'CERTIFICADO', 'Certificado']);
+                if (!attRef && cert) {
+                    for (const [k, v] of Object.entries(cert)) {
+                        if (/attach|anexo|pdf|file/i.test(k) && v) {
+                            attRef = v;
+                            break;
+                        }
+                        if (Array.isArray(v) && v[0] === 'L' && v.length > 1 && typeof v[1] === 'number') {
+                            attRef = v;
+                            break;
+                        }
+                    }
+                }
                 let instId = getField(cert, ['ID_INSTRUMENT', 'INSTRUMENT', 'Instrumento', 'Id_Instrument']);
                 if (Array.isArray(instId)) instId = instId[0];
                 else if (typeof instId === 'object' && instId !== null) instId = instId.id || instId.rowId;
@@ -723,61 +998,161 @@
                     matchedCriteria = allGenCriteria.filter(c => String(getField(c, ['ID_INSTRUMENT_TYPE', 'INSTRUMENT_TYPE', 'Id_Instrument_Type'])) === String(instTypeId));
                 }
                 if (matchedCriteria.length > 0) {
-                    const limVal = getField(matchedCriteria[0], ['MAX_ERROR_MORE', 'MAX_ERROR', 'LIMIT', 'Erro_Maximo', 'Limite']);
-                    if (limVal !== null && limVal !== undefined) {
-                        const parsed = parseNum(limVal);
-                        if (parsed > 0) maxErrorAllowed = parsed;
+                    const validLimits = matchedCriteria
+                        .map(c => parseNum(getField(c, ['MAX_ERROR_MORE', 'MAX_ERROR', 'LIMIT', 'Erro_Maximo', 'Limite'])))
+                        .filter(v => v > 0);
+                    if (validLimits.length > 0) {
+                        maxErrorAllowed = Math.min(...validLimits);
                     }
                 }
 
-                // Tabelas do Certificado
-                const certTables = allCalTables.filter(t => {
-                    const calRef = getField(t, ['ID_EXTERNAL_CALIBRATION', 'Id_External_Calibration', 'EXTERNAL_CALIBRATION', 'External_Calibration', 'CALIBRATION', 'Certificado', 'ID_CERTIFICADO']);
-                    return String(calRef) === String(certId);
-                });
+                // 1. Tenta carregar dados estruturados JSON (TABLES_DATA ou banco pré-migrado)
+                let tablesDataPayload = null;
+                const rawPayload = getField(cert, ['TABLES_DATA', 'tables_data', 'DATA_JSON', 'XML_DATA', 'JsonData']);
+                if (rawPayload) {
+                    try {
+                        tablesDataPayload = typeof rawPayload === 'string' ? JSON.parse(rawPayload) : rawPayload;
+                    } catch(e) {}
+                }
+
+                if (!tablesDataPayload && window.MYLOGICAL_CALIBRATIONS_DATA) {
+                    const byId = window.MYLOGICAL_CALIBRATIONS_DATA.byId || {};
+                    const byCode = window.MYLOGICAL_CALIBRATIONS_DATA.byCode || {};
+                    const lookupKey = String(cert.ID || cert.id || '');
+                    if (lookupKey && byId[lookupKey]) {
+                        tablesDataPayload = byId[lookupKey];
+                    } else if (certCode && byCode[certCode.toLowerCase().trim()]) {
+                        tablesDataPayload = byCode[certCode.toLowerCase().trim()];
+                    }
+                }
 
                 currentTables = [];
-                if (certTables.length > 0) {
-                    for (const tbl of certTables) {
-                        const pts = allResults.filter(r => {
-                            const tblRef = getField(r, ['ID_EXTERNAL_CAL_TABLE', 'Id_External_Cal_Table', 'EXTERNAL_CAL_TABLE', 'TABLE_ID', 'Tabela']);
-                            return String(tblRef) === String(tbl.id);
-                        });
-                        currentTables.push({
-                            id: tbl.id,
-                            name: getField(tbl, ['NAME', 'Name', 'Nome', 'Descricao', 'TITULO']) || `Tabela #${tbl.id}`,
-                            points: pts
-                        });
+                let finalStatus = "Aprovado";
+                let passCount = 0, warnCount = 0, failCount = 0;
+                const failureDetails = [];
+
+                if (tablesDataPayload && Array.isArray(tablesDataPayload.tables) && tablesDataPayload.tables.length > 0) {
+                    currentTables = tablesDataPayload.tables.map(t => ({
+                        id: t.id,
+                        name: t.name,
+                        status: t.statusText || (t.statusId === 2 ? 'REPROVADO' : (t.statusId === 3 ? 'APROVADO COM RESSALVA' : 'APROVADO')),
+                        statusId: t.statusId,
+                        points: t.rows || [],
+                        columns: t.headers || [],
+                        hasEvaluation: t.hasEvaluation,
+                        band: t.band,
+                        modeError: t.modeError,
+                        modeUncertainty: t.modeUncertainty
+                    }));
+
+                    const rawStatusId = tablesDataPayload.statusId || getField(cert, ['ID_STATUS', 'STATUS_ID', 'Status', 'STATUS']);
+                    if (rawStatusId == 2 || tablesDataPayload.statusText === 'REPROVADO') {
+                        finalStatus = "Reprovado";
+                    } else if (rawStatusId == 3 || tablesDataPayload.statusText === 'APROVADO COM RESSALVA' || tablesDataPayload.statusText === 'RESSALVA') {
+                        finalStatus = "Ressalva";
+                    } else {
+                        finalStatus = "Aprovado";
                     }
                 } else {
-                    // Fallback para quando os resultados apontam diretamente para o certificado
-                    const directPoints = allResults.filter(r => {
-                        const calRef = getField(r, ['ID_EXTERNAL_CALIBRATION', 'Id_External_Calibration', 'CALIBRATION', 'Certificado']);
+                    // Fallback para tabelas relacionais do Grist
+                    const certTables = allCalTables.filter(t => {
+                        const calRef = getField(t, ['ID_EXTERNAL_CALIBRATION', 'Id_External_Calibration', 'EXTERNAL_CALIBRATION', 'External_Calibration', 'CALIBRATION', 'Certificado', 'ID_CERTIFICADO']);
                         return String(calRef) === String(certId);
                     });
-                    if (directPoints.length > 0) {
-                        currentTables.push({
-                            id: 1,
-                            name: "Pontos de Medição",
-                            points: directPoints
+
+                    if (certTables.length > 0) {
+                        for (const tbl of certTables) {
+                            const tFirebirdId = tbl.ID || tbl.id;
+                            const pts = allResults.filter(r => {
+                                const tblRef = getField(r, ['ID_EXTERNAL_CAL_TABLE', 'Id_External_Cal_Table', 'EXTERNAL_CAL_TABLE', 'TABLE_ID', 'Tabela']);
+                                return String(tblRef) === String(tbl.id) || (tFirebirdId && String(tblRef) === String(tFirebirdId));
+                            });
+                            const meta = getTableMetadata(tbl);
+                            const tableCols = (meta && meta.columns) || await getTableColumns(tbl, lens);
+                            const tableName = (meta && meta.name) || getField(tbl, ['NAME', 'Name', 'Nome', 'Descricao', 'TITULO']) || `Tabela #${tbl.id}`;
+                            
+                            let tableStatus = meta ? meta.status : null;
+                            if (!tableStatus) {
+                                const rawStatus = getField(tbl, ['ID_STATUS', 'Status', 'STATUS']);
+                                if (rawStatus == 1 || rawStatus === '1') tableStatus = 'APROVADO';
+                                else if (rawStatus == 2 || rawStatus === '2') tableStatus = 'REPROVADO';
+                                else if (rawStatus == 3 || rawStatus === '3') tableStatus = 'APROVADO COM RESSALVA';
+                            }
+
+                            currentTables.push({
+                                id: tbl.id,
+                                ID: tbl.ID,
+                                name: tableName,
+                                status: tableStatus,
+                                points: pts,
+                                columns: tableCols
+                            });
+                        }
+                    } else {
+                        const directPoints = allResults.filter(r => {
+                            const calRef = getField(r, ['ID_EXTERNAL_CALIBRATION', 'Id_External_Calibration', 'CALIBRATION', 'Certificado']);
+                            return String(calRef) === String(certId);
                         });
+                        if (directPoints.length > 0) {
+                            currentTables.push({
+                                id: 1,
+                                name: "Pontos de Medição",
+                                status: null,
+                                points: directPoints,
+                                columns: null
+                            });
+                        }
                     }
+
+                    const rawCertStatus = getField(cert, ['ID_STATUS', 'Status', 'STATUS']);
+                    if (rawCertStatus == 2 || rawCertStatus === '2') finalStatus = "Reprovado";
+                    else if (rawCertStatus == 3 || rawCertStatus === '3') finalStatus = "Ressalva";
+                    else finalStatus = "Aprovado";
                 }
 
-                // Cálculo da Validação dos Pontos
-                let passCount = 0, warnCount = 0, failCount = 0;
+                // Avalia pontos de medição e detalha reprovações/ressalvas para todas as tabelas
                 currentTables.forEach(t => {
-                    t.points.forEach(p => {
-                        const pt = extractPointData(p);
-                        if (pt.status === 'REPROVADO') failCount++;
-                        else if (pt.status === 'ALERTA') warnCount++;
-                        else passCount++;
-                    });
+                    const evalInfo = getTableEvaluationInfo(t);
+                    let tableFails = 0;
+                    let tableWarns = 0;
+                    if (evalInfo.hasEvaluation) {
+                        t.points.forEach((p, pIdx) => {
+                            const pt = extractPointDataFromTable(p, evalInfo);
+                            if (pt._status === 'REPROVADO') {
+                                failCount++;
+                                tableFails++;
+                                const refVal = pt.REFERENCE_VALUE !== undefined ? pt.REFERENCE_VALUE : (p.REFERENCE_VALUE || `Ponto #${pIdx + 1}`);
+                                const combVal = typeof pt._combined === 'number' ? pt._combined.toFixed(4) : pt._combined;
+                                const labelText = pt._errorLabel ? ` (${pt._errorLabel})` : '';
+                                failureDetails.push({
+                                    type: 'REPROVADO',
+                                    tableName: t.name,
+                                    label: labelText,
+                                    ref: refVal,
+                                    combined: combVal,
+                                    limit: maxErrorAllowed,
+                                    err: pt._error,
+                                    unc: pt._uncertainty
+                                });
+                            } else if (pt._status === 'ALERTA') {
+                                warnCount++;
+                                tableWarns++;
+                            } else {
+                                passCount++;
+                            }
+                        });
+                        if (!t.status) {
+                            t.status = tableFails > 0 ? 'REPROVADO' : (tableWarns > 0 ? 'ALERTA' : 'APROVADO');
+                        }
+                    } else {
+                        if (!t.status) {
+                            t.status = 'APROVADO';
+                        }
+                    }
                 });
 
-                let finalStatus = "Aprovado";
                 if (failCount > 0) finalStatus = "Reprovado";
-                else if (warnCount > 0) finalStatus = "Alerta";
+                else if (warnCount > 0 && finalStatus !== "Reprovado" && finalStatus !== "Ressalva") finalStatus = "Alerta";
 
                 // Atualização dos Painéis de Metadados
                 document.getElementById('header-cert-info').innerText = `${certCode} • ${certDate}`;
@@ -794,37 +1169,237 @@
                 document.getElementById('preview-count-fail').innerText = failCount;
 
                 const finalBadge = document.getElementById('preview-final-status-badge');
-                finalBadge.innerText = finalStatus.toUpperCase();
-                finalBadge.className = 'badge ' + (finalStatus === 'Aprovado' ? 'approved' : finalStatus === 'Reprovado' ? 'rejected' : 'warning');
+                if (finalStatus === 'Aprovado') {
+                    finalBadge.innerText = 'APROVADO';
+                    finalBadge.className = 'badge approved';
+                } else if (finalStatus === 'Reprovado') {
+                    finalBadge.innerText = 'REPROVADO';
+                    finalBadge.className = 'badge rejected';
+                } else if (finalStatus === 'Ressalva') {
+                    finalBadge.innerText = 'APROVADO C/ RESSALVA';
+                    finalBadge.className = 'badge warning';
+                } else {
+                    finalBadge.innerText = 'ALERTA';
+                    finalBadge.className = 'badge warning';
+                }
+
+                // Atualização dos Controles Interativos de Validação
+                const valSelect = document.getElementById('cert-validation-select');
+                const valNotes = document.getElementById('cert-validation-notes');
+                const btnRevalidate = document.getElementById('btn-revalidate-auto');
+                const btnSaveVal = document.getElementById('btn-save-validation');
+
+                const currentCertStatusId = getField(cert, ['ID_STATUS', 'STATUS_ID', 'Status', 'STATUS']) || (finalStatus === 'Reprovado' ? 2 : (finalStatus === 'Ressalva' ? 3 : 1));
+                if (valSelect) {
+                    valSelect.value = String(currentCertStatusId);
+                }
+
+                const currentNotes = getField(cert, ['OBSERVATION', 'OBSERVACOES', 'DESCRIPTION', 'Observacao', 'Observacoes', 'Observação']) || '';
+                if (valNotes) {
+                    valNotes.value = currentNotes;
+                }
+
+                function updateValidationBadge(statusId) {
+                    if (statusId == 1 || statusId === '1') {
+                        finalBadge.innerText = 'APROVADO';
+                        finalBadge.className = 'badge approved';
+                    } else if (statusId == 2 || statusId === '2') {
+                        finalBadge.innerText = 'REPROVADO';
+                        finalBadge.className = 'badge rejected';
+                    } else if (statusId == 3 || statusId === '3') {
+                        finalBadge.innerText = 'APROVADO C/ RESSALVA';
+                        finalBadge.className = 'badge warning';
+                    } else {
+                        finalBadge.innerText = 'NÃO AVALIADO';
+                        finalBadge.className = 'badge warning';
+                    }
+                }
+
+                if (valSelect) {
+                    valSelect.onchange = () => {
+                        updateValidationBadge(valSelect.value);
+                    };
+                }
+
+                if (btnRevalidate) {
+                    btnRevalidate.onclick = (e) => {
+                        e.preventDefault();
+                        const suggestedStatus = failCount > 0 ? 2 : 1;
+                        if (valSelect) {
+                            valSelect.value = String(suggestedStatus);
+                            updateValidationBadge(suggestedStatus);
+                        }
+                    };
+                }
+
+                if (btnSaveVal) {
+                    btnSaveVal.onclick = async () => {
+                        const selVal = parseInt(valSelect.value, 10);
+                        const isConf = selVal === 2 ? 0 : 1;
+                        const statusTxt = selVal === 1 ? 'Aprovado' : (selVal === 2 ? 'Reprovado' : (selVal === 3 ? 'Aprovado com ressalva' : 'Não Avaliado'));
+                        const notesVal = valNotes.value;
+
+                        btnSaveVal.disabled = true;
+                        btnSaveVal.innerText = 'Salvando...';
+
+                        try {
+                            const updateFields = {
+                                ID_STATUS: selVal,
+                                ID_STATUS_AUTOMATIC: selVal,
+                                IS_CONFORM: isConf,
+                                STATUS: statusTxt,
+                                OBSERVATION: notesVal,
+                                OBSERVATION_JUSTIFICATION: notesVal
+                            };
+
+                            if (lens.updateRecord) {
+                                await lens.updateRecord(certTableId, certId, updateFields);
+                            } else if (window.grist && window.grist.docApi) {
+                                await window.grist.docApi.applyUserActions([['UpdateRecord', certTableId, certId, updateFields]]);
+                            }
+                            btnSaveVal.innerText = 'Salvo!';
+                            setTimeout(() => { btnSaveVal.innerText = 'Salvar'; btnSaveVal.disabled = false; }, 2000);
+                        } catch(saveErr) {
+                            console.error('[CalibrationViewer] Erro ao salvar validação:', saveErr);
+                            alert('Erro ao salvar validação no Grist: ' + saveErr.message);
+                            btnSaveVal.innerText = 'Salvar';
+                            btnSaveVal.disabled = false;
+                        }
+                    };
+                }
+
+                // Sincronização automática silenciosa caso o registro legado tenha IS_CONFORM inconsistente
+                const rawIsConform = getField(cert, ['IS_CONFORM', 'Is_Conform', 'Conforme']);
+                const expectedIsConform = (currentCertStatusId == 2 || failCount > 0) ? 0 : 1;
+                if (rawIsConform !== undefined && rawIsConform !== null && Number(rawIsConform) !== expectedIsConform) {
+                    try {
+                        const syncFields = {
+                            IS_CONFORM: expectedIsConform,
+                            ID_STATUS: (currentCertStatusId == 2 || failCount > 0) ? 2 : currentCertStatusId
+                        };
+                        if (lens.updateRecord) {
+                            lens.updateRecord(certTableId, certId, syncFields).catch(() => {});
+                        } else if (window.grist && window.grist.docApi) {
+                            window.grist.docApi.applyUserActions([['UpdateRecord', certTableId, certId, syncFields]]).catch(() => {});
+                        }
+                    } catch(e) {}
+                }
+
+                // Banner Detalhado de Falhas e Não Conformidades
+                const bannerEl = document.getElementById('preview-failures-banner');
+                if (bannerEl) {
+                    if (finalStatus === 'Reprovado' || failCount > 0) {
+                        let detailsHtml = '';
+                        if (failureDetails.length > 0) {
+                            detailsHtml = `<ul style="margin: 6px 0 0 18px; padding: 0;">` +
+                                failureDetails.map(f => `<li><strong>Tabela "${f.tableName}"${f.label}:</strong> Ponto Nominal/Referência <code>${f.ref}</code> — Erro Combinado (|E|+U) = <strong>${f.combined}</strong> excede o Limite Máximo de <strong>${f.limit}</strong> (Erro: ${f.err}, Incerteza: ${f.unc})</li>`).join('') +
+                                `</ul>`;
+                        } else {
+                            detailsHtml = `<div style="margin-top: 4px;">Certificado marcado como Não Conforme pelos critérios de aceitação do instrumento.</div>`;
+                        }
+                        bannerEl.innerHTML = `
+                            <div style="display:flex; align-items:flex-start; gap:8px;">
+                                <span style="font-size:16px; line-height:1;">❌</span>
+                                <div>
+                                    <strong>Certificado Não Conforme (Reprovado):</strong>
+                                    ${detailsHtml}
+                                </div>
+                            </div>
+                        `;
+                        bannerEl.style.display = 'block';
+                        bannerEl.style.backgroundColor = '#fef2f2';
+                        bannerEl.style.borderColor = '#fecaca';
+                        bannerEl.style.color = '#991b1b';
+                    } else if (finalStatus === 'Ressalva') {
+                        bannerEl.innerHTML = `
+                            <div style="display:flex; align-items:flex-start; gap:8px;">
+                                <span style="font-size:16px; line-height:1;">⚠️</span>
+                                <div>
+                                    <strong>Aprovado com Ressalva:</strong> O certificado foi classificado com ressalva técnica (pontos próximos ao limite ou restrições de faixa de medição).
+                                </div>
+                            </div>
+                        `;
+                        bannerEl.style.display = 'block';
+                        bannerEl.style.backgroundColor = '#fffbeb';
+                        bannerEl.style.borderColor = '#fde68a';
+                        bannerEl.style.color = '#92400e';
+                    } else {
+                        bannerEl.style.display = 'none';
+                        bannerEl.innerHTML = '';
+                    }
+                }
 
                 // Visualizador de PDF
                 const pdfFrame = document.getElementById('preview-pdf-frame');
                 const pdfEmpty = document.getElementById('pdf-empty-msg');
+                const openExtBtn = document.getElementById('pdf-open-external');
+                const actionBar = document.getElementById('pdf-action-bar');
                 let hasPdf = false;
 
                 if (attRef) {
                     let attId = null;
-                    if (Array.isArray(attRef)) attId = (attRef[0] === 'L') ? attRef[1] : attRef[0];
-                    else if (typeof attRef === 'number') attId = attRef;
+                    if (Array.isArray(attRef)) {
+                        const numericItems = attRef.filter(x => typeof x === 'number' || (typeof x === 'string' && /^\d+$/.test(x)));
+                        if (numericItems.length > 0) {
+                            attId = Number(numericItems[numericItems.length - 1]);
+                        }
+                    } else if (typeof attRef === 'number') {
+                        attId = attRef;
+                    } else if (typeof attRef === 'string' && /^\d+$/.test(attRef.trim())) {
+                        attId = parseInt(attRef.trim(), 10);
+                    }
 
                     if (attId && typeof lens.getAccessToken === 'function' && typeof lens.getBaseUrl === 'function') {
                         try {
                             const token = await lens.getAccessToken();
                             const baseUrl = await lens.getBaseUrl();
                             if (baseUrl && token) {
-                                pdfFrame.src = `${baseUrl}/attachments/${attId}/download?auth=${token}`;
-                                pdfFrame.style.display = 'block';
-                                pdfEmpty.style.display = 'none';
-                                hasPdf = true;
+                                const downloadUrl = `${baseUrl}/attachments/${attId}/download?auth=${token}`;
+                                try {
+                                    const pdfResp = await fetch(downloadUrl);
+                                    if (pdfResp.ok) {
+                                        const pdfBlob = await pdfResp.blob();
+                                        currentBlobUrl = URL.createObjectURL(new Blob([pdfBlob], { type: 'application/pdf' }));
+                                        pdfFrame.src = currentBlobUrl;
+                                        pdfFrame.style.display = 'block';
+                                        pdfEmpty.style.display = 'none';
+                                        hasPdf = true;
+                                    } else {
+                                        currentBlobUrl = downloadUrl;
+                                        pdfFrame.src = downloadUrl;
+                                        pdfFrame.style.display = 'block';
+                                        pdfEmpty.style.display = 'none';
+                                        hasPdf = true;
+                                    }
+                                } catch (fetchErr) {
+                                    currentBlobUrl = downloadUrl;
+                                    pdfFrame.src = downloadUrl;
+                                    pdfFrame.style.display = 'block';
+                                    pdfEmpty.style.display = 'none';
+                                    hasPdf = true;
+                                }
                             }
-                        } catch(e) {}
+                        } catch(e) {
+                            console.warn('[CalibrationViewer] Falha ao carregar PDF:', e);
+                        }
                     }
                 }
 
-                if (!hasPdf) {
+                if (hasPdf) {
+                    if (actionBar) actionBar.style.display = 'flex';
+                    const expandBtn = document.getElementById('pdf-expand-btn');
+                    if (expandBtn) {
+                        expandBtn.onclick = (e) => {
+                            e.preventDefault();
+                            openPdfModal(certCode);
+                        };
+                    }
+                } else {
+                    currentBlobUrl = null;
                     pdfFrame.src = '';
                     pdfFrame.style.display = 'none';
                     pdfEmpty.style.display = 'flex';
+                    if (actionBar) actionBar.style.display = 'none';
                 }
 
                 // Seletor de Tabela
@@ -832,32 +1407,63 @@
                 const selectEl = document.getElementById('table-select');
                 selectEl.innerHTML = '';
 
+                let primaryIndex = 0;
+                // Prioridade 1: Tabela com Reprovação
+                const failIdx = currentTables.findIndex(t => t.status === 'REPROVADO' || t.statusId === 2);
+                if (failIdx >= 0) {
+                    primaryIndex = failIdx;
+                } else {
+                    // Prioridade 2: Tabela com Ressalva
+                    const ressalvaIdx = currentTables.findIndex(t => t.status === 'APROVADO COM RESSALVA' || t.status === 'RESSALVA' || t.statusId === 3);
+                    if (ressalvaIdx >= 0) {
+                        primaryIndex = ressalvaIdx;
+                    } else {
+                        // Prioridade 3: Tabela de resultados principal
+                        const evalIdx = currentTables.findIndex(t => getTableEvaluationInfo(t).hasEvaluation);
+                        if (evalIdx >= 0) {
+                            primaryIndex = evalIdx;
+                        } else if (currentTables.length > 1) {
+                            const nonAuxIdx = currentTables.findIndex(t => !/auxiliar|leitura|temperatura/i.test(t.name));
+                            if (nonAuxIdx >= 0) primaryIndex = nonAuxIdx;
+                        }
+                    }
+                }
+
                 if (currentTables.length > 1) {
                     currentTables.forEach((tbl, idx) => {
                         const opt = document.createElement('option');
                         opt.value = idx;
-                        opt.innerText = `${tbl.name} (${tbl.points.length} pontos)`;
+                        const evalInfo = getTableEvaluationInfo(tbl);
+                        const labelType = evalInfo.hasEvaluation ? 'Resultados' : 'Auxiliar';
+                        let icon = '✔️';
+                        if (tbl.status === 'REPROVADO' || tbl.statusId === 2) icon = '❌';
+                        else if (tbl.status === 'APROVADO COM RESSALVA' || tbl.status === 'RESSALVA' || tbl.statusId === 3) icon = '⚠️';
+                        opt.innerText = `${icon} ${tbl.name} (${tbl.points.length} pontos - ${labelType})`;
                         selectEl.appendChild(opt);
                     });
                     selectContainer.style.display = 'flex';
+                    selectEl.value = primaryIndex;
                     selectEl.onchange = (e) => {
-                        renderTabulator(currentTables[parseInt(e.target.value, 10)].points);
+                        const selIdx = parseInt(e.target.value, 10);
+                        renderTabulator(currentTables[selIdx]);
                     };
                 } else {
                     selectContainer.style.display = 'none';
                 }
 
-                // Renderiza Tabela Tabulator
-                const initialPoints = (currentTables[0] && currentTables[0].points) || [];
-                renderTabulator(initialPoints);
-
-                // Exibe conteúdo
+                // Exibe conteúdo antes do Tabulator calcular dimensões
                 placeholder.style.display = 'none';
                 mainBody.style.display = 'flex';
 
+                // Renderiza Tabela Tabulator inicial
+                const initialTable = currentTables[primaryIndex] || currentTables[0];
+                renderTabulator(initialTable);
+
                 // Garante ajuste do Tabulator
                 if (previewResultsGrid) {
-                    setTimeout(() => previewResultsGrid.redraw(true), 60);
+                    setTimeout(() => {
+                        try { previewResultsGrid?.redraw(true); } catch(e) {}
+                    }, 60);
                 }
 
             } catch (err) {
@@ -872,77 +1478,295 @@
             }
         }
 
-        function extractPointData(p) {
-            const ref = parseNum(getField(p, ['REFERENCE_VALUE', 'Referencia', 'ValorReferencia', 'Valor_de_Referencia', 'Ponto']));
-            const err = parseNum(getField(p, ['RESULT01', 'Result01', 'ERROR', 'Erro', 'Tendencia', 'TENDENCIA']));
-            const unc = parseNum(getField(p, ['RESULT02', 'Result02', 'UNCERTAINTY', 'Incerteza', 'Incerteza_U', 'U']));
-            const k = parseNum(getField(p, ['RESULT03', 'Result03', 'K_FACTOR', 'FatorK', 'Fator_k', 'K']), 2.0);
+        function extractPointDataFromTable(p, evalInfo) {
+            const row = { ...p };
 
-            const indRaw = getField(p, ['INDICATED_VALUE', 'Indicacao', 'ValorIndicado', 'READ01', 'Read01']);
-            const ind = (indRaw !== null && indRaw !== undefined && indRaw !== '') ? parseNum(indRaw) : (ref + err);
-
-            const combined = Math.abs(err) + unc;
-
-            let status = "APROVADO";
-            if (combined > maxErrorAllowed) status = "REPROVADO";
-            else if (combined >= 0.9 * maxErrorAllowed) status = "ALERTA";
-
-            return {
-                REFERENCE_VALUE: ref,
-                INDICATED_VALUE: ind,
-                ERROR: err,
-                UNCERTAINTY: unc,
-                K_FACTOR: k,
-                _combined: combined,
-                status: status
-            };
-        }
-
-        function renderTabulator(points) {
-            const formattedData = (points || []).map(p => extractPointData(p));
-
-            if (previewResultsGrid) {
-                previewResultsGrid.setData(formattedData);
-                setTimeout(() => previewResultsGrid.redraw(true), 30);
-                return;
+            if (evalInfo.cols) {
+                evalInfo.cols.forEach(c => {
+                    const raw = p[c.field];
+                    if (c.type !== 4 && raw !== undefined && raw !== null && raw !== '') {
+                        row[c.field] = parseNum(raw);
+                    }
+                });
             }
 
-            previewResultsGrid = new Tabulator("#preview-results-grid", {
-                data: formattedData,
-                layout: "fitColumns",
-                placeholder: "Nenhum ponto de medição registrado para esta tabela.",
-                columns: [
+            if (!evalInfo.hasEvaluation) {
+                row._combined = null;
+                row._status = 'INFO';
+                return row;
+            }
+
+            const errCols = evalInfo.errCols || (evalInfo.errCol ? [evalInfo.errCol] : []);
+            const uncCols = evalInfo.uncCols || (evalInfo.uncCol ? [evalInfo.uncCol] : []);
+
+            let maxComb = 0;
+            let worstErr = 0;
+            let worstUnc = 0;
+            let worstLabel = '';
+
+            if (errCols.length > 0) {
+                errCols.forEach(ec => {
+                    const eVal = parseNum(p[ec.field], 0);
+                    const ecNameLower = (ec.name || '').toLowerCase();
+                    
+                    // Encontra incerteza correspondente (ex: Avanço / Retorno)
+                    let uCol = null;
+                    if (/avan[cç]o/i.test(ecNameLower)) {
+                        uCol = uncCols.find(u => /avan[cç]o/i.test(u.name));
+                    } else if (/retorno/i.test(ecNameLower)) {
+                        uCol = uncCols.find(u => /retorno/i.test(u.name));
+                    }
+                    if (!uCol && uncCols.length > 0) {
+                        uCol = uncCols[0];
+                    }
+
+                    const uVal = uCol ? parseNum(p[uCol.field], 0) : 0;
+                    const comb = Math.abs(eVal) + uVal;
+
+                    if (comb >= maxComb) {
+                        maxComb = comb;
+                        worstErr = eVal;
+                        worstUnc = uVal;
+                        worstLabel = ec.name;
+                    }
+                });
+            } else if (uncCols.length > 0) {
+                worstUnc = parseNum(p[uncCols[0].field], 0);
+                maxComb = worstUnc;
+                worstLabel = uncCols[0].name;
+            } else {
+                row._combined = null;
+                row._status = 'INFO';
+                return row;
+            }
+
+            row._error = worstErr;
+            row._uncertainty = worstUnc;
+            row._combined = maxComb;
+            row._errorLabel = worstLabel;
+
+            if (maxComb > maxErrorAllowed) row._status = "REPROVADO";
+            else if (maxComb >= 0.9 * maxErrorAllowed) row._status = "ALERTA";
+            else row._status = "APROVADO";
+
+            return row;
+        }
+
+        function buildTabulatorColumnsForTable(table, evalInfo) {
+            if (!evalInfo.cols || evalInfo.cols.length === 0) {
+                return [
                     { title: "Valor de Referência", field: "REFERENCE_VALUE", hozAlign: "right", headerHozAlign: "right" },
                     { title: "Indicação Instrumento", field: "INDICATED_VALUE", hozAlign: "right", headerHozAlign: "right" },
                     { title: "Tendência (Erro)", field: "ERROR", hozAlign: "right", headerHozAlign: "right" },
                     { title: "Incerteza U", field: "UNCERTAINTY", hozAlign: "right", headerHozAlign: "right" },
-                    { title: "Fator K", field: "K_FACTOR", hozAlign: "center", headerHozAlign: "center", width: 90 }
-                ],
-                rowFormatter: function(row) {
-                    const data = row.getData();
-                    const combined = data._combined !== undefined ? data._combined : (Math.abs(parseFloat(data.ERROR || 0)) + parseFloat(data.UNCERTAINTY || 0));
-                    const el = row.getElement();
-
-                    if (combined > maxErrorAllowed) {
-                        el.style.backgroundColor = "#ffebee";
-                        el.style.color = "#b71c1c";
-                        el.style.fontWeight = "bold";
-                    } else if (combined >= 0.9 * maxErrorAllowed) {
-                        el.style.backgroundColor = "#fff3e0";
-                        el.style.color = "#e65100";
-                        el.style.fontWeight = "500";
-                    } else {
-                        el.style.backgroundColor = "#e8f5e9";
-                        el.style.color = "#1b5e20";
-                        el.style.fontWeight = "500";
+                    { title: "Fator K", field: "K_FACTOR", hozAlign: "center", headerHozAlign: "center", width: 90 },
+                    { 
+                        title: "|Erro| + U", 
+                        field: "_combined", 
+                        hozAlign: "right", 
+                        headerHozAlign: "right",
+                        formatter: (cell) => {
+                            const val = cell.getValue();
+                            return typeof val === 'number' ? val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '-';
+                        }
+                    },
+                    {
+                        title: "Status",
+                        field: "_status",
+                        hozAlign: "center",
+                        headerHozAlign: "center",
+                        width: 110,
+                        formatter: (cell) => {
+                            const val = cell.getValue();
+                            if (!val || val === 'INFO') return '-';
+                            const cls = val === 'APROVADO' ? 'status-pill-pass' : (val === 'ALERTA' ? 'status-pill-warn' : 'status-pill-fail');
+                            return `<span class="${cls}">${val}</span>`;
+                        }
                     }
-                }
+                ];
+            }
+
+            const columns = evalInfo.cols.map(c => {
+                const isNumeric = c.type !== 4;
+                return {
+                    title: c.name,
+                    field: c.field,
+                    hozAlign: isNumeric ? "right" : "left",
+                    headerHozAlign: isNumeric ? "right" : "left",
+                    minWidth: 85,
+                    formatter: (cell) => {
+                        const val = cell.getValue();
+                        if (val === null || val === undefined || val === '') return '-';
+                        if (typeof val === 'number') {
+                            return val.toLocaleString('pt-BR', { maximumFractionDigits: 4 });
+                        }
+                        return String(val);
+                    }
+                };
             });
+
+            if (evalInfo.hasEvaluation) {
+                columns.push({
+                    title: "|Erro| + U",
+                    field: "_combined",
+                    hozAlign: "right",
+                    headerHozAlign: "right",
+                    minWidth: 95,
+                    formatter: (cell) => {
+                        const val = cell.getValue();
+                        return typeof val === 'number' ? val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '-';
+                    }
+                });
+                columns.push({
+                    title: "Status",
+                    field: "_status",
+                    hozAlign: "center",
+                    headerHozAlign: "center",
+                    width: 110,
+                    minWidth: 95,
+                    formatter: (cell) => {
+                        const val = cell.getValue();
+                        if (!val || val === 'INFO') return '-';
+                        const cls = val === 'APROVADO' ? 'status-pill-pass' : (val === 'ALERTA' ? 'status-pill-warn' : 'status-pill-fail');
+                        return `<span class="${cls}">${val}</span>`;
+                    }
+                });
+            }
+
+            return columns;
+        }
+
+        function renderTabulator(table) {
+            if (!table) return;
+            const gridEl = document.getElementById('preview-results-grid');
+            if (!gridEl) return;
+
+            const evalInfo = getTableEvaluationInfo(table);
+            const formattedData = (table.points || []).map(p => extractPointDataFromTable(p, evalInfo));
+            const columns = buildTabulatorColumnsForTable(table, evalInfo);
+            const layoutMode = (columns && columns.length > 7) ? "fitDataFill" : "fitColumns";
+
+            if (previewResultsGrid) {
+                try {
+                    previewResultsGrid.destroy();
+                } catch(e) {}
+                previewResultsGrid = null;
+            }
+
+            try {
+                previewResultsGrid = new Tabulator(gridEl, {
+                    data: formattedData,
+                    layout: layoutMode,
+                    placeholder: "Nenhum ponto de medição registrado para esta tabela.",
+                    columns: columns,
+                    rowFormatter: function(row) {
+                        const data = row.getData();
+                        const el = row.getElement();
+                        if (!data || !data._status || data._status === 'INFO' || data._combined === null || data._combined === undefined) {
+                            el.style.backgroundColor = "";
+                            el.style.color = "";
+                            el.style.fontWeight = "";
+                            return;
+                        }
+
+                        if (data._status === 'REPROVADO') {
+                            el.style.backgroundColor = "#ffebee";
+                            el.style.color = "#b71c1c";
+                            el.style.fontWeight = "bold";
+                        } else if (data._status === 'ALERTA') {
+                            el.style.backgroundColor = "#fff3e0";
+                            el.style.color = "#e65100";
+                            el.style.fontWeight = "500";
+                        } else {
+                            el.style.backgroundColor = "#e8f5e9";
+                            el.style.color = "#1b5e20";
+                            el.style.fontWeight = "500";
+                        }
+                    }
+                });
+            } catch (err) {
+                console.warn("[CalibrationViewer] Erro ao instanciar Tabulator:", err);
+            }
+        }
+
+        // --- FUNÇÃO DO VISUALIZADOR DE PDF (EXPANSÃO TELA CHEIA) ---
+
+        function openPdfModal(certCode = 'Certificado') {
+            if (!currentBlobUrl) return;
+
+            let targetDoc = document;
+            try {
+                if (window.parent && window.parent.document && window.parent.document.body) {
+                    targetDoc = window.parent.document;
+                }
+            } catch (e) {
+                targetDoc = document;
+            }
+
+            const existing = targetDoc.getElementById('grf-pdf-global-modal');
+            if (existing) existing.remove();
+
+            const modalOverlay = targetDoc.createElement('div');
+            modalOverlay.id = 'grf-pdf-global-modal';
+            modalOverlay.style.cssText = "position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(15,23,42,0.92); backdrop-filter:blur(6px); z-index:2147483647; display:flex; flex-direction:column; padding:12px; box-sizing:border-box;";
+
+            modalOverlay.innerHTML = `
+                <div style="background:#1e293b; border-radius:10px; flex:1; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 25px 50px -12px rgba(0,0,0,0.7); border:1px solid #334155;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 20px; background:#0f172a; color:#f8fafc; border-bottom:1px solid #334155; flex-shrink:0;">
+                        <h3 style="margin:0; font-size:15px; font-weight:700; color:#e2e8f0; display:flex; align-items:center; gap:8px;">
+                            <span>📄</span> Certificado ${certCode} - Visualização em Tela Cheia
+                        </h3>
+                        <button id="grf-pdf-close-btn" type="button" style="background:#ef4444; border:1px solid #dc2626; color:#ffffff; border-radius:6px; padding:6px 16px; font-size:13px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:6px; transition:background 0.15s;">
+                            ✕ Fechar (ESC)
+                        </button>
+                    </div>
+                    <iframe src="${currentBlobUrl}" style="flex:1; width:100%; height:100%; border:none; background:#525659;"></iframe>
+                </div>
+            `;
+
+            targetDoc.body.appendChild(modalOverlay);
+
+            function closeModal() {
+                modalOverlay.remove();
+                targetDoc.removeEventListener('keydown', handleEsc);
+                if (targetDoc !== document) {
+                    document.removeEventListener('keydown', handleEsc);
+                }
+            }
+
+            function handleEsc(e) {
+                if (e.key === 'Escape') closeModal();
+            }
+
+            modalOverlay.querySelector('#grf-pdf-close-btn').onclick = closeModal;
+            modalOverlay.onclick = (e) => {
+                if (e.target === modalOverlay) closeModal();
+            };
+
+            targetDoc.addEventListener('keydown', handleEsc);
+            if (targetDoc !== document) {
+                document.addEventListener('keydown', handleEsc);
+            }
         }
 
         // --- INICIALIZAÇÃO ---
 
         document.addEventListener('DOMContentLoaded', () => {
+            // Toggle summary cards
+            const toggleSummaryBtn = document.getElementById('btn-toggle-summary');
+            if (toggleSummaryBtn) {
+                let summaryVisible = true;
+                toggleSummaryBtn.onclick = () => {
+                    summaryVisible = !summaryVisible;
+                    const container = document.querySelector('.summary-cards-container');
+                    const icon = document.getElementById('toggle-summary-icon');
+                    const txt = document.getElementById('toggle-summary-text');
+                    if (container) container.style.display = summaryVisible ? 'grid' : 'none';
+                    if (icon) icon.innerText = summaryVisible ? '▲' : '▼';
+                    if (txt) txt.innerText = summaryVisible ? 'Ocultar Resumo' : 'Mostrar Resumo';
+                };
+            }
+
             const urlParams = new URLSearchParams(window.location.search);
             currentCertId = urlParams.get('drawerRecordId') || urlParams.get('recordId') || urlParams.get('id');
 

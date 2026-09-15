@@ -477,7 +477,8 @@ export const DrawerConfigEditor = (() => {
                             collapsible: refListConfigPanel.querySelector('.reflist-collapsible-checkbox').checked,
                             cardConfigId: refListConfigPanel.querySelector('.reflist-card-config-id').value.trim(),
                             showAddButton: refListConfigPanel.querySelector('.reflist-show-add-checkbox').checked,
-                            addRecordConfigId: refListConfigPanel.querySelector('.reflist-add-config-id').value.trim()
+                            addRecordConfigId: refListConfigPanel.querySelector('.reflist-add-config-id').value.trim(),
+                            drawerConfigId: refListConfigPanel.querySelector('.reflist-drawer-config-id')?.value.trim() || ''
                         }
                     };
                     refListConfigPanel.querySelectorAll('tbody tr').forEach(row => {
@@ -983,6 +984,9 @@ export const DrawerConfigEditor = (() => {
             const drawerConfigOptions = `<option value="">-- Selecione um Drawer --</option>` + 
                 drawerConfigs.map(c => `<option value="${c.configId}" ${refListConfig.addRecordConfigId === c.configId ? 'selected' : ''}>${c.widgetTitle} [${c.configId}]</option>`).join('');
 
+            const detailDrawerConfigOptions = `<option value="">-- Automático / Padrão --</option>` + 
+                drawerConfigs.map(c => `<option value="${c.configId}" ${refListConfig.drawerConfigId === c.configId ? 'selected' : ''}>${c.widgetTitle} [${c.configId}]</option>`).join('');
+
             refListConfigHtml = `
             <div class="reflist-config-panel" style="display: none; padding: 15px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 15px;">
                 <h5 style="margin-top:0; color:#334155; font-size:14px;">Opções de Sub-Tabela (RefList)</h5>
@@ -993,8 +997,13 @@ export const DrawerConfigEditor = (() => {
                     <label>Config de Card:</label>
                     <select class="reflist-card-config-id">${cardConfigOptions}</select>
                 </div>
+
+                <div class="reflist-detail-options" style="margin-top:8px;">
+                    <label style="font-size:11px; display:block; font-weight:600; color:#334155;">Drawer ao Clicar na Linha (Detalhes):</label>
+                    <select class="reflist-drawer-config-id" style="width:100%; font-size:11px;">${detailDrawerConfigOptions}</select>
+                </div>
                 
-                <div class="reflist-add-options">
+                <div class="reflist-add-options" style="margin-top:8px;">
                     <label><input type="checkbox" class="reflist-show-add-checkbox" ${refListConfig.showAddButton !== false ? 'checked' : ''}> Mostrar Botão "Adicionar"</label>
                     <div style="margin-top:5px;">
                         <label style="font-size:11px; display:block;">Drawer para Adição:</label>
