@@ -187,6 +187,9 @@
         .badge.approved { background-color: #c8e6c9; color: var(--success-color); }
         .badge.rejected { background-color: #ffcdd2; color: var(--error-color); }
         .badge.warning { background-color: #ffe082; color: #b77900; }
+        .status-pill-pass { background-color: #c8e6c9; color: #2e7d32; padding: 2px 8px; border-radius: 12px; font-weight: bold; font-size: 11px; }
+        .status-pill-warn { background-color: #ffe082; color: #b77900; padding: 2px 8px; border-radius: 12px; font-weight: bold; font-size: 11px; }
+        .status-pill-fail { background-color: #ffcdd2; color: #c62828; padding: 2px 8px; border-radius: 12px; font-weight: bold; font-size: 11px; }
         .btn-primary { background-color: var(--primary-color); color: #ffffff; border: none; padding: 8px 16px; border-radius: 4px; font-weight: bold; cursor: pointer; }
         .btn-primary:hover { background-color: var(--primary-hover); }
         .btn-secondary { background-color: #ffffff; color: var(--text-color); border: 1px solid var(--border-color); padding: 8px 16px; border-radius: 4px; cursor: pointer; }
@@ -511,10 +514,212 @@
             consoleEl.scrollTop = consoleEl.scrollHeight;
         }
 
-        function showMessage(msg, isError = false) {
-            const box = document.getElementById('status-message');
-            box.textContent = msg;
-            box.className = 'status-box ' + (isError ? 'error' : 'success');
+        function getTableEvaluationInfo(table) {
+            const cols = table.columns || table.headers || null;
+            if (!cols || cols.length === 0) {
+                return {
+                    hasEvaluation: false,
+                    errCols: [], uncCols: [],
+                    errCol: null, uncCol: null,
+                    refCol: null, indCol: null, kCol: null,
+                    cols: null
+                };
+            }
+
+            const errCols = [];
+            const uncCols = [];
+            let refCol = null, indCol = null, kCol = null;
+
+            cols.forEach(c => {
+                const name = (c.name || '').trim();
+                const nameLower = name.toLowerCase();
+
+                if (/veff|graus|fator\s*k|^k$|arred|maior\s*erro/i.test(nameLower)) {
+                    if (/fator\s*k|^k$/i.test(nameLower)) kCol = c;
+                    return;
+                }
+
+                if (/incerteza/i.test(nameLower)) {
+                    uncCols.push(c);
+                } else if (/tend[eê]ncia|erro|desvio|repetib|excentricidade|folga|posicionamento|espessura|diferen[cç]a/i.test(nameLower)) {
+                    errCols.push(c);
+                } else if (/refer[eê]ncia|nominal/i.test(nameLower)) {
+                    if (!refCol) refCol = c;
+                } else if (/indica[cç][aã]o/i.test(nameLower)) {
+                    if (!indCol) indCol = c;
+                }
+            });
+
+            const hasEvaluation = (errCols.length > 0 || uncCols.length > 0);
+
+            return {
+                hasEvaluation,
+                errCols, uncCols,
+                errCol: errCols[0] || null,
+                uncCol: uncCols[0] || null,
+                refCol, indCol, kCol,
+                cols
+            };
+        }
+
+        function extractPointDataFromTable(p, evalInfo, maxErrorAllowed = 5.0) {
+            const row = { ...p };
+
+            if (evalInfo.cols) {
+                evalInfo.cols.forEach(c => {
+                    const raw = p[c.field];
+                    if (c.type !== 4 && raw !== undefined && raw !== null && raw !== '') {
+                        const cleaned = String(raw).replace(',', '.').trim();
+                        const parsed = parseFloat(cleaned);
+                        row[c.field] = isNaN(parsed) ? raw : parsed;
+                    }
+                });
+            }
+
+            if (!evalInfo.hasEvaluation) {
+                row._combined = null;
+                row._status = 'INFO';
+                return row;
+            }
+
+            const errCols = evalInfo.errCols || (evalInfo.errCol ? [evalInfo.errCol] : []);
+            const uncCols = evalInfo.uncCols || (evalInfo.uncCol ? [evalInfo.uncCol] : []);
+
+            let maxComb = 0;
+            let worstErr = 0;
+            let worstUnc = 0;
+            let worstLabel = '';
+
+            if (errCols.length > 0) {
+                errCols.forEach(ec => {
+                    const eVal = typeof p[ec.field] === 'number' ? p[ec.field] : parseFloat(String(p[ec.field] || 0).replace(',', '.')) || 0;
+                    const ecNameLower = (ec.name || '').toLowerCase();
+                    
+                    let uCol = null;
+                    if (/avan[cç]o/i.test(ecNameLower)) {
+                        uCol = uncCols.find(u => /avan[cç]o/i.test(u.name));
+                    } else if (/retorno/i.test(ecNameLower)) {
+                        uCol = uncCols.find(u => /retorno/i.test(u.name));
+                    }
+                    if (!uCol && uncCols.length > 0) {
+                        uCol = uncCols[0];
+                    }
+
+                    const uVal = uCol ? (typeof p[uCol.field] === 'number' ? p[uCol.field] : parseFloat(String(p[uCol.field] || 0).replace(',', '.')) || 0) : 0;
+                    const comb = Math.abs(eVal) + uVal;
+
+                    if (comb >= maxComb) {
+                        maxComb = comb;
+                        worstErr = eVal;
+                        worstUnc = uVal;
+                        worstLabel = ec.name;
+                    }
+                });
+            } else if (uncCols.length > 0) {
+                const uVal = typeof p[uncCols[0].field] === 'number' ? p[uncCols[0].field] : parseFloat(String(p[uncCols[0].field] || 0).replace(',', '.')) || 0;
+                worstUnc = uVal;
+                maxComb = worstUnc;
+                worstLabel = uncCols[0].name;
+            } else {
+                row._combined = null;
+                row._status = 'INFO';
+                return row;
+            }
+
+            row._error = worstErr;
+            row._uncertainty = worstUnc;
+            row._combined = maxComb;
+            row._errorLabel = worstLabel;
+
+            if (maxComb > maxErrorAllowed) row._status = "REPROVADO";
+            else if (maxComb >= 0.9 * maxErrorAllowed) row._status = "ALERTA";
+            else row._status = "APROVADO";
+
+            return row;
+        }
+
+        function buildTabulatorColumnsForTable(table, evalInfo) {
+            if (!evalInfo.cols || evalInfo.cols.length === 0) {
+                return [
+                    { title: "Valor de Referência", field: "REFERENCE_VALUE", hozAlign: "right", headerHozAlign: "right" },
+                    { title: "Indicação Instrumento", field: "INDICATED_VALUE", hozAlign: "right", headerHozAlign: "right" },
+                    { title: "Tendência (Erro)", field: "ERROR", hozAlign: "right", headerHozAlign: "right" },
+                    { title: "Incerteza U", field: "UNCERTAINTY", hozAlign: "right", headerHozAlign: "right" },
+                    { title: "Fator K", field: "K_FACTOR", hozAlign: "center", headerHozAlign: "center", width: 90 },
+                    { 
+                        title: "|Erro| + U", 
+                        field: "_combined", 
+                        hozAlign: "right", 
+                        headerHozAlign: "right",
+                        formatter: (cell) => {
+                            const val = cell.getValue();
+                            return typeof val === 'number' ? val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '-';
+                        }
+                    },
+                    {
+                        title: "Status",
+                        field: "_status",
+                        hozAlign: "center",
+                        headerHozAlign: "center",
+                        width: 110,
+                        formatter: (cell) => {
+                            const val = cell.getValue();
+                            if (!val || val === 'INFO') return '-';
+                            const cls = val === 'APROVADO' ? 'status-pill-pass' : (val === 'ALERTA' ? 'status-pill-warn' : 'status-pill-fail');
+                            return `<span class="${cls}">${val}</span>`;
+                        }
+                    }
+                ];
+            }
+
+            const columns = evalInfo.cols.map(c => {
+                const isNumeric = c.type !== 4;
+                return {
+                    title: c.name,
+                    field: c.field,
+                    hozAlign: isNumeric ? "right" : "left",
+                    headerHozAlign: isNumeric ? "right" : "left",
+                    minWidth: 85,
+                    formatter: (cell) => {
+                        const val = cell.getValue();
+                        if (val === null || val === undefined || val === '') return '-';
+                        if (typeof val === 'number') {
+                            return val.toLocaleString('pt-BR', { maximumFractionDigits: 4 });
+                        }
+                        return String(val);
+                    }
+                };
+            });
+
+            if (evalInfo.hasEvaluation) {
+                columns.push({
+                    title: "|Erro| + U",
+                    field: "_combined",
+                    hozAlign: "right",
+                    headerHozAlign: "right",
+                    minWidth: 95,
+                    formatter: (cell) => {
+                        const val = cell.getValue();
+                        return typeof val === 'number' ? val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '-';
+                    }
+                });
+                columns.push({
+                    title: "Status",
+                    field: "_status",
+                    hozAlign: "center",
+                    headerHozAlign: "center",
+                    width: 110,
+                    minWidth: 95,
+                    formatter: (cell) => {
+                        const val = cell.getValue();
+                        if (!val || val === 'INFO') return '-';
+                        const cls = val === 'APROVADO' ? 'status-pill-pass' : (val === 'ALERTA' ? 'status-pill-warn' : 'status-pill-fail');
+                        return `<span class="${cls}">${val}</span>`;
+                    }
+                });
+            }
+
+            return columns;
         }
 
         async function processFile(file) {
@@ -679,12 +884,26 @@
                         let headers = headerElements.map((h, hIdx) => {
                             const hName = h.textContent.trim();
                             const hType = parseInt(h.getAttribute('type') || 0, 10);
+                            const nameLower = hName.toLowerCase();
                             let field = 'REFERENCE_VALUE';
-                            if (hType === 0) field = 'REFERENCE_VALUE';
-                            else if (hType === 1 || hType === 2) field = `READ${String(readIdx++).padStart(2, '0')}`;
-                            else if (hType === 3) field = `RESULT${String(resIdx++).padStart(2, '0')}`;
-                            else if (hType === 4) field = `TEXT${String(txtIdx++).padStart(2, '0')}`;
-                            else field = `RESULT${String(resIdx++).padStart(2, '0')}`;
+                            
+                            if (hType === 0) {
+                                field = 'REFERENCE_VALUE';
+                            } else if (hType === 1 || hType === 2) {
+                                field = `READ${String(readIdx++).padStart(2, '0')}`;
+                            } else if (hType === 3) {
+                                if (/indica[cç][aã]o/i.test(nameLower)) field = 'INDICATED_VALUE';
+                                else if (/tend[eê]ncia|erro|desvio/i.test(nameLower)) field = 'ERROR';
+                                else if (/incerteza/i.test(nameLower)) field = 'UNCERTAINTY';
+                                else if (/fator\s*k|^k$/i.test(nameLower)) field = 'K_FACTOR';
+                                else if (/refer[eê]ncia|nominal/i.test(nameLower)) field = 'REFERENCE_VALUE_RES';
+                                else field = `RESULT${String(resIdx++).padStart(2, '0')}`;
+                            } else if (hType === 4) {
+                                field = `TEXT${String(txtIdx++).padStart(2, '0')}`;
+                            } else {
+                                field = `RESULT${String(resIdx++).padStart(2, '0')}`;
+                            }
+
                             return { name: hName, type: hType, field: field, index: hIdx };
                         });
 
@@ -716,11 +935,15 @@
                             if (valueElements.length > 0) {
                                 headers.forEach((h, i) => {
                                     const rawVal = valueElements[i]?.textContent;
-                                    if (h.type !== 4 && rawVal !== undefined && rawVal !== null && rawVal !== '') {
-                                        rowObj[h.field] = parseNum(rawVal);
-                                    } else {
-                                        rowObj[h.field] = rawVal || '';
-                                    }
+                                    const val = (h.type !== 4 && rawVal !== undefined && rawVal !== null && rawVal !== '') ? parseNum(rawVal) : (rawVal || '');
+                                    rowObj[h.field] = val;
+
+                                    const nLow = h.name.toLowerCase();
+                                    if (/refer[eê]ncia|nominal/i.test(nLow) && rowObj.REFERENCE_VALUE === undefined) rowObj.REFERENCE_VALUE = val;
+                                    else if (/indica[cç][aã]o/i.test(nLow) && rowObj.INDICATED_VALUE === undefined) rowObj.INDICATED_VALUE = val;
+                                    else if (/tend[eê]ncia|erro|desvio/i.test(nLow) && rowObj.ERROR === undefined) rowObj.ERROR = val;
+                                    else if (/incerteza/i.test(nLow) && rowObj.UNCERTAINTY === undefined) rowObj.UNCERTAINTY = val;
+                                    else if (/fator\s*k|^k$/i.test(nLow) && rowObj.K_FACTOR === undefined) rowObj.K_FACTOR = val;
                                 });
                             } else {
                                 function getFloat(parentEl, selectors, defaultVal = 0) {
@@ -737,6 +960,13 @@
                                 rowObj.UNCERTAINTY = getFloat(r, ["Incerteza", "Uncertainty", "IncertezaExpandida", "Incerteza_Expandida", "Unc", "U", "IncertezaU", "Incerteza_U"]);
                                 rowObj.K_FACTOR = getFloat(r, ["FatorK", "K", "Coverage", "Fator_K", "CoverageFactor", "Fator_Abrangencia", "FatorAbrangencia"], 2.0);
                             }
+
+                            if (rowObj.REFERENCE_VALUE === undefined) rowObj.REFERENCE_VALUE = 0;
+                            if (rowObj.INDICATED_VALUE === undefined) rowObj.INDICATED_VALUE = rowObj.REFERENCE_VALUE;
+                            if (rowObj.ERROR === undefined) rowObj.ERROR = 0;
+                            if (rowObj.UNCERTAINTY === undefined) rowObj.UNCERTAINTY = 0;
+                            if (rowObj.K_FACTOR === undefined) rowObj.K_FACTOR = 2.0;
+
                             rows.push(rowObj);
                         });
 
@@ -747,6 +977,7 @@
                                 id: idx + 1,
                                 name: tableName,
                                 headers: headers,
+                                columns: headers,
                                 rows: rows,
                                 points: rows,
                                 band: band,
@@ -786,19 +1017,33 @@
                     writeLog(`Erro ao buscar limites de aceitação: ${err.message}. Usando default ${maxErrorAllowed}`);
                 }
 
-                // Check points summary
+                // Complete metrological validation using shared evaluation helpers
                 let passCount = 0, warnCount = 0, failCount = 0;
-                parsedTables.forEach(t => {
-                    t.points.forEach(p => {
-                        const totalError = Math.abs(p.ERROR) + p.UNCERTAINTY;
-                        if (totalError > maxErrorAllowed) {
+                let defaultTableIndex = 0;
+
+                parsedTables.forEach((t, tIdx) => {
+                    const evalInfo = getTableEvaluationInfo(t);
+                    let tFail = 0, tWarn = 0;
+                    t.points = (t.rows || []).map(p => {
+                        const formattedPt = extractPointDataFromTable(p, evalInfo, maxErrorAllowed);
+                        if (formattedPt._status === 'REPROVADO') {
                             failCount++;
-                        } else if (totalError >= 0.9 * maxErrorAllowed) {
+                            tFail++;
+                        } else if (formattedPt._status === 'ALERTA') {
                             warnCount++;
-                        } else {
+                            tWarn++;
+                        } else if (formattedPt._status === 'APROVADO') {
                             passCount++;
                         }
+                        return formattedPt;
                     });
+                    t.rows = t.points;
+                    t.statusId = tFail > 0 ? 2 : (tWarn > 0 ? 3 : 1);
+                    t.statusText = tFail > 0 ? 'REPROVADO' : (tWarn > 0 ? 'APROVADO COM RESSALVA' : 'APROVADO');
+                    
+                    if ((tFail > 0 || tWarn > 0) && defaultTableIndex === 0) {
+                        defaultTableIndex = tIdx;
+                    }
                 });
                 
                 let finalStatus = "Aprovado";
@@ -854,38 +1099,42 @@
                     parsedTables.forEach((tbl, idx) => {
                         const opt = document.createElement('option');
                         opt.value = idx;
-                        opt.innerText = tbl.name;
+                        opt.innerText = `${tbl.name} (${tbl.statusText || 'APROVADO'})`;
                         selectEl.appendChild(opt);
                     });
                     selectContainer.style.display = 'block';
+                    selectEl.value = defaultTableIndex;
                 } else {
                     selectContainer.style.display = 'none';
                 }
 
-                // Results Tabulator Grid
-                if (parsedTables.length > 0) {
-                    previewResultsGrid = new Tabulator("#preview-results-grid", {
-                        data: parsedTables[0].points,
-                        layout: "fitColumns",
-                        columns: [
-                            { title: "Valor de Referência", field: "REFERENCE_VALUE" },
-                            { title: "Indicação Instrumento", field: "INDICATED_VALUE" },
-                            { title: "Tendência (Erro)", field: "ERROR" },
-                            { title: "Incerteza U", field: "UNCERTAINTY" },
-                            { title: "Fator K", field: "K_FACTOR" }
-                        ],
+                // Helper to render dynamic Tabulator grid for selected table
+                function renderGridForTable(tableObj) {
+                    const gridEl = document.getElementById("preview-results-grid");
+                    if (!gridEl || !tableObj) return;
+
+                    const evalInfo = getTableEvaluationInfo(tableObj);
+                    const cols = buildTabulatorColumnsForTable(tableObj, evalInfo);
+
+                    if (previewResultsGrid) {
+                        try { previewResultsGrid.destroy(); } catch(e) {}
+                        previewResultsGrid = null;
+                    }
+
+                    previewResultsGrid = new Tabulator(gridEl, {
+                        data: tableObj.points,
+                        layout: cols.length > 7 ? "fitDataFill" : "fitColumns",
+                        columns: cols,
                         rowFormatter: function(row) {
                             const data = row.getData();
-                            const err = Math.abs(parseFloat(data.ERROR || 0));
-                            const unc = parseFloat(data.UNCERTAINTY || 0);
-                            const combined = err + unc;
-                            
                             const el = row.getElement();
-                            if (combined > maxErrorAllowed) {
+                            if (!data || !data._status || data._status === 'INFO') return;
+
+                            if (data._status === 'REPROVADO') {
                                 el.style.backgroundColor = "#ffebee";
                                 el.style.color = "#b71c1c";
                                 el.style.fontWeight = "bold";
-                            } else if (combined >= 0.9 * maxErrorAllowed) {
+                            } else if (data._status === 'ALERTA') {
                                 el.style.backgroundColor = "#fff3e0";
                                 el.style.color = "#e65100";
                                 el.style.fontWeight = "500";
@@ -896,6 +1145,10 @@
                             }
                         }
                     });
+                }
+
+                if (parsedTables.length > 0) {
+                    renderGridForTable(parsedTables[defaultTableIndex]);
                 }
 
                 // Save pending data object
