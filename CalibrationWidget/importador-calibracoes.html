@@ -509,9 +509,19 @@
 
         function writeLog(msg) {
             const consoleEl = document.getElementById('log-console');
-            consoleEl.style.display = 'block';
-            consoleEl.textContent += msg + '\n';
-            consoleEl.scrollTop = consoleEl.scrollHeight;
+            if (consoleEl) {
+                consoleEl.style.display = 'block';
+                consoleEl.textContent += msg + '\n';
+                consoleEl.scrollTop = consoleEl.scrollHeight;
+            }
+        }
+
+        function showMessage(msg, isError = false) {
+            const box = document.getElementById('status-message');
+            if (!box) return;
+            box.textContent = msg;
+            box.className = 'status-box ' + (isError ? 'error' : 'success');
+            box.style.display = 'block';
         }
 
         function getTableEvaluationInfo(table) {
