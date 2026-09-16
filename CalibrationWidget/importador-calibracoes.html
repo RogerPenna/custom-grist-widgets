@@ -1577,9 +1577,24 @@
                 writeLog(`📅 Frequência de Calibração: ${freqMonths ? freqMonths + ' meses' : (freqDays ? freqDays + ' dias' : '12 meses (padrão)')}`);
                 writeLog(`📅 Última Calibração: ${dateStr} | Próxima Calibração Vencimento: ${nextCalDateStr}`);
 
+                let instSituationId = (validationStatus === 'Reprovado') ? 6 : 1;
+                if (validationStatus === 'Reprovado') {
+                    try {
+                        const situations = await tableLens.fetchTableRecords('SITUATIONS');
+                        const blockedSit = situations.find(s => {
+                            const nameVal = getRecordFieldValue(s, ['NAME', 'Name', 'NOME', 'SITUATION']);
+                            return nameVal && /bloqueado|não conforme|nao conforme/i.test(nameVal);
+                        });
+                        if (blockedSit) {
+                            instSituationId = blockedSit.id;
+                        }
+                    } catch(e) {}
+                }
+
                 const instUpdateObj = {
                     EXTERNAL_CALIBRATIONS: updatedRefs,
-                    METROLOGICAL_STAGE: "0. Em Uso",
+                    METROLOGICAL_STAGE: "-",
+                    ID_SITUATION: instSituationId,
                     ID_STATUS: statusId,
                     LAST_CALIBRATION_DATE: dateStr,
                     LAST_CALIBRATION: dateStr,
