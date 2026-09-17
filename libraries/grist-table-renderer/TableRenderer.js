@@ -57,30 +57,36 @@ export const TableRenderer = (() => {
         const activeFilter = currentFilters.find(f => f.field === field);
         const selectedValues = new Set(Array.isArray(activeFilter?.value) ? activeFilter.value : (activeFilter?.value ? [activeFilter.value] : []));
         
-        table.getRows().forEach(row => {
-            const data = row.getData();
-            const rawVal = data[field];
-            if (rawVal === undefined || rawVal === null) return;
-            
-            const strVal = String(rawVal);
-            if (!seenValues.has(strVal)) {
-                seenValues.add(strVal);
+        const isAttachmentField = field === 'ATTACHMENT' || field === 'ATTACHMENTS' || (schema[field] && schema[field].type === 'Attachments');
+        if (isAttachmentField) {
+            uniqueItems.push({ value: 'HAS_PDF', label: 'Com PDF 📄' });
+            uniqueItems.push({ value: 'NO_PDF', label: 'Sem PDF ⚠️' });
+        } else {
+            table.getRows().forEach(row => {
+                const data = row.getData();
+                const rawVal = data[field];
+                if (rawVal === undefined || rawVal === null) return;
                 
-                const tabCell = row.getCell(field);
-                let label = rawVal;
-                if (tabCell) {
-                    label = tabCell.getElement().textContent || tabCell.getElement().innerText || rawVal;
-                    if (typeof label === 'string') {
-                        label = label.trim();
-                        if ((!label || label === "(vazio)") && data["z_disp_" + field]) {
-                            label = data["z_disp_" + field];
+                const strVal = String(rawVal);
+                if (!seenValues.has(strVal)) {
+                    seenValues.add(strVal);
+                    
+                    const tabCell = row.getCell(field);
+                    let label = rawVal;
+                    if (tabCell) {
+                        label = tabCell.getElement().textContent || tabCell.getElement().innerText || rawVal;
+                        if (typeof label === 'string') {
+                            label = label.trim();
+                            if ((!label || label === "(vazio)") && data["z_disp_" + field]) {
+                                label = data["z_disp_" + field];
+                            }
                         }
                     }
+                    
+                    uniqueItems.push({ value: rawVal, label: label || "(vazio)" });
                 }
-                
-                uniqueItems.push({ value: rawVal, label: label || "(vazio)" });
-            }
-        });
+            });
+        }
         
         function renderItems(filterText = "") {
             itemsList.innerHTML = "";
@@ -297,6 +303,42 @@ export const TableRenderer = (() => {
             if (!colSchema) return String(cell.getValue() ?? '');
 
             const cellValue = cell.getValue();
+
+            // --- Attachment Formatter (PDF do Certificado / Anexos Grist) ---
+            const isAttachmentCol = colId === 'ATTACHMENT' || colId === 'ATTACHMENTS' || colSchema.type === 'Attachments' || colConfig?.formatter === 'attachment';
+            if (isAttachmentCol) {
+                const hasPdf = cellValue && (Array.isArray(cellValue) ? (cellValue.length > 1 && cellValue[0] === 'L') : true);
+                const btnContainer = document.createElement('div');
+                btnContainer.style.cssText = 'display:flex; align-items:center; justify-content:center; width:100%; height:100%;';
+                
+                if (hasPdf) {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'grf-pdf-view-btn';
+                    btn.style.cssText = 'background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; padding:3px 8px; border-radius:4px; font-weight:600; font-size:11px; cursor:pointer; display:inline-flex; align-items:center; gap:4px; transition:all 0.15s ease;';
+                    btn.innerHTML = '<span>📄</span> Ver PDF';
+                    btn.title = 'Clique para visualizar o certificado PDF';
+                    btn.onclick = async (e) => {
+                        e.stopPropagation();
+                        if (window.GristDrawer) {
+                            const drawerId = tableId === 'EXTERNAL_CALIBRATIONS' ? 'drawerexternalcalibrations' : 'drawerinstruments';
+                            const drawerCfg = await tableLens.fetchConfig(drawerId).catch(() => null);
+                            window.GristDrawer.open(tableId, record.id, {
+                                ...drawerCfg,
+                                tableLens,
+                                initialTab: 'prev-tab-pdf'
+                            });
+                        }
+                    };
+                    btnContainer.appendChild(btn);
+                } else {
+                    const span = document.createElement('span');
+                    span.style.cssText = 'background:#f1f5f9; color:#94a3b8; border:1px solid #cbd5e1; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:500; display:inline-flex; align-items:center; gap:3px;';
+                    span.innerHTML = '⚠️ Sem PDF';
+                    btnContainer.appendChild(span);
+                }
+                return btnContainer;
+            }
 
             // --- Bool Formatter: Switch ---
             if (colConfig && colConfig.formatter === 'switch') {
@@ -810,6 +852,15 @@ export const TableRenderer = (() => {
                         return true;
                     }
                     const selected = Array.isArray(headerValue) ? headerValue : [headerValue];
+                    
+                    // Tratamento especial para filtragem de anexos PDF (Com PDF vs Sem PDF)
+                    if (gristCol.colId === 'ATTACHMENT' || gristCol.colId === 'ATTACHMENTS' || gristCol.type === 'Attachments') {
+                        const rowHasPdf = rowValue && (Array.isArray(rowValue) ? (rowValue.length > 1 && rowValue[0] === 'L') : true);
+                        if (selected.includes('HAS_PDF') && rowHasPdf) return true;
+                        if (selected.includes('NO_PDF') && !rowHasPdf) return true;
+                        return false;
+                    }
+
                     const cleanRowValue = (rowValue && typeof rowValue === 'object' && rowValue.label) ? rowValue.label : rowValue;
                     return selected.some(val => {
                         const cleanVal = (val && typeof val === 'object' && val.label) ? val.label : val;

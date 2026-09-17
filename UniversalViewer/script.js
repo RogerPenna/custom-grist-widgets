@@ -662,6 +662,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             } catch (err) {
                 console.error("[UniversalViewer] Error updating stage from parent message:", err);
             }
+        } else if (event.data.action === 'update-column-choices') {
+            const { tableId, colId, choices } = event.data;
+            try {
+                if (window.grist && window.grist.docApi) {
+                    await window.grist.docApi.applyUserActions([
+                        ['ModifyColumn', tableId, colId, { widgetOptions: JSON.stringify({ choices }) }]
+                    ]);
+                }
+            } catch (err) {
+                console.error("[UniversalViewer] Error updating column choices:", err);
+            }
         } else if (event.data.action === 'open-dashboard-config') {
             const { open: openConfigManager } = await import('../libraries/grist-config-manager/ConfigManagerComponent.js?v=1.3.32');
             openConfigManager(grist, {

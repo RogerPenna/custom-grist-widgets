@@ -376,7 +376,18 @@ function renderDashboard(configRecord = null) {
         { label: 'Inventário Geral', icon: 'icon-dashboard', type: 'viewer', targetConfigId: 'tableinstruments' },
         { label: 'Fluxo (Kanban)', icon: 'icon-column', type: 'kanban', targetConfigId: 'kanban' },
         { label: 'Importador', icon: 'icon-download', type: 'importador', targetConfigId: 'importador' },
-        { label: 'Certificados Terceiros', icon: 'icon-settings', type: 'viewer', targetConfigId: 'tableexternalcalibrations' }
+        { label: 'Certificados Terceiros', icon: 'icon-sheet-icon', type: 'viewer', targetConfigId: 'tableexternalcalibrations' },
+        { 
+            label: 'Configurações', 
+            icon: 'icon-process-cogs', 
+            type: 'submenu', 
+            targetConfigId: 'config', 
+            subItems: [
+                { label: 'Colunas do Painel Geral', icon: 'icon-column', type: 'config-columns', targetConfigId: 'tableinstruments', group: 'Painel Geral' },
+                { label: 'Colunas do Painel de Certificados', icon: 'icon-column', type: 'config-columns', targetConfigId: 'tableexternalcalibrations', group: 'Certificados' },
+                { label: 'Estágios do Kanban', icon: 'icon-kanban', type: 'config-kanban-stages', targetConfigId: 'kanban-stages', group: 'Kanban' }
+            ] 
+        }
     ];
 
     const tabsNav = document.querySelector('.tabs-nav');
@@ -480,7 +491,7 @@ function renderDashboard(configRecord = null) {
                     const iconSvg = sub.icon ? `<svg style="width:20px; height:20px; fill:currentColor; stroke:currentColor; stroke-width:0.5px;"><use href="#${sub.icon}"></use></svg>` : `⚙️`;
                     
                     contentHtml += `
-                        <div class="submenu-card" data-config-id="${sub.targetConfigId}" data-label="${sub.label}" style="background: white; border: 1px solid #cbd5e1; border-radius: 8px; padding: 20px; box-shadow: var(--shadow-sm); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; display: flex; align-items: center; gap: 15px; border-left: 4px solid var(--primary);">
+                        <div class="submenu-card" data-config-id="${sub.targetConfigId}" data-label="${sub.label}" data-type="${sub.type || ''}" style="background: white; border: 1px solid #cbd5e1; border-radius: 8px; padding: 20px; box-shadow: var(--shadow-sm); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; display: flex; align-items: center; gap: 15px; border-left: 4px solid var(--primary);">
                             <div class="submenu-card-icon" style="background: var(--primary-light); color: var(--primary); width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 20px;">
                                 ${iconSvg}
                             </div>
@@ -517,9 +528,25 @@ function renderDashboard(configRecord = null) {
             const backBtn = pane.querySelector('.btn-submenu-back');
 
             pane.querySelectorAll('.submenu-card').forEach(card => {
-                card.onclick = () => {
+                card.onclick = async () => {
                     const cfgId = card.dataset.configId;
                     const label = card.dataset.label;
+                    const cardType = card.dataset.type;
+
+                    if (cardType === 'config-kanban-stages' || cfgId === 'kanban-stages') {
+                        await openKanbanStageManager();
+                        return;
+                    }
+
+                    if (cardType === 'config-columns' || cfgId === 'tableinstruments' || cfgId === 'tableexternalcalibrations') {
+                        const { open: openConfigManager } = await import('../libraries/grist-config-manager/ConfigManagerComponent.js?v=1.3.32');
+                        openConfigManager(window.grist || (window.parent && window.parent.grist), {
+                            initialConfigId: cfgId,
+                            componentTypes: ['Table']
+                        });
+                        return;
+                    }
+
                     if (!cfgId) return;
 
                     gridView.style.display = 'none';
@@ -952,4 +979,188 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+// ==========================================================================
+// GERENCIADOR DE ESTÁGIOS DO KANBAN (METROLOGICAL_STAGE)
+// ==========================================================================
+export async function openKanbanStageManager() {
+    let choices = [...ALL_CHOICES];
+    if (choices.length === 0) {
+        try {
+            const schema = await callIframe('getTableSchema', ['INSTRUMENTS']);
+            const stageCol = schema['METROLOGICAL_STAGE'];
+            if (stageCol && stageCol.widgetOptions) {
+                const wopts = typeof stageCol.widgetOptions === 'string' ? JSON.parse(stageCol.widgetOptions) : stageCol.widgetOptions;
+                choices = wopts.choices || [];
+            }
+        } catch(e) {
+            console.warn("Falha ao obter escolhas via iframe:", e);
+        }
+    }
+
+    const modalId = 'kanban-stages-modal-overlay';
+    const existing = document.getElementById(modalId);
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = modalId;
+    overlay.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+        background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(3px);
+        z-index: 99999; display: flex; align-items: center; justify-content: center;
+        padding: 20px; box-sizing: border-box;
+    `;
+
+    let localChoices = [...choices];
+
+    function renderModalContent() {
+        let rowsHtml = '';
+        localChoices.forEach((choice, idx) => {
+            const isResting = choice === '-' || choice === '0. Em Uso' || choice === 'Em Uso';
+            rowsHtml += `
+                <div class="kanban-stage-row" data-index="${idx}" style="display: flex; align-items: center; gap: 8px; background: ${isResting ? '#f8fafc' : '#ffffff'}; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px;">
+                    <span style="font-size: 14px; color: #94a3b8; cursor: grab;">☰</span>
+                    <input type="text" class="stage-name-input" data-index="${idx}" value="${choice.replace(/"/g, '&quot;')}" style="flex: 1; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 13px; font-weight: 600; color: #1e293b;" ${isResting ? 'title="Estágio padrão de repouso"' : ''}>
+                    ${isResting ? '<span style="font-size: 11px; background: #e2e8f0; color: #475569; padding: 2px 6px; border-radius: 4px; font-weight: bold;">Repouso</span>' : ''}
+                    <div style="display: flex; gap: 4px;">
+                        <button type="button" class="btn-move-up" data-index="${idx}" ${idx === 0 ? 'disabled style="opacity:0.4; cursor:not-allowed;"' : 'style="background:#f1f5f9; border:1px solid #cbd5e1; border-radius:4px; padding:4px 8px; cursor:pointer; font-size:12px;"'}>⬆</button>
+                        <button type="button" class="btn-move-down" data-index="${idx}" ${idx === localChoices.length - 1 ? 'disabled style="opacity:0.4; cursor:not-allowed;"' : 'style="background:#f1f5f9; border:1px solid #cbd5e1; border-radius:4px; padding:4px 8px; cursor:pointer; font-size:12px;"'}>⬇</button>
+                        <button type="button" class="btn-delete-stage" data-index="${idx}" ${isResting ? 'disabled style="opacity:0.3; cursor:not-allowed;"' : 'style="background:#fee2e2; border:1px solid #fca5a5; color:#dc2626; border-radius:4px; padding:4px 8px; cursor:pointer; font-size:12px;" title="Excluir Estágio"'}>🗑️</button>
+                    </div>
+                </div>
+            `;
+        });
+
+        overlay.innerHTML = `
+            <div style="background: #ffffff; border-radius: 10px; width: 100%; max-width: 550px; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2); overflow: hidden;">
+                <div style="padding: 16px 20px; background: #2c5e5a; color: #ffffff; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 20px;">📋</span>
+                        <div>
+                            <h3 style="margin: 0; font-size: 16px; font-weight: 700;">Estágios do Kanban (METROLOGICAL_STAGE)</h3>
+                            <div style="font-size: 11px; opacity: 0.85;">Reordene, renomeie ou adicione estágios para o fluxo metrológico</div>
+                        </div>
+                    </div>
+                    <button type="button" id="btn-close-kanban-modal" style="background: none; border: none; color: #ffffff; font-size: 24px; cursor: pointer; line-height: 1;">&times;</button>
+                </div>
+                <div style="padding: 16px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; background: #f8fafc;" id="kanban-stages-list-container">
+                    ${rowsHtml}
+                </div>
+                <div style="padding: 12px 16px; background: #ffffff; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+                    <button type="button" id="btn-add-kanban-stage" style="background: #f1f5f9; border: 1px solid #cbd5e1; color: #334155; padding: 8px 14px; border-radius: 6px; font-weight: 600; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                        ➕ Adicionar Novo Estágio
+                    </button>
+                    <div style="display: flex; gap: 10px;">
+                        <button type="button" id="btn-cancel-kanban-modal" style="background: #ffffff; border: 1px solid #cbd5e1; color: #64748b; padding: 8px 14px; border-radius: 6px; font-weight: 600; font-size: 12px; cursor: pointer;">
+                            Cancelar
+                        </button>
+                        <button type="button" id="btn-save-kanban-stages" style="background: #2e7d32; border: none; color: #ffffff; padding: 8px 18px; border-radius: 6px; font-weight: 700; font-size: 12px; cursor: pointer; box-shadow: 0 2px 4px rgba(46, 125, 50, 0.3);">
+                            💾 Salvar Estágios no Grist
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Event Listeners inside modal
+        overlay.querySelector('#btn-close-kanban-modal').onclick = () => overlay.remove();
+        overlay.querySelector('#btn-cancel-kanban-modal').onclick = () => overlay.remove();
+
+        // Update inputs in localChoices
+        overlay.querySelectorAll('.stage-name-input').forEach(input => {
+            input.oninput = (e) => {
+                const i = parseInt(input.dataset.index, 10);
+                localChoices[i] = e.target.value;
+            };
+        });
+
+        // Move Up
+        overlay.querySelectorAll('.btn-move-up').forEach(btn => {
+            btn.onclick = () => {
+                const idx = parseInt(btn.dataset.index, 10);
+                if (idx > 0) {
+                    const temp = localChoices[idx];
+                    localChoices[idx] = localChoices[idx - 1];
+                    localChoices[idx - 1] = temp;
+                    renderModalContent();
+                }
+            };
+        });
+
+        // Move Down
+        overlay.querySelectorAll('.btn-move-down').forEach(btn => {
+            btn.onclick = () => {
+                const idx = parseInt(btn.dataset.index, 10);
+                if (idx < localChoices.length - 1) {
+                    const temp = localChoices[idx];
+                    localChoices[idx] = localChoices[idx + 1];
+                    localChoices[idx + 1] = temp;
+                    renderModalContent();
+                }
+            };
+        });
+
+        // Delete Stage
+        overlay.querySelectorAll('.btn-delete-stage').forEach(btn => {
+            btn.onclick = () => {
+                const idx = parseInt(btn.dataset.index, 10);
+                if (confirm(`Remover o estágio "${localChoices[idx]}"?`)) {
+                    localChoices.splice(idx, 1);
+                    renderModalContent();
+                }
+            };
+        });
+
+        // Add New Stage
+        overlay.querySelector('#btn-add-kanban-stage').onclick = () => {
+            const nextNum = localChoices.length;
+            localChoices.push(`${nextNum}. Novo Estágio`);
+            renderModalContent();
+        };
+
+        // Save Stages to Grist
+        overlay.querySelector('#btn-save-kanban-stages').onclick = async () => {
+            const saveBtn = overlay.querySelector('#btn-save-kanban-stages');
+            saveBtn.disabled = true;
+            saveBtn.innerText = 'Salvando no Grist...';
+
+            const cleanChoices = localChoices.map(s => String(s).trim()).filter(Boolean);
+
+            try {
+                const gristApi = (window.grist && window.grist.docApi) ? window.grist.docApi : 
+                                 (window.parent && window.parent.grist && window.parent.grist.docApi) ? window.parent.grist.docApi : null;
+                
+                if (gristApi) {
+                    await gristApi.applyUserActions([
+                        ['ModifyColumn', 'INSTRUMENTS', 'METROLOGICAL_STAGE', { widgetOptions: JSON.stringify({ choices: cleanChoices }) }]
+                    ]);
+                } else {
+                    console.warn("API de docApi do Grist não acessível diretamente, enviando via postMessage");
+                    window.parent.postMessage({
+                        action: 'update-column-choices',
+                        tableId: 'INSTRUMENTS',
+                        colId: 'METROLOGICAL_STAGE',
+                        choices: cleanChoices
+                    }, '*');
+                }
+
+                ALL_CHOICES = cleanChoices;
+                STAGES = cleanChoices.filter(c => c !== "0. Em Uso" && c !== "Em Uso" && c !== "-");
+                renderKanban();
+
+                saveBtn.innerText = '✅ Salvo com Sucesso!';
+                setTimeout(() => overlay.remove(), 1000);
+            } catch (err) {
+                console.error("Erro ao salvar opções no Grist:", err);
+                alert("Erro ao salvar estágios no Grist: " + err.message);
+                saveBtn.disabled = false;
+                saveBtn.innerText = '💾 Salvar Estágios no Grist';
+            }
+        };
+    }
+
+    renderModalContent();
+    document.body.appendChild(overlay);
+}
+
 

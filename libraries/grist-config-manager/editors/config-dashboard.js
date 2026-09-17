@@ -162,10 +162,21 @@ export const DashboardConfigEditor = (() => {
 
         // Load menu items
         _menuItems = Array.isArray(mapping.menuItems) ? JSON.parse(JSON.stringify(mapping.menuItems)) : [
-            { label: 'Painel Geral', icon: 'icon-dashboard', type: 'viewer', targetConfigId: '' },
+            { label: 'Painel Geral', icon: 'icon-dashboard', type: 'viewer', targetConfigId: 'tableinstruments' },
             { label: 'Fluxo (Kanban)', icon: 'icon-column', type: 'kanban', targetConfigId: 'kanban' },
             { label: 'Importador', icon: 'icon-download', type: 'importador', targetConfigId: 'importador' },
-            { label: 'Configurações', icon: 'icon-settings', type: 'submenu', targetConfigId: '', subItems: [] }
+            { label: 'Certificados Terceiros', icon: 'icon-sheet-icon', type: 'viewer', targetConfigId: 'tableexternalcalibrations' },
+            { 
+                label: 'Configurações', 
+                icon: 'icon-settings', 
+                type: 'submenu', 
+                targetConfigId: 'config', 
+                subItems: [
+                    { label: 'Colunas do Painel Geral', icon: 'icon-column', type: 'config-columns', targetConfigId: 'tableinstruments', group: 'Painel Geral' },
+                    { label: 'Colunas do Painel de Certificados', icon: 'icon-column', type: 'config-columns', targetConfigId: 'tableexternalcalibrations', group: 'Certificados' },
+                    { label: 'Estágios do Kanban', icon: 'icon-kanban', type: 'config-kanban-stages', targetConfigId: 'kanban-stages', group: 'Kanban' }
+                ] 
+            }
         ];
 
         container.innerHTML = `
