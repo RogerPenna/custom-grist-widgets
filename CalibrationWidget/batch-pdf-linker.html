@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vinculador de Certificados (.CAL) em Lote</title>
+
+    <!-- CSS Externo (Tabulator) -->
+    <link rel="stylesheet" href="../libraries/tabulator/tabulator.min.css">
+
+    <!-- Bibliotecas Externas -->
+    <script src="../libraries/external/grist-plugin-api.js"></script>
+    <script src="../libraries/tabulator/tabulator.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+    <style>
+        :root {
+            --primary: #2c5e5a;
+            --primary-hover: #1f4542;
+            --primary-light: #e8f5e9;
+            --secondary: #455a64;
+            --bg-page: #f8fafc;
+            --border-color: #cbd5e1;
+            --text-main: #1e293b;
+            --text-sub: #64748b;
+            --success: #16a34a;
+            --success-bg: #dcfce7;
+            --warning: #d97706;
+            --warning-bg: #fef3c7;
+            --danger: #dc2626;
+            --danger-bg: #fee2e2;
+        }
+
+        * { box-sizing: border-box; }
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            overflow-x: hidden;
+        }
+
+        .main-container {
+            display: flex;
+            flex-direction: column;
+            min-height: 100%;
+            padding: 16px 20px;
+            max-width: 1300px;
+            margin: 0 auto;
+            gap: 14px;
+        }
+
+        /* Top Header */
+        .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #ffffff;
+            padding: 14px 20px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+        }
+
+        .header-title-box {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header-title-box svg {
+            width: 28px;
+            height: 28px;
+            fill: var(--primary);
+        }
+
+        .header-title-box h1 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .header-title-box span {
+            font-size: 12px;
+            color: var(--text-sub);
+        }
+
+        .header-links a {
+            font-size: 12px;
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .header-links a:hover {
+            text-decoration: underline;
+        }
+
+        /* Upload Area */
+        .dropzone-box {
+            background: #ffffff;
+            border: 2px dashed var(--border-color);
+            border-radius: 8px;
+            padding: 24px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .dropzone-box:hover, .dropzone-box.dragover {
+            border-color: var(--primary);
+            background-color: #f0fdf4;
+        }
+
+        .dropzone-box svg {
+            width: 44px;
+            height: 44px;
+            fill: var(--primary);
+            margin-bottom: 8px;
+            opacity: 0.85;
+        }
+
+        .dropzone-box h3 {
+            margin: 0 0 6px 0;
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        .dropzone-box p {
+            margin: 0 0 14px 0;
+            font-size: 13px;
+            color: var(--text-sub);
+        }
+
+        .dropzone-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            border-radius: 6px;
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: #ffffff;
+        }
+        .btn-primary:hover:not(:disabled) {
+            background-color: var(--primary-hover);
+        }
+        .btn-primary:disabled {
+            background-color: #94a3b8;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background-color: #ffffff;
+            border-color: var(--border-color);
+            color: var(--text-main);
+        }
+        .btn-secondary:hover:not(:disabled) {
+            background-color: #f1f5f9;
+        }
+
+        .btn-success {
+            background-color: var(--success);
+            color: #ffffff;
+        }
+        .btn-success:hover:not(:disabled) {
+            background-color: #15803d;
+        }
+        .btn-success:disabled {
+            background-color: #94a3b8;
+            cursor: not-allowed;
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 12px;
+        }
+
+        .stat-card {
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+            cursor: pointer;
+            transition: transform 0.1s, border-color 0.15s;
+        }
+        .stat-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-1px);
+        }
+        .stat-card.active-filter {
+            border-color: var(--primary);
+            background-color: #f8fafc;
+            box-shadow: 0 0 0 2px rgba(44, 94, 90, 0.2);
+        }
+
+        .stat-label {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            color: var(--text-sub);
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 800;
+            line-height: 1.2;
+            color: var(--text-main);
+        }
+
+        .stat-card.match .stat-value { color: var(--success); }
+        .stat-card.notfound .stat-value { color: var(--warning); }
+        .stat-card.error .stat-value { color: var(--danger); }
+        .stat-card.haspdf .stat-value { color: #0284c7; }
+
+        /* Report & Table Section */
+        .report-section {
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+        }
+
+        .report-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-color);
+            background: #fbfcfd;
+            gap: 10px;
+        }
+
+        .toolbar-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .filter-chip-btn {
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            color: var(--text-sub);
+            transition: all 0.15s;
+        }
+        .filter-chip-btn:hover {
+            border-color: #94a3b8;
+        }
+        .filter-chip-btn.active {
+            background: var(--primary);
+            color: #ffffff;
+            border-color: var(--primary);
+        }
+
+        /* Tabulator Table Container */
+        #results-table {
+            min-height: 280px;
+            font-size: 12px;
+        }
+
+        /* Status Badges */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .status-badge.match { background: var(--success-bg); color: var(--success); }
+        .status-badge.notfound { background: var(--warning-bg); color: var(--warning); }
+        .status-badge.error { background: var(--danger-bg); color: var(--danger); }
+        .status-badge.linked { background: #e0f2fe; color: #0369a1; }
+
+        /* Action & Progress Footer */
+        .action-footer {
+            display: flex;
+            flex-direction: column;
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 14px 18px;
+            gap: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+        }
+
+        .footer-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .checkbox-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-sub);
+            cursor: pointer;
+        }
+
+        /* Progress Bar */
+        .progress-container {
+            display: none;
+            flex-direction: column;
+            gap: 6px;
+            width: 100%;
+        }
+
+        .progress-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .progress-bar-bg {
+            width: 100%;
+            height: 10px;
+            background: #e2e8f0;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: var(--success);
+            transition: width 0.15s ease-out;
+        }
+
+        /* Log console */
+        .log-details {
+            margin-top: 4px;
+        }
+        .log-details summary {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-sub);
+            cursor: pointer;
+        }
+        .log-box {
+            background: #0f172a;
+            color: #38bdf8;
+            font-family: Consolas, monospace;
+            font-size: 11px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            height: 110px;
+            overflow-y: auto;
+            margin-top: 6px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="main-container">
+        
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-title-box">
+                <svg viewBox="0 0 24 24">
+                    <path d="M19,3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3M19,19H5V5H19V19M17,10H7V12H17V10M17,14H7V16H17V14M17,6H7V8H17V6Z" />
+                </svg>
+                <div>
+                    <h1>Vinculador de Certificados (.CAL) em Lote</h1>
+                    <span>Extração automática de PDF do MyLogical e vinculação à tabela de Certificados do Grist</span>
+                </div>
+            </div>
+            <div class="header-links">
+                <a href="./importador-calibracoes.html">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                    Voltar ao Importador Individual
+                </a>
+            </div>
+        </header>
+
+        <!-- Dropzone / File Select -->
+        <div class="dropzone-box" id="dropzone">
+            <svg viewBox="0 0 24 24">
+                <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M13,3.5L18.5,9H13V3.5M12,11A3,3 0 0,1 15,14V17H13V14A1,1 0 0,0 11,14V17H9V14A3,3 0 0,1 12,11Z" />
+            </svg>
+            <h3>Selecione a pasta ou arraste os arquivos .CAL aqui</h3>
+            <p>O leitor analisará os arquivos em streaming, extraindo o código do certificado e o PDF interno sem travar o seu navegador.</p>
+            
+            <div class="dropzone-buttons">
+                <!-- Botão de Pasta Inteira (webkitdirectory) -->
+                <button class="btn btn-primary" onclick="document.getElementById('input-folder').click()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20,18H4V8H20M20,6H12L10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6Z"/></svg>
+                    Selecionar Pasta de .CAL
+                </button>
+                <input type="file" id="input-folder" webkitdirectory directory multiple style="display: none;">
+
+                <!-- Botão de Múltiplos Arquivos -->
+                <button class="btn btn-secondary" onclick="document.getElementById('input-files').click()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M9,16V10H5L12,3L19,10H15V16H9M5,20V18H19V20H5Z"/></svg>
+                    Selecionar Arquivos .CAL
+                </button>
+                <input type="file" id="input-files" accept=".cal" multiple style="display: none;">
+            </div>
+        </div>
+
+        <!-- Cards de Estatísticas -->
+        <div class="stats-grid">
+            <div class="stat-card" data-filter="all" onclick="applyQuickFilter('all')">
+                <span class="stat-label">Total Arquivos .CAL</span>
+                <span class="stat-value" id="stat-total">0</span>
+            </div>
+            <div class="stat-card match active-filter" data-filter="MATCH" onclick="applyQuickFilter('MATCH')">
+                <span class="stat-label">🟢 Matches com PDF</span>
+                <span class="stat-value" id="stat-matches">0</span>
+            </div>
+            <div class="stat-card notfound" data-filter="NOT_FOUND" onclick="applyQuickFilter('NOT_FOUND')">
+                <span class="stat-label">🟡 Não no Grist</span>
+                <span class="stat-value" id="stat-notfound">0</span>
+            </div>
+            <div class="stat-card error" data-filter="ERROR" onclick="applyQuickFilter('ERROR')">
+                <span class="stat-label">🔴 Sem PDF / Erro</span>
+                <span class="stat-value" id="stat-error">0</span>
+            </div>
+            <div class="stat-card haspdf" data-filter="ALREADY_LINKED" onclick="applyQuickFilter('ALREADY_LINKED')">
+                <span class="stat-label">ℹ️ Já Possuem Anexo</span>
+                <span class="stat-value" id="stat-linked">0</span>
+            </div>
+        </div>
+
+        <!-- Toolbar & Tabela -->
+        <section class="report-section">
+            <div class="report-toolbar">
+                <div class="toolbar-group">
+                    <button class="filter-chip-btn active" id="filter-btn-all" onclick="applyQuickFilter('all')">Todos (<span id="count-chip-all">0</span>)</button>
+                    <button class="filter-chip-btn" id="filter-btn-match" onclick="applyQuickFilter('MATCH')">Apenas Matches (<span id="count-chip-match">0</span>)</button>
+                    <button class="filter-chip-btn" id="filter-btn-notfound" onclick="applyQuickFilter('NOT_FOUND')">Não Encontrados (<span id="count-chip-notfound">0</span>)</button>
+                    <button class="filter-chip-btn" id="filter-btn-error" onclick="applyQuickFilter('ERROR')">Erros / Sem PDF (<span id="count-chip-error">0</span>)</button>
+                </div>
+
+                <div class="toolbar-group">
+                    <button class="btn btn-secondary" style="padding: 5px 10px; font-size: 11px;" onclick="selectAllMatches()">Marcar Todos Matches</button>
+                    <button class="btn btn-secondary" style="padding: 5px 10px; font-size: 11px;" onclick="selectUnlinkedMatches()">Marcar Só Sem Anexo</button>
+                    <button class="btn btn-secondary" style="padding: 5px 10px; font-size: 11px;" onclick="deselectAll()">Desmarcar Todos</button>
+                </div>
+            </div>
+
+            <!-- Tabulator Grid -->
+            <div id="results-table"></div>
+        </section>
+
+        <!-- Barra de Ações & Upload -->
+        <footer class="action-footer">
+            <div class="footer-controls">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <span style="font-size: 13px; font-weight: 700;">
+                        <span id="selected-count" style="color: var(--primary);">0</span> selecionado(s) para vincular
+                    </span>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="chk-overwrite">
+                        Sobrescrever anexo caso o registro no Grist já possua PDF vinculado
+                    </label>
+                </div>
+
+                <button class="btn btn-success" id="btn-execute-upload" disabled onclick="executeBatchUpload()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20M12,12L16,16H13.5V19H10.5V16H8L12,12Z"/></svg>
+                    Vincular PDFs Selecionados ao Grist
+                </button>
+            </div>
+
+            <!-- Progresso em Tempo Real -->
+            <div class="progress-container" id="progress-container">
+                <div class="progress-info">
+                    <span id="progress-status-text">Vinculando anexos ao Grist...</span>
+                    <span id="progress-count-text">0 / 0 (0%)</span>
+                </div>
+                <div class="progress-bar-bg">
+                    <div class="progress-bar-fill" id="progress-bar-fill"></div>
+                </div>
+            </div>
+
+            <!-- Log Console -->
+            <details class="log-details" id="log-details-box">
+                <summary>Console de Registro e Logs</summary>
+                <div class="log-box" id="log-console">Aguardando inicialização do sistema...</div>
+            </details>
+        </footer>
+
+    </div>
+
+    <!-- Script de Lógica do Vinculador -->
+    <script type="module">
+        import { GristTableLens } from '../libraries/grist-table-lens/grist-table-lens.js';
+
+        let tableLens = null;
+        let gristCertificates = [];
+        let gristInstruments = [];
+        let analyzedRecords = [];
+        let grid = null;
+        let isProcessing = false;
+        let currentFilter = 'all';
+
+        let isGristReady = false;
+        let gristReadyResolve = null;
+        const gristReadyPromise = new Promise(resolve => { gristReadyResolve = resolve; });
+
+        // Elementos DOM
+        const logBox = document.getElementById('log-console');
+        const btnUpload = document.getElementById('btn-execute-upload');
+        const selectedCountEl = document.getElementById('selected-count');
+        const progressContainer = document.getElementById('progress-container');
+        const progressBarFill = document.getElementById('progress-bar-fill');
+        const progressStatusText = document.getElementById('progress-status-text');
+        const progressCountText = document.getElementById('progress-count-text');
+
+        function log(msg) {
+            console.log(msg);
+            const time = new Date().toLocaleTimeString();
+            logBox.textContent += `[${time}] ${msg}\n`;
+            logBox.scrollTop = logBox.scrollHeight;
+        }
+
+        // --- NORMALIZAÇÃO DE CÓDIGOS PARA MATCH ROBUSTO ---
+
+        function normalizeCode(val) {
+            if (!val) return '';
+            return String(val)
+                .trim()
+                .toLowerCase()
+                .replace(/[\s\-_/]/g, '') // remove espaços, traços, sublinhados e barras
+                .replace(/^0+/, '');       // remove zeros à esquerda
+        }
+
+        // --- INICIALIZAÇÃO DO TABULATOR (SÍNCRONA E IMEDIATA) ---
+
+        function initTable() {
+            if (grid) return;
+            grid = new Tabulator("#results-table", {
+                data: [],
+                layout: "fitColumns",
+                placeholder: "Nenhum arquivo .CAL analisado. Selecione uma pasta ou solte os arquivos acima.",
+                pagination: true,
+                paginationSize: 20,
+                paginationSizeSelector: [10, 20, 50, 100, 500],
+                columns: [
+                    {
+                        formatter: "rowSelection",
+                        titleFormatter: "rowSelection",
+                        hozAlign: "center",
+                        headerHozAlign: "center",
+                        width: 50,
+                        headerSort: false,
+                        cellClick: function(e, cell) {
+                            cell.getRow().toggleSelect();
+                        }
+                    },
+                    {
+                        title: "Status",
+                        field: "status",
+                        width: 140,
+                        formatter: function(cell) {
+                            const val = cell.getValue();
+                            if (val === 'MATCH') return '<span class="status-badge match">🟢 Match Encontrado</span>';
+                            if (val === 'NOT_FOUND') return '<span class="status-badge notfound">🟡 Não no Grist</span>';
+                            if (val === 'ERROR') return '<span class="status-badge error">🔴 Sem PDF / Erro</span>';
+                            if (val === 'SUCCESS_LINKED') return '<span class="status-badge linked">✅ PDF Vinculado</span>';
+                            return val;
+                        }
+                    },
+                    { title: "Arquivo .CAL", field: "fileName", widthGrow: 2 },
+                    { 
+                        title: "Cód. Certificado (.CAL)", 
+                        field: "certCode", 
+                        widthGrow: 1.5,
+                        formatter: function(cell) {
+                            const val = cell.getValue();
+                            return `<strong>${val || '-'}</strong>`;
+                        }
+                    },
+                    { 
+                        title: "Instrumento / TAG", 
+                        field: "instTag", 
+                        widthGrow: 1.2 
+                    },
+                    { 
+                        title: "Certificado no Grist", 
+                        field: "gristMatchedCode", 
+                        widthGrow: 1.5,
+                        formatter: function(cell) {
+                            const row = cell.getRow().getData();
+                            if (row.gristCertId) {
+                                return `<span style="color: var(--primary); font-weight: 600;">#${row.gristCertId} (${cell.getValue()})</span>`;
+                            }
+                            return '<span style="color: #94a3b8;">Não localizado</span>';
+                        }
+                    },
+                    { 
+                        title: "Anexo Atual", 
+                        field: "alreadyHasAttachment", 
+                        width: 130,
+                        formatter: function(cell) {
+                            return cell.getValue() ? 
+                                '<span style="color: #0284c7; font-weight: 600;">ℹ️ Possui anexo</span>' : 
+                                '<span style="color: #64748b;">Sem anexo</span>';
+                        }
+                    },
+                    { 
+                        title: "PDF Interno", 
+                        field: "pdfInfo", 
+                        widthGrow: 1.5,
+                        formatter: function(cell) {
+                            const row = cell.getRow().getData();
+                            if (row.hasPdf) {
+                                return `<span title="${row.pdfFileName}">${row.pdfFileName} (${(row.pdfSize / 1024).toFixed(1)} KB)</span>`;
+                            }
+                            return '<span style="color: var(--danger); font-weight: 600;">Ausente</span>';
+                        }
+                    }
+                ]
+            });
+
+            grid.on("rowSelectionChanged", function(data, rows) {
+                updateSelectedCount();
+            });
+        }
+
+        // --- INICIALIZAÇÃO COM O GRIST ---
+
+        async function initGrist() {
+            log("Conectando ao Grist...");
+            try {
+                window.grist.ready({ requiredAccess: 'full' });
+                tableLens = new GristTableLens(window.grist);
+                await tableLens.warmup();
+
+                // Busca tabela de Certificados
+                log("Carregando tabela EXTERNAL_CALIBRATIONS do Grist...");
+                const rawCerts = await tableLens.fetchTableRecords('EXTERNAL_CALIBRATIONS');
+                gristCertificates = rawCerts || [];
+                log(`Carregados ${gristCertificates.length} certificados existentes do Grist.`);
+
+                // Busca tabela de Instrumentos (opcional para cruzamento de TAG)
+                try {
+                    const rawInst = await tableLens.fetchTableRecords('INSTRUMENTS');
+                    gristInstruments = rawInst || [];
+                } catch(e) {}
+
+                isGristReady = true;
+                if (gristReadyResolve) gristReadyResolve();
+                log("Pronto para receber arquivos .CAL.");
+            } catch (err) {
+                log(`⚠️ Erro ao inicializar conexão com o Grist: ${err.message}`);
+                isGristReady = true;
+                if (gristReadyResolve) gristReadyResolve();
+            }
+        }
+
+        function updateSelectedCount() {
+            if (!grid) return;
+            const selected = grid.getSelectedData();
+            // Apenas linhas com match e pdf válido podem ser enviadas
+            const validSelected = selected.filter(r => (r.status === 'MATCH' || r.status === 'SUCCESS_LINKED') && r.hasPdf && r.gristCertId);
+            selectedCountEl.innerText = `${validSelected.length}`;
+            btnUpload.disabled = (validSelected.length === 0 || isProcessing);
+        }
+
+        // --- FILTROS RÁPIDOS ---
+
+        window.applyQuickFilter = function(filter) {
+            currentFilter = filter;
+
+            document.querySelectorAll('.stat-card').forEach(c => c.classList.remove('active-filter'));
+            const activeCard = document.querySelector(`.stat-card[data-filter="${filter}"]`);
+            if (activeCard) activeCard.classList.add('active-filter');
+
+            document.querySelectorAll('.filter-chip-btn').forEach(b => b.classList.remove('active'));
+            const btnMap = {
+                'all': 'filter-btn-all',
+                'MATCH': 'filter-btn-match',
+                'NOT_FOUND': 'filter-btn-notfound',
+                'ERROR': 'filter-btn-error'
+            };
+            const activeBtn = document.getElementById(btnMap[filter]);
+            if (activeBtn) activeBtn.classList.add('active');
+
+            if (!grid) return;
+            if (filter === 'all') {
+                grid.clearFilter();
+            } else if (filter === 'ALREADY_LINKED') {
+                grid.setFilter("alreadyHasAttachment", "=", true);
+            } else {
+                grid.setFilter("status", "=", filter);
+            }
+        };
+
+        window.selectAllMatches = function() {
+            if (!grid) return;
+            grid.getRows().forEach(row => {
+                const data = row.getData();
+                if (data.status === 'MATCH' && data.hasPdf && data.gristCertId) {
+                    row.select();
+                } else {
+                    row.deselect();
+                }
+            });
+            updateSelectedCount();
+        };
+
+        window.selectUnlinkedMatches = function() {
+            if (!grid) return;
+            grid.getRows().forEach(row => {
+                const data = row.getData();
+                if (data.status === 'MATCH' && data.hasPdf && data.gristCertId && !data.alreadyHasAttachment) {
+                    row.select();
+                } else {
+                    row.deselect();
+                }
+            });
+            updateSelectedCount();
+        };
+
+        window.deselectAll = function() {
+            if (!grid) return;
+            grid.deselectRow();
+            updateSelectedCount();
+        };
+
+        // --- PROCESSAMENTO DE ARQUIVOS .CAL ---
+
+        async function handleFilesSelected(fileList) {
+            const files = Array.from(fileList).filter(f => f.name.toLowerCase().endsWith('.cal'));
+            if (files.length === 0) {
+                alert("Nenhum arquivo com extensão .CAL encontrado na seleção.");
+                return;
+            }
+
+            if (!isGristReady) {
+                log("Aguardando carregamento da tabela de certificados do Grist...");
+                await gristReadyPromise;
+            }
+
+            log(`Iniciando análise de ${files.length} arquivos .CAL...`);
+            analyzedRecords = [];
+            if (grid) grid.clearData();
+
+            let matchesCount = 0;
+            let notFoundCount = 0;
+            let errorCount = 0;
+            let linkedCount = 0;
+
+            // Pré-indexa os certificados do Grist para busca instantânea O(1)
+            const gristMap = new Map();
+            gristCertificates.forEach(c => {
+                const code = c.CODE || c.CERT_CODE || c.Numero_Certificado || c.Numero || c.Codigo;
+                if (code) {
+                    const norm = normalizeCode(code);
+                    if (!gristMap.has(norm)) gristMap.set(norm, c);
+                }
+            });
+
+            // Processa arquivo por arquivo
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const rec = await parseSingleCalFile(file, gristMap);
+                analyzedRecords.push(rec);
+
+                if (rec.status === 'MATCH') matchesCount++;
+                else if (rec.status === 'NOT_FOUND') notFoundCount++;
+                else if (rec.status === 'ERROR') errorCount++;
+
+                if (rec.alreadyHasAttachment) linkedCount++;
+
+                // Atualiza contadores visuais periodicamente
+                if (i % 10 === 0 || i === files.length - 1) {
+                    document.getElementById('stat-total').innerText = `${i + 1}`;
+                    document.getElementById('stat-matches').innerText = `${matchesCount}`;
+                    document.getElementById('stat-notfound').innerText = `${notFoundCount}`;
+                    document.getElementById('stat-error').innerText = `${errorCount}`;
+                    document.getElementById('stat-linked').innerText = `${linkedCount}`;
+
+                    document.getElementById('count-chip-all').innerText = `${i + 1}`;
+                    document.getElementById('count-chip-match').innerText = `${matchesCount}`;
+                    document.getElementById('count-chip-notfound').innerText = `${notFoundCount}`;
+                    document.getElementById('count-chip-error').innerText = `${errorCount}`;
+                }
+            }
+
+            log(`Análise concluída! ${matchesCount} com match, ${notFoundCount} não encontrados, ${errorCount} erros.`);
+            if (grid) grid.setData(analyzedRecords);
+
+            // Seleciona automaticamente os matches que ainda não possuem anexo
+            setTimeout(() => {
+                selectUnlinkedMatches();
+            }, 100);
+        }
+
+        async function parseSingleCalFile(file, gristMap) {
+            const item = {
+                id: Math.random().toString(36).substr(2, 9),
+                fileRef: file,
+                fileName: file.name,
+                certCode: null,
+                instTag: '-',
+                hasPdf: false,
+                pdfFileName: null,
+                pdfSize: 0,
+                pdfZipEntry: null,
+                status: 'ERROR',
+                gristCertId: null,
+                gristMatchedCode: null,
+                alreadyHasAttachment: false,
+                existingAttachmentRaw: null,
+                errorMessage: null
+            };
+
+            try {
+                const zip = await JSZip.loadAsync(file);
+                let xmlEntry = null;
+                let pdfEntry = null;
+
+                Object.keys(zip.files).forEach(name => {
+                    const lower = name.toLowerCase();
+                    if (lower.endsWith('.xml') && !xmlEntry) xmlEntry = zip.files[name];
+                    if (lower.endsWith('.pdf') && !pdfEntry) pdfEntry = zip.files[name];
+                });
+
+                if (pdfEntry) {
+                    item.hasPdf = true;
+                    item.pdfFileName = pdfEntry.name;
+                    item.pdfSize = pdfEntry._data ? pdfEntry._data.uncompressedSize : 0;
+                    item.pdfZipEntry = pdfEntry;
+                }
+
+                if (!xmlEntry) {
+                    item.status = 'ERROR';
+                    item.errorMessage = "XML não encontrado dentro do .CAL";
+                    return item;
+                }
+
+                // Extrai metadados do XML
+                const xmlText = await xmlEntry.async("string");
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(xmlText, "text/xml");
+
+                function getTag(selectors) {
+                    for (const s of selectors) {
+                        const el = xmlDoc.querySelector(s);
+                        if (el && el.textContent.trim()) return el.textContent.trim();
+                    }
+                    return null;
+                }
+
+                item.certCode = getTag([
+                    "code", "NumeroCertificado", "Numero_Certificado", "NumeroCert", 
+                    "Numero", "Code", "Certificado", "NumCert"
+                ]);
+
+                item.instTag = getTag([
+                    "TAG", "Tag", "Codigo", "InstrumentCode", "Instrumento", "ID_INSTRUMENT"
+                ]) || '-';
+
+                // Se o código do certificado não veio explícito na tag, tenta inferir do nome do arquivo
+                if (!item.certCode) {
+                    const match = file.name.match(/([0-9]{3,8}[-_/][0-9]{2,4})/);
+                    if (match) item.certCode = match[1];
+                    else item.certCode = file.name.replace(/\.cal$/i, '');
+                }
+
+                if (!item.hasPdf) {
+                    item.status = 'ERROR';
+                    item.errorMessage = "PDF não encontrado dentro do .CAL";
+                    return item;
+                }
+
+                // Cruzamento com a tabela de Certificados do Grist
+                const norm = normalizeCode(item.certCode);
+                const matchedGristCert = gristMap.get(norm);
+
+                if (matchedGristCert) {
+                    item.status = 'MATCH';
+                    item.gristCertId = matchedGristCert.id;
+                    item.gristMatchedCode = matchedGristCert.CODE || matchedGristCert.CERT_CODE || item.certCode;
+                    
+                    const att = matchedGristCert.ATTACHMENT || matchedGristCert.ANEXO || matchedGristCert.FILE || matchedGristCert.PDF;
+                    item.alreadyHasAttachment = !!(att && (Array.isArray(att) ? att.length > 1 : att));
+                    item.existingAttachmentRaw = att;
+                } else {
+                    item.status = 'NOT_FOUND';
+                }
+
+            } catch (err) {
+                item.status = 'ERROR';
+                item.errorMessage = err.message;
+            }
+
+            return item;
+        }
+
+        // --- VINCULAÇÃO E UPLOAD EM LOTE VIA REST API OFICIAL DO GRIST ---
+
+        window.executeBatchUpload = async function() {
+            if (isProcessing) return;
+            const selected = grid.getSelectedData();
+            const overwrite = document.getElementById('chk-overwrite').checked;
+
+            const targets = selected.filter(r => (r.status === 'MATCH' || r.status === 'SUCCESS_LINKED') && r.hasPdf && r.gristCertId);
+            const filteredTargets = overwrite ? targets : targets.filter(r => !r.alreadyHasAttachment);
+
+            if (filteredTargets.length === 0) {
+                alert("Nenhum certificado apto selecionado. Verifique se os itens selecionados já possuem anexo ou se a opção de sobrescrever está desmarcada.");
+                return;
+            }
+
+            if (!confirm(`Confirma o upload e vinculação de ${filteredTargets.length} certificados PDF ao Grist?`)) {
+                return;
+            }
+
+            isProcessing = true;
+            btnUpload.disabled = true;
+            progressContainer.style.display = 'flex';
+            progressBarFill.style.width = '0%';
+            log(`--- INICIANDO VINCULAÇÃO DE ${filteredTargets.length} CERTIFICADOS ---`);
+
+            let successCount = 0;
+            let failureCount = 0;
+
+            // 1. Detecta nome exato da coluna de anexo na tabela EXTERNAL_CALIBRATIONS
+            let attCol = 'ATTACHMENT';
+            try {
+                const schema = await tableLens.getTableSchema('EXTERNAL_CALIBRATIONS');
+                const colEntries = Object.entries(schema || {});
+                // Procura por coluna de tipo nativo Attachments
+                const byType = colEntries.find(([cid, meta]) => meta && String(meta.type || '').toLowerCase().startsWith('attachment'));
+                if (byType) {
+                    attCol = byType[0];
+                } else {
+                    const found = colEntries.find(([cid]) => ['ATTACHMENT', 'ANEXO', 'FILE', 'PDF'].includes(cid.toUpperCase()));
+                    if (found) attCol = found[0];
+                }
+            } catch(e) {}
+            log(`Coluna de anexo a ser utilizada: ${attCol}`);
+
+            // 2. Obtém token de acesso para upload REST
+            let tokenInfo = null;
+            try {
+                tokenInfo = await window.grist.docApi.getAccessToken({ readOnly: false });
+                log("Token de autorização obtido com sucesso.");
+            } catch(e) {
+                log(`⚠️ Falha ao obter token de acesso do Grist: ${e.message}`);
+                alert(`Erro de autorização do Grist: ${e.message}`);
+                isProcessing = false;
+                btnUpload.disabled = false;
+                return;
+            }
+
+            // 3. Processa upload de cada certificado
+            for (let i = 0; i < filteredTargets.length; i++) {
+                const item = filteredTargets[i];
+                const pct = Math.round(((i + 1) / filteredTargets.length) * 100);
+
+                progressStatusText.innerText = `Processando [${i + 1}/${filteredTargets.length}]: ${item.certCode} (${item.fileName})...`;
+                progressCountText.innerText = `${i + 1} / ${filteredTargets.length} (${pct}%)`;
+                progressBarFill.style.width = `${pct}%`;
+
+                try {
+                    // Extrai o buffer do PDF da entrada do JSZip
+                    const pdfBuffer = await item.pdfZipEntry.async("arraybuffer");
+                    const pdfBlob = new Blob([pdfBuffer], { type: "application/pdf" });
+                    const filename = item.pdfFileName || `${item.certCode}.pdf`;
+
+                    // Upload via Endpoint REST oficial do Grist
+                    const formData = new FormData();
+                    formData.append('upload', pdfBlob, filename);
+
+                    const uploadUrl = `${tokenInfo.baseUrl}/attachments?auth=${tokenInfo.token}`;
+                    const uploadResponse = await fetch(uploadUrl, {
+                        method: 'POST',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: formData
+                    });
+
+                    if (!uploadResponse.ok) {
+                        const errTxt = await uploadResponse.text();
+                        throw new Error(`Erro no upload (${uploadResponse.status}): ${errTxt}`);
+                    }
+
+                    const uploadResult = await uploadResponse.json();
+                    const attId = Array.isArray(uploadResult) ? uploadResult[0] : (uploadResult.id || uploadResult);
+
+                    if (!attId) {
+                        throw new Error("Grist não retornou o ID do anexo criado.");
+                    }
+
+                    // Prepara lista de anexos no formato ['L', id1, id2, ...]
+                    const cleanCertId = parseInt(item.gristCertId, 10);
+                    let existingList = [];
+                    if (!overwrite && item.existingAttachmentRaw) {
+                        const raw = item.existingAttachmentRaw;
+                        if (Array.isArray(raw)) {
+                            existingList = (raw[0] === 'L') ? raw.slice(1) : raw;
+                        } else if (typeof raw === 'number') {
+                            existingList = [raw];
+                        }
+                    }
+                    const updatedAttachments = ['L', ...new Set([...existingList, attId])];
+
+                    // Atualiza o registro na tabela EXTERNAL_CALIBRATIONS
+                    await window.grist.docApi.applyUserActions([
+                        ['UpdateRecord', 'EXTERNAL_CALIBRATIONS', cleanCertId, {
+                            [attCol]: updatedAttachments,
+                            HAS_ATTACHMENT: 1
+                        }]
+                    ]);
+
+                    item.status = 'SUCCESS_LINKED';
+                    item.alreadyHasAttachment = true;
+                    item.existingAttachmentRaw = updatedAttachments;
+                    successCount++;
+                    log(`✅ [${i + 1}/${filteredTargets.length}] Certificado #${item.gristCertId} (${item.certCode}) vinculado com sucesso (ID Anexo: ${attId}).`);
+
+                    // Atualiza a linha no Tabulator
+                    const row = grid.getRow(item.id);
+                    if (row) row.update({ status: 'SUCCESS_LINKED', alreadyHasAttachment: true });
+
+                } catch (err) {
+                    failureCount++;
+                    log(`❌ Erro no certificado ${item.certCode}: ${err.message}`);
+                }
+            }
+
+            isProcessing = false;
+            btnUpload.disabled = false;
+            progressStatusText.innerText = `Concluído: ${successCount} vinculados com sucesso, ${failureCount} falhas.`;
+            log(`--- PROCESSO FINALIZADO: ${successCount} SUCESSOS, ${failureCount} FALHAS ---`);
+            alert(`Processo concluído!\n${successCount} certificados vinculados com sucesso ao Grist.\n${failureCount} falhas.`);
+            updateSelectedCount();
+        };
+
+        // --- EVENTOS DE DRAG & DROP E SELEÇÃO DE ARQUIVOS ---
+
+        const dropzone = document.getElementById('dropzone');
+        ['dragenter', 'dragover'].forEach(name => {
+            dropzone.addEventListener(name, (e) => {
+                e.preventDefault();
+                dropzone.classList.add('dragover');
+            });
+        });
+        ['dragleave', 'drop'].forEach(name => {
+            dropzone.addEventListener(name, (e) => {
+                e.preventDefault();
+                dropzone.classList.remove('dragover');
+            });
+        });
+
+        dropzone.addEventListener('drop', (e) => {
+            if (e.dataTransfer && e.dataTransfer.files) {
+                handleFilesSelected(e.dataTransfer.files);
+            }
+        });
+
+        document.getElementById('input-folder').addEventListener('change', (e) => {
+            if (e.target.files) handleFilesSelected(e.target.files);
+        });
+
+        document.getElementById('input-files').addEventListener('change', (e) => {
+            if (e.target.files) handleFilesSelected(e.target.files);
+        });
+
+        // Inicialização: cria a tabela imediatamente e depois conecta ao Grist
+        document.addEventListener('DOMContentLoaded', () => {
+            initTable();
+            initGrist();
+        });
+
+    </script>
+</body>
+</html>
