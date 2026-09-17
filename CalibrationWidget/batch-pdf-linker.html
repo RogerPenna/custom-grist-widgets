@@ -920,7 +920,9 @@
                     item.gristCertId = matchedGristCert.id;
                     item.gristMatchedCode = matchedGristCert.CODE || matchedGristCert.CERT_CODE || item.certCode;
                     
-                    const att = matchedGristCert.ATTACHMENT || matchedGristCert.ANEXO || matchedGristCert.FILE || matchedGristCert.PDF;
+                    const attKeys = Object.keys(matchedGristCert);
+                    const attKey = attKeys.find(k => ['ATTACHMENT', 'ANEXO', 'FILE', 'PDF'].includes(k.toUpperCase()));
+                    const att = attKey ? matchedGristCert[attKey] : null;
                     item.alreadyHasAttachment = !!(att && (Array.isArray(att) ? att.length > 1 : att));
                     item.existingAttachmentRaw = att;
                 } else {
@@ -940,14 +942,25 @@
         window.executeBatchUpload = async function() {
             if (isProcessing) return;
             const selected = grid.getSelectedData();
-            const overwrite = document.getElementById('chk-overwrite').checked;
+            let overwrite = document.getElementById('chk-overwrite').checked;
 
             const targets = selected.filter(r => (r.status === 'MATCH' || r.status === 'SUCCESS_LINKED') && r.hasPdf && r.gristCertId);
-            const filteredTargets = overwrite ? targets : targets.filter(r => !r.alreadyHasAttachment);
+            let filteredTargets = overwrite ? targets : targets.filter(r => !r.alreadyHasAttachment);
 
             if (filteredTargets.length === 0) {
-                alert("Nenhum certificado apto selecionado. Verifique se os itens selecionados já possuem anexo ou se a opção de sobrescrever está desmarcada.");
-                return;
+                const countAlreadyLinked = targets.filter(r => r.alreadyHasAttachment).length;
+                if (countAlreadyLinked > 0 && !overwrite) {
+                    if (confirm(`Os ${countAlreadyLinked} certificados selecionados já possuem PDF vinculado no Grist.\n\nDeseja marcar a opção "Sobrescrever anexo" e prosseguir com a vinculação?`)) {
+                        document.getElementById('chk-overwrite').checked = true;
+                        overwrite = true;
+                        filteredTargets = targets;
+                    } else {
+                        return;
+                    }
+                } else {
+                    alert("Nenhum certificado apto selecionado. Verifique se os itens selecionados possuem match e PDF válido.");
+                    return;
+                }
             }
 
             if (!confirm(`Confirma o upload e vinculação de ${filteredTargets.length} certificados PDF ao Grist?`)) {
