@@ -20,8 +20,8 @@
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/d3-flextree@2.1.2/build/d3-flextree.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/d3-org-chart@3"></script>
-  <script type="module" crossorigin src="./assets/index-CN5smkpJ.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-CdOoFVKt.css">
+  <script type="module" crossorigin src="./assets/index-DRw9Vf9_.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-C7w18xmO.css">
 </head>
 <body class="dark-theme">
   <div class="app-container">
@@ -111,6 +111,7 @@
 
       <!-- Rodapé da Sidebar (Configurações Gerais do Sistema) -->
       <div class="sidebar-footer">
+        <button id="btnAbrirAjudaSidebar" class="btn-theme" style="margin-bottom: 6px; text-align: left; justify-content: flex-start; background: rgba(59, 130, 246, 0.12); color: var(--accent-color); border: 1px solid rgba(59, 130, 246, 0.3);"><i class="fa-solid fa-circle-question"></i> ❓ Manual & Guia de Ajuda</button>
         <button id="btnConfigGeraisGlobal" class="btn-theme" style="margin-bottom: 6px; text-align: left; justify-content: flex-start;"><i class="fa-solid fa-sliders"></i> ⚙️ Configurações Gerais</button>
         <button id="themeToggle" class="btn-theme"><i class="fa-solid fa-sun"></i> Mudar Tema</button>
         <button id="btnResetState" class="btn-reset" title="Restaurar dados de fábrica"><i class="fa-solid fa-rotate-left"></i> Redefinir Sistema</button>
@@ -122,6 +123,7 @@
       <header class="main-header">
         <div class="header-left">
           <button id="btnVoltarListaObrasHeader" class="btn btn-secondary btn-small mr-2" style="display: flex; align-items: center; gap: 6px;"><i class="fa-solid fa-grid-2"></i> 🏢 Alternar Obra</button>
+          <button id="btnAbrirAjudaHeader" class="btn btn-secondary btn-small mr-2" style="display: flex; align-items: center; gap: 6px; background: rgba(59, 130, 246, 0.15); color: var(--accent-color); border: 1px solid var(--accent-color); font-weight: 600;"><i class="fa-solid fa-circle-question"></i> ❓ Ajuda & Guia do Usuário</button>
           <div>
             <h2 id="currentObraTitle" style="display: inline-block; vertical-align: middle; margin-right: 8px;">Obra Ativa</h2>
             <span class="badge badge-revision" id="currentRevBadge">REV 00</span>
@@ -2676,6 +2678,299 @@
         <button type="button" class="btn btn-secondary btn-small" data-close="modalConfirmarEmissaoPDF">Cancelar</button>
         <button type="button" id="btnConfirmarEmissaoPDFFinal" class="btn btn-primary btn-small"><i class="fa-solid fa-download"></i> Confirmar & Baixar PDF</button>
       </div>
+    </div>
+  </div>
+
+  <!-- MODAL: AJUDA & GUIA DO USUÁRIO DO PQO -->
+  <div class="modal" id="modalHelpPQO">
+    <div class="modal-content glassmorphism animate-scale-up" style="max-width: 1040px; width: 92vw; height: 86vh; display: flex; flex-direction: column; padding: 0; overflow: hidden; border-radius: 12px; border: 1px solid var(--border-color);">
+      
+      <!-- Modal Header -->
+      <div class="modal-header" style="background: var(--bg-secondary); padding: 16px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <i class="fa-solid fa-book-bookmark" style="font-size: 24px; color: var(--accent-color);"></i>
+          <div>
+            <h3 style="margin: 0; font-size: 18px; font-weight: 700;">Guia de Ajuda & Manual Completo do PQO App</h3>
+            <span style="font-size: 12px; color: var(--text-secondary);">Sistema de Gestão da Qualidade (ISO 9001:2015) — Pavicon Construtora</span>
+          </div>
+        </div>
+        <button class="modal-close" data-close="modalHelpPQO" style="font-size: 24px; cursor: pointer; background: transparent; border: none; color: var(--text-muted);">&times;</button>
+      </div>
+
+      <!-- Modal Body (Split Layout) -->
+      <div class="modal-body" style="display: flex; flex: 1; overflow: hidden; padding: 0;">
+        
+        <!-- Left Navigation -->
+        <div style="width: 270px; min-width: 240px; background: rgba(0,0,0,0.18); border-right: 1px solid var(--border-color); padding: 15px 10px; overflow-y: auto;">
+          <div style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--text-muted); letter-spacing: 0.5px; padding: 0 10px 8px 10px;">Sumário do Guia</div>
+          <ul id="helpNavList" style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 4px;">
+            <li class="help-nav-item active" data-help-section="help-geral">🚀 1. Visão Geral & Obras</li>
+            <li class="help-nav-item" data-help-section="help-upload">📊 2. Upload & Curva ABC</li>
+            <li class="help-nav-item" data-help-section="help-capa">📌 3. Identificação & Capa</li>
+            <li class="help-nav-item" data-help-section="help-estrutura">🏗️ 4. Estrutura & RACI</li>
+            <li class="help-nav-item" data-help-section="help-canteiro">🗺️ 5. Projeto do Canteiro</li>
+            <li class="help-nav-item" data-help-section="help-materiais">🧱 6. Materiais Controlados</li>
+            <li class="help-nav-item" data-help-section="help-servicos">🔨 7. Serviços Controlados</li>
+            <li class="help-nav-item" data-help-section="help-equipamentos">🚜 8. Máquinas & Frota</li>
+            <li class="help-nav-item" data-help-section="help-controle">🔬 9. Controle Tecnológico</li>
+            <li class="help-nav-item" data-help-section="help-treinamentos">📚 10. Matriz Treinamentos</li>
+            <li class="help-nav-item" data-help-section="help-metas">🎯 11. Objetivos & Metas SGQ</li>
+            <li class="help-nav-item" data-help-section="help-ssma">🛡️ 12. SSMA (Segurança)</li>
+            <li class="help-nav-item" data-help-section="help-config">⚙️ 13. Config & Modelos</li>
+            <li class="help-nav-item" data-help-section="help-versionamento">📄 14. PDF & Versões</li>
+          </ul>
+        </div>
+
+        <!-- Right Content Area -->
+        <div id="helpContentContainer" style="flex: 1; padding: 25px 30px; overflow-y: auto; background: var(--bg-primary); line-height: 1.6; color: var(--text-primary); font-size: 13.5px;">
+          
+          <!-- SECTION 1: Visão Geral -->
+          <div id="help-geral" class="help-section-panel active">
+            <h3 style="color: var(--accent-color); margin-top: 0;"><i class="fa-solid fa-rocket"></i> Visão Geral & Central de Obras</h3>
+            <p>O <strong>App do PQO (Plano da Qualidade da Obra)</strong> é o sistema oficial da Pavicon Construtora para elaboração, controle e oficialização do PQO em conformidade com as diretrizes da <strong>ISO 9001:2015</strong> e normas técnicas do setor viário/civil.</p>
+            
+            <div class="card glassmorphism p-3 my-3" style="border-left: 4px solid var(--accent-color);">
+              <h4 style="margin-top: 0;"><i class="fa-solid fa-cubes-stacked"></i> Como funciona a Central de Obras:</h4>
+              <ul>
+                <li><strong>Catálogo Unificado (GDP)</strong>: O aplicativo sincroniza automaticamente a lista mestre de contratos do sistema de gestão GDP da empresa (mais de 700 contratos).</li>
+                <li><strong>Filtros Multi-Seleção</strong>: Na barra superior da Central de Obras, você pode filtrar contratos por status (ex: <em>05 - Andamento</em>, <em>08 - Concluído</em>, <em>PQO Oficial</em>, <em>Pendente de Versionamento</em>).</li>
+                <li><strong>Seleção do Empreendimento</strong>: Ao clicar no card de qualquer obra, ela se torna a <strong>Obra Ativa</strong> no sistema para edição.</li>
+              </ul>
+            </div>
+
+            <div class="card glassmorphism p-3 my-3" style="border-left: 4px solid #10b981;">
+              <h4 style="margin-top: 0; color: #10b981;"><i class="fa-solid fa-network-wired"></i> Sincronização em Tempo Real (Single Source of Truth)</h4>
+              <p>Todas as alterações efetuadas em qualquer seção da obra são salvas localmente e sincronizadas automaticamente em tempo real com o servidor central. Múltiplos engenheiros podem trabalhar simultaneamente em obras diferentes sem perder dados.</p>
+            </div>
+          </div>
+
+          <!-- SECTION 2: Upload & Curva ABC -->
+          <div id="help-upload" class="help-section-panel" style="display:none;">
+            <h3 style="color: var(--accent-color); margin-top: 0;"><i class="fa-solid fa-file-excel"></i> Upload de Orçamento & Curva ABC</h3>
+            <p>A aba de <strong>Upload & Curva ABC</strong> permite importar a planilha de orçamento do GDP (formato Excel `.xlsx` ou `.xls`) para preencher automaticamente as listas de Insumos (Materiais) e Serviços atrelados ao empreendimento.</p>
+            
+            <h4>📌 Passo a passo para importar o Orçamento:</h4>
+            <ol>
+              <li>Na aba <strong>Upload & Curva ABC</strong>, clique no botão <code>📁 Selecionar Planilha Excel (.xlsx)</code>.</li>
+              <li>Selecione a planilha do contrato exportada do GDP.</li>
+              <li>O sistema irá ler todas as abas e linhas, classificando automaticamente:
+                <ul>
+                  <li><strong>Insumos (Materiais)</strong>: Detectados pelos códigos de prefixos configurados (ex: <code>IM...</code>).</li>
+                  <li><strong>Serviços</strong>: Mapeados contra o catálogo corporativo de subgrupos e procedimentos da Pavicon.</li>
+                </ul>
+              </li>
+              <li>Revise a tabela de pré-visualização (Staging Area).</li>
+              <li>Clique em <code>✅ Confirmar e Importar para o PQO</code>. Os materiais e serviços ativos da obra serão preenchidos instantaneamente!</li>
+            </ol>
+          </div>
+
+          <!-- SECTION 3: Identificação & Capa -->
+          <div id="help-capa" class="help-section-panel" style="display:none;">
+            <h3 style="color: var(--accent-color); margin-top: 0;"><i class="fa-solid fa-address-card"></i> Identificação & Capa da Obra</h3>
+            <p>Define os dados cadastrais, cliente, localização, prazo e o <strong>Quadro de Aprovações</strong> do PQO segundo o procedimento PQP-OBRS-001.</p>
+            
+            <h4>📋 Principais campos da Capa:</h4>
+            <ul>
+              <li><strong>Número / Código do Contrato</strong>: Código do GDP do empreendimento (ex: <code>OBR-8456</code>).</li>
+              <li><strong>Nome e Cliente</strong>: Razão social do cliente contratante (ex: <em>DNIT</em>, <em>Prefeitura Municipal</em>, etc.).</li>
+              <li><strong>Gestor do Contrato & Engenheiro Residente</strong>: Nomes dos responsáveis técnicos alocados no contrato.</li>
+              <li><strong>Elaborado por & Aprovado por</strong>: Nomes dos profissionais do SGQ/Engenharia responsáveis pela elaboração e aprovação desta revisão do PQO.</li>
+              <li><strong>Datas de Vigência</strong>: Data de início das obras e data de revisão atual do PQO.</li>
+            </ul>
+          </div>
+
+          <!-- SECTION 4: Estrutura & RACI -->
+          <div id="help-estrutura" class="help-section-panel" style="display:none;">
+            <h3 style="color: var(--accent-color); margin-top: 0;"><i class="fa-solid fa-sitemap"></i> Estrutura Organizacional & Matriz RACI</h3>
+            <p>Esta seção define a estrutura hierárquica da obra e a matriz de responsabilidade da equipe técnica.</p>
+            
+            <h4>🛠️ Funcionalidades principais:</h4>
+            <ul>
+              <li><strong>Seleção de Modelos de Organograma</strong>: Escolha entre modelos predefinidos (ex: <em>Obra Padrão Viária</em>, <em>Obra de Edificação</em>, <em>Obra Pequena / Conservação</em>) para montar o organograma em 1 clique.</li>
+              <li><strong>Organograma Gráfico D3</strong>: Renderização visual em diagrama de blocos conectando Diretoria, Gerência, Engenheiro Residente, Laboratorista, Encarregados e SESMT.</li>
+              <li><strong>Empresas Terceirizadas</strong>: Cadastre empreiteiros e prestadores de serviços contratados especificando razão social, CNPJ e escopo de atuação.</li>
+              <li><strong>Matriz RACI</strong>: Atribua as responsabilidades para cada atividade da obra:
+                <ul>
+                  <li><strong>R (Responsável)</strong>: Quem executa a tarefa.</li>
+                  <li><strong>A (Aprovador / Accountable)</strong>: Quem aprova a tarefa e responde por ela.</li>
+                  <li><strong>C (Consultado)</strong>: Quem fornece insumos e parecer técnico.</li>
+                  <li><strong>I (Informado)</strong>: Quem deve ser notificado do resultado.</li>
+                </ul>
+              </li>
+            </ul>
+          </div>
+
+          <!-- SECTION 5: Projeto Canteiro -->
+          <div id="help-canteiro" class="help-section-panel" style="display:none;">
+            <h3 style="color: var(--accent-color); margin-top: 0;"><i class="fa-solid fa-map-location-dot"></i> Projeto do Canteiro de Obras</h3>
+            <p>O Projeto do Canteiro permite documentar as instalações provisórias, pontos de ligação de água/luz e desenhar o layout no mapa interativo.</p>
+            
+            <h4>🗺️ Como utilizar o Mapa Interativo do Canteiro:</h4>
+            <ol>
+              <li>Insira as coordenadas ou endereço do canteiro para centralizar o mapa Leaflet.</li>
+              <li>Utilize as ferramentas de desenho no topo do mapa para traçar:
+                <ul>
+                  <li><strong>Polígonos / Retângulos</strong>: Delimitação da área do canteiro, escritórios, almoxarifado, depósito de agregados.</li>
+                  <li><strong>Marcadores / Pontos</strong>: Pontos de captação de água, padrão de energia elétrica, sanitários, descarte de resíduos.</li>
+                  <li><strong>Linhas / Trechos</strong>: Vias de circulação interna, acessos e tubulações.</li>
+                </ul>
+              </li>
+              <li>Clique no botão <code>🔒 Congelar Snapshot para PDF</code>. O mapa atual será capturado como imagem HD para aparecer impresso no documento oficial do PQO!</li>
+            </ol>
+          </div>
+
+          <!-- SECTION 6: Materiais Controlados -->
+          <div id="help-materiais" class="help-section-panel" style="display:none;">
+            <h3 style="color: var(--accent-color); margin-top: 0;"><i class="fa-solid fa-cubes"></i> Materiais e Insumos Controlados</h3>
+            <p>Lista os insumos críticos aplicados na obra (ex: cimento, CBUQ, aço, tintas de sinalização, tubos) e seus critérios de recebimento.</p>
+            
+            <h4>📋 Diretrizes de Inspeção de Materiais:</h4>
+            <ul>
+              <li><strong>Procedimento PQP-OBRS</strong>: Cada classe de material é vinculada a um procedimento corporativo da Pavicon (ex: <code>PQP-OBRS-009 - Controle de Recebimento de Materiais</code>).</li>
+              <li><strong>Registro de Inspeção</strong>: Define como o recebimento é registrado na obra (ex: <em>Ficha de Inspeção de Materiais no App GDP</em> ou <em>Certificado de Qualidade do Fabricante</em>).</li>
+              <li><strong>Inclusão Manual</strong>: Utilize o botão <code>➕ Adicionar Insumo Manual</code> para acrescentar materiais específicos da obra que não vieram do orçamento importado.</li>
+            </ul>
+          </div>
+
+          <!-- SECTION 7: Serviços Controlados -->
+          <div id="help-servicos" class="help-section-panel" style="display:none;">
+            <h3 style="color: var(--accent-color); margin-top: 0;"><i class="fa-solid fa-screwdriver-wrench"></i> Serviços Controlados & Criticidade</h3>
+            <p>Define os serviços de execução controlados na obra, classificando a criticidade de cada um e atrelando as Fichas de Verificação de Serviços (FVS).</p>
+
+            <div class="card glassmorphism p-3 my-3" style="border-left: 4px solid #f59e0b;">
+              <h4 style="margin-top: 0; color: #f59e0b;"><i class="fa-solid fa-triangle-exclamation"></i> O que define um Serviço como CRÍTICO?</h4>
+              <p>Um serviço é considerado <strong>Crítico</strong> no SGQ Pavicon quando preenche um ou mais dos seguintes critérios:</p>
+              <ol>
+                <li><strong>Alto Risco Estrutural ou de Segurança</strong> (ex: fundações profundas, escavações de grande porte, escoramentos).</li>
+                <li><strong>Alta Complexidade Executiva / Tolerâncias Rígidas</strong> (ex: pavimentação asfáltica CBUQ, concreto protendido, obras de arte especiais).</li>
+                <li><strong>Alto Impacto Financeiro na Curva ABC</strong> (serviços de valor significativo no contrato).</li>
+                <li><strong>Impacto Direto na Liberação / Recebimento da Obra</strong> pelo cliente.</li>
+              </ol>
+            </div>
+          </div>
+
+          <!-- SECTION 8: Máquinas & Equipamentos -->
+          <div id="help-equipamentos" class="help-section-panel" style="display:none;">
+            <h3 style="color: var(--accent-color); margin-top: 0;"><i class="fa-solid fa-truck-monster"></i> Máquinas & Equipamentos</h3>
+            <p>Gerencia a frota de equipamentos pesados e veículos alocados na obra (usinas de asfalto, escavadeiras, vibroacabadoras, tratores, caminhões).</p>
+
+            <h4>🔍 Critérios de Criticidade de Equipamentos:</h4>
+            <ul>
+              <li><strong>Disponibilidade de Frota</strong>: Equipamentos com pouca oferta de substituição rápida no mercado (ex: usinas móveis, acabadoras de asfalto) são <strong>Críticos</strong>.</li>
+              <li><strong>Impacto no Cronograma</strong>: Se a quebra do equipamento paralisa frentes de trabalho inteiras da obra.</li>
+              <li><strong>Condições Severas de Operação</strong>: Informe se o equipamento opera em ambiente salino/marítimo, poeira extrema de mineração, ou turnos de 24h.</li>
+            </ul>
+          </div>
+
+          <!-- SECTION 9: Controle Tecnológico -->
+          <div id="help-controle" class="help-section-panel" style="display:none;">
+            <h3 style="color: var(--accent-color); margin-top: 0;"><i class="fa-solid fa-flask"></i> Plano de Controle Tecnológico</h3>
+            <p>Define a matriz de ensaios laboratoriais e de campo exigidos para a verificação de solos, agregados, concreto e misturas asfálticas.</p>
+
+            <h4>🧪 Presets de Controles Padrões:</h4>
+            <ul>
+              <li><strong>Marcadores Rápidos (Presets)</strong>: O sistema inclui especificações normativas de órgãos oficiais (ex: <em>DAER-RS</em>, <em>DNIT</em>, <em>Normas ABNT</em>). Ao clicar em um preset, todos os ensaios aplicáveis àquele padrão são marcados automaticamente no plano!</li>
+              <li><strong>Seleção Manual por Árvore Hierárquica</strong>: Você pode marcar/desmarcar individualmente qualquer ensaio (ex: <em>Ensaio de Compactação Proctor</em>, <em>Grau de Compactação GC</em>, <em>Extração de Ligante Asphalt</em>, <em>Rompimento de Cps de Concreto</em>).</li>
+              <li><strong>Ensaios Específicos / Adicionais</strong>: Utilize a caixa de texto para registrar ensaios especiais exigidos pelo edital da obra.</li>
+            </ul>
+          </div>
+
+          <!-- SECTION 10: Matriz Treinamentos -->
+          <div id="help-treinamentos" class="help-section-panel" style="display:none;">
+            <h3 style="color: var(--accent-color); margin-top: 0;"><i class="fa-solid fa-graduation-cap"></i> Matriz de Treinamentos de Qualidade</h3>
+            <p>Gera automaticamente a matriz de capacitação da equipe da obra em procedimentos operacionais (ITs e PQP) e instruções de qualidade.</p>
+
+            <h4>📚 Como é gerada a matriz de treinamentos:</h4>
+            <ul>
+              <li><strong>Treinamentos Corporativos Fixos</strong>: Treinamentos institucionais do SGQ (ex: <em>Integração de Qualidade Pavicon</em>, <em>Controle de Registros de Inspeção</em>) são incluídos para todas as obras.</li>
+              <li><strong>Treinamentos Operacionais Automáticos</strong>: Com base nos serviços ativos da obra (Curva ABC), o sistema relaciona automaticamente os procedimentos técnicos (ex: se a obra tem pavimentação CBUQ, o treinamento <em>PQP-OBRS-015 Execução de CBUQ</em> é vinculado automaticamente para encarregados e operadores).</li>
+            </ul>
+          </div>
+
+          <!-- SECTION 11: Objetivos & Metas SGQ -->
+          <div id="help-metas" class="help-section-panel" style="display:none;">
+            <h3 style="color: var(--accent-color); margin-top: 0;"><i class="fa-solid fa-bullseye"></i> Objetivos & Metas da Qualidade (ISO 9001)</h3>
+            <p>Em conformidade com a norma <strong>ISO 9001:2015</strong> (Requisito 6.2 - Objetivos da Qualidade e Planejamento para Atingi-los), esta seção divide os compromissos do SGQ em duas categorias claras:</p>
+
+            <div class="card glassmorphism p-3 my-3" style="border-left: 4px solid var(--accent-color);">
+              <h4 style="margin-top: 0;"><i class="fa-solid fa-list-check"></i> Separação de Campos no PQO:</h4>
+              <ul>
+                <li><strong>Objetivo da Qualidade (SGQ)</strong>: A diretriz estratégica obrigatória da Política da Qualidade (ex: <em>Satisfazer as necessidades dos clientes</em>, <em>Garantir a rentabilidade adequada do negócio</em>, <em>Preservar a saúde e segurança</em>).</li>
+                <li><strong>Indicador de Desempenho</strong>: A métrica específica monitorada na obra (ex: <em>Satisfação dos Clientes</em>, <em>Atingir a Rentabilidade</em>, <em>Desvio de Custo Previsto x Realizado</em>).</li>
+                <li><strong>Meta Fixa vs Individualizada</strong>:
+                  <ul>
+                    <li><span class="badge badge-class badge-class-c"><i class="fa-solid fa-lock"></i> Meta Fixa</span>: Definida corporativamente (ex: <em>100% de entregas no prazo</em>, <em>0 acidentes</em>).</li>
+                    <li><span class="badge badge-revision" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px solid #f59e0b;"><i class="fa-solid fa-pen-to-square"></i> Individualizada</span>: Meta específica que o Engenheiro deve preencher de acordo com as características da obra (ex: % de Rentabilidade, desvio de custo máximo).</li>
+                  </ul>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- SECTION 12: SSMA -->
+          <div id="help-ssma" class="help-section-panel" style="display:none;">
+            <h3 style="color: var(--accent-color); margin-top: 0;"><i class="fa-solid fa-shield-halved"></i> SSMA (Saúde, Segurança e Meio Ambiente)</h3>
+            <p>Documenta os programas de engenharia de segurança corporativos e locais arquivados no canteiro de obras.</p>
+
+            <h4>🛡️ Informações registradas:</h4>
+            <ul>
+              <li><strong>PGR (Programa de Gerenciamento de Riscos) & PCMSO</strong>: Registra status de vigência, responsável técnico corporativo do SESMT e datas de validade.</li>
+              <li><strong>Comunicação Prévia ao MTE</strong>: Número de protocolo da declaração emitida no sistema do Ministério do Trabalho e Emprego.</li>
+              <li><strong>CIPA / Designado de CIPA</strong>: Modalidade da comissão de prevenção de acidentes de acordo com o efetivo alocado na obra.</li>
+            </ul>
+          </div>
+
+          <!-- SECTION 13: Configurações Gerais -->
+          <div id="help-config" class="help-section-panel" style="display:none;">
+            <h3 style="color: var(--accent-color); margin-top: 0;"><i class="fa-solid fa-sliders"></i> Configurações Gerais & Criação de Modelos</h3>
+            <p>O painel de <strong>Configurações Gerais</strong> é a central de parametrização global do aplicativo. Altera a biblioteca mestre, tabelas de apoio e modelos compartilhados por todas as obras.</p>
+
+            <div class="card glassmorphism p-3 my-3" style="border-left: 4px solid var(--accent-color);">
+              <h4 style="margin-top: 0;"><i class="fa-solid fa-wand-magic-sparkles"></i> Como criar e personalizar Modelos Globais:</h4>
+              
+              <h5 style="color: var(--accent-color); margin-bottom: 5px;"><i class="fa-solid fa-sitemap"></i> 1. Criar Modelos de Organograma</h5>
+              <p>No painel de Configurações -> <em>Modelos de Organograma</em>, clique em <code>➕ Novo Modelo de Organograma</code>. Você pode montar a estrutura de cargos em modo gráfico visual ou colando o código em formato JSON direto.</p>
+
+              <h5 style="color: var(--accent-color); margin-bottom: 5px;"><i class="fa-solid fa-table-cells"></i> 2. Criar Modelos de Matriz RACI</h5>
+              <p>Cadastre tabelas padrão de matriz de responsabilidades por tipo de empreendimento (ex: <em>RACI Obra Viária</em>, <em>RACI Obras de Artes Especiais</em>).</p>
+
+              <h5 style="color: var(--accent-color); margin-bottom: 5px;"><i class="fa-solid fa-flask"></i> 3. Criar Modelos de Controle Tecnológico</h5>
+              <p>Cadastre especificações de ensaios padrões de órgãos fiscalizadores (ex: <em>DAER-RS</em>, <em>DNIT</em>, <em>Prefeituras</em>) selecionando os IDs dos ensaios da árvore técnica para que fiquem disponíveis como botões de 1 clique em todas as obras.</p>
+
+              <h5 style="color: var(--accent-color); margin-bottom: 5px;"><i class="fa-solid fa-bullseye"></i> 4. Gerenciador Global de Objetivos & Metas</h5>
+              <p>Adicione, altere ou exclua os Objetivos da Qualidade corporativos obrigatoriamente exigidos pelo SGQ ISO 9001.</p>
+
+              <h5 style="color: var(--accent-color); margin-bottom: 5px;"><i class="fa-solid fa-file-excel"></i> 5. Mapeamento de Colunas do GDP</h5>
+              <p>Personalize os nomes das colunas da planilha do GDP para garantir a sincronização perfeita dos contratos (ex: <code>CODIGO OBRA</code>, <code>REFERENCIA OBRA</code>, <code>GESTOR</code>, etc.).</p>
+
+              <h5 style="color: var(--accent-color); margin-bottom: 5px;"><i class="fa-solid fa-floppy-disk"></i> 6. Backup de Dados (Exportar / Importar JSON)</h5>
+              <p>Exporte a qualquer momento um backup manual de segurança em formato `.json` contendo todas as obras e configurações do sistema.</p>
+            </div>
+          </div>
+
+          <!-- SECTION 14: Versionamento & PDF -->
+          <div id="help-versionamento" class="help-section-panel" style="display:none;">
+            <h3 style="color: var(--accent-color); margin-top: 0;"><i class="fa-solid fa-file-pdf"></i> Versionamento & Emissão do PDF Oficial</h3>
+            <p>Explica o ciclo de vida do documento do PQO desde a fase de rascunho até a oficialização e reemissão de revisões.</p>
+
+            <h4>📄 Ciclo de Versões do PQO:</h4>
+            <ul>
+              <li><strong>Fase Rascunho (REV v0.0)</strong>: Durante o preenchimento inicial pelo Engenheiro ou setor de Qualidade, o documento permanece marcado como <em>Rascunho (v0.0)</em>. É possível alterar qualquer campo livremente.</li>
+              <li><strong>Oficialização Inicial (REV v1.0)</strong>: Na aba <em>Exportar & Relatórios</em>, ao clicar em <code>🌟 Oficializar PQO Inicial (Emitir v1.0)</code>, o sistema valida todos os campos obrigatórios, registra o histórico de revisões e altera o status para <strong>OFICIAL</strong>.</li>
+              <li><strong>Revisões Subsequentes (REV v1.1, v1.2, v2.0)</strong>: Caso ocorram alterações contratuais ou metodológicas durante a execução da obra, o Engenheiro adiciona um registro de revisão descrevendo o motivo da alteração e o sistema emite a nova versão oficial do PDF com o histórico impresso!</li>
+            </ul>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="modal-footer" style="background: var(--bg-secondary); padding: 12px 24px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 12px; color: var(--text-muted);"><i class="fa-solid fa-shield-heart"></i> Pavicon SGQ - Sistema de Gestão da Qualidade</span>
+        <button type="button" class="btn btn-secondary" data-close="modalHelpPQO">Fechar Manual</button>
+      </div>
+
     </div>
   </div>
 

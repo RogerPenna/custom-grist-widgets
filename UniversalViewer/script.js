@@ -673,6 +673,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             } catch (err) {
                 console.error("[UniversalViewer] Error updating column choices:", err);
             }
+        } else if (event.data.action === 'open-table-config') {
+            const { open: openConfigManager } = await import('../libraries/grist-config-manager/ConfigManagerComponent.js?v=1.3.32');
+            openConfigManager(window.grist, {
+                initialConfigId: event.data.configId || currentConfigId,
+                componentTypes: ['Table']
+            });
         } else if (event.data.action === 'open-dashboard-config') {
             const { open: openConfigManager } = await import('../libraries/grist-config-manager/ConfigManagerComponent.js?v=1.3.32');
             openConfigManager(grist, {

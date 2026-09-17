@@ -503,27 +503,16 @@ function renderDashboard(configRecord = null) {
                 grouped[groupName].forEach(sub => {
                     const iconSvg = sub.icon ? `<svg style="width:20px; height:20px; fill:currentColor; stroke:currentColor; stroke-width:0.5px;"><use href="#${sub.icon}"></use></svg>` : `⚙️`;
                     const isKanban = sub.type === 'config-kanban-stages' || sub.targetConfigId === 'kanban-stages';
+                    const isConfigCols = sub.type === 'config-columns' || sub.targetConfigId === 'tableinstruments' || sub.targetConfigId === 'tableexternalcalibrations';
                     
                     contentHtml += `
-                        <div class="submenu-card" data-config-id="${sub.targetConfigId}" data-label="${sub.label}" data-type="${sub.type || ''}" style="background: white; border: 1px solid #cbd5e1; border-radius: 8px; padding: 16px; box-shadow: var(--shadow-sm); transition: transform 0.2s, box-shadow 0.2s; display: flex; flex-direction: column; gap: 12px; border-left: 4px solid var(--primary);">
-                            <div style="display:flex; align-items:center; gap:12px;">
-                                <div class="submenu-card-icon" style="background: var(--primary-light); color: var(--primary); width: 38px; height: 38px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px;">
-                                    ${iconSvg}
-                                </div>
-                                <div style="flex:1;">
-                                    <div style="font-weight: 700; font-size: 14px; color: var(--text-main);">${sub.label}</div>
-                                    <div style="font-size: 11px; color: var(--text-sub); margin-top:2px;">${isKanban ? 'Gerenciar estágios do fluxo Kanban' : 'Configurar colunas e visualização'}</div>
-                                </div>
+                        <div class="submenu-card" data-config-id="${sub.targetConfigId}" data-label="${sub.label}" data-type="${sub.type || ''}" style="background: white; border: 1px solid #cbd5e1; border-radius: 8px; padding: 20px; box-shadow: var(--shadow-sm); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; display: flex; align-items: center; gap: 15px; border-left: 4px solid var(--primary);">
+                            <div class="submenu-card-icon" style="background: var(--primary-light); color: var(--primary); width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 20px;">
+                                ${iconSvg}
                             </div>
-                            <div style="display:flex; gap:8px; border-top:1px solid #f1f5f9; padding-top:10px; margin-top:2px;">
-                                <button type="button" class="btn-card-action-config" data-config-id="${sub.targetConfigId}" data-label="${sub.label}" data-type="${sub.type || ''}" style="flex:1; background:var(--primary); color:#ffffff; border:none; padding:7px 10px; border-radius:4px; font-weight:700; font-size:11px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:5px; box-shadow:0 1px 3px rgba(0,0,0,0.1);">
-                                    ⚙️ Configurar ${isKanban ? 'Estágios' : 'Colunas'}
-                                </button>
-                                ${!isKanban ? `
-                                    <button type="button" class="btn-card-action-view" data-config-id="${sub.targetConfigId}" data-label="${sub.label}" style="background:#f1f5f9; border:1px solid #cbd5e1; color:#475569; padding:7px 10px; border-radius:4px; font-weight:600; font-size:11px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:4px;">
-                                        👁️ Ver
-                                    </button>
-                                ` : ''}
+                            <div style="flex:1;">
+                                <div style="font-weight: 700; font-size: 14px; color: var(--text-main);">${sub.label}</div>
+                                <div style="font-size: 11px; color: var(--text-sub); margin-top:2px;">${isKanban ? 'Gerenciar estágios do fluxo Kanban' : isConfigCols ? 'Configurar colunas e exibição' : 'Clique para ver / editar dados'}</div>
                             </div>
                         </div>
                     `;
@@ -532,7 +521,7 @@ function renderDashboard(configRecord = null) {
 
             pane.innerHTML = `
                 <div class="submenu-viewport" style="display:flex; flex-direction:column; width:100%; height:100%; min-height:0; flex:1;">
-                    <div class="submenu-grid-view" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; padding: 25px; overflow-y:auto; flex:1; min-height:0; align-content:start;">
+                    <div class="submenu-grid-view" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(225px, 1fr)); gap: 20px; padding: 25px; overflow-y:auto; flex:1; min-height:0; align-content:start;">
                         ${contentHtml || '<div style="grid-column:1/-1; text-align:center; color:#64748b; font-style:italic; padding:40px;">Nenhum atalho configurado para este sub-menu.</div>'}
                     </div>
                     <div class="submenu-detail-view" style="display:none; flex-direction:column; flex:1; min-height:0; width:100%; height:100%;">
@@ -542,7 +531,7 @@ function renderDashboard(configRecord = null) {
                                 <span class="submenu-detail-title" style="font-weight:700; font-size:13px; color:var(--text-main);">Configuração</span>
                             </div>
                             <button id="btn-detail-config-columns" style="background:#2563eb; color:#ffffff; border:none; padding:6px 14px; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:6px; box-shadow:0 2px 4px rgba(37,99,235,0.25);">
-                                ⚙️ Configurar Colunas desta Tabela
+                                ⚙️ Configurar Colunas
                             </button>
                         </div>
                         <div class="submenu-detail-iframe-container" style="flex:1; min-height:0; width:100%; height:100%;">
@@ -561,68 +550,70 @@ function renderDashboard(configRecord = null) {
 
             let currentActiveConfigId = '';
 
-            const handleConfigure = async (targetConfigId, cardType) => {
-                if (cardType === 'config-kanban-stages' || targetConfigId === 'kanban-stages') {
-                    await openKanbanStageManager();
-                    return;
+            const handleOpenTableConfig = (targetConfigId) => {
+                if (detailIframe.contentWindow) {
+                    detailIframe.contentWindow.postMessage({
+                        action: 'open-table-config',
+                        configId: targetConfigId
+                    }, '*');
                 }
-                const { open: openConfigManager } = await import('../libraries/grist-config-manager/ConfigManagerComponent.js?v=1.3.32');
-                openConfigManager(window.grist || (window.parent && window.parent.grist), {
-                    initialConfigId: targetConfigId,
-                    componentTypes: ['Table']
-                });
             };
 
-            const handleView = (targetConfigId, label) => {
+            const handleView = (targetConfigId, label, openConfigAfterLoad = false) => {
                 currentActiveConfigId = targetConfigId;
                 gridView.style.display = 'none';
                 detailView.style.display = 'flex';
                 detailTitle.innerText = label;
                 
                 const currentSrc = detailIframe.getAttribute('src');
-                if (!currentSrc || currentSrc === '') {
-                    detailIframe.src = `../UniversalViewer/index.html?configId=${targetConfigId}`;
+                const targetSrc = `../UniversalViewer/index.html?configId=${targetConfigId}`;
+                
+                if (!currentSrc || !currentSrc.includes(targetConfigId)) {
+                    detailIframe.src = targetSrc;
+                    if (openConfigAfterLoad) {
+                        const onLoadHandler = () => {
+                            detailIframe.removeEventListener('load', onLoadHandler);
+                            setTimeout(() => handleOpenTableConfig(targetConfigId), 500);
+                        };
+                        detailIframe.addEventListener('load', onLoadHandler);
+                    }
                 } else {
                     detailIframe.contentWindow.postMessage({
                         action: 'change-config',
                         configId: targetConfigId
                     }, '*');
+                    if (openConfigAfterLoad) {
+                        setTimeout(() => handleOpenTableConfig(targetConfigId), 300);
+                    }
                 }
             };
 
             if (detailConfigBtn) {
                 detailConfigBtn.onclick = () => {
                     if (currentActiveConfigId) {
-                        handleConfigure(currentActiveConfigId, 'config-columns');
+                        handleOpenTableConfig(currentActiveConfigId);
                     }
                 };
             }
 
-            pane.querySelectorAll('.btn-card-action-config').forEach(btn => {
-                btn.onclick = (e) => {
-                    e.stopPropagation();
-                    handleConfigure(btn.dataset.configId, btn.dataset.type);
-                };
-            });
-
-            pane.querySelectorAll('.btn-card-action-view').forEach(btn => {
-                btn.onclick = (e) => {
-                    e.stopPropagation();
-                    handleView(btn.dataset.configId, btn.dataset.label);
-                };
-            });
-
             pane.querySelectorAll('.submenu-card').forEach(card => {
-                card.onclick = () => {
+                card.onclick = async () => {
                     const cfgId = card.dataset.configId;
                     const label = card.dataset.label;
                     const cardType = card.dataset.type;
 
                     if (cardType === 'config-kanban-stages' || cfgId === 'kanban-stages') {
-                        handleConfigure(cfgId, cardType);
-                    } else {
-                        handleView(cfgId, label);
+                        await openKanbanStageManager();
+                        return;
                     }
+
+                    if (cardType === 'config-columns' || cfgId === 'tableinstruments' || cfgId === 'tableexternalcalibrations') {
+                        handleView(cfgId, label, true);
+                        return;
+                    }
+
+                    // Standard config card behavior (original)
+                    handleView(cfgId, label, false);
                 };
             });
 
