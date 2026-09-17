@@ -465,12 +465,26 @@ function renderDashboard(configRecord = null) {
         } else if (tabType === 'importador') {
             pane.innerHTML = `<iframe src="./importador-calibracoes.html"></iframe>`;
         } else if (tabType === 'submenu') {
-            const subItems = item.subItems || [];
+            let subItems = Array.isArray(item.subItems) ? [...item.subItems] : [];
+            
+            // Garantir que os 3 itens de configuração solicitados estejam sempre presentes na aba Config
+            const reqItems = [
+                { label: 'Colunas do Painel Geral', icon: 'icon-column', type: 'config-columns', targetConfigId: 'tableinstruments', group: 'Painel Geral e Certificados' },
+                { label: 'Colunas do Painel de Certificados', icon: 'icon-column', type: 'config-columns', targetConfigId: 'tableexternalcalibrations', group: 'Painel Geral e Certificados' },
+                { label: 'Estágios do Kanban', icon: 'icon-kanban', type: 'config-kanban-stages', targetConfigId: 'kanban-stages', group: 'Fluxo Kanban' }
+            ];
+
+            reqItems.forEach(req => {
+                const exists = subItems.some(s => s.targetConfigId === req.targetConfigId || s.label === req.label);
+                if (!exists) {
+                    subItems.unshift(req);
+                }
+            });
             
             // Group the items
             const grouped = {};
             subItems.forEach((sub) => {
-                const g = sub.group || 'Sem Grupo';
+                const g = sub.group || 'Geral';
                 if (!grouped[g]) grouped[g] = [];
                 grouped[g].push(sub);
             });
@@ -479,25 +493,37 @@ function renderDashboard(configRecord = null) {
             
             // Render groups
             const groups = Object.keys(grouped);
-            // If there's only one group and it's "Sem Grupo", we don't need a header
             const showHeaders = groups.length > 1 || (groups.length === 1 && groups[0] !== 'Sem Grupo');
 
             groups.forEach(groupName => {
                 if (showHeaders) {
-                    contentHtml += `<h3 style="grid-column: 1/-1; margin: 10px 0 0 0; font-size: 14px; color: var(--primary); border-bottom: 2px solid var(--primary-light); padding-bottom: 5px;">${groupName}</h3>`;
+                    contentHtml += `<h3 style="grid-column: 1/-1; margin: 15px 0 5px 0; font-size: 14px; color: var(--primary); border-bottom: 2px solid var(--primary-light); padding-bottom: 5px;">${groupName}</h3>`;
                 }
                 
                 grouped[groupName].forEach(sub => {
                     const iconSvg = sub.icon ? `<svg style="width:20px; height:20px; fill:currentColor; stroke:currentColor; stroke-width:0.5px;"><use href="#${sub.icon}"></use></svg>` : `⚙️`;
+                    const isKanban = sub.type === 'config-kanban-stages' || sub.targetConfigId === 'kanban-stages';
                     
                     contentHtml += `
-                        <div class="submenu-card" data-config-id="${sub.targetConfigId}" data-label="${sub.label}" data-type="${sub.type || ''}" style="background: white; border: 1px solid #cbd5e1; border-radius: 8px; padding: 20px; box-shadow: var(--shadow-sm); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; display: flex; align-items: center; gap: 15px; border-left: 4px solid var(--primary);">
-                            <div class="submenu-card-icon" style="background: var(--primary-light); color: var(--primary); width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 20px;">
-                                ${iconSvg}
+                        <div class="submenu-card" data-config-id="${sub.targetConfigId}" data-label="${sub.label}" data-type="${sub.type || ''}" style="background: white; border: 1px solid #cbd5e1; border-radius: 8px; padding: 16px; box-shadow: var(--shadow-sm); transition: transform 0.2s, box-shadow 0.2s; display: flex; flex-direction: column; gap: 12px; border-left: 4px solid var(--primary);">
+                            <div style="display:flex; align-items:center; gap:12px;">
+                                <div class="submenu-card-icon" style="background: var(--primary-light); color: var(--primary); width: 38px; height: 38px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px;">
+                                    ${iconSvg}
+                                </div>
+                                <div style="flex:1;">
+                                    <div style="font-weight: 700; font-size: 14px; color: var(--text-main);">${sub.label}</div>
+                                    <div style="font-size: 11px; color: var(--text-sub); margin-top:2px;">${isKanban ? 'Gerenciar estágios do fluxo Kanban' : 'Configurar colunas e visualização'}</div>
+                                </div>
                             </div>
-                            <div style="flex:1;">
-                                <div style="font-weight: 700; font-size: 14px; color: var(--text-main);">${sub.label}</div>
-                                <div style="font-size: 11px; color: var(--text-sub);">Clique para configurar / ver</div>
+                            <div style="display:flex; gap:8px; border-top:1px solid #f1f5f9; padding-top:10px; margin-top:2px;">
+                                <button type="button" class="btn-card-action-config" data-config-id="${sub.targetConfigId}" data-label="${sub.label}" data-type="${sub.type || ''}" style="flex:1; background:var(--primary); color:#ffffff; border:none; padding:7px 10px; border-radius:4px; font-weight:700; font-size:11px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:5px; box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+                                    ⚙️ Configurar ${isKanban ? 'Estágios' : 'Colunas'}
+                                </button>
+                                ${!isKanban ? `
+                                    <button type="button" class="btn-card-action-view" data-config-id="${sub.targetConfigId}" data-label="${sub.label}" style="background:#f1f5f9; border:1px solid #cbd5e1; color:#475569; padding:7px 10px; border-radius:4px; font-weight:600; font-size:11px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:4px;">
+                                        👁️ Ver
+                                    </button>
+                                ` : ''}
                             </div>
                         </div>
                     `;
@@ -506,13 +532,18 @@ function renderDashboard(configRecord = null) {
 
             pane.innerHTML = `
                 <div class="submenu-viewport" style="display:flex; flex-direction:column; width:100%; height:100%; min-height:0; flex:1;">
-                    <div class="submenu-grid-view" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(225px, 1fr)); gap: 20px; padding: 25px; overflow-y:auto; flex:1; min-height:0; align-content:start;">
+                    <div class="submenu-grid-view" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; padding: 25px; overflow-y:auto; flex:1; min-height:0; align-content:start;">
                         ${contentHtml || '<div style="grid-column:1/-1; text-align:center; color:#64748b; font-style:italic; padding:40px;">Nenhum atalho configurado para este sub-menu.</div>'}
                     </div>
                     <div class="submenu-detail-view" style="display:none; flex-direction:column; flex:1; min-height:0; width:100%; height:100%;">
-                        <div class="submenu-detail-header" style="padding:10px 15px; background:#fff; border-bottom:1px solid #cbd5e1; display:flex; align-items:center; gap:10px;">
-                            <button class="btn-submenu-back" style="background:var(--primary); color:#fff; border:none; padding:6px 12px; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:4px;">◀ Voltar para Menu</button>
-                            <span class="submenu-detail-title" style="font-weight:700; font-size:13px; color:var(--text-main);">Configuração</span>
+                        <div class="submenu-detail-header" style="padding:10px 15px; background:#fff; border-bottom:1px solid #cbd5e1; display:flex; align-items:center; justify-content:space-between;">
+                            <div style="display:flex; align-items:center; gap:10px;">
+                                <button class="btn-submenu-back" style="background:var(--primary); color:#fff; border:none; padding:6px 12px; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:4px;">◀ Voltar para Menu</button>
+                                <span class="submenu-detail-title" style="font-weight:700; font-size:13px; color:var(--text-main);">Configuração</span>
+                            </div>
+                            <button id="btn-detail-config-columns" style="background:#2563eb; color:#ffffff; border:none; padding:6px 14px; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:6px; box-shadow:0 2px 4px rgba(37,99,235,0.25);">
+                                ⚙️ Configurar Colunas desta Tabela
+                            </button>
                         </div>
                         <div class="submenu-detail-iframe-container" style="flex:1; min-height:0; width:100%; height:100%;">
                             <iframe src="" style="width:100%; height:100%; border:none;"></iframe>
@@ -526,41 +557,71 @@ function renderDashboard(configRecord = null) {
             const detailTitle = pane.querySelector('.submenu-detail-title');
             const detailIframe = pane.querySelector('.submenu-detail-iframe-container iframe');
             const backBtn = pane.querySelector('.btn-submenu-back');
+            const detailConfigBtn = pane.querySelector('#btn-detail-config-columns');
+
+            let currentActiveConfigId = '';
+
+            const handleConfigure = async (targetConfigId, cardType) => {
+                if (cardType === 'config-kanban-stages' || targetConfigId === 'kanban-stages') {
+                    await openKanbanStageManager();
+                    return;
+                }
+                const { open: openConfigManager } = await import('../libraries/grist-config-manager/ConfigManagerComponent.js?v=1.3.32');
+                openConfigManager(window.grist || (window.parent && window.parent.grist), {
+                    initialConfigId: targetConfigId,
+                    componentTypes: ['Table']
+                });
+            };
+
+            const handleView = (targetConfigId, label) => {
+                currentActiveConfigId = targetConfigId;
+                gridView.style.display = 'none';
+                detailView.style.display = 'flex';
+                detailTitle.innerText = label;
+                
+                const currentSrc = detailIframe.getAttribute('src');
+                if (!currentSrc || currentSrc === '') {
+                    detailIframe.src = `../UniversalViewer/index.html?configId=${targetConfigId}`;
+                } else {
+                    detailIframe.contentWindow.postMessage({
+                        action: 'change-config',
+                        configId: targetConfigId
+                    }, '*');
+                }
+            };
+
+            if (detailConfigBtn) {
+                detailConfigBtn.onclick = () => {
+                    if (currentActiveConfigId) {
+                        handleConfigure(currentActiveConfigId, 'config-columns');
+                    }
+                };
+            }
+
+            pane.querySelectorAll('.btn-card-action-config').forEach(btn => {
+                btn.onclick = (e) => {
+                    e.stopPropagation();
+                    handleConfigure(btn.dataset.configId, btn.dataset.type);
+                };
+            });
+
+            pane.querySelectorAll('.btn-card-action-view').forEach(btn => {
+                btn.onclick = (e) => {
+                    e.stopPropagation();
+                    handleView(btn.dataset.configId, btn.dataset.label);
+                };
+            });
 
             pane.querySelectorAll('.submenu-card').forEach(card => {
-                card.onclick = async () => {
+                card.onclick = () => {
                     const cfgId = card.dataset.configId;
                     const label = card.dataset.label;
                     const cardType = card.dataset.type;
 
                     if (cardType === 'config-kanban-stages' || cfgId === 'kanban-stages') {
-                        await openKanbanStageManager();
-                        return;
-                    }
-
-                    if (cardType === 'config-columns' || cfgId === 'tableinstruments' || cfgId === 'tableexternalcalibrations') {
-                        const { open: openConfigManager } = await import('../libraries/grist-config-manager/ConfigManagerComponent.js?v=1.3.32');
-                        openConfigManager(window.grist || (window.parent && window.parent.grist), {
-                            initialConfigId: cfgId,
-                            componentTypes: ['Table']
-                        });
-                        return;
-                    }
-
-                    if (!cfgId) return;
-
-                    gridView.style.display = 'none';
-                    detailView.style.display = 'flex';
-                    detailTitle.innerText = label;
-                    
-                    const currentSrc = detailIframe.getAttribute('src');
-                    if (!currentSrc || currentSrc === '') {
-                        detailIframe.src = `../UniversalViewer/index.html?configId=${cfgId}`;
+                        handleConfigure(cfgId, cardType);
                     } else {
-                        detailIframe.contentWindow.postMessage({
-                            action: 'change-config',
-                            configId: cfgId
-                        }, '*');
+                        handleView(cfgId, label);
                     }
                 };
             });
