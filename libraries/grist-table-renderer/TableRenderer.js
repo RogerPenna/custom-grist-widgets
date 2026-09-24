@@ -57,33 +57,41 @@ export const TableRenderer = (() => {
         const activeFilter = currentFilters.find(f => f.field === field);
         const selectedValues = new Set(Array.isArray(activeFilter?.value) ? activeFilter.value : (activeFilter?.value ? [activeFilter.value] : []));
         
-        const isAttachmentField = field === 'ATTACHMENT' || field === 'ATTACHMENTS' || (schema[field] && schema[field].type === 'Attachments');
+        const colDef = cell.getColumn().getDefinition();
+        const colType = colDef.colType || colDef.type || '';
+        const isAttachmentField = field === 'ATTACHMENT' || field === 'ATTACHMENTS' || colType === 'Attachments';
+
         if (isAttachmentField) {
             uniqueItems.push({ value: 'HAS_PDF', label: 'Com PDF 📄' });
             uniqueItems.push({ value: 'NO_PDF', label: 'Sem PDF ⚠️' });
         } else {
             table.getRows().forEach(row => {
                 const data = row.getData();
-                const rawVal = data[field];
-                if (rawVal === undefined || rawVal === null) return;
+                let rawVal = data[field];
+                if (rawVal === undefined || rawVal === null) {
+                    rawVal = "";
+                }
                 
-                const strVal = String(rawVal);
-                if (!seenValues.has(strVal)) {
-                    seenValues.add(strVal);
+                const strKey = String(rawVal);
+                if (!seenValues.has(strKey)) {
+                    seenValues.add(strKey);
                     
                     const tabCell = row.getCell(field);
                     let label = rawVal;
                     if (tabCell) {
-                        label = tabCell.getElement().textContent || tabCell.getElement().innerText || rawVal;
-                        if (typeof label === 'string') {
-                            label = label.trim();
-                            if ((!label || label === "(vazio)") && data["z_disp_" + field]) {
-                                label = data["z_disp_" + field];
-                            }
+                        const cellTxt = tabCell.getElement().textContent || tabCell.getElement().innerText;
+                        if (cellTxt && cellTxt.trim()) {
+                            label = cellTxt.trim();
                         }
                     }
+                    if ((!label || label === "" || label === "(vazio)") && data["z_disp_" + field]) {
+                        label = data["z_disp_" + field];
+                    }
+                    if (!label || label === "") {
+                        label = "(vazio)";
+                    }
                     
-                    uniqueItems.push({ value: rawVal, label: label || "(vazio)" });
+                    uniqueItems.push({ value: rawVal, label: label });
                 }
             });
         }
@@ -847,7 +855,7 @@ export const TableRenderer = (() => {
             let headerFilterFunc = undefined;
             if (styling.headerFilter !== false) {
                 headerFilter = customFilterEditor;
-                headerFilterFunc = (headerValue, rowValue) => {
+                headerFilterFunc = (headerValue, rowValue, rowData) => {
                     if (!headerValue || (Array.isArray(headerValue) && headerValue.length === 0) || headerValue === "") {
                         return true;
                     }
@@ -861,10 +869,27 @@ export const TableRenderer = (() => {
                         return false;
                     }
 
-                    const cleanRowValue = (rowValue && typeof rowValue === 'object' && rowValue.label) ? rowValue.label : rowValue;
+                    let cleanRowVal = rowValue;
+                    if (cleanRowVal === undefined || cleanRowVal === null) {
+                        cleanRowVal = "";
+                    } else if (typeof cleanRowVal === 'object' && cleanRowVal.label) {
+                        cleanRowVal = cleanRowVal.label;
+                    }
+
+                    const dispVal = rowData ? rowData["z_disp_" + gristCol.colId] : null;
+
                     return selected.some(val => {
-                        const cleanVal = (val && typeof val === 'object' && val.label) ? val.label : val;
-                        return String(cleanRowValue).toLowerCase() === String(cleanVal).toLowerCase();
+                        let cleanVal = val;
+                        if (cleanVal === undefined || cleanVal === null) cleanVal = "";
+                        else if (typeof cleanVal === 'object' && cleanVal.label) cleanVal = cleanVal.label;
+
+                        if (String(cleanRowVal).trim().toLowerCase() === String(cleanVal).trim().toLowerCase()) {
+                            return true;
+                        }
+                        if (dispVal && String(dispVal).trim().toLowerCase() === String(cleanVal).trim().toLowerCase()) {
+                            return true;
+                        }
+                        return false;
                     });
                 };
             }
@@ -872,6 +897,7 @@ export const TableRenderer = (() => {
             return {
                 title: colConfig.title || gristCol.label || gristCol.colId,
                 field: gristCol.colId,
+                colType: gristCol.type,
                 hozAlign: colConfig.align || 'left',
                 headerFilter: headerFilter,
                 headerFilterParams: headerFilterParams,
