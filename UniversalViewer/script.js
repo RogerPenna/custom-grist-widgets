@@ -718,6 +718,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 } else {
                     throw new Error(`Method ${method} not found on tableLens or dataWriter`);
                 }
+
+                if (['updateRecord', 'addRecord', 'deleteRecords'].includes(method)) {
+                    if (tableLens && typeof tableLens.clearTableRecordsCache === 'function') {
+                        tableLens.clearTableRecordsCache();
+                    }
+                    setTimeout(() => {
+                        if (isInitialized) initializeAndUpdate();
+                    }, 50);
+                }
                 
                 event.source.postMessage({
                     action: 'table-lens-response',

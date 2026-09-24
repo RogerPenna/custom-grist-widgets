@@ -189,8 +189,11 @@ function renderKanban() {
                     if (!selectedIds.length) return;
                     try {
                         for (const id of selectedIds) {
+                            const inst = currentRecords.find(r => r.id === id);
+                            if (inst) inst.METROLOGICAL_STAGE = targetStage;
                             await callIframe('updateRecord', ['INSTRUMENTS', id, { METROLOGICAL_STAGE: targetStage }]);
                         }
+                        renderKanban();
                     } catch (err) {
                         console.error("Erro ao adicionar ao grupo:", err);
                     }
@@ -282,10 +285,13 @@ function renderKanban() {
                     
                     const normalStage = ALL_CHOICES.find(c => c === '-' || c === '0. Em Uso') || '-';
                     try {
+                        inst.METROLOGICAL_STAGE = normalStage;
+                        inst.ID_STATUS = 1;
                         await mockDataWriter.updateRecord('INSTRUMENTS', inst.id, {
                             METROLOGICAL_STAGE: normalStage,
                             ID_STATUS: 1 // back to standard Active status
                         });
+                        renderKanban();
                     } catch (err) {
                         console.error("[Dashboard] Erro ao finalizar fluxo:", err);
                         btnComplete.disabled = false;
@@ -318,13 +324,24 @@ function renderKanban() {
             onEnd: async (evt) => {
                 const itemEl = evt.item;
                 const targetStage = evt.to.dataset.stage;
+                const oldStage = evt.from.dataset.stage;
                 const recordId = parseInt(itemEl.dataset.id, 10);
                 
                 if (recordId && targetStage) {
-                    console.log(`Mover registro ${recordId} para ${targetStage}`);
+                    console.log(`[Kanban] Mover registro ${recordId} de "${oldStage}" para "${targetStage}"`);
                     
+                    // 1. Atualizar imediatamente no estado local em memória para manter persistência ao alternar abas
+                    const inst = currentRecords.find(r => r.id === recordId);
+                    if (inst) {
+                        inst.METROLOGICAL_STAGE = targetStage;
+                        if (targetStage.includes("5. Enviado")) {
+                            inst.ID_STATUS = 3;
+                        } else {
+                            inst.ID_STATUS = 1;
+                        }
+                    }
+
                     const updates = { METROLOGICAL_STAGE: targetStage };
-                    
                     if (targetStage.includes("5. Enviado")) {
                         updates.ID_STATUS = 3; // Em Laboratório Externo
                     } else {
@@ -341,9 +358,16 @@ function renderKanban() {
 
                     try {
                         await mockDataWriter.updateRecord('INSTRUMENTS', recordId, updates);
-                        await mockDataWriter.addRecord('INSTRUMENTS_OCCURRENCES', occurrenceData);
+                        try {
+                            await mockDataWriter.addRecord('INSTRUMENTS_OCCURRENCES', occurrenceData);
+                        } catch(e) {
+                            console.warn("[Kanban] Registro de ocorrência secundária ignorado:", e.message);
+                        }
                     } catch(err) {
-                        console.error("Erro ao mover cartão:", err);
+                        console.error("[Kanban] Erro ao salvar novo estágio no Grist:", err);
+                        // Reverte estado local se a gravação no Grist falhar
+                        if (inst) inst.METROLOGICAL_STAGE = oldStage;
+                        renderKanban();
                     }
                 }
             }
