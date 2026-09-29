@@ -252,6 +252,36 @@ export const TableRenderer = (() => {
         const rowRules = typeof tableLens.getRowRules === 'function' ? await tableLens.getRowRules(tableId) : [];
         const useSaveButton = actions.useSaveButton || false;
         const customButtons = actions.customButtons || [];
+
+        // Pre-fetch tabelas referenciadas para colunas que tiverem tooltipColumnId configurado
+        const columnsConfigList = mapping.columns || [];
+        const refTablesToFetch = new Set();
+        columnsConfigList.forEach(colCfg => {
+            if (colCfg.tooltipColumnId && schema[colCfg.colId]) {
+                const type = schema[colCfg.colId].type || '';
+                if (type.startsWith('Ref:')) {
+                    refTablesToFetch.add(type.substring(4));
+                } else if (type.startsWith('RefList:')) {
+                    refTablesToFetch.add(type.substring(8));
+                }
+            }
+        });
+
+        const refTableMap = {};
+        for (const targetTableId of refTablesToFetch) {
+            try {
+                const refRecords = await tableLens.fetchTableRecords(targetTableId);
+                if (Array.isArray(refRecords)) {
+                    const mapById = {};
+                    refRecords.forEach(r => {
+                        if (r && r.id !== undefined && r.id !== null) mapById[r.id] = r;
+                    });
+                    refTableMap[targetTableId] = mapById;
+                }
+            } catch(e) {
+                console.warn(`[TableRenderer] Falha ao carregar tabela de referência para tooltip "${targetTableId}":`, e);
+            }
+        }
         
         let pendingChanges = {}; // Objeto para rastrear mudanças { rowId: { field: value } }
 
@@ -907,11 +937,33 @@ export const TableRenderer = (() => {
                 editable: isEditable,
                 editor: editor,
                 editorParams: editorParams,
-                validator: ((actions.editMode === 'excel' || actions.editMode === true) && colConfig.required) ? 'required' : undefined,
-                formatter: formatter,
-                formatterParams: { ...(colConfig.formatterParams || {}), colConfig: colConfig },
-                tooltip: true,
-                cssClass: colConfig.wrapText ? "wrap-text-cell" : "nowrap-text-cell",
+                tooltip: (cell) => {
+                    if (colConfig.enableTooltip === false) return false;
+                    
+                    // 1. Se colConfig.tooltipColumnId estiver definido para colunas de referência (Ref: / RefList:)
+                    if (colConfig.tooltipColumnId && gristCol.type && (gristCol.type.startsWith('Ref:') || gristCol.type.startsWith('RefList:'))) {
+                        const targetTableId = gristCol.type.replace(/^RefList:|^Ref:/, '');
+                        const refId = cell.getValue();
+                        if (targetTableId && refId !== undefined && refId !== null && refTableMap[targetTableId]) {
+                            const refRecord = refTableMap[targetTableId][refId];
+                            if (refRecord && refRecord[colConfig.tooltipColumnId] !== undefined && refRecord[colConfig.tooltipColumnId] !== null) {
+                                return String(refRecord[colConfig.tooltipColumnId]);
+                            }
+                        }
+                    }
+
+                    // 2. Comportamento Padrão: Espelha exatamente o texto/conteúdo visível da célula
+                    const el = cell.getElement();
+                    if (el) {
+                        const cellText = (el.textContent || el.innerText || '').trim();
+                        if (cellText) return cellText;
+                    }
+
+                    // 3. Fallback: valor bruto da célula
+                    const val = cell.getValue();
+                    if (val === null || val === undefined || val === '') return false;
+                    return String(val);
+                },
                 visible: colConfig.formatter !== 'hidden'
             };
         }).filter(col => col !== null);

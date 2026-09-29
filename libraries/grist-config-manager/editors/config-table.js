@@ -6,6 +6,7 @@ export const TableConfigEditor = (() => {
     let _iconPickerPopup = null;
     let _allConfigs = [];
     let _currentTableId = null;
+    let _currentLens = null;
 
     const AVAILABLE_ICONS = [
         "icon-CompassRose",
@@ -158,6 +159,7 @@ export const TableConfigEditor = (() => {
         _mainContainer = container;
         _allConfigs = allConfigs;
         _currentTableId = tableId;
+        _currentLens = lens;
         if (!tableId) {
             container.innerHTML = '<p class="editor-placeholder">Selecione uma Tabela de Dados no menu acima.</p>';
             return;
@@ -520,6 +522,8 @@ export const TableConfigEditor = (() => {
                 colBase.showDelete = panel.querySelector('.action-btn-delete-checkbox')?.checked;
             } else {
                 colBase.title = panel.querySelector('.col-title-input')?.value || null;
+                colBase.enableTooltip = panel.querySelector('.enable-tooltip-checkbox')?.checked !== false;
+                colBase.tooltipColumnId = panel.querySelector('.col-tooltip-column-select')?.value || null;
                 colBase.locked = panel.querySelector('.is-locked-checkbox')?.checked || false;
                 colBase.required = panel.querySelector('.is-required-checkbox')?.checked || false;
                 colBase.ignoreConditionalFormatting = panel.querySelector('.ignore-conditional-formatting-checkbox')?.checked || false;
@@ -760,6 +764,20 @@ export const TableConfigEditor = (() => {
                 `;
             }
 
+            let refTooltipHtml = '';
+            const isRefType = col.type && (col.type.startsWith('Ref:') || col.type.startsWith('RefList:'));
+            if (isRefType) {
+                const targetTableId = col.type.replace(/^RefList:|^Ref:/, '');
+                refTooltipHtml = `
+                    <div style="margin-top:5px;" class="col-tooltip-target-container">
+                        <div class="config-label-with-help" style="font-size:10px;">Coluna p/ Tooltip (${targetTableId})</div>
+                        <select class="col-tooltip-column-select" style="width:100%; padding:4px; font-size:11px;">
+                            <option value="">-- Texto Padrão da Célula --</option>
+                        </select>
+                    </div>
+                `;
+            }
+
             optionsHtml = `
                 <div class="col-config-grid">
                     <div class="col-config-section">
@@ -783,12 +801,16 @@ export const TableConfigEditor = (() => {
                         </div>
                     </div>
                     <div class="col-config-section">
-                        <div class="config-label-with-help">Alinhamento</div>
+                        <div class="config-label-with-help">Alinhamento & Tooltip</div>
                         <select class="col-align-select" style="width:100%; padding:4px;">
                             <option value="left" ${align === 'left' ? 'selected' : ''}>Esquerda</option>
                             <option value="center" ${align === 'center' ? 'selected' : ''}>Centro</option>
                             <option value="right" ${align === 'right' ? 'selected' : ''}>Direita</option>
                         </select>
+                        <div style="margin-top:8px;">
+                            <label class="config-toggle"><input type="checkbox" class="enable-tooltip-checkbox" ${colConfig?.enableTooltip !== false ? 'checked' : ''}> Habilitar Tooltip</label>
+                        </div>
+                        ${refTooltipHtml}
                     </div>
                     <div class="col-config-section">
                         <div class="config-label-with-help">Máx. Linhas</div>
@@ -864,6 +886,29 @@ export const TableConfigEditor = (() => {
                 ${optionsHtml}
             </div>
         `;
+
+        if (col.type && (col.type.startsWith('Ref:') || col.type.startsWith('RefList:')) && _currentLens) {
+            const targetTableId = col.type.replace(/^RefList:|^Ref:/, '');
+            if (targetTableId) {
+                _currentLens.getTableSchema(targetTableId).then(targetSchema => {
+                    if (targetSchema) {
+                        const selectEl = card.querySelector('.col-tooltip-column-select');
+                        if (selectEl) {
+                            const targetCols = Object.values(targetSchema).filter(c => !c.colId.startsWith('gristHelper_') && c.type !== 'ManualSortPos');
+                            targetCols.forEach(tc => {
+                                const opt = document.createElement('option');
+                                opt.value = tc.colId;
+                                opt.textContent = `${tc.label} (${tc.colId})`;
+                                if (colConfig?.tooltipColumnId === tc.colId) {
+                                    opt.selected = true;
+                                }
+                                selectEl.appendChild(opt);
+                            });
+                        }
+                    }
+                }).catch(err => console.warn('[ConfigTable] Error populating tooltip target columns:', targetTableId, err));
+            }
+        }
 
         card.querySelector('.toggle-col-config').onclick = () => {
             const p = card.querySelector('.col-config-panel');
