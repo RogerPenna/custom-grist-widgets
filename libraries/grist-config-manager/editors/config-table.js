@@ -520,7 +520,6 @@ export const TableConfigEditor = (() => {
                 colBase.showDelete = panel.querySelector('.action-btn-delete-checkbox')?.checked;
             } else {
                 colBase.title = panel.querySelector('.col-title-input')?.value || null;
-                colBase.tooltipField = panel.querySelector('.col-tooltip-field-select')?.value || null;
                 colBase.locked = panel.querySelector('.is-locked-checkbox')?.checked || false;
                 colBase.required = panel.querySelector('.is-required-checkbox')?.checked || false;
                 colBase.ignoreConditionalFormatting = panel.querySelector('.ignore-conditional-formatting-checkbox')?.checked || false;
@@ -781,13 +780,6 @@ export const TableConfigEditor = (() => {
                         <div style="margin-top:5px;">
                             <div class="config-label-with-help">Título Customizado</div>
                             <input type="text" class="col-title-input" value="${colConfig?.title || ''}" placeholder="${col.label}" style="width:100%; padding:4px;">
-                        </div>
-                        <div style="margin-top:5px;">
-                            <div class="config-label-with-help" title="Coluna de onde obter o texto do tooltip ao passar o mouse.">Coluna do Tooltip (Hover)</div>
-                            <select class="col-tooltip-field-select" style="width:100%; padding:4px;">
-                                <option value="">-- Padrão (Texto / Nome) --</option>
-                                ${_allCols.map(c => `<option value="${c.colId}" ${colConfig?.tooltipField === c.colId ? 'selected' : ''}>${c.label || c.colId}</option>`).join('')}
-                            </select>
                         </div>
                     </div>
                     <div class="col-config-section">
