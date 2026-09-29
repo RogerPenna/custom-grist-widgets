@@ -907,11 +907,44 @@ export const TableRenderer = (() => {
                 editable: isEditable,
                 editor: editor,
                 editorParams: editorParams,
-                validator: ((actions.editMode === 'excel' || actions.editMode === true) && colConfig.required) ? 'required' : undefined,
-                formatter: formatter,
-                formatterParams: { ...(colConfig.formatterParams || {}), colConfig: colConfig },
-                tooltip: true,
-                cssClass: colConfig.wrapText ? "wrap-text-cell" : "nowrap-text-cell",
+                tooltip: (cell) => {
+                    if (colConfig.tooltip === false) return false;
+                    const rowData = cell.getRow().getData();
+                    const field = cell.getField();
+
+                    // 1. Coluna de tooltip customizada configurada em colConfig
+                    if (colConfig.tooltipField) {
+                        const targetVal = rowData ? rowData[colConfig.tooltipField] : null;
+                        if (targetVal !== undefined && targetVal !== null && targetVal !== '') {
+                            return String(targetVal);
+                        }
+                    }
+
+                    // 2. Campo de exibição amigável do Grist (z_disp_...) para Referências
+                    const dispVal = rowData ? rowData["z_disp_" + field] : null;
+                    if (dispVal) {
+                        return String(dispVal);
+                    }
+
+                    // 3. Objeto com propriedade label
+                    const cellVal = cell.getValue();
+                    if (cellVal && typeof cellVal === 'object' && cellVal.label) {
+                        return String(cellVal.label);
+                    }
+
+                    // 4. Texto formatado no elemento DOM da célula (se houver)
+                    const el = cell.getElement();
+                    if (el) {
+                        const text = (el.textContent || el.innerText || '').trim();
+                        if (text && text !== String(cellVal)) {
+                            return text;
+                        }
+                    }
+
+                    // 5. Fallback: valor bruto da célula (se não for nulo/vazio)
+                    if (cellVal === null || cellVal === undefined || cellVal === '') return false;
+                    return String(cellVal);
+                },
                 visible: colConfig.formatter !== 'hidden'
             };
         }).filter(col => col !== null);
