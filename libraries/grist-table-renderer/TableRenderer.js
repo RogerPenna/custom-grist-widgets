@@ -253,12 +253,13 @@ export const TableRenderer = (() => {
         const useSaveButton = actions.useSaveButton || false;
         const customButtons = actions.customButtons || [];
 
-        // Pre-fetch tabelas referenciadas para colunas que tiverem tooltipColumnId configurado
+        // Pre-fetch tabelas referenciadas para colunas do tipo Ref e RefList
         const columnsConfigList = mapping.columns || [];
         const refTablesToFetch = new Set();
         columnsConfigList.forEach(colCfg => {
-            if (colCfg.tooltipColumnId && schema[colCfg.colId]) {
-                const type = schema[colCfg.colId].type || '';
+            const gristCol = schema[colCfg.colId];
+            if (gristCol && gristCol.type) {
+                const type = gristCol.type;
                 if (type.startsWith('Ref:')) {
                     refTablesToFetch.add(type.substring(4));
                 } else if (type.startsWith('RefList:')) {
@@ -940,13 +941,17 @@ export const TableRenderer = (() => {
                 formatter: formatter,
                 formatterParams: { ...(colConfig.formatterParams || {}), colConfig: colConfig },
                 cssClass: colConfig.wrapText ? "wrap-text-cell" : "nowrap-text-cell",
-                tooltip: (cell) => {
+                tooltip: (e, cell, onRendered) => {
+                    const cellComp = (cell && typeof cell.getElement === 'function') ? cell : ((e && typeof e.getElement === 'function') ? e : null);
+                    if (!cellComp) return false;
+
                     if (colConfig.enableTooltip === false) return false;
                     
                     // 1. Se colConfig.tooltipColumnId estiver definido para colunas de referência (Ref: / RefList:)
                     if (colConfig.tooltipColumnId && gristCol.type && (gristCol.type.startsWith('Ref:') || gristCol.type.startsWith('RefList:'))) {
                         const targetTableId = gristCol.type.replace(/^RefList:|^Ref:/, '');
-                        const refId = cell.getValue();
+                        const rawRef = cellComp.getValue();
+                        const refId = (rawRef && typeof rawRef === 'object') ? rawRef.id : rawRef;
                         if (targetTableId && refId !== undefined && refId !== null && refTableMap[targetTableId]) {
                             const refRecord = refTableMap[targetTableId][refId];
                             if (refRecord && refRecord[colConfig.tooltipColumnId] !== undefined && refRecord[colConfig.tooltipColumnId] !== null) {
@@ -956,14 +961,14 @@ export const TableRenderer = (() => {
                     }
 
                     // 2. Comportamento Padrão: Espelha exatamente o texto/conteúdo visível da célula
-                    const el = cell.getElement();
+                    const el = cellComp.getElement();
                     if (el) {
                         const cellText = (el.textContent || el.innerText || '').trim();
                         if (cellText) return cellText;
                     }
 
                     // 3. Fallback: valor bruto da célula
-                    const val = cell.getValue();
+                    const val = cellComp.getValue();
                     if (val === null || val === undefined || val === '') return false;
                     return String(val);
                 },
