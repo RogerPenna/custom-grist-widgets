@@ -936,7 +936,10 @@ export const TableRenderer = (() => {
                 bottomCalc: colConfig.bottomCalc || undefined,
                 editable: isEditable,
                 editor: editor,
-                editorParams: editorParams,
+                validator: ((actions.editMode === 'excel' || actions.editMode === true) && colConfig.required) ? 'required' : undefined,
+                formatter: formatter,
+                formatterParams: { ...(colConfig.formatterParams || {}), colConfig: colConfig },
+                cssClass: colConfig.wrapText ? "wrap-text-cell" : "nowrap-text-cell",
                 tooltip: (cell) => {
                     if (colConfig.enableTooltip === false) return false;
                     
