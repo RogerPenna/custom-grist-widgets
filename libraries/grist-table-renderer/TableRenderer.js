@@ -245,39 +245,13 @@ export const TableRenderer = (() => {
         const styling = config.styling || config || {};
         const tableLayoutConfig = styling.tableLayoutConfig || config.tableLayoutConfig || (config.styling && config.styling.tableLayoutConfig) || {};
         
+        const actions = config.actions || config || {};
+
         const tableId = mapping.tableId || config.tableId;
         const schema = await tableLens.getTableSchema(tableId);
         const rowRules = typeof tableLens.getRowRules === 'function' ? await tableLens.getRowRules(tableId) : [];
         const useSaveButton = actions.useSaveButton || false;
         const customButtons = actions.customButtons || [];
-
-        // Pré-carrega tabelas referenciadas para busca automática de campos descritivos no tooltip (ex: Name, Nome)
-        const refTablesToFetch = new Set();
-        Object.values(schema || {}).forEach(col => {
-            if (col && typeof col.type === 'string') {
-                if (col.type.startsWith('Ref:')) {
-                    refTablesToFetch.add(col.type.substring(4));
-                } else if (col.type.startsWith('RefList:')) {
-                    refTablesToFetch.add(col.type.substring(8));
-                }
-            }
-        });
-
-        const refTableMap = {};
-        for (const targetTableId of refTablesToFetch) {
-            try {
-                const refRecords = await tableLens.fetchTableRecords(targetTableId);
-                if (Array.isArray(refRecords)) {
-                    const mapById = {};
-                    refRecords.forEach(r => {
-                        if (r && r.id !== undefined && r.id !== null) mapById[r.id] = r;
-                    });
-                    refTableMap[targetTableId] = mapById;
-                }
-            } catch(e) {
-                console.warn(`[TableRenderer] Falha ao pré-carregar tabela de referência "${targetTableId}":`, e);
-            }
-        }
         
         let pendingChanges = {}; // Objeto para rastrear mudanças { rowId: { field: value } }
 
@@ -946,35 +920,19 @@ export const TableRenderer = (() => {
                         }
                     }
 
-                    // 2. Para colunas de Referência (Ref:Tabela), resolve o nome textual (ex: Name, Nome, Label) na tabela referenciada
-                    if (gristCol.type && typeof gristCol.type === 'string' && gristCol.type.startsWith('Ref:')) {
-                        const targetTable = gristCol.type.substring(4);
-                        const refId = cell.getValue();
-                        const refRecord = (refTableMap[targetTable] && refId !== undefined && refId !== null) ? refTableMap[targetTable][refId] : null;
-                        
-                        if (refRecord) {
-                            const preferredKeys = ['Name', 'name', 'NOME', 'Nome', 'Label', 'label', 'Title', 'title', 'DESCRIPTION', 'Description', 'Descrição', 'Descricao'];
-                            for (const pKey of preferredKeys) {
-                                if (refRecord[pKey] !== undefined && refRecord[pKey] !== null && String(refRecord[pKey]).trim() !== '') {
-                                    return String(refRecord[pKey]);
-                                }
-                            }
-                        }
-                    }
-
-                    // 3. Campo de exibição amigável do Grist (z_disp_...)
+                    // 2. Campo de exibição amigável do Grist (z_disp_...) para Referências
                     const dispVal = rowData ? rowData["z_disp_" + field] : null;
                     if (dispVal) {
                         return String(dispVal);
                     }
 
-                    // 4. Objeto com propriedade label
+                    // 3. Objeto com propriedade label
                     const cellVal = cell.getValue();
                     if (cellVal && typeof cellVal === 'object' && cellVal.label) {
                         return String(cellVal.label);
                     }
 
-                    // 5. Texto formatado no elemento DOM da célula (se houver)
+                    // 4. Texto formatado no elemento DOM da célula (se houver)
                     const el = cell.getElement();
                     if (el) {
                         const text = (el.textContent || el.innerText || '').trim();
@@ -983,7 +941,7 @@ export const TableRenderer = (() => {
                         }
                     }
 
-                    // 6. Fallback final: valor bruto da célula
+                    // 5. Fallback: valor bruto da célula (se não for nulo/vazio)
                     if (cellVal === null || cellVal === undefined || cellVal === '') return false;
                     return String(cellVal);
                 },
