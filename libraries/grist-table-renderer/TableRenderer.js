@@ -1110,14 +1110,96 @@ export const TableRenderer = (() => {
         const batchButtons = customButtons.filter(b => b.isBatchAction);
         
         if (actions.enableAddNewBtn) {
+            const addBtnContainer = document.createElement('div');
+            addBtnContainer.style.cssText = 'position: relative; display: inline-block;';
+
             const addBtn = document.createElement('button');
             addBtn.className = 'grf-add-new-btn';
             addBtn.id = 'grf-add-new-btn';
             addBtn.innerText = '+ Adicionar Novo';
-            addBtn.onclick = () => {
-                if (onAddRecord) onAddRecord();
+
+            const menu = document.createElement('div');
+            menu.className = 'grf-add-menu';
+            menu.style.cssText = `
+                display: none;
+                position: absolute;
+                top: 100%;
+                right: 0;
+                margin-top: 4px;
+                background: #ffffff;
+                border: 1px solid #cbd5e1;
+                border-radius: 6px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                z-index: 1000;
+                min-width: 230px;
+                overflow: hidden;
+            `;
+
+            menu.innerHTML = `
+                <button type="button" class="grf-menu-item" id="grf-opt-import" style="width:100%; text-align:left; padding:10px 14px; border:none; background:none; cursor:pointer; font-size:12px; font-weight:600; color:#334155; display:flex; align-items:center; gap:8px; border-bottom:1px solid #f1f5f9;">
+                    <span>📥</span> Importar Certificado (.cal)
+                </button>
+                <button type="button" class="grf-menu-item" id="grf-opt-manual" style="width:100%; text-align:left; padding:10px 14px; border:none; background:none; cursor:pointer; font-size:12px; font-weight:600; color:#334155; display:flex; align-items:center; gap:8px;">
+                    <span>📝</span> Inserir Calibração Manual
+                </button>
+            `;
+
+            addBtn.onclick = (e) => {
+                e.stopPropagation();
+                menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
             };
-            topBar.appendChild(addBtn);
+
+            document.addEventListener('click', (e) => {
+                if (!addBtnContainer.contains(e.target)) {
+                    menu.style.display = 'none';
+                }
+            });
+
+            menu.querySelector('#grf-opt-import').onclick = (e) => {
+                e.stopPropagation();
+                menu.style.display = 'none';
+                
+                let overlay = document.createElement('div');
+                overlay.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); z-index:9999; display:flex; align-items:center; justify-content:center;';
+                overlay.innerHTML = `
+                    <div style="background:#fff; width:90vw; height:85vh; max-width:1200px; border-radius:8px; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,0.3);">
+                        <div style="background:#2c5e5a; color:#fff; padding:12px 20px; display:flex; justify-content:space-between; align-items:center; font-weight:bold;">
+                            <span>📥 Importador de Certificados (.cal / XML)</span>
+                            <button type="button" id="close-imp-modal" style="background:none; border:none; color:#fff; font-size:20px; cursor:pointer;">✕</button>
+                        </div>
+                        <iframe src="../CalibrationWidget/importador-calibracoes.html" style="flex:1; border:none; width:100%; height:100%;"></iframe>
+                    </div>
+                `;
+                overlay.querySelector('#close-imp-modal').onclick = () => overlay.remove();
+                document.body.appendChild(overlay);
+            };
+
+            menu.querySelector('#grf-opt-manual').onclick = async (e) => {
+                e.stopPropagation();
+                menu.style.display = 'none';
+                if (window.ManualCalibrationModal) {
+                    window.ManualCalibrationModal.open({
+                        tableLens,
+                        tableId,
+                        onSaved: () => renderTable(options)
+                    });
+                } else {
+                    const module = await import('../grist-drawer-component/manual-calibration-modal.js').catch(err => console.error(err));
+                    if (module && module.ManualCalibrationModal) {
+                        module.ManualCalibrationModal.open({
+                            tableLens,
+                            tableId,
+                            onSaved: () => renderTable(options)
+                        });
+                    } else if (onAddRecord) {
+                        onAddRecord();
+                    }
+                }
+            };
+
+            addBtnContainer.appendChild(addBtn);
+            addBtnContainer.appendChild(menu);
+            topBar.appendChild(addBtnContainer);
         }
 
         if (batchButtons.length > 0) {
@@ -1296,7 +1378,16 @@ export const TableRenderer = (() => {
                     onColumnOrderChanged(newOrder);
                 }
             },
-            initialSort: (styling.defaultSort?.column || config.defaultSort?.column) ? [{ column: styling.defaultSort?.column || config.defaultSort.column, dir: styling.defaultSort?.direction || config.defaultSort.direction }] : [],
+            initialSort: (() => {
+                if (styling.defaultSort?.column || config.defaultSort?.column) {
+                    return [{ column: styling.defaultSort?.column || config.defaultSort.column, dir: styling.defaultSort?.direction || config.defaultSort.direction || 'desc' }];
+                }
+                const calDateCol = Object.values(schema).find(c =>
+                    ['CALIBRATION_DATE', 'CalibrationDate', 'DataCalibracao', 'Date', 'Data'].includes(c.colId) ||
+                    (c.type === 'Date' || c.type === 'DateTime')
+                );
+                return calDateCol ? [{ column: calDateCol.colId, dir: 'desc' }] : [];
+            })(),
             
             cellEdited: async (cell) => {
                 const field = cell.getField();

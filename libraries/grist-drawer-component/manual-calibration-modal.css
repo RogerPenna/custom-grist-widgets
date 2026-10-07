@@ -1,0 +1,387 @@
+/* libraries/grist-drawer-component/manual-calibration-modal.css */
+
+.mcm-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(4px);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 15px;
+    box-sizing: border-color;
+    animation: mcmFadeIn 0.2s ease-out;
+}
+
+@keyframes mcmFadeIn {
+    from { opacity: 0; transform: scale(0.98); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.mcm-modal {
+    background: #ffffff;
+    width: 96vw;
+    height: 92vh;
+    max-width: 1500px;
+    max-height: 950px;
+    border-radius: 10px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #1e293b;
+}
+
+.mcm-header {
+    background: #2c5e5a;
+    color: #ffffff;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-weight: 700;
+    font-size: 16px;
+    border-bottom: 2px solid #204643;
+}
+
+.mcm-header-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.mcm-close-btn {
+    background: none;
+    border: none;
+    color: #ffffff;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0 8px;
+    line-height: 1;
+    border-radius: 4px;
+    transition: background 0.15s;
+}
+
+.mcm-close-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.mcm-split-container {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    background: #f8fafc;
+}
+
+.mcm-left-panel {
+    width: 50%;
+    border-right: 1px solid #cbd5e1;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+}
+
+.mcm-right-panel {
+    width: 50%;
+    display: flex;
+    flex-direction: column;
+    background: #e2e8f0;
+    padding: 12px;
+    box-sizing: border-box;
+}
+
+/* Tabs */
+.mcm-tabs-bar {
+    display: flex;
+    background: #f1f5f9;
+    border-bottom: 1px solid #cbd5e1;
+}
+
+.mcm-tab-btn {
+    padding: 10px 18px;
+    border: none;
+    background: none;
+    font-weight: 600;
+    font-size: 13px;
+    color: #64748b;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    transition: all 0.15s;
+}
+
+.mcm-tab-btn.active {
+    color: #2c5e5a;
+    border-bottom-color: #2c5e5a;
+    background: #ffffff;
+}
+
+.mcm-tab-content {
+    flex: 1;
+    padding: 16px;
+    overflow-y: auto;
+    display: none;
+}
+
+.mcm-tab-content.active {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* Form Styling */
+.mcm-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.mcm-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.mcm-form-group.full-width {
+    grid-column: span 2;
+}
+
+.mcm-form-group label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #475569;
+    text-transform: uppercase;
+}
+
+.mcm-input, .mcm-select, .mcm-textarea {
+    padding: 7px 10px;
+    border: 1px solid #cbd5e1;
+    border-radius: 5px;
+    font-size: 13px;
+    color: #1e293b;
+    background: #ffffff;
+    transition: border-color 0.15s;
+}
+
+.mcm-input:focus, .mcm-select:focus, .mcm-textarea:focus {
+    border-color: #2c5e5a;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(44, 94, 90, 0.15);
+}
+
+.mcm-textarea {
+    resize: vertical;
+    min-height: 70px;
+}
+
+/* Info Box */
+.mcm-info-card {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 6px;
+    padding: 10px;
+    font-size: 12px;
+    color: #166534;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.mcm-info-card h4 {
+    margin: 0;
+    font-size: 12px;
+    color: #15803d;
+}
+
+/* Toolbar for Points Grid */
+.mcm-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px 6px 0 0;
+}
+
+.mcm-tb-btn {
+    padding: 4px 10px;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #334155;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.15s;
+}
+
+.mcm-tb-btn:hover:not(:disabled) {
+    background: #e2e8f0;
+    border-color: #94a3b8;
+}
+
+.mcm-tb-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* Points Table */
+.mcm-grid-container {
+    border: 1px solid #cbd5e1;
+    border-top: none;
+    border-radius: 0 0 6px 6px;
+    overflow: auto;
+    max-height: 280px;
+    background: #ffffff;
+}
+
+.mcm-points-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+.mcm-points-table th {
+    background: #f8fafc;
+    color: #475569;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 10px;
+    padding: 8px 10px;
+    border-bottom: 2px solid #cbd5e1;
+    border-right: 1px solid #e2e8f0;
+    text-align: left;
+}
+
+.mcm-points-table td {
+    padding: 6px 10px;
+    border-bottom: 1px solid #e2e8f0;
+    border-right: 1px solid #f1f5f9;
+    color: #1e293b;
+}
+
+.mcm-points-table tr.selected {
+    background: #e0f2fe !important;
+}
+
+.mcm-points-table tr:hover:not(.selected) {
+    background: #f1f5f9;
+}
+
+.mcm-editable-cell {
+    padding: 0 !important;
+}
+
+.mcm-cell-input {
+    width: 100%;
+    padding: 6px 10px;
+    border: none;
+    font-size: 12px;
+    box-sizing: border-box;
+    background: transparent;
+}
+
+.mcm-cell-input:focus {
+    outline: 2px solid #2563eb;
+    background: #ffffff;
+}
+
+/* Right Panel PDF Viewer */
+.mcm-pdf-box {
+    flex: 1;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.mcm-pdf-header {
+    background: #f8fafc;
+    padding: 8px 12px;
+    border-bottom: 1px solid #cbd5e1;
+    font-size: 12px;
+    font-weight: 700;
+    color: #334155;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.mcm-pdf-upload-zone {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 2px dashed #94a3b8;
+    border-radius: 6px;
+    margin: 15px;
+    padding: 20px;
+    cursor: pointer;
+    background: #f8fafc;
+    transition: background 0.2s;
+}
+
+.mcm-pdf-upload-zone:hover {
+    background: #f1f5f9;
+    border-color: #2c5e5a;
+}
+
+.mcm-pdf-viewer {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+/* Footer Actions */
+.mcm-footer {
+    padding: 12px 20px;
+    background: #ffffff;
+    border-top: 1px solid #cbd5e1;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.mcm-btn-save {
+    background: #2c5e5a;
+    color: #ffffff;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 5px;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.mcm-btn-save:hover {
+    background: #1e4441;
+}
+
+.mcm-btn-cancel {
+    background: #ffffff;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+    padding: 8px 18px;
+    border-radius: 5px;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.mcm-btn-cancel:hover {
+    background: #f1f5f9;
+}
