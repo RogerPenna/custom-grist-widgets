@@ -279,6 +279,19 @@ export const TableConfigEditor = (() => {
                                         <option value="none" ${styling.tableLayoutConfig?.gridLines === 'none' ? 'selected' : ''}>Sem Bordas</option>
                                     </select>
                                 </div>
+                                <div style="margin-top:8px;">
+                                    <div class="config-label-with-help">Ordenação Padrão Inicial</div>
+                                    <div style="display:flex; gap:8px;">
+                                        <select id="default-sort-col-select" style="flex:1; padding:4px;">
+                                            <option value="">-- Auto (Data ou Sem Ordenação) --</option>
+                                            ${cols.map(c => `<option value="${c.colId}" ${styling.defaultSort?.column === c.colId ? 'selected' : ''}>${c.label} (${c.colId})</option>`).join('')}
+                                        </select>
+                                        <select id="default-sort-dir-select" style="width:140px; padding:4px;">
+                                            <option value="desc" ${styling.defaultSort?.direction === 'desc' ? 'selected' : ''}>Z-A (Decrescente)</option>
+                                            <option value="asc" ${styling.defaultSort?.direction === 'asc' ? 'selected' : ''}>A-Z (Crescente)</option>
+                                        </select>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -620,6 +633,9 @@ export const TableConfigEditor = (() => {
             rowAltBgColor: container.querySelector('#custom-row-alt-bg-enabled').checked ? container.querySelector('#custom-row-alt-bg-input').value : null
         };
 
+        const defaultSortCol = container.querySelector('#default-sort-col-select')?.value || null;
+        const defaultSortDir = container.querySelector('#default-sort-dir-select')?.value || 'desc';
+
         return {
             mapping: { tableId: fullConfig.tableId, columns: fullConfig.columns, refListFieldConfig },
             styling: {
@@ -627,6 +643,7 @@ export const TableConfigEditor = (() => {
                 headerFilter: container.querySelector('#header-filter-checkbox').checked,
                 hideEmptyPlaceholder: container.querySelector('#hide-empty-placeholder-checkbox').checked,
                 rowSelection: container.querySelector('#row-selection-checkbox').checked,
+                defaultSort: defaultSortCol ? { column: defaultSortCol, direction: defaultSortDir } : null,
                 tableLayoutConfig: tableLayoutConfig,
                 pagination: {
                     enabled: container.querySelector('#pagination-enabled-select').value,
@@ -1173,11 +1190,15 @@ export const TableConfigEditor = (() => {
             }
         };
 
+        const sortCol = container.querySelector('#default-sort-col-select')?.value || null;
+        const sortDir = container.querySelector('#default-sort-dir-select')?.value || 'desc';
+
         return {
             resizableColumns: container.querySelector('#resizable-cols-checkbox')?.checked !== false,
             headerFilter: container.querySelector('#header-filter-checkbox')?.checked || false,
             hideEmptyPlaceholder: container.querySelector('#hide-empty-placeholder-checkbox')?.checked || false,
             rowSelection: container.querySelector('#row-selection-checkbox')?.checked || false,
+            defaultSort: sortCol ? { column: sortCol, direction: sortDir } : null,
             tableLayoutConfig: tableLayoutConfig,
             pagination: {
                 enabled: container.querySelector('#pagination-enabled-select')?.value || 'local',
@@ -1209,6 +1230,11 @@ export const TableConfigEditor = (() => {
         if (container.querySelector('#header-filter-checkbox')) container.querySelector('#header-filter-checkbox').checked = !!styling.headerFilter;
         if (container.querySelector('#hide-empty-placeholder-checkbox')) container.querySelector('#hide-empty-placeholder-checkbox').checked = !!styling.hideEmptyPlaceholder;
         if (container.querySelector('#row-selection-checkbox')) container.querySelector('#row-selection-checkbox').checked = !!styling.rowSelection;
+
+        if (styling.defaultSort) {
+            if (container.querySelector('#default-sort-col-select')) container.querySelector('#default-sort-col-select').value = styling.defaultSort.column || '';
+            if (container.querySelector('#default-sort-dir-select')) container.querySelector('#default-sort-dir-select').value = styling.defaultSort.direction || 'desc';
+        }
 
         if (styling.pagination) {
             if (container.querySelector('#pagination-enabled-select')) {
