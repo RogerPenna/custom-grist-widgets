@@ -420,12 +420,15 @@
         // Start Grist
         grist.ready({ requiredAccess: 'full' });
 
-        // Listen to selected record or load instruments list
+        // Always load instruments list immediately on initialization
+        refreshInstrumentsDropdown();
+
+        // Listen to selected record (only preselect if record belongs to INSTRUMENTS table)
         grist.onRecord(async (record) => {
-            if (record && record.id) {
+            if (record && record.id && (record.CODE || record.TAG || record.SERIAL_NUMBER)) {
                 selectedInstrumentId = record.id;
                 await refreshInstrumentsDropdown(record.id);
-            } else {
+            } else if (!instrumentsList || instrumentsList.length === 0) {
                 await refreshInstrumentsDropdown();
             }
         });
