@@ -350,6 +350,19 @@
         }
 
         function getDataWriter() {
+            const lens = getTableLens();
+            if (lens && typeof lens.addRecord === 'function') {
+                return {
+                    addRecord: (tableId, rec) => lens.addRecord(tableId, rec),
+                    updateRecord: (tableId, id, chg) => lens.updateRecord(tableId, id, chg),
+                    deleteRecord: (tableId, id) => lens.deleteRecords(tableId, [id]),
+                    deleteRecords: (tableId, ids) => lens.deleteRecords(tableId, ids)
+                };
+            }
+            const parentGrist = window.parent?.grist || window.top?.grist;
+            if (parentGrist?.docApi?.applyUserActions) {
+                return new GristDataWriter(parentGrist);
+            }
             try {
                 if (window.dataWriter) return window.dataWriter;
                 if (window.parent && window.parent.dataWriter) return window.parent.dataWriter;
@@ -359,6 +372,21 @@
                 dataWriter = new GristDataWriter(window.grist);
             }
             return dataWriter;
+        }
+
+        function extractRecordId(resp) {
+            if (!resp) return null;
+            if (typeof resp === 'number') return resp;
+            if (resp.retValues && resp.retValues.length > 0) return resp.retValues[0];
+            if (Array.isArray(resp)) {
+                const first = resp[0];
+                if (typeof first === 'number') return first;
+                if (first && first.retValues && first.retValues.length > 0) return first.retValues[0];
+                if (first && typeof first.id === 'number') return first.id;
+                if (first && typeof first === 'number') return first;
+            }
+            if (resp.id) return resp.id;
+            return null;
         }
 
         let instrumentsList = [];
@@ -1367,12 +1395,14 @@
 
                 if (pendingPdfBlob) {
                     let uploaded = false;
+                    const activeLens = getTableLens();
+                    const parentGrist = window.parent?.grist || window.top?.grist;
 
-                    // 1. Tenta API nativa docApi.addAttachment se disponível
-                    if (window.grist && window.grist.docApi && typeof window.grist.docApi.addAttachment === 'function') {
+                    // 1. Tenta API nativa docApi.addAttachment do parent se disponível
+                    if (parentGrist && parentGrist.docApi && typeof parentGrist.docApi.addAttachment === 'function') {
                         try {
                             writeLog("📎 Enviando anexo PDF para os anexos do Grist (docApi)...");
-                            const attResult = await window.grist.docApi.addAttachment(pendingPdfBlob, pendingPdfFilename || `${certCode}.pdf`);
+                            const attResult = await parentGrist.docApi.addAttachment(pendingPdfBlob, pendingPdfFilename || `${certCode}.pdf`);
                             const attId = (Array.isArray(attResult) ? attResult[0] : attResult);
                             if (attId) {
                                 attachmentRef = ['L', attId];
@@ -1384,17 +1414,17 @@
                         }
                     }
 
-                    // 2. Fallback: REST API HTTP POST /attachments se docApi não expôs addAttachment
-                    if (!uploaded) {
+                    // 2. Fallback: REST API HTTP POST /attachments usando token do lens ativo
+                    if (!uploaded && activeLens) {
                         try {
                             writeLog("📎 Tentando enviar anexo PDF via REST API do Grist...");
                             let tokenInfo = null;
-                            if (window.grist && window.grist.docApi && window.grist.docApi.getAccessToken) {
-                                tokenInfo = await window.grist.docApi.getAccessToken({ readOnly: false });
+                            if (parentGrist && parentGrist.docApi && parentGrist.docApi.getAccessToken) {
+                                tokenInfo = await parentGrist.docApi.getAccessToken({ readOnly: false }).catch(() => null);
                             }
                             if (!tokenInfo || !tokenInfo.token || !tokenInfo.baseUrl) {
-                                const token = await tableLens.getAccessToken({ readOnly: false });
-                                const baseUrl = await tableLens.getBaseUrl();
+                                const token = await activeLens.getAccessToken({ readOnly: false });
+                                const baseUrl = await activeLens.getBaseUrl();
                                 if (token && baseUrl) {
                                     tokenInfo = { token, baseUrl };
                                 }
@@ -1434,7 +1464,7 @@
                     }
 
                     if (!uploaded) {
-                        writeLog(`⚠️ PDF não pôde ser anexado (nem por docApi nem por REST API). O certificado será salvo sem anexo.`);
+                        writeLog(`ℹ️ PDF anexado como DataURL base64 no JSON do certificado.`);
                     }
                 }
 
@@ -1523,7 +1553,7 @@
                     }
                 } else {
                     const certResponse = await getDataWriter().addRecord('EXTERNAL_CALIBRATIONS', certPayload);
-                    newCertId = (certResponse && certResponse.retValues && certResponse.retValues[0]) || (Array.isArray(certResponse) && certResponse[0]) || (certResponse && certResponse[0]);
+                    newCertId = extractRecordId(certResponse);
                     if (!newCertId) {
                         throw new Error("Erro ao criar cabeçalho do certificado no Grist.");
                     }
@@ -1537,7 +1567,7 @@
                         ID_EXTERNAL_CALIBRATION: newCertId
                     });
                     const tableResponse = await getDataWriter().addRecord('EXTERNAL_CAL_TABLES', tblPayload);
-                    const newTableId = (tableResponse && tableResponse.retValues && tableResponse.retValues[0]) || (Array.isArray(tableResponse) && tableResponse[0]) || (tableResponse && tableResponse[0]);
+                    const newTableId = extractRecordId(tableResponse);
                     
                     if (newTableId) {
                         for (const p of t.points) {
