@@ -335,6 +335,32 @@
 
         let tableLens = null;
         let dataWriter = null;
+
+        function getTableLens() {
+            try {
+                if (window.parentTableLens) return window.parentTableLens;
+                if (window.tableLens) return window.tableLens;
+                if (window.parent && window.parent.tableLens) return window.parent.tableLens;
+                if (window.top && window.top.tableLens) return window.top.tableLens;
+            } catch (e) {}
+            if (!tableLens && window.grist) {
+                tableLens = new GristTableLens(window.grist);
+            }
+            return tableLens;
+        }
+
+        function getDataWriter() {
+            try {
+                if (window.dataWriter) return window.dataWriter;
+                if (window.parent && window.parent.dataWriter) return window.parent.dataWriter;
+                if (window.top && window.top.dataWriter) return window.top.dataWriter;
+            } catch (e) {}
+            if (!dataWriter && window.grist) {
+                dataWriter = new GristDataWriter(window.grist);
+            }
+            return dataWriter;
+        }
+
         let instrumentsList = [];
         let selectedInstrumentId = null;
         let pendingImportData = null;
@@ -342,9 +368,6 @@
         let pendingPdfBlob = null;
         let pendingPdfFilename = null;
         let previewResultsGrid = null;
-
-        tableLens = new GristTableLens(window.grist);
-        dataWriter = new GristDataWriter(window.grist);
 
         // Bind selectors
         const instSelect = document.getElementById('instrument-select');
@@ -479,10 +502,16 @@
         async function refreshInstrumentsDropdown(selectedId = null) {
             const instSelect = document.getElementById('instrument-select');
             try {
-                instrumentsList = await tableLens.fetchTableRecords('INSTRUMENTS');
+                const activeLens = getTableLens();
+                if (!activeLens) {
+                    console.warn("importador-calibracoes: Lens não pronto ainda. Agendando retry...");
+                    setTimeout(() => refreshInstrumentsDropdown(selectedId), 500);
+                    return;
+                }
+                instrumentsList = await activeLens.fetchTableRecords('INSTRUMENTS');
                 let typesMap = {};
                 try {
-                    const types = await tableLens.fetchTableRecords('INSTRUMENTS_TYPES');
+                    const types = await activeLens.fetchTableRecords('INSTRUMENTS_TYPES');
                     types.forEach(t => { typesMap[t.id] = t.NAME; });
                 } catch(e) {}
 
@@ -1022,10 +1051,10 @@
                 let maxErrorAllowed = 5.0; // fallback default
 
                 try {
-                    const allCriteria = await tableLens.fetchTableRecords('CRITERION_ACCEPTANCE');
+                    const allCriteria = await getTableLens().fetchTableRecords('CRITERION_ACCEPTANCE');
                     const matchedGen = allCriteria.filter(c => String(getRecordFieldValue(c, ['ID_INSTRUMENT_TYPE', 'INSTRUMENT_TYPE'])) === String(instrumentTypeId));
                     
-                    const allIndiv = await tableLens.fetchTableRecords('CRITERION_INSTRUMENTS');
+                    const allIndiv = await getTableLens().fetchTableRecords('CRITERION_INSTRUMENTS');
                     const matchedIndiv = allIndiv.filter(c => String(getRecordFieldValue(c, ['ID_INSTRUMENT', 'INSTRUMENT'])) === String(selectedInstrumentId));
                     
                     const criteria = [...matchedIndiv, ...matchedGen];
@@ -1086,7 +1115,7 @@
                 
                 let typeName = instrumentTypeId || '-';
                 try {
-                    const typeRow = await tableLens.findRecord('INSTRUMENTS_TYPES', { id: instrumentTypeId });
+                    const typeRow = await getTableLens().findRecord('INSTRUMENTS_TYPES', { id: instrumentTypeId });
                     if (typeRow) typeName = getRecordFieldValue(typeRow, ['NAME', 'TYPE']) || typeName;
                 } catch(e) {}
                 document.getElementById('preview-inst-type').innerText = typeName;
@@ -1202,7 +1231,7 @@
         async function buildPayload(tableId, mapObj) {
             let schemaCols = [];
             try {
-                const s = await tableLens.getTableSchema(tableId);
+                const s = await getTableLens().getTableSchema(tableId);
                 schemaCols = Object.keys(s || {});
             } catch(e) {}
 
@@ -1281,7 +1310,7 @@
                 let supplierId = null;
                 if (labName) {
                     try {
-                        const suppliers = await tableLens.fetchTableRecords('SUPPLIERS');
+                        const suppliers = await getTableLens().fetchTableRecords('SUPPLIERS');
                         const normLab = normalizeStr(labName);
                         const matchedSupp = suppliers.find(s => {
                             const nameVal = getRecordFieldValue(s, ['NAME', 'Name', 'NOME', 'SUPPLIER_NAME', 'Supplier']);
@@ -1299,7 +1328,7 @@
                 // Lookup Calibration Type ("Rastreado")
                 let calTypeId = 1;
                 try {
-                    const calTypes = await tableLens.fetchTableRecords('CALIBRATION_TYPES');
+                    const calTypes = await getTableLens().fetchTableRecords('CALIBRATION_TYPES');
                     const matchedType = calTypes.find(ct => {
                         const nameVal = getRecordFieldValue(ct, ['NAME', 'TYPE']);
                         return nameVal && normalizeStr(nameVal).includes('rastreado');
@@ -1310,10 +1339,13 @@
                 // Lookup Status ("Disponível")
                 let statusId = 1;
                 try {
-                    const statuses = await tableLens.fetchTableRecords('STATUS');
+                    const statuses = await getTableLens().fetchTableRecords('STATUS');
                     const matchedStatus = statuses.find(st => {
                         const nameVal = getRecordFieldValue(st, ['NAME', 'STATUS']);
                         return nameVal && normalizeStr(nameVal).includes('disponivel');
+                    });
+                    if (matchedStatus) statusId = matchedStatus.id;
+                } catch(e) {}
                     });
                     if (matchedStatus) statusId = matchedStatus.id;
                 } catch(e) {}
@@ -1458,7 +1490,7 @@
                 // Check if certificate with same code already exists for this instrument
                 let existingCertId = null;
                 try {
-                    const existingCerts = await tableLens.fetchTableRecords('EXTERNAL_CALIBRATIONS');
+                    const existingCerts = await getTableLens().fetchTableRecords('EXTERNAL_CALIBRATIONS');
                     const normCertCode = normalizeStr(certCode);
                     const matchedCert = existingCerts.find(c => {
                         const cCode = getRecordFieldValue(c, ['CODE', 'CERT_CODE', 'Numero', 'Numero_Certificado', 'Codigo']);
@@ -1473,27 +1505,27 @@
 
                 let newCertId = existingCertId;
                 if (existingCertId) {
-                    await dataWriter.updateRecord('EXTERNAL_CALIBRATIONS', existingCertId, certPayload);
+                    await getDataWriter().updateRecord('EXTERNAL_CALIBRATIONS', existingCertId, certPayload);
                     writeLog(`Certificado ID ${existingCertId} atualizado no Grist com sucesso!`);
 
                     // Clean up old child tables and results to prevent duplicates
                     try {
-                        const oldTables = await tableLens.fetchTableRecords('EXTERNAL_CAL_TABLES');
+                        const oldTables = await getTableLens().fetchTableRecords('EXTERNAL_CAL_TABLES');
                         const childTables = oldTables.filter(t => String(getRecordFieldValue(t, ['ID_EXTERNAL_CALIBRATION', 'EXTERNAL_CALIBRATION', 'Certificado'])) === String(existingCertId));
                         
                         for (const ct of childTables) {
-                            const oldResults = await tableLens.fetchTableRecords('EXTERNAL_CAL_RESULTS');
+                            const oldResults = await getTableLens().fetchTableRecords('EXTERNAL_CAL_RESULTS');
                             const childResults = oldResults.filter(r => String(getRecordFieldValue(r, ['ID_EXTERNAL_CAL_TABLE', 'EXTERNAL_CAL_TABLE', 'Tabela'])) === String(ct.id));
                             for (const cr of childResults) {
-                                try { await dataWriter.deleteRecord('EXTERNAL_CAL_RESULTS', cr.id); } catch(err) {}
+                                try { await getDataWriter().deleteRecord('EXTERNAL_CAL_RESULTS', cr.id); } catch(err) {}
                             }
-                            try { await dataWriter.deleteRecord('EXTERNAL_CAL_TABLES', ct.id); } catch(err) {}
+                            try { await getDataWriter().deleteRecord('EXTERNAL_CAL_TABLES', ct.id); } catch(err) {}
                         }
                     } catch(err) {
                         console.warn("Aviso ao limpar tabelas filhas antigas:", err);
                     }
                 } else {
-                    const certResponse = await dataWriter.addRecord('EXTERNAL_CALIBRATIONS', certPayload);
+                    const certResponse = await getDataWriter().addRecord('EXTERNAL_CALIBRATIONS', certPayload);
                     newCertId = (certResponse && certResponse.retValues && certResponse.retValues[0]) || (Array.isArray(certResponse) && certResponse[0]) || (certResponse && certResponse[0]);
                     if (!newCertId) {
                         throw new Error("Erro ao criar cabeçalho do certificado no Grist.");
@@ -1507,7 +1539,7 @@
                         NAME: t.name,
                         ID_EXTERNAL_CALIBRATION: newCertId
                     });
-                    const tableResponse = await dataWriter.addRecord('EXTERNAL_CAL_TABLES', tblPayload);
+                    const tableResponse = await getDataWriter().addRecord('EXTERNAL_CAL_TABLES', tblPayload);
                     const newTableId = (tableResponse && tableResponse.retValues && tableResponse.retValues[0]) || (Array.isArray(tableResponse) && tableResponse[0]) || (tableResponse && tableResponse[0]);
                     
                     if (newTableId) {
@@ -1520,7 +1552,7 @@
                                 K_FACTOR: p.K_FACTOR,
                                 ID_EXTERNAL_CAL_TABLE: newTableId
                             });
-                            await dataWriter.addRecord('EXTERNAL_CAL_RESULTS', resPayload);
+                            await getDataWriter().addRecord('EXTERNAL_CAL_RESULTS', resPayload);
                         }
                     }
                 }
@@ -1528,7 +1560,7 @@
 
                 // Update Instrument RefList and Next Calibration Due Date
                 writeLog("Conectando certificado e atualizando datas de calibração do Instrumento...");
-                const freshInstrument = await tableLens.fetchRecordById('INSTRUMENTS', selectedInstrumentId);
+                const freshInstrument = await getTableLens().fetchRecordById('INSTRUMENTS', selectedInstrumentId);
                 const rawCurrentRefs = getRecordFieldValue(freshInstrument, ['EXTERNAL_CALIBRATIONS']) || [];
                 const currentRefs = Array.isArray(rawCurrentRefs) ? rawCurrentRefs : [];
                 const updatedRefs = ['L', ...((currentRefs[0] === 'L') ? currentRefs.slice(1) : currentRefs), newCertId];
@@ -1583,7 +1615,7 @@
                 let instSituationId = (validationStatus === 'Reprovado') ? 6 : 1;
                 if (validationStatus === 'Reprovado') {
                     try {
-                        const situations = await tableLens.fetchTableRecords('SITUATIONS');
+                        const situations = await getTableLens().fetchTableRecords('SITUATIONS');
                         const blockedSit = situations.find(s => {
                             const nameVal = getRecordFieldValue(s, ['NAME', 'Name', 'NOME', 'SITUATION']);
                             return nameVal && /bloqueado|não conforme|nao conforme/i.test(nameVal);
@@ -1610,7 +1642,7 @@
                 };
 
                 const instPayload = await buildPayload('INSTRUMENTS', instUpdateObj);
-                await dataWriter.updateRecord('INSTRUMENTS', selectedInstrumentId, instPayload);
+                await getDataWriter().updateRecord('INSTRUMENTS', selectedInstrumentId, instPayload);
                 writeLog("✅ Instrumento atualizado com histórico, última calibração e nova data de vencimento!");
                 
                 // Add final occurrence
@@ -1623,7 +1655,7 @@
                     ID_EXTERNAL_CALIBRATION: newCertId,
                     CERTIFICATE_CODE: certCode
                 });
-                await dataWriter.addRecord('INSTRUMENTS_OCCURRENCES', finalOccurrence);
+                await getDataWriter().addRecord('INSTRUMENTS_OCCURRENCES', finalOccurrence);
                 writeLog("Histórico final gravado em INSTRUMENTS_OCCURRENCES.");
                 
                 writeLog("🔗 Relacionamento bidirecional atualizado com sucesso!");

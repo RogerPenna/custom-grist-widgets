@@ -1136,11 +1136,24 @@ export const TableRenderer = (() => {
                             <span>📥 Importador de Certificados (.cal / XML)</span>
                             <button type="button" id="close-imp-modal" style="background:none; border:none; color:#fff; font-size:20px; cursor:pointer;">✕</button>
                         </div>
-                        <iframe src="../CalibrationWidget/importador-calibracoes.html" style="flex:1; border:none; width:100%; height:100%;"></iframe>
+                        <iframe id="grf-import-iframe" src="../CalibrationWidget/importador-calibracoes.html" style="flex:1; border:none; width:100%; height:100%;"></iframe>
                     </div>
                 `;
                 overlay.querySelector('#close-imp-modal').onclick = () => overlay.remove();
                 document.body.appendChild(overlay);
+
+                const iframe = overlay.querySelector('#grf-import-iframe');
+                if (iframe) {
+                    const passLens = () => {
+                        try {
+                            if (iframe.contentWindow) {
+                                iframe.contentWindow.parentTableLens = tableLens;
+                            }
+                        } catch (e) {}
+                    };
+                    iframe.onload = passLens;
+                    passLens();
+                }
             };
 
             const openManualModal = async () => {
