@@ -1118,10 +1118,43 @@ export const TableRenderer = (() => {
             addBtn.id = 'grf-add-new-btn';
             addBtn.innerText = '+ Adicionar Novo';
 
-            const addNewOptions = actions.addNewOptions || options.addNewOptions || [
-                { id: 'import', label: 'Importar Certificado (.cal)', icon: '📥', action: 'import' },
-                { id: 'manual', label: 'Inserir Calibração Manual', icon: '📝', action: 'manual' }
-            ];
+            let addNewOptions = actions.addNewOptions || options.addNewOptions;
+
+            if (!addNewOptions && actions.addNewMode === 'menu') {
+                addNewOptions = [
+                    { id: 'import', label: 'Importar Certificado (.cal / XML)', icon: '📥', action: 'import' },
+                    { id: 'manual', label: 'Inserir Calibração Manual', icon: '📝', action: 'manual' }
+                ];
+            }
+
+            const openImportModal = () => {
+                let overlay = document.createElement('div');
+                overlay.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); z-index:9999; display:flex; align-items:center; justify-content:center;';
+                overlay.innerHTML = `
+                    <div style="background:#fff; width:90vw; height:85vh; max-width:1200px; border-radius:8px; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,0.3);">
+                        <div style="background:#2c5e5a; color:#fff; padding:12px 20px; display:flex; justify-content:space-between; align-items:center; font-weight:bold;">
+                            <span>📥 Importador de Certificados (.cal / XML)</span>
+                            <button type="button" id="close-imp-modal" style="background:none; border:none; color:#fff; font-size:20px; cursor:pointer;">✕</button>
+                        </div>
+                        <iframe src="../CalibrationWidget/importador-calibracoes.html" style="flex:1; border:none; width:100%; height:100%;"></iframe>
+                    </div>
+                `;
+                overlay.querySelector('#close-imp-modal').onclick = () => overlay.remove();
+                document.body.appendChild(overlay);
+            };
+
+            const openManualModal = async () => {
+                if (window.ManualCalibrationModal) {
+                    window.ManualCalibrationModal.open({ tableLens, tableId, onSaved: () => renderTable(options) });
+                } else {
+                    const module = await import('../grist-drawer-component/manual-calibration-modal.js').catch(err => console.error(err));
+                    if (module && module.ManualCalibrationModal) {
+                        module.ManualCalibrationModal.open({ tableLens, tableId, onSaved: () => renderTable(options) });
+                    } else if (onAddRecord) {
+                        onAddRecord();
+                    }
+                }
+            };
 
             if (Array.isArray(addNewOptions) && addNewOptions.length > 1) {
                 const menu = document.createElement('div');
@@ -1165,30 +1198,9 @@ export const TableRenderer = (() => {
                         const opt = addNewOptions[idx];
 
                         if (opt.action === 'import') {
-                            let overlay = document.createElement('div');
-                            overlay.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); z-index:9999; display:flex; align-items:center; justify-content:center;';
-                            overlay.innerHTML = `
-                                <div style="background:#fff; width:90vw; height:85vh; max-width:1200px; border-radius:8px; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,0.3);">
-                                    <div style="background:#2c5e5a; color:#fff; padding:12px 20px; display:flex; justify-content:space-between; align-items:center; font-weight:bold;">
-                                        <span>📥 Importador de Certificados (.cal / XML)</span>
-                                        <button type="button" id="close-imp-modal" style="background:none; border:none; color:#fff; font-size:20px; cursor:pointer;">✕</button>
-                                    </div>
-                                    <iframe src="../CalibrationWidget/importador-calibracoes.html" style="flex:1; border:none; width:100%; height:100%;"></iframe>
-                                </div>
-                            `;
-                            overlay.querySelector('#close-imp-modal').onclick = () => overlay.remove();
-                            document.body.appendChild(overlay);
+                            openImportModal();
                         } else if (opt.action === 'manual') {
-                            if (window.ManualCalibrationModal) {
-                                window.ManualCalibrationModal.open({ tableLens, tableId, onSaved: () => renderTable(options) });
-                            } else {
-                                const module = await import('../grist-drawer-component/manual-calibration-modal.js').catch(err => console.error(err));
-                                if (module && module.ManualCalibrationModal) {
-                                    module.ManualCalibrationModal.open({ tableLens, tableId, onSaved: () => renderTable(options) });
-                                } else if (onAddRecord) {
-                                    onAddRecord();
-                                }
-                            }
+                            await openManualModal();
                         } else if (typeof opt.onClick === 'function') {
                             opt.onClick();
                         } else if (onAddRecord) {
@@ -1201,8 +1213,14 @@ export const TableRenderer = (() => {
                 addBtnContainer.appendChild(menu);
                 topBar.appendChild(addBtnContainer);
             } else {
-                addBtn.onclick = () => {
-                    if (onAddRecord) onAddRecord();
+                addBtn.onclick = async () => {
+                    if (actions.addNewMode === 'import') {
+                        openImportModal();
+                    } else if (actions.addNewMode === 'manual') {
+                        await openManualModal();
+                    } else if (onAddRecord) {
+                        onAddRecord();
+                    }
                 };
                 addBtnContainer.appendChild(addBtn);
                 topBar.appendChild(addBtnContainer);

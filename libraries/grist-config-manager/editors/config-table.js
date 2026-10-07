@@ -364,6 +364,15 @@ export const TableConfigEditor = (() => {
                                 <label class="config-toggle"><input type="checkbox" id="edit-mode-checkbox" ${actions.editMode ? 'checked' : ''}> Habilitar Edição Direta</label>
                                 <label class="config-toggle"><input type="checkbox" id="use-save-btn-checkbox" ${actions.useSaveButton ? 'checked' : ''}> Usar Botão "Salvar Alterações"</label>
                                 <label class="config-toggle"><input type="checkbox" id="enable-add-btn-checkbox" ${actions.enableAddNewBtn ? 'checked' : ''}> Mostrar Botão "Novo Registro"</label>
+                                <div style="margin-top:10px;">
+                                    <div class="config-label-with-help">Modo do Botão "+ Adicionar Novo"</div>
+                                    <select id="add-btn-mode-select" style="width:100%; padding:4px;">
+                                        <option value="standard" ${actions.addNewMode === 'standard' || !actions.addNewMode ? 'selected' : ''}>Formulário Padrão (Gaveta / Drawer)</option>
+                                        <option value="menu" ${actions.addNewMode === 'menu' ? 'selected' : ''}>Menu Popover (Importar .cal + Calibração Manual)</option>
+                                        <option value="import" ${actions.addNewMode === 'import' ? 'selected' : ''}>Apenas Importar Certificado (.cal / XML)</option>
+                                        <option value="manual" ${actions.addNewMode === 'manual' ? 'selected' : ''}>Apenas Calibração Manual (Split PDF / Form)</option>
+                                    </select>
+                                </div>
                             </div>
                             <div>
                                 <div class="config-label-with-help">Gaveta de Edição (Drawer)</div>
@@ -656,6 +665,7 @@ export const TableConfigEditor = (() => {
                 useSaveButton: container.querySelector('#use-save-btn-checkbox').checked,
                 drawerId: container.querySelector('#drawer-config-select').value,
                 enableAddNewBtn: container.querySelector('#enable-add-btn-checkbox').checked,
+                addNewMode: container.querySelector('#add-btn-mode-select')?.value || 'standard',
                 customButtons: _customButtons
             }
         };
@@ -1213,6 +1223,7 @@ export const TableConfigEditor = (() => {
             useSaveButton: container.querySelector('#use-save-btn-checkbox')?.checked || false,
             drawerId: container.querySelector('#drawer-config-select')?.value || '',
             enableAddNewBtn: container.querySelector('#enable-add-btn-checkbox')?.checked || false,
+            addNewMode: container.querySelector('#add-btn-mode-select')?.value || 'standard',
             customButtons: _customButtons
         };
     }
@@ -1309,6 +1320,7 @@ export const TableConfigEditor = (() => {
         if (container.querySelector('#use-save-btn-checkbox')) container.querySelector('#use-save-btn-checkbox').checked = !!actions.useSaveButton;
         if (container.querySelector('#drawer-config-select')) container.querySelector('#drawer-config-select').value = actions.drawerId || '';
         if (container.querySelector('#enable-add-btn-checkbox')) container.querySelector('#enable-add-btn-checkbox').checked = !!actions.enableAddNewBtn;
+        if (container.querySelector('#add-btn-mode-select')) container.querySelector('#add-btn-mode-select').value = actions.addNewMode || 'standard';
         
         _customButtons = Array.isArray(actions.customButtons) ? actions.customButtons : [];
         _activeButtonIdx = -1;
