@@ -1259,8 +1259,15 @@ export const TableRenderer = (() => {
                 batchActionsContainer.appendChild(btn);
             });
             
-            // Insert batchActionsContainer before addBtn or just append it
-            topBar.insertBefore(batchActionsContainer, topBar.querySelector('.grf-add-new-btn'));
+            // Insert batchActionsContainer before addBtnContainer or append it
+            const targetChild = topBar.querySelector('.grf-add-new-btn')?.parentNode === topBar 
+                ? topBar.querySelector('.grf-add-new-btn') 
+                : topBar.querySelector('.grf-add-new-btn')?.closest('div');
+            if (targetChild && targetChild.parentNode === topBar) {
+                topBar.insertBefore(batchActionsContainer, targetChild);
+            } else {
+                topBar.appendChild(batchActionsContainer);
+            }
         }
         
         widgetWrapper.appendChild(topBar);
