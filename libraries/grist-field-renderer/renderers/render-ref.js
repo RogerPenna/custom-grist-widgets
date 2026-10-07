@@ -98,28 +98,13 @@ export async function renderRef(options) {
             }
         }
 
-        // Filter records if targeting Fornecedores using 'Is Laboratory' and 'Is Manufacturer' (0/1)
+        // Generic filtering via options.filterRefRecords callback or colSchema filter rules
         let recordsToDisplay = allRefRecords;
-        if (refTableId === 'Fornecedores') {
-            const isLabContext = (colSchema.colId || '').toLowerCase().includes('lab') || (colSchema.colId || '').toLowerCase().includes('supplier') || record.gristHelper_tableId === 'EXTERNAL_CALIBRATIONS';
-            const isManufacturerContext = (colSchema.colId || '').toLowerCase().includes('fabri') || (colSchema.colId || '').toLowerCase().includes('manufac') || record.gristHelper_tableId === 'Instruments';
-
-            if (isLabContext && !isManufacturerContext) {
-                const labs = allRefRecords.filter(rec => {
-                    const isLabCol = rec['Is Laboratory'] === 1 || rec['Is Laboratory'] === '1' || rec.IsLaboratory === 1 || rec.isLaboratory === true;
-                    const tipo = (rec.Tipo || rec.tipo || rec.TipoFornecedor || '').toLowerCase();
-                    const nome = (rec.nome || rec.Nome || rec.RazaoSocial || '').toLowerCase();
-                    return isLabCol || tipo.includes('laborat') || nome.includes('metrologia') || nome.includes('lab');
-                });
-                if (labs.length > 0) recordsToDisplay = labs;
-            } else if (isManufacturerContext) {
-                const manufacturers = allRefRecords.filter(rec => {
-                    const isManufCol = rec['Is Manufacturer'] === 1 || rec['Is Manufacturer'] === '1' || rec.IsManufacturer === 1 || rec.isManufacturer === true;
-                    const tipo = (rec.Tipo || rec.tipo || rec.TipoFornecedor || '').toLowerCase();
-                    return isManufCol || (!tipo.includes('laborat') && rec['Is Laboratory'] !== 1);
-                });
-                if (manufacturers.length > 0) recordsToDisplay = manufacturers;
-            }
+        if (typeof options.filterRefRecords === 'function') {
+            recordsToDisplay = allRefRecords.filter(options.filterRefRecords);
+        } else if (colSchema.filterColumn) {
+            const filterVal = typeof colSchema.filterValue !== 'undefined' ? colSchema.filterValue : 1;
+            recordsToDisplay = allRefRecords.filter(rec => rec[colSchema.filterColumn] === filterVal);
         }
 
         // Preenche o dropdown usando o finalDisplayColId correto
