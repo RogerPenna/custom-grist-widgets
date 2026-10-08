@@ -2034,19 +2034,26 @@
                     } catch(e) {}
                 }
 
+                function parseToSeconds(dStr) {
+                    if (!dStr) return null;
+                    const clean = String(dStr).split('T')[0];
+                    const d = new Date(clean + 'T12:00:00Z');
+                    return isNaN(d.getTime()) ? null : Math.floor(d.getTime() / 1000);
+                }
+
+                const lastCalTimestamp = parseToSeconds(dateStr);
+                const nextCalTimestamp = parseToSeconds(nextCalDateStr);
+
                 const instUpdateObj = {
                     EXTERNAL_CALIBRATIONS: updatedRefs,
                     METROLOGICAL_STAGE: "-",
                     ID_SITUATION: instSituationId,
                     ID_STATUS: statusId,
-                    LAST_CALIBRATION_DATE: dateStr,
-                    LAST_CALIBRATION: dateStr,
-                    DATA_ULTIMA_CALIBRACAO: dateStr,
-                    ULTIMA_CALIBRACAO: dateStr,
-                    NEXT_CALIBRATION_DATE: nextCalDateStr,
-                    NEXT_CALIBRATION: nextCalDateStr,
-                    PROXIMA_CALIBRACAO: nextCalDateStr,
-                    NEXT_CAL: nextCalDateStr
+                    Last_Calibration: lastCalTimestamp,
+                    LAST_CALIBRATION: lastCalTimestamp,
+                    LAST_CALIBRATION_DATE: lastCalTimestamp,
+                    NEXT_CALIBRATION: nextCalTimestamp,
+                    NEXT_CALIBRATION_DATE: nextCalTimestamp
                 };
 
                 const instPayload = await buildPayload('INSTRUMENTS', instUpdateObj);

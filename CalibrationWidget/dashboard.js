@@ -80,6 +80,9 @@ window.onInstrumentsDataLoaded = (data) => {
     // Atualiza contadores dos chips, badge de pendências e gaveta
     updatePendencias(currentRecords);
 
+    // Sincronização automática: varre certificados e atualiza datas de última/próxima calibração
+    syncInstrumentsWithCertificates(currentRecords);
+
     // Safely check if the Kanban tab is active using either data-tab or data-tab-type
     const activeBtn = document.querySelector('.tab-btn.active');
     const activeTab = activeBtn ? activeBtn.getAttribute('data-tab') : '';
@@ -90,6 +93,83 @@ window.onInstrumentsDataLoaded = (data) => {
         renderKanban();
     }
 };
+
+let isSyncingCertificates = false;
+async function syncInstrumentsWithCertificates(instruments) {
+    if (isSyncingCertificates || !Array.isArray(instruments) || instruments.length === 0) return;
+    isSyncingCertificates = true;
+    try {
+        const certs = await mockTableLens.fetchTableRecords('EXTERNAL_CALIBRATIONS');
+        if (!certs || certs.length === 0) return;
+
+        function toSeconds(val) {
+            if (val === null || val === undefined || val === '') return null;
+            if (typeof val === 'number') return val > 1e11 ? Math.floor(val / 1000) : Math.floor(val);
+            const num = Number(val);
+            if (!isNaN(num) && num > 0) return num > 1e11 ? Math.floor(num / 1000) : Math.floor(num);
+            const d = new Date(val);
+            return isNaN(d.getTime()) ? null : Math.floor(d.getTime() / 1000);
+        }
+
+        function addMonthsSeconds(baseSec, months) {
+            if (!baseSec) return null;
+            const d = new Date(baseSec * 1000);
+            d.setUTCMonth(d.getUTCMonth() + (months > 0 ? months : 12));
+            return Math.floor(d.getTime() / 1000);
+        }
+
+        // Map certificates by instrument id
+        const certsByInst = new Map();
+        certs.forEach(c => {
+            const rawInstId = getRecordField(c, 'ID_INSTRUMENT', 'INSTRUMENT', 'Instrumento');
+            const instId = Array.isArray(rawInstId) ? rawInstId[0] : (typeof rawInstId === 'object' && rawInstId ? rawInstId.id : rawInstId);
+            if (!instId) return;
+
+            const dateVal = getRecordField(c, 'DATE', 'CALIBRATION_DATE', 'Data', 'Data_Calibracao');
+            const sec = toSeconds(dateVal);
+            if (!sec) return;
+
+            const status = String(getRecordField(c, 'VALIDATION_STATUS', 'STATUS', 'Status') || '').toLowerCase();
+            if (status.includes('reprovad')) return; // Ignore reprovados
+
+            const numInstId = Number(instId);
+            if (!certsByInst.has(numInstId)) certsByInst.set(numInstId, []);
+            certsByInst.get(numInstId).push({ id: c.id, sec });
+        });
+
+        for (const inst of instruments) {
+            const list = certsByInst.get(Number(inst.id));
+            if (!list || list.length === 0) continue;
+
+            // Sort descending to get newest certificate
+            list.sort((a, b) => b.sec - a.sec);
+            const latestCert = list[0];
+
+            const currentLastCalSec = toSeconds(getRecordField(inst, 'Last_Calibration', 'LAST_CALIBRATION'));
+            const currentNextCalSec = toSeconds(getRecordField(inst, 'NEXT_CALIBRATION', 'Next_Calibration'));
+
+            const freqMonths = parseFloat(getRecordField(inst, 'CALIBRATION_FREQUENCY_MONTHS', 'CALIBRATION_FREQUENCY')) || 12;
+            const expectedNextSec = addMonthsSeconds(latestCert.sec, freqMonths);
+
+            // Se o certificado é mais recente do que a data registrada ou se a data está vazia
+            if (!currentLastCalSec || latestCert.sec > currentLastCalSec || !currentNextCalSec) {
+                console.log(`[Sync] Atualizando calibração do instrumento ${inst.Code || inst.id}:`, {
+                    de: { last: currentLastCalSec, next: currentNextCalSec },
+                    para: { last: latestCert.sec, next: expectedNextSec }
+                });
+
+                await mockDataWriter.updateRecord('INSTRUMENTS', inst.id, {
+                    Last_Calibration: latestCert.sec,
+                    NEXT_CALIBRATION: expectedNextSec
+                }).catch(e => console.warn(`[Sync] Falha ao atualizar instrumento ${inst.id}:`, e));
+            }
+        }
+    } catch (err) {
+        console.warn("[Sync] Erro na varredura de certificados:", err);
+    } finally {
+        isSyncingCertificates = false;
+    }
+}
 
 // Handle any cached data received before dashboard.js loaded
 if (window.cachedInstrumentsData) {
