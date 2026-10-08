@@ -328,6 +328,77 @@
         </div>
     </div>
 
+    <!-- MODAL: CADASTRO RÁPIDO DE INSTRUMENTO -->
+    <div id="quick-instrument-modal" class="modal">
+        <div class="modal-content" style="max-width: 650px; margin: 3% auto;">
+            <div class="modal-header">
+                <h2>⚙️ Cadastrar Novo Instrumento</h2>
+                <span id="quick-inst-close-x" class="close-preview-modal-btn">&times;</span>
+            </div>
+            <div class="modal-body" style="padding: 20px; background: #fff;">
+                <div style="background: #e0f2f1; border-left: 4px solid var(--primary-color); padding: 12px 14px; border-radius: 4px; margin-bottom: 18px; font-size: 13px; color: #004d40; line-height: 1.4;">
+                    <strong>Instrumento não localizado no sistema.</strong><br>
+                    Os dados abaixo foram extraídos do certificado. Ajuste o <strong>Tipo de Instrumento</strong> e selecione o <strong>Critério de Aceitação</strong> para cadastrá-lo e prosseguir com a importação.
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="quick-inst-code">Código / Tag *</label>
+                        <input type="text" id="quick-inst-code" required style="font-weight: bold; color: var(--primary-color);">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="quick-inst-serial">Número de Série</label>
+                        <input type="text" id="quick-inst-serial">
+                    </div>
+                    <div class="form-group" style="grid-column: span 2; margin-bottom: 0;">
+                        <label for="quick-inst-type">Tipo de Instrumento *</label>
+                        <select id="quick-inst-type" style="width: 100%; font-weight: 500;">
+                            <option value="">-- Carregando Tipos... --</option>
+                        </select>
+                        <small style="color: #607d8b; font-size: 11px; margin-top: 3px;">
+                            Dica: Escolha o tipo correspondente no sistema para carregar os critérios de aceitação vinculados.
+                        </small>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="quick-inst-manufacturer">Fabricante</label>
+                        <input type="text" id="quick-inst-manufacturer">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="quick-inst-model">Modelo</label>
+                        <input type="text" id="quick-inst-model">
+                    </div>
+                    <div class="form-group" style="grid-column: span 2; margin-bottom: 0;">
+                        <label>Faixa de Trabalho / Capacidade</label>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <input type="number" step="any" id="quick-inst-range-min" placeholder="Mín" style="flex: 1;">
+                            <span style="color: #78909c;">até</span>
+                            <input type="number" step="any" id="quick-inst-range-max" placeholder="Máx" style="flex: 1;">
+                            <input type="text" id="quick-inst-unit" placeholder="Unid. (ex: °C)" style="width: 110px;">
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="quick-inst-frequency">Frequência Calibração (Meses)</label>
+                        <input type="number" id="quick-inst-frequency" value="12" min="1" max="120">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="quick-inst-max-error">Erro Máx. Permitido (EMP)</label>
+                        <input type="number" step="any" id="quick-inst-max-error" placeholder="Ex: 1.0">
+                    </div>
+                    <div class="form-group" style="grid-column: span 2; margin-bottom: 0;">
+                        <label for="quick-inst-criterion">Critério de Aceitação Vinculado</label>
+                        <select id="quick-inst-criterion" style="width: 100%;">
+                            <option value="">-- Selecione o Critério de Aceitação --</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="quick-inst-btn-cancel" class="btn-secondary">Cancelar</button>
+                <button type="button" id="quick-inst-btn-save" class="btn-primary">Salvar e Continuar Importação</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Script de Negócio -->
     <script type="module">
         import { GristTableLens } from '../libraries/grist-table-lens/grist-table-lens.js';
@@ -565,6 +636,271 @@
                 console.error("Failed to load instruments list:", e);
                 instSelect.innerHTML = '<option value="">Erro ao carregar lista</option>';
             }
+        }
+
+        async function promptQuickInstrumentRegistration(extractedData) {
+            return new Promise(async (resolve) => {
+                const modal = document.getElementById('quick-instrument-modal');
+                const closeBtn = document.getElementById('quick-inst-close-x');
+                const cancelBtn = document.getElementById('quick-inst-btn-cancel');
+                const saveBtn = document.getElementById('quick-inst-btn-save');
+
+                const codeInput = document.getElementById('quick-inst-code');
+                const serialInput = document.getElementById('quick-inst-serial');
+                const typeSelect = document.getElementById('quick-inst-type');
+                const manufacturerInput = document.getElementById('quick-inst-manufacturer');
+                const modelInput = document.getElementById('quick-inst-model');
+                const rangeMinInput = document.getElementById('quick-inst-range-min');
+                const rangeMaxInput = document.getElementById('quick-inst-range-max');
+                const unitInput = document.getElementById('quick-inst-unit');
+                const freqInput = document.getElementById('quick-inst-frequency');
+                const critSelect = document.getElementById('quick-inst-criterion');
+                const maxErrorInput = document.getElementById('quick-inst-max-error');
+
+                // Populate extracted values
+                codeInput.value = extractedData.code || '';
+                serialInput.value = extractedData.serial || '';
+                manufacturerInput.value = extractedData.manufacturer || '';
+                modelInput.value = extractedData.model || '';
+                rangeMinInput.value = (extractedData.rangeMin !== null && extractedData.rangeMin !== undefined) ? extractedData.rangeMin : '';
+                rangeMaxInput.value = (extractedData.rangeMax !== null && extractedData.rangeMax !== undefined) ? extractedData.rangeMax : '';
+                unitInput.value = extractedData.unit || '';
+                freqInput.value = '12';
+                maxErrorInput.value = '';
+
+                // Load Types and Criteria from Grist
+                let allTypes = [];
+                let allCriteria = [];
+                try {
+                    const activeLens = getTableLens();
+                    if (activeLens) {
+                        allTypes = await activeLens.fetchTableRecords('INSTRUMENTS_TYPES').catch(() => []);
+                        allCriteria = await activeLens.fetchTableRecords('CRITERION_ACCEPTANCE').catch(() => []);
+                    }
+                } catch(e) {
+                    console.warn("Erro ao buscar tabelas para cadastro rápido:", e);
+                }
+
+                // Populate Types dropdown
+                typeSelect.innerHTML = '<option value="">-- Selecione o Tipo de Instrumento --</option>';
+                allTypes.forEach(t => {
+                    const opt = document.createElement('option');
+                    opt.value = t.id;
+                    opt.textContent = t.NAME || t.TYPE || `Tipo #${t.id}`;
+                    typeSelect.appendChild(opt);
+                });
+
+                // Helper to update criteria based on selected type
+                function updateCriteriaForType(selectedTypeId) {
+                    critSelect.innerHTML = '<option value="">-- Nenhum / Definir Tolerância Manual --</option>';
+                    if (!selectedTypeId) return;
+
+                    const filtered = allCriteria.filter(c => {
+                        const tId = getRecordFieldValue(c, ['ID_INSTRUMENT_TYPE', 'INSTRUMENT_TYPE', 'Id_Instrument_Type']);
+                        return String(tId) === String(selectedTypeId);
+                    });
+
+                    const curMin = parseFloat(rangeMinInput.value);
+                    const curMax = parseFloat(rangeMaxInput.value);
+                    let matchedCritId = null;
+
+                    filtered.forEach(c => {
+                        const cName = getRecordFieldValue(c, ['NAME', 'DESCRIPTION', 'Descricao', 'Name']) || `Critério #${c.id}`;
+                        const emp = getRecordFieldValue(c, ['MAX_ERROR_MORE', 'MAX_ERROR', 'LIMIT', 'Erro_Maximo', 'Limite']) || '';
+                        const cMin = getRecordFieldValue(c, ['CAPACITY_MIN', 'RANGE_MIN', 'MIN_VALUE', 'MIN']);
+                        const cMax = getRecordFieldValue(c, ['CAPACITY_MAX', 'RANGE_MAX', 'MAX_VALUE', 'MAX']);
+                        const cUnit = getRecordFieldValue(c, ['UNIT', 'UNIDADE']) || '';
+
+                        let details = [];
+                        if (cMin !== null && cMax !== null) details.push(`Faixa: ${cMin} a ${cMax} ${cUnit}`);
+                        if (emp !== '') details.push(`EMP: ±${emp} ${cUnit}`);
+                        const suffix = details.length > 0 ? ` (${details.join(' | ')})` : '';
+
+                        const opt = document.createElement('option');
+                        opt.value = c.id;
+                        opt.textContent = `${cName}${suffix}`;
+                        opt.dataset.emp = emp;
+                        critSelect.appendChild(opt);
+
+                        if (!matchedCritId && !isNaN(curMin) && !isNaN(curMax) && cMin !== null && cMax !== null) {
+                            if (curMin >= parseFloat(cMin) && curMax <= parseFloat(cMax)) {
+                                matchedCritId = c.id;
+                            }
+                        }
+                    });
+
+                    if (matchedCritId) {
+                        critSelect.value = matchedCritId;
+                        const selOpt = critSelect.querySelector(`option[value="${matchedCritId}"]`);
+                        if (selOpt && selOpt.dataset.emp) maxErrorInput.value = selOpt.dataset.emp;
+                    } else if (filtered.length === 1) {
+                        critSelect.value = filtered[0].id;
+                        const selOpt = critSelect.querySelector(`option[value="${filtered[0].id}"]`);
+                        if (selOpt && selOpt.dataset.emp) maxErrorInput.value = selOpt.dataset.emp;
+                    }
+                }
+
+                // Match type with fuzzy / word search against extractedData.typeStr
+                if (extractedData.typeStr && allTypes.length > 0) {
+                    const normTarget = normalizeStr(extractedData.typeStr);
+                    const targetWords = normTarget.split(/\s+/).filter(w => w.length >= 3);
+                    let bestType = null;
+                    let bestScore = -1;
+
+                    allTypes.forEach(t => {
+                        const tName = t.NAME || t.TYPE || '';
+                        const normName = normalizeStr(tName);
+                        if (!normName) return;
+
+                        let score = 0;
+                        if (normName === normTarget) score = 100;
+                        else if (normName.includes(normTarget) || normTarget.includes(normName)) score = 80;
+                        else {
+                            let common = 0;
+                            targetWords.forEach(tw => {
+                                if (normName.includes(tw)) common++;
+                            });
+                            if (common > 0) score = (common / Math.max(targetWords.length, 1)) * 60;
+                        }
+
+                        if (score > bestScore) {
+                            bestScore = score;
+                            bestType = t;
+                        }
+                    });
+
+                    if (bestType && bestScore >= 30) {
+                        typeSelect.value = bestType.id;
+                        updateCriteriaForType(bestType.id);
+                        writeLog(`💡 Sugestão automática de Tipo de Instrumento: "${bestType.NAME || bestType.TYPE}"`);
+                    }
+                }
+
+                typeSelect.onchange = () => {
+                    updateCriteriaForType(typeSelect.value);
+                };
+
+                critSelect.onchange = () => {
+                    const selOpt = critSelect.selectedOptions[0];
+                    if (selOpt && selOpt.dataset.emp) {
+                        maxErrorInput.value = selOpt.dataset.emp;
+                    }
+                };
+
+                const cleanUp = () => {
+                    modal.style.display = 'none';
+                    closeBtn.onclick = null;
+                    cancelBtn.onclick = null;
+                    saveBtn.onclick = null;
+                    typeSelect.onchange = null;
+                    critSelect.onchange = null;
+                };
+
+                closeBtn.onclick = () => {
+                    cleanUp();
+                    resolve(false);
+                };
+                cancelBtn.onclick = () => {
+                    cleanUp();
+                    resolve(false);
+                };
+
+                saveBtn.onclick = async () => {
+                    const code = codeInput.value.trim();
+                    if (!code) {
+                        alert("Por favor, preencha o Código / Tag do instrumento.");
+                        codeInput.focus();
+                        return;
+                    }
+                    const typeId = typeSelect.value;
+                    if (!typeId) {
+                        alert("Por favor, selecione o Tipo de Instrumento.");
+                        typeSelect.focus();
+                        return;
+                    }
+
+                    saveBtn.disabled = true;
+                    saveBtn.innerText = "Cadastrando no Grist...";
+
+                    try {
+                        const serial = serialInput.value.trim();
+                        const manufacturer = manufacturerInput.value.trim();
+                        const model = modelInput.value.trim();
+                        const rangeMin = parseFloat(rangeMinInput.value);
+                        const rangeMax = parseFloat(rangeMaxInput.value);
+                        const unit = unitInput.value.trim();
+                        const freqMonths = parseInt(freqInput.value, 10) || 12;
+                        const maxError = parseFloat(maxErrorInput.value);
+                        const critId = critSelect.value ? parseInt(critSelect.value, 10) : null;
+
+                        const instData = {
+                            CODE: code,
+                            TAG: code,
+                            IDENTIFIER: code,
+                            NAME: `${code}${model ? ' - ' + model : ''}`,
+                            SERIAL_NUMBER: serial,
+                            SERIAL: serial,
+                            NUMERO_SERIE: serial,
+                            ID_INSTRUMENT_TYPE: parseInt(typeId, 10),
+                            MANUFACTURER: manufacturer,
+                            FABRICANTE: manufacturer,
+                            MODEL: model,
+                            MODELO: model,
+                            CAPACITY_MIN: !isNaN(rangeMin) ? rangeMin : null,
+                            CAPACITY_MAX: !isNaN(rangeMax) ? rangeMax : null,
+                            FAIXA_MIN: !isNaN(rangeMin) ? rangeMin : null,
+                            FAIXA_MAX: !isNaN(rangeMax) ? rangeMax : null,
+                            UNIT: unit,
+                            UNIDADE: unit,
+                            CALIBRATION_FREQUENCY_MONTHS: freqMonths,
+                            FREQUENCIA_MESES: freqMonths,
+                            ID_SITUATION: 1, // Ativo
+                            ID_STATUS: 1,    // Disponível
+                            MAX_ERROR_ALLOWED: !isNaN(maxError) ? maxError : null,
+                            ID_CRITERION_ACCEPTANCE: critId
+                        };
+
+                        writeLog(`Cadastrando novo instrumento "${code}" no Grist...`);
+                        const instPayload = await buildPayload('INSTRUMENTS', instData);
+                        const createResp = await getDataWriter().addRecord('INSTRUMENTS', instPayload);
+                        const newInstId = extractRecordId(createResp);
+
+                        if (!newInstId) {
+                            throw new Error("Não foi possível obter o ID retornado ao criar o Instrumento.");
+                        }
+
+                        writeLog(`✅ Instrumento cadastrado com sucesso! ID: ${newInstId}`);
+
+                        if (critId) {
+                            try {
+                                const critInstPayload = await buildPayload('CRITERION_INSTRUMENTS', {
+                                    ID_INSTRUMENT: newInstId,
+                                    ID_CRITERION_ACCEPTANCE: critId,
+                                    MAX_ERROR_MORE: !isNaN(maxError) ? maxError : null,
+                                    MAX_ERROR: !isNaN(maxError) ? maxError : null
+                                });
+                                await getDataWriter().addRecord('CRITERION_INSTRUMENTS', critInstPayload);
+                                writeLog(`✅ Critério de aceitação #${critId} vinculado ao instrumento.`);
+                            } catch(critErr) {
+                                console.warn("Aviso ao vincular CRITERION_INSTRUMENTS:", critErr);
+                            }
+                        }
+
+                        await refreshInstrumentsDropdown(newInstId);
+                        selectedInstrumentId = newInstId;
+
+                        cleanUp();
+                        resolve(true);
+                    } catch(err) {
+                        alert("Erro ao cadastrar instrumento: " + err.message);
+                        writeLog("❌ Erro ao cadastrar instrumento: " + err.message);
+                        saveBtn.disabled = false;
+                        saveBtn.innerText = "Salvar e Continuar Importação";
+                    }
+                };
+
+                modal.style.display = 'block';
+            });
         }
 
         function writeLog(msg) {
@@ -910,24 +1246,46 @@
                     "instrumentCode", "InstrumentCode", "CodigoInstrumento", "Tag", "Instrumento"
                 ], "");
 
+                const xmlSerial = getTagText([
+                    "serialNumber", "NumeroSerie", "Numero_Serie", "SerialNumber", "Serie", "NumSerie", "Serial"
+                ], "");
+
+                const xmlTypeStr = getTagText([
+                    "instrumentType", "tipoInstrumento", "TipoInstrumento", "Tipo_Instrumento", 
+                    "Denominacao", "Denominação", "Descricao", "Description", "InstrumentDescription", "Tipo"
+                ], "");
+
+                const xmlManufacturer = getTagText([
+                    "manufacturer", "fabricante", "Fabricante", "Marca", "Manufacturer", "Marca_Fabricante"
+                ], "");
+
+                const xmlModel = getTagText([
+                    "model", "modelo", "Modelo", "Model"
+                ], "");
+
                 writeLog(`Certificado: ${certCode}`);
                 writeLog(`Data Formatada: ${dateStr}`);
                 writeLog(`Lab: ${labName}`);
                 
-                if (xmlInstCode) {
-                    writeLog(`Código do Instrumento no XML: ${xmlInstCode}`);
+                if (xmlInstCode || xmlSerial) {
+                    if (xmlInstCode) writeLog(`Código do Instrumento no XML: ${xmlInstCode}`);
+                    if (xmlSerial) writeLog(`Número de Série no XML: ${xmlSerial}`);
                     const normXmlCode = normalizeStr(xmlInstCode);
+                    const normXmlSerial = normalizeStr(xmlSerial);
 
                     // 1. Match against any code/tag/serial field
                     let matchedInst = instrumentsList.find(i => {
-                        const codeVal = getRecordFieldValue(i, ['CODE', 'TAG', 'IDENTIFIER', 'CODIGO', 'CODIGO_INSTRUMENTO', 'INSTRUMENT_CODE', 'EQUIPMENT_CODE', 'PATRIMONIO', 'NAME', 'SERIAL_NUMBER']);
-                        return codeVal && normalizeStr(codeVal) === normXmlCode;
+                        const codeVal = getRecordFieldValue(i, ['CODE', 'TAG', 'IDENTIFIER', 'CODIGO', 'CODIGO_INSTRUMENTO', 'INSTRUMENT_CODE', 'EQUIPMENT_CODE', 'PATRIMONIO', 'NAME']);
+                        const serialVal = getRecordFieldValue(i, ['SERIAL_NUMBER', 'SERIAL', 'NUMERO_SERIE']);
+                        if (normXmlCode && codeVal && normalizeStr(codeVal) === normXmlCode) return true;
+                        if (normXmlSerial && serialVal && normalizeStr(serialVal) === normXmlSerial) return true;
+                        return false;
                     });
 
                     // 2. Partial match fallback
                     if (!matchedInst && normXmlCode.length >= 2) {
                         matchedInst = instrumentsList.find(i => {
-                            const codeVal = getRecordFieldValue(i, ['CODE', 'TAG', 'IDENTIFIER', 'CODIGO', 'CODIGO_INSTRUMENTO', 'INSTRUMENT_CODE', 'EQUIPMENT_CODE', 'PATRIMONIO', 'NAME', 'SERIAL_NUMBER']);
+                            const codeVal = getRecordFieldValue(i, ['CODE', 'TAG', 'IDENTIFIER', 'CODIGO', 'CODIGO_INSTRUMENTO', 'INSTRUMENT_CODE', 'EQUIPMENT_CODE', 'PATRIMONIO', 'NAME']);
                             if (!codeVal) return false;
                             const nf = normalizeStr(codeVal);
                             return nf && (nf.includes(normXmlCode) || normXmlCode.includes(nf));
@@ -937,14 +1295,37 @@
                     if (matchedInst) {
                         selectedInstrumentId = matchedInst.id;
                         document.getElementById('instrument-select').value = matchedInst.id;
-                        writeLog(`✅ Instrumento auto-vinculado: ${xmlInstCode} (ID ${matchedInst.id})`);
+                        writeLog(`✅ Instrumento auto-vinculado: ${xmlInstCode || xmlSerial} (ID ${matchedInst.id})`);
                     } else {
-                        writeLog(`⚠️ Instrumento "${xmlInstCode}" do XML não localizado pelo código.`);
+                        writeLog(`⚠️ Instrumento "${xmlInstCode || xmlSerial}" do XML não localizado pelo código/série.`);
                     }
                 }
 
                 if (!selectedInstrumentId) {
-                    throw new Error(`Instrumento "${xmlInstCode || 'desconhecido'}" não localizado. Por favor, selecione o instrumento no dropdown acima antes de importar.`);
+                    writeLog(`⚠️ Instrumento "${xmlInstCode || 'não identificado'}" não encontrado no cadastro do Grist.`);
+
+                    // Tenta pré-extrair faixas de medição da tag <band> do XML
+                    const minEl = xmlDoc.querySelector("band > minValue, minValue, RangeMin, FaixaMin");
+                    const maxEl = xmlDoc.querySelector("band > maxValue, maxValue, RangeMax, FaixaMax");
+                    const unitEl = xmlDoc.querySelector("band > unit, unit, Unidade, Unit");
+                    let xmlRangeMin = minEl ? parseNum(minEl.textContent, null) : null;
+                    let xmlRangeMax = maxEl ? parseNum(maxEl.textContent, null) : null;
+                    let xmlUnit = unitEl?.textContent?.trim() || "";
+
+                    const registered = await promptQuickInstrumentRegistration({
+                        code: xmlInstCode,
+                        serial: xmlSerial,
+                        typeStr: xmlTypeStr,
+                        manufacturer: xmlManufacturer,
+                        model: xmlModel,
+                        rangeMin: xmlRangeMin,
+                        rangeMax: xmlRangeMax,
+                        unit: xmlUnit
+                    });
+
+                    if (!registered || !selectedInstrumentId) {
+                        throw new Error(`Importação interrompida: Instrumento "${xmlInstCode || 'desconhecido'}" não cadastrado.`);
+                    }
                 }
 
                 const currentInstrument = instrumentsList.find(i => i.id === selectedInstrumentId);
