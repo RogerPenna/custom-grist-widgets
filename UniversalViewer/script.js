@@ -713,10 +713,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 let result;
                 if (tableLens && typeof tableLens[method] === 'function') {
                     result = await tableLens[method](...args);
-                } else if (dataWriter && typeof dataWriter[method] === 'function') {
-                    result = await dataWriter[method](...args);
                 } else {
-                    throw new Error(`Method ${method} not found on tableLens or dataWriter`);
+                    const { GristDataWriter } = await import('../libraries/grist-data-writer.js?v=1.3.23');
+                    const dw = new GristDataWriter(window.grist);
+                    if (typeof dw[method] === 'function') {
+                        result = await dw[method](...args);
+                    } else {
+                        throw new Error(`Method ${method} not found on tableLens or dataWriter`);
+                    }
                 }
 
                 if (['updateRecord', 'addRecord', 'deleteRecords'].includes(method)) {
