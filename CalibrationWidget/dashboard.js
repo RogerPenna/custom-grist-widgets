@@ -1056,6 +1056,76 @@ function renderDrawerPendenciasList() {
     });
 }
 
+// --- COPIAR LISTA DE PENDÊNCIAS PARA ORÇAMENTO (E-MAIL) ---
+function copyOrcamentoList() {
+    let items = [];
+    if (currentDrawerFilter === 'all') {
+        items = [...(pendenciasData?.expiredList || []), ...(pendenciasData?.warningList || [])];
+    } else if (currentDrawerFilter === 'expired') {
+        items = pendenciasData?.expiredList || [];
+    } else if (currentDrawerFilter === 'warning') {
+        items = pendenciasData?.warningList || [];
+    }
+
+    if (!items || items.length === 0) {
+        alert("Nenhum instrumento pendente para orçar nesta lista.");
+        return;
+    }
+
+    const lines = items.map(item => {
+        const r = item.record;
+        const tipo = getRecordField(r, 'z_disp_ID_INSTRUMENT_TYPE', 'TYPE', 'Type', 'DESCRIPTION', 'Description') || 'Instrumento';
+        const cod = getRecordField(r, 'Code', 'CODE', 'Tag', 'TAG', 'Codigo') || `ID #${r.id}`;
+        const faixas = getRecordField(r, 'Faixas', 'FAIXAS', 'Bands', 'BANDS') || '';
+        const fab = getRecordField(r, 'z_disp_ID_SUPPLIER', 'SUPPLIER', 'Fabricante') || '';
+
+        const parts = [tipo, cod];
+        if (faixas) parts.push(faixas);
+        if (fab) parts.push(fab);
+        return parts.join(' - ');
+    });
+
+    const textToCopy = lines.join('\n');
+
+    const copySuccess = () => {
+        const btn = document.getElementById('btn-copy-orcamento');
+        if (btn) {
+            const originalHTML = btn.innerHTML;
+            btn.classList.add('copied');
+            btn.innerHTML = `✅ Copiado (${lines.length})`;
+            setTimeout(() => {
+                btn.classList.remove('copied');
+                btn.innerHTML = originalHTML;
+            }, 2500);
+        }
+    };
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(textToCopy).then(copySuccess).catch(() => {
+            fallbackCopy(textToCopy, copySuccess);
+        });
+    } else {
+        fallbackCopy(textToCopy, copySuccess);
+    }
+}
+
+function fallbackCopy(text, onSuccess) {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    try {
+        document.execCommand('copy');
+        if (onSuccess) onSuccess();
+    } catch (e) {
+        prompt("Copie a lista abaixo:", text);
+    } finally {
+        textarea.remove();
+    }
+}
+
 function openPendenciasDrawer() {
     const drawer = document.getElementById('pendencias-drawer');
     const overlay = document.getElementById('pendencias-drawer-overlay');
@@ -1093,6 +1163,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const btnClose = document.getElementById('btn-close-pendencias');
     if (btnClose) btnClose.addEventListener('click', closePendenciasDrawer);
+
+    const btnCopyOrcamento = document.getElementById('btn-copy-orcamento');
+    if (btnCopyOrcamento) btnCopyOrcamento.addEventListener('click', copyOrcamentoList);
 
     const overlay = document.getElementById('pendencias-drawer-overlay');
     if (overlay) overlay.addEventListener('click', closePendenciasDrawer);
