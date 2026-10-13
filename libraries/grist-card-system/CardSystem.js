@@ -302,10 +302,20 @@ export const CardSystem = (() => {
                 }
             }
             
-            // Hide the legacy top-level filter input dynamically
+            // Ensure the top-level filter input stays visible and bound
             const filterInput = filterBar.querySelector('#filter-input');
             if (filterInput) {
-                filterInput.style.display = 'none';
+                filterInput.style.display = 'block';
+                if (!filterInput._csBound) {
+                    filterInput._csBound = true;
+                    filterInput.placeholder = 'Buscar...';
+                    filterInput.addEventListener('input', (e) => {
+                        filterRecords(container, e.target.value);
+                    });
+                }
+                if (filterInput.value !== (container._csSearchTerm || '')) {
+                    filterInput.value = container._csSearchTerm || '';
+                }
             }
             
             const isFilterActive = !!(container._csSearchTerm || Object.values(container._csDropdownFilters || {}).some(v => v));

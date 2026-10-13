@@ -177,6 +177,28 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
+    function createAddButton(position) {
+        const btn = document.createElement('button');
+        btn.className = `grf-global-add-btn pos-${position}`;
+        btn.title = "Adicionar Novo Registro";
+        btn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M12 5V19M5 12H19" stroke="currentColor"/></svg>`;
+        btn.onclick = async (e) => {
+            e.stopPropagation();
+            let addConfig = currentConfig;
+            const specificConfigId = currentConfig.addRecordConfigId || currentConfig.actions?.addRecordConfigId || currentConfig.sidePanel?.drawerConfigId || currentConfig.actions?.sidePanel?.drawerConfigId;
+            
+            if (specificConfigId) {
+                const rec = await tableLens.findRecord('Grf_config', { configId: specificConfigId });
+                if (rec) addConfig = tableLens.parseConfigRecord(rec);
+            }
+
+            if (window.GristDrawer) {
+                window.GristDrawer.open(currentConfig.tableId, 'new', { ...addConfig, tableLens });
+            }
+        };
+        return btn;
+    }
+
     // --- 2. LÓGICA PRINCIPAL ---
 
     async function initializeAndUpdate() {
@@ -240,6 +262,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.log(`[UniversalViewer] Identificado tipo: "${type}" para a config: ${currentConfigId}`);
 
             if (type === 'cardsystem') {
+                if (filterBarContainer) {
+                    filterBarContainer.style.display = 'block';
+                    if (!filterBarContainer.querySelector('.filter-bar')) {
+                        try {
+                            const response = await fetch('../libraries/grist-filter-bar/grist-filter-bar.html');
+                            if (response.ok) {
+                                filterBarContainer.innerHTML = await response.text();
+                            }
+                        } catch (e) {
+                            console.error('[UniversalViewer] Erro ao carregar barra de filtros:', e);
+                        }
+                    }
+                }
+
                 const { CardSystem } = await import('../libraries/grist-card-system/CardSystem.js?v=1.3.23');
                 let [records, schema] = await Promise.all([
                     tableLens.fetchTableRecords(tableId),
@@ -257,12 +293,41 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
 
                 rendererContainer.innerHTML = '';
+                rendererContainer.style.overflowY = 'auto';
+
+                const showAddTop = currentConfig.showAddButtonTop || currentConfig.actions?.showAddButtonTop;
+                const showAddBottom = currentConfig.showAddButtonBottom || currentConfig.actions?.showAddButtonBottom;
+
+                if (records.length === 0) {
+                    if (showAddTop || showAddBottom) {
+                        const empty = document.createElement('div');
+                        empty.className = 'empty-state-container';
+                        empty.innerHTML = `<p style="font-size:12px; font-weight:600; margin-bottom:10px; color:#64748b;">Nenhum registro encontrado</p>`;
+                        empty.appendChild(createAddButton('empty'));
+                        rendererContainer.appendChild(empty);
+                    } else {
+                        rendererContainer.innerHTML = '<div class="status-placeholder">Nenhum registro encontrado.</div>';
+                    }
+                    return;
+                }
+
+                if (showAddTop) {
+                    rendererContainer.appendChild(createAddButton('top'));
+                }
+
                 const wrapper = document.createElement('div');
                 wrapper.className = 'cards-wrapper';
                 await CardSystem.renderCards(wrapper, records, { ...currentConfig, tableLens }, schema);
                 rendererContainer.appendChild(wrapper);
+
+                if (showAddBottom) {
+                    rendererContainer.appendChild(createAddButton('bottom'));
+                }
             } 
             else if (type === 'table') {
+                if (filterBarContainer) {
+                    filterBarContainer.style.display = 'none';
+                }
                 const { TableRenderer } = await import('../libraries/grist-table-renderer/TableRenderer.js?v=1.3.23');
                 let [records, schema] = await Promise.all([
                     tableLens.fetchTableRecords(tableId),
@@ -688,6 +753,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else if (event.data.action === 'change-config') {
             const { configId } = event.data;
             if (configId) {
+                currentConfigId = configId;
                 const url = new URL(window.location);
                 url.searchParams.set('configId', configId);
                 window.history.pushState({}, '', url);
