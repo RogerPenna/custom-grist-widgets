@@ -181,6 +181,12 @@ export const CardSystem = (() => {
 
     // Unified filtering
     let filteredRecords = [...records];
+    if (container._csSearchTerm === undefined) {
+        const inputInBar = document.querySelector('.filter-bar #filter-input');
+        if (inputInBar && inputInBar.value) {
+            container._csSearchTerm = inputInBar.value;
+        }
+    }
     const lowerCaseSearchTerm = (container._csSearchTerm || "").trim().toLowerCase();
     if (lowerCaseSearchTerm) {
         filteredRecords = filteredRecords.filter(record => {
@@ -306,13 +312,11 @@ export const CardSystem = (() => {
             const filterInput = filterBar.querySelector('#filter-input');
             if (filterInput) {
                 filterInput.style.display = 'block';
-                if (!filterInput._csBound) {
-                    filterInput._csBound = true;
-                    filterInput.placeholder = 'Buscar...';
-                    filterInput.addEventListener('input', (e) => {
-                        filterRecords(container, e.target.value);
-                    });
-                }
+                filterInput.placeholder = 'Buscar...';
+                filterInput.oninput = (e) => {
+                    const activeContainer = document.querySelector('.cards-wrapper') || container;
+                    filterRecords(activeContainer, e.target.value);
+                };
                 if (filterInput.value !== (container._csSearchTerm || '')) {
                     filterInput.value = container._csSearchTerm || '';
                 }
@@ -1994,8 +1998,8 @@ export const CardSystem = (() => {
         .cs-options-popup {
             position: absolute;
             top: calc(100% + 8px);
-            left: 0;
-            right: auto;
+            right: 0;
+            left: auto;
             z-index: 1000;
             width: 260px;
             padding: 16px;

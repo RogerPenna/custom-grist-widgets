@@ -178,6 +178,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     function createAddButton(position) {
+        const wrap = document.createElement('div');
+        wrap.className = `grf-global-add-wrapper pos-${position}`;
+        wrap.style.cssText = 'width: 100%; display: flex; justify-content: center; align-items: center; padding: 12px 0; margin: 0 auto; box-sizing: border-box;';
+
         const btn = document.createElement('button');
         btn.className = `grf-global-add-btn pos-${position}`;
         btn.title = "Adicionar Novo Registro";
@@ -196,7 +200,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 window.GristDrawer.open(currentConfig.tableId, 'new', { ...addConfig, tableLens });
             }
         };
-        return btn;
+        wrap.appendChild(btn);
+        return wrap;
     }
 
     // --- 2. LÓGICA PRINCIPAL ---
