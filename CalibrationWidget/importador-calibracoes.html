@@ -956,7 +956,9 @@
                 }
             });
 
-            const hasEvaluation = (errCols.length > 0 || uncCols.length > 0);
+            // Tabelas só possuem avaliação metrológica de Erro se houver coluna de erro/tendência/desvio.
+            // Se houver apenas leituras/deflexão/incerteza (ex: ensaios de anel, determinação de constantes), a tabela é INFORMATIVA.
+            const hasEvaluation = (errCols.length > 0);
 
             return {
                 hasEvaluation,
@@ -982,14 +984,18 @@
                 });
             }
 
-            if (!evalInfo.hasEvaluation) {
-                row._combined = null;
-                row._status = 'INFO';
-                return row;
-            }
-
             const errCols = evalInfo.errCols || (evalInfo.errCol ? [evalInfo.errCol] : []);
             const uncCols = evalInfo.uncCols || (evalInfo.uncCol ? [evalInfo.uncCol] : []);
+
+            if (!evalInfo.hasEvaluation || errCols.length === 0) {
+                row._combined = null;
+                row._status = 'INFO';
+                if (uncCols.length > 0) {
+                    const uVal = typeof p[uncCols[0].field] === 'number' ? p[uncCols[0].field] : parseFloat(String(p[uncCols[0].field] || 0).replace(',', '.')) || 0;
+                    row._uncertainty = uVal;
+                }
+                return row;
+            }
 
             let maxComb = 0;
             let worstErr = 0;
@@ -1118,7 +1124,7 @@
                     minWidth: 95,
                     formatter: (cell) => {
                         const val = cell.getValue();
-                        if (!val || val === 'INFO') return '-';
+                        if (!val || val === 'INFO') return '<span style="background:#e0f2fe;color:#0369a1;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;">INFO</span>';
                         const cls = val === 'APROVADO' ? 'status-pill-pass' : (val === 'ALERTA' ? 'status-pill-warn' : 'status-pill-fail');
                         return `<span class="${cls}">${val}</span>`;
                     }
@@ -1431,7 +1437,7 @@
                             rows.push(rowObj);
                         });
 
-                        const hasEval = headers.some(h => /tend[eê]ncia|erro|incert/i.test(h.name));
+                        const hasEval = headers.some(h => /tend[eê]ncia|erro|desvio|diferen[cç]a/i.test(h.name));
 
                         if (rows.length > 0) {
                             parsedTables.push({
@@ -1500,7 +1506,7 @@
                     });
                     t.rows = t.points;
                     t.statusId = tFail > 0 ? 2 : (tWarn > 0 ? 3 : 1);
-                    t.statusText = tFail > 0 ? 'REPROVADO' : (tWarn > 0 ? 'APROVADO COM RESSALVA' : 'APROVADO');
+                    t.statusText = tFail > 0 ? 'REPROVADO' : (tWarn > 0 ? 'APROVADO COM RESSALVA' : (!evalInfo.hasEvaluation ? 'INFORMATIVA' : 'APROVADO'));
                     
                     if ((tFail > 0 || tWarn > 0) && defaultTableIndex === 0) {
                         defaultTableIndex = tIdx;
