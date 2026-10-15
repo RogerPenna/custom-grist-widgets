@@ -6,13 +6,12 @@
     <title>Painel Metrológico de Calibração</title>
     
     <script>
-        const messageSources = new Map();
+        let proxyCounter = 1;
+        const pendingRequests = new Map(); // proxyReqId -> { source, originalReqId }
         
         // Proxy messages immediately on window load to prevent race conditions during iframe initialization
         window.addEventListener('message', (event) => {
             if (!event.data) return;
-            
-            console.log("[Dashboard Head Proxy] Received:", event.data.action, event.data);
 
             // Forward data updates to dashboard.js if it loaded
             if (event.data.action === 'instruments-data-loaded') {
@@ -39,15 +38,18 @@
                 event.data.action === 'table-lens-request' ||
                 event.data.action === 'table-lens-response') return;
 
-            // Relay Grist Plugin messages correctly using request tracking to prevent double handshake conflict
+            // Relay Grist Plugin messages using collision-free proxy request IDs
             if (event.source === window.parent) {
-                // This is a reply from Grist
-                const reqId = event.data.reqId;
-                const targetIframe = messageSources.get(reqId);
-                if (targetIframe && targetIframe.contentWindow) {
-                    targetIframe.contentWindow.postMessage(event.data, '*');
+                // Reply or broadcast from Grist
+                const proxyReqId = event.data.reqId;
+                const reqInfo = proxyReqId ? pendingRequests.get(proxyReqId) : null;
+                if (reqInfo) {
+                    pendingRequests.delete(proxyReqId);
+                    if (reqInfo.source) {
+                        reqInfo.source.postMessage({ ...event.data, reqId: reqInfo.originalReqId }, '*');
+                    }
                 } else {
-                    // Fallback: send to all iframes if reqId is not found
+                    // Spontaneous message from Grist (e.g. onOptions, onRecords, ready broadcast)
                     document.querySelectorAll('iframe').forEach(iframe => {
                         if (iframe.contentWindow) {
                             iframe.contentWindow.postMessage(event.data, '*');
@@ -55,16 +57,15 @@
                     });
                 }
             } else {
-                // This is a request from a nested iframe to Grist
-                const reqId = event.data.reqId;
-                if (reqId !== undefined) {
-                    const iframe = Array.from(document.querySelectorAll('iframe'))
-                        .find(f => f.contentWindow === event.source);
-                    if (iframe) {
-                        messageSources.set(reqId, iframe);
-                    }
+                // Request from a nested iframe to Grist
+                const originalReqId = event.data.reqId;
+                if (originalReqId !== undefined) {
+                    const proxyReqId = 'p_' + (proxyCounter++) + '_' + originalReqId;
+                    pendingRequests.set(proxyReqId, { source: event.source, originalReqId });
+                    window.parent.postMessage({ ...event.data, reqId: proxyReqId }, '*');
+                } else {
+                    window.parent.postMessage(event.data, '*');
                 }
-                window.parent.postMessage(event.data, '*');
             }
         });
     </script>
@@ -792,12 +793,12 @@
 
         <!-- Tab 3: Importador -->
         <div id="pane-importador" class="tab-pane">
-            <iframe src="./importador-calibracoes.html"></iframe>
+            <iframe data-src="./importador-calibracoes.html"></iframe>
         </div>
 
         <!-- Tab 4: Certificados Terceiros -->
         <div id="pane-certificados" class="tab-pane">
-            <iframe src="../UniversalViewer/index.html?configId=tableexternalcalibrations"></iframe>
+            <iframe data-src="../UniversalViewer/index.html?configId=tableexternalcalibrations"></iframe>
         </div>
     </main>
 

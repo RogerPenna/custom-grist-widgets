@@ -681,21 +681,46 @@ document.addEventListener('DOMContentLoaded', async () => {
             tableLens.warmup();
         }
 
-        window.grist.onOptions(async (options) => {
-            const newId = urlConfigId || options?.configId || null;
+        async function triggerInit(configIdSource) {
+            const newId = urlConfigId || configIdSource || currentConfigId || null;
             if (newId !== currentConfigId || !isInitialized) {
                 isInitialized = true;
                 currentConfigId = newId;
                 await initializeAndUpdate();
             }
+        }
+
+        window.grist.onOptions(async (options) => {
+            await triggerInit(options?.configId);
         });
 
         window.grist.onRecords(async () => {
             if (tableLens && typeof tableLens.clearTableRecordsCache === 'function') {
                 tableLens.clearTableRecordsCache();
             }
-            if (isInitialized) await initializeAndUpdate();
+            if (!isInitialized) {
+                await triggerInit();
+            } else {
+                await initializeAndUpdate();
+            }
         }, { keepEncoded: true });
+
+        // Se já temos urlConfigId passado via querystring, inicializa imediatamente sem depender de eventos tardios
+        if (urlConfigId && !isInitialized) {
+            setTimeout(async () => {
+                if (!isInitialized) {
+                    await triggerInit(urlConfigId);
+                }
+            }, 30);
+        }
+
+        // Fallback de segurança: se após 300ms nada inicializou e temos currentConfigId, dispara render
+        setTimeout(async () => {
+            if (!isInitialized && currentConfigId) {
+                console.log("[UniversalViewer] Timeout fallback: inicializando com configId:", currentConfigId);
+                await triggerInit(currentConfigId);
+            }
+        }, 300);
     } else {
         // MODO HEADLESS: Inicializa diretamente sem esperar pelo Grist
         console.log("[UniversalViewer] Pulando Grist API (Modo Headless)");

@@ -187,7 +187,14 @@ tabBtns.forEach(btn => {
 
         btn.classList.add('active');
         const targetId = `pane-${btn.dataset.tab}`;
-        document.getElementById(targetId).classList.add('active');
+        const targetPane = document.getElementById(targetId);
+        if (targetPane) {
+            targetPane.classList.add('active');
+            const lazyIframe = targetPane.querySelector('iframe[data-src]');
+            if (lazyIframe && !lazyIframe.src) {
+                lazyIframe.src = lazyIframe.dataset.src;
+            }
+        }
 
         if (btn.dataset.tab === 'fluxo') {
             renderKanban();
