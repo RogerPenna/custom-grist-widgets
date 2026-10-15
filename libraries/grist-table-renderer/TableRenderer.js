@@ -6,48 +6,49 @@ export const TableRenderer = (() => {
 
     let tabulatorTable = null;
 
-    function openCustomFilterPopup(cell, success, cancel) {
+    function openCustomFilterPopup(cell, headerInput, success, cancel, onClose) {
         const existing = document.querySelector(".grf-custom-filter-popup");
-        if (existing) existing.remove();
+        if (existing) {
+            existing.remove();
+        }
         
         const field = cell.getField();
         const table = cell.getTable();
-        const rect = cell.getElement().getBoundingClientRect();
+        const rect = headerInput.getBoundingClientRect();
         
         const popup = document.createElement("div");
         popup.className = "grf-custom-filter-popup";
+        const popupWidth = Math.max(260, Math.min(320, rect.width));
+        const popupLeft = Math.max(10, Math.min(window.innerWidth - popupWidth - 15, rect.left + window.scrollX));
+        
         popup.style.cssText = `
             position: fixed;
-            top: ${rect.bottom + window.scrollY + 5}px;
-            left: ${Math.max(10, rect.left + window.scrollX - 50)}px;
-            width: 260px;
+            top: ${rect.bottom + window.scrollY + 4}px;
+            left: ${popupLeft}px;
+            width: ${popupWidth}px;
             background: #fff;
             border: 1px solid #cbd5e1;
             border-radius: 8px;
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-            padding: 12px;
+            padding: 10px;
             z-index: 1000000;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 8px;
         `;
         
-        const searchInput = document.createElement("input");
-        searchInput.type = "text";
-        searchInput.placeholder = "🔍 Pesquisar...";
-        searchInput.style.cssText = "width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 8px; font-size: 12px; box-sizing: border-box;";
-        popup.appendChild(searchInput);
-        
         const selectAllContainer = document.createElement("label");
-        selectAllContainer.style.cssText = "display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: bold; cursor: pointer; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px;";
+        selectAllContainer.style.cssText = "display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; cursor: pointer; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px; user-select: none; color: #1e293b;";
         const selectAllCheckbox = document.createElement("input");
         selectAllCheckbox.type = "checkbox";
+        const selectAllText = document.createElement("span");
+        selectAllText.innerText = "Selecionar todos";
         selectAllContainer.appendChild(selectAllCheckbox);
-        selectAllContainer.appendChild(document.createTextNode("Selecionar todos"));
+        selectAllContainer.appendChild(selectAllText);
         popup.appendChild(selectAllContainer);
         
         const itemsList = document.createElement("div");
-        itemsList.style.cssText = "max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 2px 0;";
+        itemsList.style.cssText = "max-height: 190px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; padding: 2px 0;";
         popup.appendChild(itemsList);
         
         const uniqueItems = [];
@@ -96,17 +97,38 @@ export const TableRenderer = (() => {
             });
         }
         
+        let currentFiltered = uniqueItems;
         function renderItems(filterText = "") {
             itemsList.innerHTML = "";
-            const lowerFilter = filterText.toLowerCase();
+            let rawText = (filterText || "").trim();
+            if (/^\(\d+\s*itens\)$/i.test(rawText)) {
+                rawText = "";
+            }
+            const lowerFilter = rawText.toLowerCase();
             
-            const filtered = uniqueItems.filter(item => 
+            currentFiltered = lowerFilter ? uniqueItems.filter(item => 
                 String(item.label).toLowerCase().includes(lowerFilter)
-            );
+            ) : uniqueItems;
             
-            filtered.forEach(item => {
+            if (lowerFilter) {
+                selectAllText.innerText = `Selecionar todos (${currentFiltered.length})`;
+            } else {
+                selectAllText.innerText = `Selecionar todos (${uniqueItems.length})`;
+            }
+            
+            const allChecked = currentFiltered.length > 0 && currentFiltered.every(item => selectedValues.has(item.value));
+            const someChecked = currentFiltered.some(item => selectedValues.has(item.value));
+            selectAllCheckbox.checked = allChecked;
+            selectAllCheckbox.indeterminate = !allChecked && someChecked;
+
+            if (currentFiltered.length === 0) {
+                itemsList.innerHTML = '<div style="color:#94a3b8; font-size:12px; padding:10px 4px; text-align:center; font-style:italic;">Nenhum resultado encontrado</div>';
+                return;
+            }
+
+            currentFiltered.forEach(item => {
                 const labelContainer = document.createElement("label");
-                labelContainer.style.cssText = "display: flex; align-items: center; gap: 8px; font-size: 12px; cursor: pointer; padding: 2px 4px; border-radius: 4px;";
+                labelContainer.style.cssText = "display: flex; align-items: center; gap: 8px; font-size: 12px; cursor: pointer; padding: 4px 6px; border-radius: 4px; user-select: none;";
                 labelContainer.onmouseover = () => labelContainer.style.background = "#f1f5f9";
                 labelContainer.onmouseout = () => labelContainer.style.background = "transparent";
                 
@@ -120,8 +142,11 @@ export const TableRenderer = (() => {
                         selectedValues.add(item.value);
                     } else {
                         selectedValues.delete(item.value);
-                        selectAllCheckbox.checked = false;
                     }
+                    const nowAll = currentFiltered.length > 0 && currentFiltered.every(it => selectedValues.has(it.value));
+                    const nowSome = currentFiltered.some(it => selectedValues.has(it.value));
+                    selectAllCheckbox.checked = nowAll;
+                    selectAllCheckbox.indeterminate = !nowAll && nowSome;
                 };
                 
                 labelContainer.appendChild(checkbox);
@@ -130,80 +155,146 @@ export const TableRenderer = (() => {
             });
         }
         
-        renderItems();
+        renderItems(headerInput.value);
         
-        selectAllCheckbox.checked = selectedValues.size === uniqueItems.length && uniqueItems.length > 0;
         selectAllCheckbox.onchange = () => {
+            let rawText = (headerInput.value || "").trim();
+            if (/^\(\d+\s*itens\)$/i.test(rawText)) rawText = "";
+            const isFilterActive = !!rawText;
+
             if (selectAllCheckbox.checked) {
-                uniqueItems.forEach(item => selectedValues.add(item.value));
+                if (isFilterActive) {
+                    // SE TEM FILTRO DIGITADO (ex: "AN"): seleciona apenas os que estão sendo exibidos
+                    selectedValues.clear();
+                    currentFiltered.forEach(item => selectedValues.add(item.value));
+                } else {
+                    // Sem filtro de busca: seleciona todos do conjunto total
+                    uniqueItems.forEach(item => selectedValues.add(item.value));
+                }
             } else {
-                selectedValues.clear();
+                // Desmarca os itens atualmente filtrados
+                currentFiltered.forEach(item => selectedValues.delete(item.value));
             }
-            renderItems(searchInput.value);
+            renderItems(headerInput.value);
         };
         
-        searchInput.oninput = () => {
-            renderItems(searchInput.value);
+        // Conectar a digitação direta no headerInput com a lista do popup
+        headerInput.oninput = () => {
+            renderItems(headerInput.value);
         };
         
         const btnContainer = document.createElement("div");
-        btnContainer.style.cssText = "display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid #f1f5f9; padding-top: 8px; margin-top: 4px;";
+        btnContainer.style.cssText = "display: flex; align-items: center; justify-content: flex-end; gap: 6px; border-top: 1px solid #f1f5f9; padding-top: 8px; margin-top: 4px;";
         
+        const clearBtn = document.createElement("button");
+        clearBtn.innerText = "LIMPAR";
+        clearBtn.style.cssText = "padding: 5px 10px; border-radius: 4px; border: 1px solid #e2e8f0; background: #fff; font-size: 11px; font-weight: 600; cursor: pointer; color: #ef4444; margin-right: auto;";
+        clearBtn.onclick = () => {
+            cleanup();
+            headerInput.value = "";
+            success("");
+        };
+
         const cancelBtn = document.createElement("button");
         cancelBtn.innerText = "CANCELAR";
-        cancelBtn.style.cssText = "padding: 6px 12px; border-radius: 4px; border: 1px solid #cbd5e1; background: #fff; font-size: 11px; font-weight: bold; cursor: pointer; color: #64748b;";
+        cancelBtn.style.cssText = "padding: 5px 10px; border-radius: 4px; border: 1px solid #cbd5e1; background: #fff; font-size: 11px; font-weight: 600; cursor: pointer; color: #64748b;";
         cancelBtn.onclick = () => {
-            popup.remove();
+            cleanup();
             cancel();
         };
         
         const okBtn = document.createElement("button");
         okBtn.innerText = "OK";
-        okBtn.style.cssText = "padding: 6px 12px; border-radius: 4px; border: none; background: #3b82f6; color: #fff; font-size: 11px; font-weight: bold; cursor: pointer;";
+        okBtn.style.cssText = "padding: 5px 14px; border-radius: 4px; border: none; background: #3b82f6; color: #fff; font-size: 11px; font-weight: 700; cursor: pointer;";
         okBtn.onclick = () => {
-            popup.remove();
-            const valuesArray = Array.from(selectedValues);
-            success(valuesArray);
+            cleanup();
+            if (selectedValues.size === 0 || selectedValues.size === uniqueItems.length) {
+                // Todos ou nenhum selecionado = limpa o filtro de coluna
+                headerInput.value = "";
+                success("");
+            } else {
+                const valuesArray = Array.from(selectedValues);
+                headerInput.value = valuesArray.length === 1 ? (uniqueItems.find(i => selectedValues.has(i.value))?.label || "1 item") : `(${valuesArray.length} itens)`;
+                success(valuesArray);
+            }
         };
         
+        headerInput.onkeydown = (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                okBtn.click();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                cancelBtn.click();
+            }
+        };
+
+        btnContainer.appendChild(clearBtn);
         btnContainer.appendChild(cancelBtn);
         btnContainer.appendChild(okBtn);
         popup.appendChild(btnContainer);
         
         document.body.appendChild(popup);
         
+        function cleanup() {
+            popup.remove();
+            document.removeEventListener("click", clickOutside);
+            if (typeof onClose === 'function') onClose();
+        }
+
         function clickOutside(e) {
             if (!popup.contains(e.target) && !cell.getElement().contains(e.target)) {
-                popup.remove();
-                document.removeEventListener("click", clickOutside);
+                cleanup();
             }
         }
         
         setTimeout(() => {
             document.addEventListener("click", clickOutside);
         }, 100);
+
+        return popup;
     }
 
     const customFilterEditor = (cell, onRendered, success, cancel, editorParams) => {
         const container = document.createElement("div");
-        container.style.cssText = "display: flex; align-items: center; justify-content: space-between; width: 100%; position: relative; cursor: pointer; min-height: 24px;";
+        container.style.cssText = "display: flex; align-items: center; justify-content: space-between; width: 100%; position: relative; min-height: 24px;";
         
         const input = document.createElement("input");
         input.type = "text";
         input.placeholder = "Filtrar...";
-        input.readOnly = true;
-        input.style.cssText = "width: calc(100% - 20px); border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px 6px; font-size: 11px; cursor: pointer; background: #fff;";
+        input.style.cssText = "width: calc(100% - 20px); border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px 6px; font-size: 11px; cursor: text; background: #fff; box-sizing: border-box;";
         
         const icon = document.createElement("span");
         icon.innerHTML = "🔍";
-        icon.style.cssText = "font-size: 11px; margin-left: 2px; color: #64748b;";
+        icon.style.cssText = "font-size: 11px; margin-left: 2px; color: #64748b; cursor: pointer;";
         
         container.appendChild(input);
         container.appendChild(icon);
         
-        container.onclick = (e) => {
+        let popupInstance = null;
+        function ensurePopup() {
+            if (popupInstance && document.body.contains(popupInstance)) return;
+            popupInstance = openCustomFilterPopup(cell, input, success, cancel, () => {
+                popupInstance = null;
+            });
+        }
+
+        input.onfocus = () => {
+            if (/^\(\d+\s*itens\)$/i.test(input.value)) {
+                input.select();
+            }
+            ensurePopup();
+        };
+
+        input.onclick = (e) => {
             e.stopPropagation();
-            openCustomFilterPopup(cell, success, cancel);
+            ensurePopup();
+        };
+
+        icon.onclick = (e) => {
+            e.stopPropagation();
+            input.focus();
+            ensurePopup();
         };
         
         onRendered(() => {
@@ -214,7 +305,9 @@ export const TableRenderer = (() => {
                     const currentFilters = table.getFilters();
                     const activeFilter = currentFilters.find(f => f.field === field);
                     if (activeFilter && Array.isArray(activeFilter.value) && activeFilter.value.length > 0) {
-                        input.value = `Selecionados (${activeFilter.value.length})`;
+                        input.value = `(${activeFilter.value.length} itens)`;
+                    } else if (activeFilter && activeFilter.value) {
+                        input.value = String(activeFilter.value);
                     } else {
                         input.value = "";
                     }

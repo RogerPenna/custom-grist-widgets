@@ -4,7 +4,7 @@ import { GristTableLens } from '../libraries/grist-table-lens/grist-table-lens.j
 import { open as openConfigManager } from '../libraries/grist-config-manager/ConfigManagerComponent.js?v=1.3.32';
 import { openDrawer } from '../libraries/grist-drawer-component/drawer-component.js?v=1.3.32';
 import { GristLauncherUtils } from '../libraries/grist-launcher-utils.js?v=1.3.32';
-import { TableRenderer } from '../libraries/grist-table-renderer/TableRenderer.js?v=1.3.32';
+import { TableRenderer } from '../libraries/grist-table-renderer/TableRenderer.js?v=1.3.35';
 import { subscribe } from '../libraries/grist-event-bus/grist-event-bus.js?v=1.3.32';
 
 document.addEventListener('DOMContentLoaded', async function () {
