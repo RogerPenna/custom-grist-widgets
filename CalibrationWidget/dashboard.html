@@ -272,36 +272,229 @@
         }
 
         /* Instrument Card */
+        /* Instrument Card */
         .instrument-card {
             background: var(--card-bg);
             border: 1px solid #e2e8f0;
-            border-radius: 6px;
+            border-radius: 8px;
             padding: 12px;
-            box-shadow: var(--shadow-sm);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
             cursor: grab;
-            transition: transform 0.15s, box-shadow 0.15s;
+            transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
         }
 
         .instrument-card:hover {
-            box-shadow: var(--shadow-md);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
             transform: translateY(-2px);
+            border-color: #cbd5e1;
         }
 
         .instrument-card:active {
             cursor: grabbing;
         }
 
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 6px;
+        }
+
+        .card-tag-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
         .card-tag {
             font-weight: 700;
             font-size: 14px;
             color: var(--primary);
-            margin-bottom: 4px;
+            letter-spacing: -0.2px;
+        }
+
+        .card-sn {
+            font-size: 10.5px;
+            color: #64748b;
+            background: #f1f5f9;
+            padding: 1px 5px;
+            border-radius: 4px;
+            border: 1px solid #e2e8f0;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        }
+
+        .card-status-badges {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .card-situation-icon {
+            font-size: 14px;
+            line-height: 1;
+            cursor: help;
+        }
+
+        .card-badge-status {
+            padding: 2px 7px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            background: #e2e8f0;
+            color: #475569;
+            cursor: help;
+            border: 1px solid transparent;
+        }
+
+        .card-badge-status.disponivel {
+            background: #e8f5e9;
+            color: #2e7d32;
+            border-color: #c8e6c9;
+        }
+
+        .card-badge-status.laboratorio {
+            background: #fff8e1;
+            color: #b78103;
+            border-color: #ffe082;
+        }
+
+        .card-badge-status.emprestado {
+            background: #e0f2fe;
+            color: #0369a1;
+            border-color: #bae6fd;
+        }
+
+        .card-badge-status.manutencao {
+            background: #fee2e2;
+            color: #991b1b;
+            border-color: #fecaca;
+        }
+
+        .card-type-model {
+            font-size: 12px;
+            color: var(--text-sub);
+            line-height: 1.35;
+        }
+
+        .card-type-model strong {
+            color: var(--text-main);
+        }
+
+        .card-model-text {
+            color: #475569;
+        }
+
+        .card-meta-row {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            font-size: 11px;
+            color: #64748b;
+        }
+
+        .card-meta-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* Calibration Expiration Box */
+        .card-calib-box {
+            border-radius: 6px;
+            padding: 6px 8px;
+            font-size: 11px;
+            margin-top: 4px;
+            border: 1px solid transparent;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            transition: all 0.2s ease;
+        }
+
+        .card-calib-box.cal-ok {
+            background: #f0fdf4;
+            border-color: #bbf7d0;
+            color: #166534;
+        }
+
+        .card-calib-box.cal-warning {
+            background: #fffbeb;
+            border-color: #fde68a;
+            color: #92400e;
+        }
+
+        .card-calib-box.cal-expired {
+            background: #fef2f2;
+            border-color: #fecaca;
+            color: #991b1b;
+        }
+
+        .card-calib-box.cal-none,
+        .card-calib-box.cal-inactive {
+            background: #f8fafc;
+            border-color: #e2e8f0;
+            color: #64748b;
+        }
+
+        .card-calib-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-weight: 600;
+        }
+
+        .card-calib-status-text {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .card-calib-days {
+            font-size: 9.5px;
+            padding: 1px 5px;
+            border-radius: 4px;
+            font-weight: 700;
+        }
+
+        .cal-ok .card-calib-days {
+            background: #dcfce7;
+            color: #15803d;
+        }
+
+        .cal-warning .card-calib-days {
+            background: #fef3c7;
+            color: #b45309;
+        }
+
+        .cal-expired .card-calib-days {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+
+        .card-calib-sub {
+            font-size: 10px;
+            opacity: 0.9;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px dashed rgba(0, 0, 0, 0.08);
+            padding-top: 3px;
         }
 
         .card-details {
             font-size: 12px;
             color: var(--text-sub);
-            margin-bottom: 6px;
+            margin-bottom: 4px;
         }
 
         .card-meta {
@@ -321,24 +514,6 @@
             padding: 2px 6px;
             border-radius: 4px;
             font-weight: 600;
-        }
-        
-        .card-badge-status {
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-weight: 600;
-            background: #e2e8f0;
-            color: #475569;
-        }
-        
-        .card-badge-status.disponivel {
-            background: #e8f5e9;
-            color: #2e7d32;
-        }
-        
-        .card-badge-status.laboratorio {
-            background: #ffeecb;
-            color: #b77900;
         }
 
         /* Sortable ghost/drag configurations */

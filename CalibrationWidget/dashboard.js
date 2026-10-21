@@ -305,33 +305,135 @@ function renderKanban() {
         card.className = 'instrument-card';
         card.dataset.id = inst.id;
 
-        const code = inst.Code || inst.CODE || `Instrumento #${inst.id}`;
-        const type = inst.z_disp_ID_INSTRUMENT_TYPE || inst.ID_INSTRUMENT_TYPE || 'Sem Tipo';
-        const model = inst.z_disp_ID_INSTRUMENT_MODEL || inst.ID_INSTRUMENT_MODEL || 'Sem Modelo';
-        const resp = inst.z_disp_ID_RESPONSIBLE || inst.ID_RESPONSIBLE || 'Não Atribuído';
-        const status = inst.z_disp_ID_STATUS || inst.ID_STATUS || 'Disponível';
-        
+        const code = getRecordField(inst, 'Code', 'CODE', 'Tag', 'TAG') || `Instrumento #${inst.id}`;
+        const serial = getRecordField(inst, 'SERIAL_NUMBER', 'Serial_Number', 'NUMERO_SERIE', 'Numero_Serie');
+        const type = getRecordField(inst, 'z_disp_ID_INSTRUMENT_TYPE', 'INSTRUMENT_TYPE', 'TYPE') || 'Sem Tipo';
+        const model = getRecordField(inst, 'z_disp_ID_INSTRUMENT_MODEL', 'INSTRUMENT_MODEL', 'MODEL') || 'Sem Modelo';
+        const sector = getRecordField(inst, 'z_disp_ID_CURRENT_SECTOR', 'CURRENT_SECTOR', 'SECTOR', 'SETOR');
+        const resp = getRecordField(inst, 'z_disp_ID_RESPONSIBLE', 'RESPONSIBLE', 'RESPONSAVEL') || 'Não Atribuído';
+        const status = getRecordField(inst, 'z_disp_ID_STATUS', 'STATUS') || 'Disponível';
+
+        // Situation mapping & tooltip
+        const situationMap = {
+            1: { name: 'Ativo', icon: '✅', desc: 'Em uso normal e calibrado' },
+            2: { name: 'Inativo', icon: '❌', desc: 'Desativado temporariamente' },
+            3: { name: 'Descartado', icon: '🪦', desc: 'Sucateado / Baixado do patrimônio' },
+            4: { name: 'Danificado', icon: '💣', desc: 'Estrutura física quebrada' },
+            5: { name: 'Extraviado', icon: '❓', desc: 'Perdido / Não localizado' },
+            6: { name: 'Bloqueado', icon: '⛔', desc: 'Calibração reprovada; retido no almoxarifado' }
+        };
+
+        const rawSitId = getRecordField(inst, 'ID_SITUATION', 'Id_Situation', 'SITUATION_ID');
+        const sitId = rawSitId !== null && rawSitId !== undefined ? parseInt(rawSitId, 10) : null;
+        const rawSitIcon = getRecordField(inst, 'z_disp_ID_SITUATION', 'SITUATION', 'SITUACAO');
+
+        let sitIcon = '✅';
+        let sitTooltip = 'Situação: Ativo (Em uso normal e calibrado)';
+
+        if (sitId && situationMap[sitId]) {
+            sitIcon = situationMap[sitId].icon;
+            sitTooltip = `Situação: ${situationMap[sitId].name} (${situationMap[sitId].desc})`;
+        } else if (rawSitIcon) {
+            sitIcon = String(rawSitIcon).trim();
+            const matchedEntry = Object.values(situationMap).find(s => s.icon === sitIcon || s.name.toLowerCase() === sitIcon.toLowerCase());
+            if (matchedEntry) {
+                sitTooltip = `Situação: ${matchedEntry.name} (${matchedEntry.desc})`;
+                sitIcon = matchedEntry.icon;
+            } else {
+                sitTooltip = `Situação: ${rawSitIcon}`;
+            }
+        }
+
+        // Status styling & tooltip
         let statusClass = 'disponivel';
+        let statusIcon = '🟢';
+        let statusTooltip = 'Instrumento disponível para uso';
         const statusStr = String(status).toLowerCase();
         if (statusStr.includes('laborat') || statusStr.includes('externo')) {
             statusClass = 'laboratorio';
+            statusIcon = '🔬';
+            statusTooltip = 'Instrumento em laboratório externo para calibração/manutenção';
         } else if (statusStr.includes('emprest')) {
-            statusClass = 'laboratorio';
+            statusClass = 'emprestado';
+            statusIcon = '🔄';
+            statusTooltip = 'Instrumento emprestado ou em trânsito operacional';
+        } else if (statusStr.includes('manuten')) {
+            statusClass = 'manutencao';
+            statusIcon = '🔧';
+            statusTooltip = 'Instrumento em manutenção/ajuste técnico';
+        }
+
+        // Calibration validity & expiration status
+        const calInfo = getCalibrationStatus(inst);
+        const lastCalRaw = getRecordField(inst, 'Last_Calibration', 'LAST_CALIBRATION', 'ULTIMA_CALIBRACAO');
+        const lastCalDate = parseDateValue(lastCalRaw);
+        const lastCalDisplay = lastCalDate ? formatDateDisplay(lastCalDate) : null;
+
+        const nextCalDate = calInfo.targetDate ? formatDateDisplay(calInfo.targetDate) : (inst.NEXT_CALIBRATION ? formatDateDisplay(parseDateValue(inst.NEXT_CALIBRATION)) : null);
+
+        let calBoxClass = 'cal-none';
+        let calBoxIcon = '⚪';
+        let calBoxTitle = 'Sem calibração cadastrada';
+        let calBoxDays = '';
+        let calBoxTooltip = 'Nenhuma data de calibração ou vencimento cadastrada.';
+
+        if (calInfo.status === 'expired') {
+            calBoxClass = 'cal-expired';
+            calBoxIcon = '🔴';
+            const dias = Math.abs(calInfo.daysRemaining);
+            calBoxTitle = `Venceu em ${nextCalDate}`;
+            calBoxDays = `${dias}d atrás`;
+            calBoxTooltip = `Certificado de calibração expirado em ${nextCalDate} (${dias} dias atrás)`;
+        } else if (calInfo.status === 'warning') {
+            calBoxClass = 'cal-warning';
+            calBoxIcon = '⚠️';
+            calBoxTitle = `Vence em ${nextCalDate}`;
+            calBoxDays = `Faltam ${calInfo.daysRemaining}d`;
+            calBoxTooltip = `Certificado vence em breve (${calInfo.daysRemaining} dias restantes até ${nextCalDate})`;
+        } else if (calInfo.status === 'ok') {
+            calBoxClass = 'cal-ok';
+            calBoxIcon = '🟢';
+            calBoxTitle = `Válido até ${nextCalDate}`;
+            calBoxDays = `${calInfo.daysRemaining}d restantes`;
+            calBoxTooltip = `Certificado válido até ${nextCalDate} (${calInfo.daysRemaining} dias restantes)`;
+        } else if (calInfo.status === 'inactive') {
+            calBoxClass = 'cal-inactive';
+            calBoxIcon = '⛔';
+            calBoxTitle = 'Fora de Operação';
+            calBoxDays = '';
+            calBoxTooltip = 'Instrumento inativo, danificado, descartado ou extraviado.';
         }
 
         const isLastStage = stage === STAGES[STAGES.length - 1];
 
         card.innerHTML = `
-            <div class="card-tag">${code}</div>
-            <div class="card-details">
-                <strong>${type}</strong> - ${model}
+            <div class="card-header">
+                <div class="card-tag-wrapper">
+                    <span class="card-tag">${code}</span>
+                    ${serial ? `<span class="card-sn" title="Número de Série: ${serial}">N/S: ${serial}</span>` : ''}
+                </div>
+                <div class="card-status-badges">
+                    ${sitIcon ? `<span class="card-situation-icon" title="${sitTooltip}">${sitIcon}</span>` : ''}
+                    <span class="card-badge-status ${statusClass}" title="${statusTooltip}">${statusIcon} ${status}</span>
+                </div>
             </div>
-            <div class="card-details" style="color: #64748b; font-size: 11px;">
-                👤 Resp: ${resp}
+            <div class="card-type-model" title="${type} - ${model}">
+                <strong>${type}</strong>${model && model !== 'Sem Modelo' ? ` · <span class="card-model-text">${model}</span>` : ''}
             </div>
-            <div class="card-meta">
-                <span class="card-badge-status ${statusClass}">${status}</span>
-                <span class="card-badge">${inst.NEXT_CALIBRATION ? String(inst.NEXT_CALIBRATION).split('T')[0] : 'S/ Data'}</span>
+            <div class="card-meta-row">
+                ${sector ? `<div class="card-meta-item" title="Setor atual: ${sector}">📍 ${sector}</div>` : ''}
+                <div class="card-meta-item" title="Responsável: ${resp}">👤 ${resp}</div>
+            </div>
+            <div class="card-calib-box ${calBoxClass}" title="${calBoxTooltip}">
+                <div class="card-calib-header">
+                    <span class="card-calib-status-text">${calBoxIcon} ${calBoxTitle}</span>
+                    ${calBoxDays ? `<span class="card-calib-days">${calBoxDays}</span>` : ''}
+                </div>
+                ${lastCalDisplay ? `
+                    <div class="card-calib-sub">
+                        <span>Último certificado: <strong>${lastCalDisplay}</strong></span>
+                    </div>
+                ` : ''}
             </div>
             ${isLastStage ? `
                 <div class="card-complete-action" style="margin-top: 8px; border-top: 1px solid #f1f5f9; padding-top: 6px; text-align: right;">
