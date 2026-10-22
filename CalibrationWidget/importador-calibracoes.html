@@ -2022,9 +2022,165 @@
                     return d.toISOString().split('T')[0];
                 }
 
-                const nextCalDateStr = calculateNextDate(dateStr, freqMonths, freqDays);
-                writeLog(`📅 Frequência de Calibração: ${freqMonths ? freqMonths + ' meses' : (freqDays ? freqDays + ' dias' : '12 meses (padrão)')}`);
-                writeLog(`📅 Última Calibração: ${dateStr} | Próxima Calibração Vencimento: ${nextCalDateStr}`);
+                // --- Helper de Conformidade e Método de Schumacher ---
+                function isCertConformLocal(c) {
+                    const val = getRecordFieldValue(c, ['IS_CONFORM', 'Is_Conform', 'CONFORME', 'Conforme']);
+                    if (val === true || val === 1 || val === '1' || val === 'T' || val === 't' || val === 'true') return true;
+                    if (val && typeof val === 'object' && val.data && (val.data[0] === 84 || val.data[0] === 1)) return true;
+                    const status = String(getRecordFieldValue(c, ['VALIDATION_STATUS', 'STATUS', 'ID_STATUS']) || '').toLowerCase();
+                    if (status.includes('aprov') || status === '1') return true;
+                    return false;
+                }
+
+                function calculateSchumacherLocal(inst, allInstCerts, typeRecord) {
+                    const baseFreq = parseFloat(getRecordFieldValue(inst, ['CALIBRATION_FREQUENCY_MONTHS', 'CALIBRATION_FREQUENCY'])) || 12;
+                    const rawInstMethod = String(getRecordFieldValue(inst, ['CALIBRATION_METHOD', 'Calibration_Method']) || '').trim();
+                    const rawTypeMethod = String(typeRecord ? getRecordFieldValue(typeRecord, ['CALIBRATION_METHOD', 'Calibration_Method']) : '').trim();
+                    
+                    let isSchumacherActive = false;
+                    let methodSource = 'Fixo';
+
+                    if (rawInstMethod.toLowerCase().includes('schumacher')) {
+                        isSchumacherActive = true;
+                        methodSource = 'Instrumento (Forçado)';
+                    } else if (rawInstMethod.toLowerCase().includes('fixo')) {
+                        isSchumacherActive = false;
+                        methodSource = 'Instrumento (Fixo)';
+                    } else {
+                        if (rawTypeMethod.toLowerCase().includes('schumacher')) {
+                            isSchumacherActive = true;
+                            methodSource = 'Herdado do Tipo';
+                        } else {
+                            isSchumacherActive = false;
+                            methodSource = 'Padrão / Fixo';
+                        }
+                    }
+
+                    if (!isSchumacherActive) {
+                        return {
+                            isSchumacherActive: false,
+                            suggestedMonths: baseFreq,
+                            effectiveMonths: baseFreq,
+                            observation: `Método Fixo / Padrão (${methodSource}). Intervalo mantido em ${baseFreq} meses.`
+                        };
+                    }
+
+                    const validCerts = (allInstCerts || []).filter(c => {
+                        const removed = getRecordFieldValue(c, ['REMOVED', 'Removed']);
+                        if (removed === 1 || removed === '1') return false;
+                        const dateVal = getRecordFieldValue(c, ['DATE', 'Date', 'CALIBRATION_DATE']);
+                        return dateVal !== null && dateVal !== undefined && dateVal !== '';
+                    });
+
+                    const totalCerts = validCerts.length;
+                    const MIN_CERTS = 3;
+
+                    if (totalCerts < MIN_CERTS) {
+                        return {
+                            isSchumacherActive: true,
+                            suggestedMonths: baseFreq,
+                            effectiveMonths: baseFreq,
+                            observation: `Histórico insuficiente (${totalCerts}/${MIN_CERTS} calibrações mínimas). Mantida frequência padrão de ${baseFreq} meses.`
+                        };
+                    }
+
+                    let targetReliability = 0.90;
+                    if (typeRecord) {
+                        const rawTarget = getRecordFieldValue(typeRecord, ['TARGET_RELIABILITY_PERCENT', 'Target_Reliability_Percent']);
+                        if (rawTarget && !isNaN(parseFloat(rawTarget)) && parseFloat(rawTarget) > 0) {
+                            targetReliability = parseFloat(rawTarget) > 1 ? parseFloat(rawTarget) / 100 : parseFloat(rawTarget);
+                        }
+                    }
+
+                    let conformCount = 0;
+                    for (const c of validCerts) {
+                        if (isCertConformLocal(c)) conformCount++;
+                    }
+
+                    const obsReliability = conformCount / totalCerts;
+                    const obsPercent = Math.round(obsReliability * 100);
+                    const targetPercent = Math.round(targetReliability * 100);
+
+                    const k = 0.5;
+                    let adjustmentFactor = 1.0;
+                    if (obsReliability >= targetReliability) {
+                        const delta = (obsReliability - targetReliability) / (1.0 - targetReliability || 0.1);
+                        adjustmentFactor = 1.0 + (k * delta);
+                    } else {
+                        const delta = (obsReliability - targetReliability) / targetReliability;
+                        adjustmentFactor = 1.0 + (k * delta);
+                    }
+
+                    // Se reprovado nesta calibração atual, não permite expansão
+                    if (validationStatus === 'Reprovado' && adjustmentFactor > 1.0) {
+                        adjustmentFactor = 0.8;
+                    }
+
+                    adjustmentFactor = Math.max(0.5, Math.min(1.33, adjustmentFactor));
+                    let newFreq = baseFreq * adjustmentFactor;
+                    newFreq = Math.max(6, Math.min(24, newFreq));
+                    const suggestedMonths = Math.round(newFreq);
+
+                    let obs = '';
+                    if (suggestedMonths > baseFreq) {
+                        obs = `Schumacher: Confiabilidade ${obsPercent}% (${conformCount}/${totalCerts} conformes, meta ${targetPercent}%). Intervalo estendido de ${baseFreq} para ${suggestedMonths} meses.`;
+                    } else if (suggestedMonths < baseFreq) {
+                        obs = `Schumacher: Confiabilidade ${obsPercent}% (${conformCount}/${totalCerts} conformes, meta ${targetPercent}%). Intervalo reduzido de ${baseFreq} para ${suggestedMonths} meses devido a não conformidade(s).`;
+                    } else {
+                        obs = `Schumacher: Confiabilidade ${obsPercent}% (${conformCount}/${totalCerts} conformes, meta ${targetPercent}%). Intervalo mantido em ${suggestedMonths} meses.`;
+                    }
+
+                    return {
+                        isSchumacherActive: true,
+                        suggestedMonths,
+                        effectiveMonths: suggestedMonths,
+                        observation: obs
+                    };
+                }
+
+                // Avaliar Schumacher no Importador
+                let effectiveMonths = freqMonths || 12;
+                let schumacherFreq = freqMonths || 12;
+                let schumacherObs = '';
+
+                try {
+                    const [allCerts, instTypes] = await Promise.all([
+                        getTableLens().fetchTableRecords('EXTERNAL_CALIBRATIONS'),
+                        getTableLens().fetchTableRecords('INSTRUMENTS_TYPES').catch(() => [])
+                    ]);
+                    
+                    const typeRef = getRecordFieldValue(freshInstrument, ['ID_INSTRUMENT_TYPE', 'Id_Instrument_Type']);
+                    const typeId = Array.isArray(typeRef) ? typeRef[0] : (typeof typeRef === 'object' && typeRef ? typeRef.id : typeRef);
+                    const typeRecord = (instTypes || []).find(t => String(t.id) === String(typeId));
+
+                    const instCerts = (allCerts || []).filter(c => {
+                        const cInst = getRecordFieldValue(c, ['ID_INSTRUMENT', 'INSTRUMENT']);
+                        const cid = Array.isArray(cInst) ? cInst[0] : (typeof cInst === 'object' && cInst ? cInst.id : cInst);
+                        return String(cid) === String(selectedInstrumentId);
+                    });
+
+                    instCerts.push({
+                        id: newCertId,
+                        DATE: dateStr,
+                        IS_CONFORM: (validationStatus !== 'Reprovado'),
+                        ID_STATUS: (validationStatus === 'Reprovado') ? 2 : 1
+                    });
+
+                    const schumacherRes = calculateSchumacherLocal(freshInstrument, instCerts, typeRecord);
+                    schumacherFreq = schumacherRes.suggestedMonths;
+                    effectiveMonths = schumacherRes.effectiveMonths;
+                    schumacherObs = schumacherRes.observation;
+
+                    if (schumacherRes.isSchumacherActive) {
+                        writeLog(`⚡ Método de Schumacher: ${schumacherObs}`);
+                    }
+                } catch(e) {
+                    console.warn("[Schumacher Importer] Falha ao calcular Schumacher:", e);
+                }
+
+                const nextCalDateStr = calculateNextDate(dateStr, effectiveMonths, freqDays);
+                writeLog(`📅 Frequência Efetiva de Calibração: ${effectiveMonths} meses${schumacherObs ? ' (Schumacher)' : ''}`);
+                writeLog(`📅 Última Calibração: ${dateStr} | Próximo Vencimento: ${nextCalDateStr}`);
 
                 let instSituationId = (validationStatus === 'Reprovado') ? 6 : 1;
                 if (validationStatus === 'Reprovado') {
@@ -2059,7 +2215,10 @@
                     LAST_CALIBRATION: lastCalTimestamp,
                     LAST_CALIBRATION_DATE: lastCalTimestamp,
                     NEXT_CALIBRATION: nextCalTimestamp,
-                    NEXT_CALIBRATION_DATE: nextCalTimestamp
+                    NEXT_CALIBRATION_DATE: nextCalTimestamp,
+                    SCHUMACHER_FREQUENCY_MONTHS: schumacherFreq,
+                    SCHUMACHER_OBSERVATION: schumacherObs,
+                    EFFECTIVE_FREQUENCY_MONTHS: effectiveMonths
                 };
 
                 const instPayload = await buildPayload('INSTRUMENTS', instUpdateObj);

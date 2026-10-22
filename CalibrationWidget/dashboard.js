@@ -94,12 +94,169 @@ window.onInstrumentsDataLoaded = (data) => {
     }
 };
 
+// --- MÉTODO DE SCHUMACHER (OIML D10 / ISO 10012) ---
+function isCertConform(c) {
+    const val = getRecordField(c, 'IS_CONFORM', 'Is_Conform', 'CONFORME', 'Conforme');
+    if (val === true || val === 1 || val === '1' || val === 'T' || val === 't' || val === 'true') return true;
+    if (val && typeof val === 'object' && val.data && (val.data[0] === 84 || val.data[0] === 1)) return true;
+    const status = String(getRecordField(c, 'VALIDATION_STATUS', 'STATUS', 'ID_STATUS') || '').toLowerCase();
+    if (status.includes('aprov') || status === '1') return true;
+    return false;
+}
+
+function calculateSchumacher(inst, allInstCerts, typeRecord) {
+    const baseFreq = parseFloat(getRecordField(inst, 'CALIBRATION_FREQUENCY_MONTHS', 'CALIBRATION_FREQUENCY')) || 12;
+    
+    // 1. Determinar política de método (Herdar do Tipo, Schumacher, Fixo)
+    const rawInstMethod = String(getRecordField(inst, 'CALIBRATION_METHOD', 'Calibration_Method') || '').trim();
+    const rawTypeMethod = String(typeRecord ? getRecordField(typeRecord, 'CALIBRATION_METHOD', 'Calibration_Method') : '').trim();
+    
+    let isSchumacherActive = false;
+    let methodSource = 'Fixo';
+
+    if (rawInstMethod.toLowerCase().includes('schumacher')) {
+        isSchumacherActive = true;
+        methodSource = 'Instrumento (Forçado)';
+    } else if (rawInstMethod.toLowerCase().includes('fixo')) {
+        isSchumacherActive = false;
+        methodSource = 'Instrumento (Fixo)';
+    } else {
+        // "Herdar do Tipo" ou vazio
+        if (rawTypeMethod.toLowerCase().includes('schumacher')) {
+            isSchumacherActive = true;
+            methodSource = 'Herdado do Tipo';
+        } else {
+            isSchumacherActive = false;
+            methodSource = 'Padrão / Fixo';
+        }
+    }
+
+    if (!isSchumacherActive) {
+        return {
+            isSchumacherActive: false,
+            suggestedMonths: baseFreq,
+            effectiveMonths: baseFreq,
+            observation: `Método Fixo / Padrão (${methodSource}). Intervalo mantido em ${baseFreq} meses.`,
+            totalCerts: allInstCerts ? allInstCerts.length : 0,
+            conformCerts: 0,
+            rate: null
+        };
+    }
+
+    // 2. Filtrar certificados válidos com data
+    const validCerts = (allInstCerts || []).filter(c => {
+        const removed = getRecordField(c, 'REMOVED', 'Removed');
+        if (removed === 1 || removed === '1') return false;
+        const dateVal = getRecordField(c, 'DATE', 'Date', 'CALIBRATION_DATE');
+        return dateVal !== null && dateVal !== undefined && dateVal !== '';
+    });
+
+    // Ordenar do mais novo para o mais antigo
+    validCerts.sort((a, b) => {
+        const dateA = toSeconds(getRecordField(a, 'DATE', 'Date')) || 0;
+        const dateB = toSeconds(getRecordField(b, 'DATE', 'Date')) || 0;
+        return dateB - dateA;
+    });
+
+    const totalCerts = validCerts.length;
+    const MIN_CERTS = 3;
+
+    if (totalCerts < MIN_CERTS) {
+        return {
+            isSchumacherActive: true,
+            suggestedMonths: baseFreq,
+            effectiveMonths: baseFreq,
+            observation: `Histórico insuficiente (${totalCerts}/${MIN_CERTS} calibrações mínimas). Mantida frequência padrão de ${baseFreq} meses.`,
+            totalCerts,
+            conformCerts: validCerts.filter(c => isCertConform(c)).length,
+            rate: null
+        };
+    }
+
+    // Confiabilidade Alvo R0 (padrão 90% = 0.90)
+    let targetReliability = 0.90;
+    if (typeRecord) {
+        const rawTarget = getRecordField(typeRecord, 'TARGET_RELIABILITY_PERCENT', 'Target_Reliability_Percent');
+        if (rawTarget && !isNaN(parseFloat(rawTarget)) && parseFloat(rawTarget) > 0) {
+            targetReliability = parseFloat(rawTarget) > 1 ? parseFloat(rawTarget) / 100 : parseFloat(rawTarget);
+        }
+    }
+
+    // Avaliar conformidade do histórico
+    let conformCount = 0;
+    for (const c of validCerts) {
+        if (isCertConform(c)) {
+            conformCount++;
+        }
+    }
+
+    const obsReliability = conformCount / totalCerts;
+    const obsPercent = Math.round(obsReliability * 100);
+    const targetPercent = Math.round(targetReliability * 100);
+
+    // Coeficiente de amortecimento k = 0.5 (evita saltos desmedidos)
+    const k = 0.5;
+    let adjustmentFactor = 1.0;
+
+    if (obsReliability >= targetReliability) {
+        const delta = (obsReliability - targetReliability) / (1.0 - targetReliability || 0.1);
+        adjustmentFactor = 1.0 + (k * delta);
+    } else {
+        const delta = (obsReliability - targetReliability) / targetReliability;
+        adjustmentFactor = 1.0 + (k * delta);
+    }
+
+    // Trava de segurança 1: Se a calibração mais recente foi reprovada, proíbe aumento
+    const latestCert = validCerts[0];
+    const latestConform = isCertConform(latestCert);
+    if (!latestConform && adjustmentFactor > 1.0) {
+        adjustmentFactor = 0.8; // Força redução de 20%
+    }
+
+    // Trava de segurança 2: Limite máximo de variação por ciclo (-50% a +33%)
+    adjustmentFactor = Math.max(0.5, Math.min(1.33, adjustmentFactor));
+
+    // Novo intervalo calculado preliminar
+    let newFreq = baseFreq * adjustmentFactor;
+
+    // Trava de segurança 3: Pisos e tetos absolutos (Mínimo 6 meses, Máximo 24 meses)
+    const MIN_MONTHS = 6;
+    const MAX_MONTHS = 24;
+    newFreq = Math.max(MIN_MONTHS, Math.min(MAX_MONTHS, newFreq));
+
+    // Arredondamento para o mês inteiro mais próximo
+    const suggestedMonths = Math.round(newFreq);
+
+    // Texto de justificativa para auditoria
+    let obs = '';
+    if (suggestedMonths > baseFreq) {
+        obs = `Schumacher: Confiabilidade ${obsPercent}% (${conformCount}/${totalCerts} conformes, meta ${targetPercent}%). Intervalo estendido de ${baseFreq} para ${suggestedMonths} meses.`;
+    } else if (suggestedMonths < baseFreq) {
+        obs = `Schumacher: Confiabilidade ${obsPercent}% (${conformCount}/${totalCerts} conformes, meta ${targetPercent}%). Intervalo reduzido de ${baseFreq} para ${suggestedMonths} meses devido a não conformidade(s).`;
+    } else {
+        obs = `Schumacher: Confiabilidade ${obsPercent}% (${conformCount}/${totalCerts} conformes, meta ${targetPercent}%). Intervalo mantido em ${suggestedMonths} meses.`;
+    }
+
+    return {
+        isSchumacherActive: true,
+        suggestedMonths,
+        effectiveMonths: suggestedMonths,
+        observation: obs,
+        totalCerts,
+        conformCerts: conformCount,
+        rate: obsPercent
+    };
+}
+
 let isSyncingCertificates = false;
 async function syncInstrumentsWithCertificates(instruments) {
     if (isSyncingCertificates || !Array.isArray(instruments) || instruments.length === 0) return;
     isSyncingCertificates = true;
     try {
-        const certs = await mockTableLens.fetchTableRecords('EXTERNAL_CALIBRATIONS');
+        const [certs, instTypes] = await Promise.all([
+            mockTableLens.fetchTableRecords('EXTERNAL_CALIBRATIONS'),
+            mockTableLens.fetchTableRecords('INSTRUMENTS_TYPES').catch(() => [])
+        ]);
         if (!certs || certs.length === 0) return;
 
         function toSeconds(val) {
@@ -118,50 +275,93 @@ async function syncInstrumentsWithCertificates(instruments) {
             return Math.floor(d.getTime() / 1000);
         }
 
-        // Map certificates by instrument id
-        const certsByInst = new Map();
+        const typesById = new Map();
+        (instTypes || []).forEach(t => {
+            typesById.set(Number(t.id), t);
+        });
+
+        // Mapear todos os certificados por instrumento
+        const allCertsByInst = new Map();
         certs.forEach(c => {
             const rawInstId = getRecordField(c, 'ID_INSTRUMENT', 'INSTRUMENT', 'Instrumento');
             const instId = Array.isArray(rawInstId) ? rawInstId[0] : (typeof rawInstId === 'object' && rawInstId ? rawInstId.id : rawInstId);
             if (!instId) return;
-
-            const dateVal = getRecordField(c, 'DATE', 'CALIBRATION_DATE', 'Data', 'Data_Calibracao');
-            const sec = toSeconds(dateVal);
-            if (!sec) return;
-
-            const status = String(getRecordField(c, 'VALIDATION_STATUS', 'STATUS', 'Status') || '').toLowerCase();
-            if (status.includes('reprovad')) return; // Ignore reprovados
-
             const numInstId = Number(instId);
-            if (!certsByInst.has(numInstId)) certsByInst.set(numInstId, []);
-            certsByInst.get(numInstId).push({ id: c.id, sec });
+            if (!allCertsByInst.has(numInstId)) allCertsByInst.set(numInstId, []);
+            allCertsByInst.get(numInstId).push(c);
         });
 
         for (const inst of instruments) {
-            const list = certsByInst.get(Number(inst.id));
-            if (!list || list.length === 0) continue;
+            const instCerts = allCertsByInst.get(Number(inst.id)) || [];
+            if (instCerts.length === 0) continue;
 
-            // Sort descending to get newest certificate
-            list.sort((a, b) => b.sec - a.sec);
-            const latestCert = list[0];
+            const typeRef = getRecordField(inst, 'ID_INSTRUMENT_TYPE', 'Id_Instrument_Type');
+            const typeId = Array.isArray(typeRef) ? typeRef[0] : (typeof typeRef === 'object' && typeRef ? typeRef.id : typeRef);
+            const typeRecord = typeId ? typesById.get(Number(typeId)) : null;
+
+            // Calcular intervalo pelo Método de Schumacher
+            const schumacherResult = calculateSchumacher(inst, instCerts, typeRecord);
+
+            // Filtrar certificados aprovados para encontrar a última data válida
+            const approvedCerts = instCerts.filter(c => {
+                const status = String(getRecordField(c, 'VALIDATION_STATUS', 'STATUS', 'Status', 'ID_STATUS') || '').toLowerCase();
+                if (status.includes('reprovad') || status === '2') return false;
+                const sec = toSeconds(getRecordField(c, 'DATE', 'CALIBRATION_DATE', 'Data'));
+                return !!sec;
+            }).sort((a, b) => {
+                const secA = toSeconds(getRecordField(a, 'DATE', 'CALIBRATION_DATE', 'Data')) || 0;
+                const secB = toSeconds(getRecordField(b, 'DATE', 'CALIBRATION_DATE', 'Data')) || 0;
+                return secB - secA;
+            });
+
+            if (approvedCerts.length === 0) continue;
+            const latestCert = approvedCerts[0];
+            const latestCertSec = toSeconds(getRecordField(latestCert, 'DATE', 'CALIBRATION_DATE', 'Data'));
 
             const currentLastCalSec = toSeconds(getRecordField(inst, 'Last_Calibration', 'LAST_CALIBRATION'));
             const currentNextCalSec = toSeconds(getRecordField(inst, 'NEXT_CALIBRATION', 'Next_Calibration'));
 
-            const freqMonths = parseFloat(getRecordField(inst, 'CALIBRATION_FREQUENCY_MONTHS', 'CALIBRATION_FREQUENCY')) || 12;
-            const expectedNextSec = addMonthsSeconds(latestCert.sec, freqMonths);
+            const effectiveMonths = schumacherResult.effectiveMonths || parseFloat(getRecordField(inst, 'CALIBRATION_FREQUENCY_MONTHS', 'CALIBRATION_FREQUENCY')) || 12;
+            const expectedNextSec = addMonthsSeconds(latestCertSec, effectiveMonths);
 
-            // Se o certificado é mais recente do que a data registrada ou se a data está vazia
-            if (!currentLastCalSec || latestCert.sec > currentLastCalSec || !currentNextCalSec) {
-                console.log(`[Sync] Atualizando calibração do instrumento ${inst.Code || inst.id}:`, {
+            const currentSchumacherFreq = getRecordField(inst, 'SCHUMACHER_FREQUENCY_MONTHS');
+            const currentEffectiveFreq = getRecordField(inst, 'EFFECTIVE_FREQUENCY_MONTHS');
+            const currentSchumacherObs = getRecordField(inst, 'SCHUMACHER_OBSERVATION');
+
+            const needsFreqUpdate = currentSchumacherFreq !== schumacherResult.suggestedMonths ||
+                                    currentEffectiveFreq !== schumacherResult.effectiveMonths ||
+                                    currentSchumacherObs !== schumacherResult.observation;
+
+            const needsDateUpdate = !currentLastCalSec || latestCertSec > currentLastCalSec || !currentNextCalSec || Math.abs(currentNextCalSec - expectedNextSec) > 86400;
+
+            if (needsDateUpdate || needsFreqUpdate) {
+                console.log(`[Schumacher/Sync] Atualizando instrumento ${inst.Code || inst.id}:`, {
+                    método: schumacherResult.observation,
+                    mesesEfetivos: effectiveMonths,
                     de: { last: currentLastCalSec, next: currentNextCalSec },
-                    para: { last: latestCert.sec, next: expectedNextSec }
+                    para: { last: latestCertSec, next: expectedNextSec }
                 });
 
-                await mockDataWriter.updateRecord('INSTRUMENTS', inst.id, {
-                    Last_Calibration: latestCert.sec,
-                    NEXT_CALIBRATION: expectedNextSec
-                }).catch(e => console.warn(`[Sync] Falha ao atualizar instrumento ${inst.id}:`, e));
+                const updatePayload = {
+                    SCHUMACHER_FREQUENCY_MONTHS: schumacherResult.suggestedMonths,
+                    SCHUMACHER_OBSERVATION: schumacherResult.observation,
+                    EFFECTIVE_FREQUENCY_MONTHS: schumacherResult.effectiveMonths
+                };
+
+                // Atualizar estado em memória imediatamente
+                inst.SCHUMACHER_FREQUENCY_MONTHS = schumacherResult.suggestedMonths;
+                inst.SCHUMACHER_OBSERVATION = schumacherResult.observation;
+                inst.EFFECTIVE_FREQUENCY_MONTHS = schumacherResult.effectiveMonths;
+
+                if (needsDateUpdate) {
+                    updatePayload.Last_Calibration = latestCertSec;
+                    updatePayload.NEXT_CALIBRATION = expectedNextSec;
+                    inst.Last_Calibration = latestCertSec;
+                    inst.NEXT_CALIBRATION = expectedNextSec;
+                }
+
+                await mockDataWriter.updateRecord('INSTRUMENTS', inst.id, updatePayload)
+                    .catch(e => console.warn(`[Schumacher/Sync] Falha ao atualizar instrumento ${inst.id}:`, e));
             }
         }
     } catch (err) {
@@ -404,6 +604,11 @@ function renderKanban() {
             calBoxTooltip = 'Instrumento inativo, danificado, descartado ou extraviado.';
         }
 
+        const effFreq = getRecordField(inst, 'EFFECTIVE_FREQUENCY_MONTHS', 'Effective_Frequency_Months');
+        const schumacherObs = getRecordField(inst, 'SCHUMACHER_OBSERVATION', 'Schumacher_Observation') || '';
+        const calMethod = String(getRecordField(inst, 'CALIBRATION_METHOD', 'Calibration_Method') || '').toLowerCase();
+        const isSchumacherActive = calMethod.includes('schumacher') || (schumacherObs && schumacherObs.toLowerCase().startsWith('schumacher:'));
+
         const isLastStage = stage === STAGES[STAGES.length - 1];
 
         card.innerHTML = `
@@ -432,8 +637,14 @@ function renderKanban() {
                 ${lastCalDisplay ? `
                     <div class="card-calib-sub">
                         <span>Último certificado: <strong>${lastCalDisplay}</strong></span>
+                        ${isSchumacherActive ? `<span class="card-badge-schumacher" title="${schumacherObs}">⚡ Schumacher: ${effFreq || 12}m</span>` : ''}
                     </div>
-                ` : ''}
+                ` : (isSchumacherActive ? `
+                    <div class="card-calib-sub">
+                        <span></span>
+                        <span class="card-badge-schumacher" title="${schumacherObs}">⚡ Schumacher: ${effFreq || 12}m</span>
+                    </div>
+                ` : '')}
             </div>
             ${isLastStage ? `
                 <div class="card-complete-action" style="margin-top: 8px; border-top: 1px solid #f1f5f9; padding-top: 6px; text-align: right;">
