@@ -200,9 +200,14 @@
     <div class="container">
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--primary-color); padding-bottom: 8px; margin-bottom: 12px;">
             <h2 style="margin: 0; border-bottom: none; padding-bottom: 0;">📥 Importar Calibração (.CAL / XML)</h2>
-            <a href="./batch-pdf-linker.html" style="font-size: 12px; font-weight: 700; color: var(--primary-color); text-decoration: none; display: flex; align-items: center; gap: 4px; background: #e8f5e9; padding: 5px 10px; border-radius: 4px; border: 1px solid #c8e6c9;">
-                📂 Vincular PDFs em Lote (.CAL) &rarr;
-            </a>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <button type="button" id="btn-open-ai-helper" style="font-size: 12px; font-weight: 700; color: #1565c0; background: #e3f2fd; border: 1px solid #90caf9; padding: 5px 12px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                    ✨ Extrair PDF via IA
+                </button>
+                <a href="./batch-pdf-linker.html" style="font-size: 12px; font-weight: 700; color: var(--primary-color); text-decoration: none; display: flex; align-items: center; gap: 4px; background: #e8f5e9; padding: 5px 10px; border-radius: 4px; border: 1px solid #c8e6c9;">
+                    📂 Vincular PDFs em Lote (.CAL) &rarr;
+                </a>
+            </div>
         </div>
         <p style="color: #607d8b; font-size: 13px; margin-top: -5px;">
             Arraste um arquivo de calibração para visualizar o relatório completo (PDF, tabela XML e laudo) antes de confirmar a gravação.
@@ -222,8 +227,91 @@
             <input type="file" id="file-input" accept=".cal,.xml" style="display: none;">
         </div>
 
+        <!-- Banner para Certificados em PDF (IA) -->
+        <div style="margin-top: 15px; padding: 12px 16px; background: linear-gradient(135deg, #f0f7ff 0%, #e8f4fd 100%); border: 1px solid #bbdefb; border-radius: 6px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 24px;">🤖</span>
+                <div>
+                    <strong style="color: #0d47a1; font-size: 13px; display: block;">Possui apenas o Certificado em PDF?</strong>
+                    <span style="color: #546e7a; font-size: 12px;">Use nosso assistente com Inteligência Artificial para converter o PDF em dados e importar com 1 clique.</span>
+                </div>
+            </div>
+            <button type="button" id="btn-open-ai-helper-banner" class="btn-primary" style="white-space: nowrap; font-size: 12px; padding: 6px 14px; background-color: #1976d2; border: none; cursor: pointer; border-radius: 4px; color: #fff; font-weight: 600;">
+                ✨ Usar Assistente de IA
+            </button>
+        </div>
+
         <div id="status-message" class="status-box"></div>
         <div id="log-console" class="log-area"></div>
+    </div>
+
+    <!-- MODAL: ASSISTENTE DE IA (PDF -> XML) -->
+    <div id="ai-helper-modal" class="modal">
+        <div class="modal-content" style="max-width: 950px; margin: 2% auto;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #1565c0, #0d47a1);">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 20px;">🤖</span>
+                    <h2 style="margin: 0; font-size: 17px; color: #fff;">Assistente de IA: Extrair Dados de Certificado PDF</h2>
+                </div>
+                <span class="close-ai-modal-btn" style="font-size: 28px; font-weight: bold; cursor: pointer; color: #ffffff;">&times;</span>
+            </div>
+            <div class="modal-body" style="padding: 20px; background: #f8fafc;">
+                <div style="display: grid; grid-template-columns: 1.1fr 1fr; gap: 18px;">
+                    <!-- Coluna 1: Instruções e Prompt -->
+                    <div style="background: #ffffff; border: 1px solid var(--border-color); border-radius: 6px; padding: 16px; display: flex; flex-direction: column;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <h3 style="margin: 0; font-size: 14px; color: #1565c0; display: flex; align-items: center; gap: 6px;">
+                                <span>1️⃣</span> Copiar Prompt para a IA
+                            </h3>
+                            <button type="button" id="btn-copy-ai-prompt" class="btn-primary" style="font-size: 12px; padding: 4px 10px; background-color: #1565c0; display: flex; align-items: center; gap: 4px;">
+                                📋 Copiar Instruções
+                            </button>
+                        </div>
+                        <p style="font-size: 12px; color: #546e7a; margin: 0 0 10px 0; line-height: 1.4;">
+                            Copie o prompt abaixo e cole no seu modelo de IA de preferência (<strong>ChatGPT, Gemini, Claude</strong>), anexando junto o <strong>PDF do Certificado</strong>.
+                        </p>
+                        <textarea id="ai-prompt-textarea" readonly style="flex: 1; min-height: 330px; width: 100%; font-family: 'Consolas', monospace; font-size: 11px; color: #37474f; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 4px; padding: 10px; resize: none; box-sizing: border-box; line-height: 1.35;"></textarea>
+                        <div id="ai-copy-feedback" style="display: none; margin-top: 8px; color: #2e7d32; font-size: 12px; font-weight: 600;">
+                            ✅ Instruções copiadas para a área de transferência!
+                        </div>
+                    </div>
+
+                    <!-- Coluna 2: Anexo do PDF e Colar XML -->
+                    <div style="background: #ffffff; border: 1px solid var(--border-color); border-radius: 6px; padding: 16px; display: flex; flex-direction: column;">
+                        <h3 style="margin: 0 0 8px 0; font-size: 14px; color: #2e7d32; display: flex; align-items: center; gap: 6px;">
+                            <span>2️⃣</span> Anexar PDF e Colar o XML Gerado
+                        </h3>
+                        
+                        <div class="form-group" style="margin-bottom: 12px;">
+                            <label for="ai-pdf-file-input" style="font-size: 12px; font-weight: 600; color: #455a64; margin-bottom: 4px;">
+                                📄 Certificado PDF Original (Opcional, mas recomendado para anexo):
+                            </label>
+                            <input type="file" id="ai-pdf-file-input" accept=".pdf" style="font-size: 12px; border: 1px solid var(--border-color); padding: 5px; border-radius: 4px; background: #fff;">
+                        </div>
+
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                            <label for="ai-xml-input" style="font-size: 12px; font-weight: 600; color: #455a64;">
+                                📥 Cole aqui a resposta da IA (XML):
+                            </label>
+                            <button type="button" id="btn-load-sample-xml" style="background: none; border: none; color: #1565c0; font-size: 11px; cursor: pointer; text-decoration: underline; padding: 0;">
+                                Exemplo de XML
+                            </button>
+                        </div>
+                        <textarea id="ai-xml-input" placeholder="Cole aqui o código XML gerado pela IA (com ou sem ```xml)..." style="flex: 1; min-height: 250px; width: 100%; font-family: 'Consolas', monospace; font-size: 11px; border: 1px solid #cbd5e1; border-radius: 4px; padding: 10px; resize: vertical; box-sizing: border-box; line-height: 1.35;"></textarea>
+                        
+                        <div style="margin-top: 10px; font-size: 11px; color: #78909c;">
+                            💡 O sistema remove blocos markdown (```xml) e valida a estrutura antes de gerar a pré-visualização.
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="background: #fff;">
+                <button type="button" id="btn-close-ai-modal" class="btn-secondary">Cancelar</button>
+                <button type="button" id="btn-process-ai-xml" class="btn-primary" style="background-color: #2e7d32; display: flex; align-items: center; gap: 6px;">
+                    <span>🚀</span> Processar e Carregar Resultados
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- MODAL: RELATÓRIO DE IMPORTAÇÃO (Pré-visualização) -->
@@ -538,6 +626,247 @@
                 processFile(fileInput.files[0]);
             }
         });
+
+        // ==========================================
+        // ASSISTENTE DE IA (PDF -> XML)
+        // ==========================================
+        function buildAiPrompt(selectedInst, instType) {
+            const tag = selectedInst ? (selectedInst.CODE || selectedInst.TAG || selectedInst.IDENTIFIER || '') : '';
+            const serial = selectedInst ? (selectedInst.SERIAL_NUMBER || selectedInst.SERIAL || selectedInst.NUMERO_SERIE || '') : '';
+            const typeName = instType || (selectedInst ? (selectedInst.ID_INSTRUMENT_TYPE || '') : '');
+            const mfg = selectedInst ? (selectedInst.MANUFACTURER || selectedInst.FABRICANTE || '') : '';
+            const model = selectedInst ? (selectedInst.MODEL || selectedInst.MODELO || '') : '';
+            const minVal = selectedInst && selectedInst.CAPACITY_MIN != null ? selectedInst.CAPACITY_MIN : '';
+            const maxVal = selectedInst && selectedInst.CAPACITY_MAX != null ? selectedInst.CAPACITY_MAX : '';
+            const unit = selectedInst ? (selectedInst.UNIT || selectedInst.UNIDADE || '') : '';
+
+            return `Você é um especialista em Metrologia e Engenharia de Qualidade.
+Sua tarefa é analisar o arquivo PDF do Certificado de Calibração anexado e extrair todos os dados metrológicos, gerando ESTRITAMENTE um arquivo XML estruturado compatível com o sistema de calibração.
+
+REGRAS OBRIGATÓRIAS:
+1. Responda APENAS com o código XML puro, sem explicações, saudações ou comentários antes ou depois. Não utilize blocos de texto fora do XML.
+2. Em todos os valores numéricos, utilize SEMPRE o PONTO (.) como separador decimal (Exemplo: 10.50 em vez de 10,50). NUNCA use vírgula para números decimais.
+3. Não invente dados: extraia os valores reais do certificado anexado. Se uma informação não constar no certificado, omita a tag ou deixe vazia.
+4. Para a(s) tabela(s) de resultados metrológicos:
+   - Coluna de Valor Padrão/Referência: header com type="0"
+   - Coluna de Leitura/Indicação do instrumento: header com type="3"
+   - Coluna de Tendência ou Erro de Medição: header com type="3"
+   - Coluna de Incerteza Expandida (U): header com type="3"
+   - Coluna de Fator de Abrangência (k): header com type="3"
+   - Cada linha de medição deve ser uma tag <row> contendo tags <value> na mesma ordem dos <header> definidos.
+   - Caso haja medições em sentidos diferentes (ex: Avanço e Retorno) ou mais de uma tabela no certificado, você pode criar múltiplas tags <table> com seus respectivos <name>, <headers> e <rows>.
+
+ESTRUTURA XML ESPERADA:
+<calibration>
+    <code>NUMERO_DO_CERTIFICADO</code>
+    <date>YYYY-MM-DD</date>
+    <supplierName>NOME_DO_LABORATORIO_DE_CALIBRACAO</supplierName>
+    <instrumentCode>${tag || 'TAG_OU_CODIGO_DO_INSTRUMENTO'}</instrumentCode>
+    <serialNumber>${serial || 'NUMERO_DE_SERIE'}</serialNumber>
+    <instrumentType>${typeName || 'TIPO_DO_INSTRUMENTO'}</instrumentType>
+    <manufacturer>${mfg || 'FABRICANTE'}</manufacturer>
+    <model>${model || 'MODELO'}</model>
+    <band>
+        <minValue>${minVal !== '' ? minVal : 'VALOR_MIN'}</minValue>
+        <maxValue>${maxVal !== '' ? maxVal : 'VALOR_MAX'}</maxValue>
+        <unit>${unit || 'UNIDADE'}</unit>
+    </band>
+    <table>
+        <name>Tabela 1 - Resultados da Calibração</name>
+        <headers>
+            <header type="0">Valor de Referência</header>
+            <header type="3">Indicação Instrumento</header>
+            <header type="3">Tendência (Erro)</header>
+            <header type="3">Incerteza U</header>
+            <header type="3">Fator k</header>
+        </headers>
+        <rows>
+            <row>
+                <value>10.0</value>
+                <value>10.02</value>
+                <value>0.02</value>
+                <value>0.01</value>
+                <value>2.0</value>
+            </row>
+        </rows>
+    </table>
+</calibration>`;
+        }
+
+        async function openAiModal() {
+            const modal = document.getElementById('ai-helper-modal');
+            const curInst = instrumentsList.find(i => i.id === selectedInstrumentId);
+            let typeName = '';
+            if (curInst) {
+                const typeId = getRecordFieldValue(curInst, ['ID_INSTRUMENT_TYPE', 'INSTRUMENT_TYPE']);
+                try {
+                    const types = await getTableLens().fetchTableRecords('INSTRUMENTS_TYPES');
+                    const foundT = types.find(t => String(t.id) === String(typeId));
+                    if (foundT) typeName = foundT.NAME || '';
+                } catch(e) {}
+            }
+            document.getElementById('ai-prompt-textarea').value = buildAiPrompt(curInst, typeName);
+            document.getElementById('ai-copy-feedback').style.display = 'none';
+            modal.style.display = 'block';
+        }
+
+        function closeAiModal() {
+            document.getElementById('ai-helper-modal').style.display = 'none';
+        }
+
+        const btnOpenAi = document.getElementById('btn-open-ai-helper');
+        if (btnOpenAi) btnOpenAi.addEventListener('click', openAiModal);
+
+        const btnOpenAiBanner = document.getElementById('btn-open-ai-helper-banner');
+        if (btnOpenAiBanner) btnOpenAiBanner.addEventListener('click', openAiModal);
+
+        document.querySelectorAll('.close-ai-modal-btn, #btn-close-ai-modal').forEach(btn => {
+            btn.addEventListener('click', closeAiModal);
+        });
+
+        const btnCopyPrompt = document.getElementById('btn-copy-ai-prompt');
+        if (btnCopyPrompt) {
+            btnCopyPrompt.addEventListener('click', async () => {
+                const promptText = document.getElementById('ai-prompt-textarea').value;
+                const fb = document.getElementById('ai-copy-feedback');
+                try {
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        await navigator.clipboard.writeText(promptText);
+                    } else {
+                        throw new Error("Clipboard API indisponível");
+                    }
+                } catch(err) {
+                    const ta = document.getElementById('ai-prompt-textarea');
+                    ta.select();
+                    document.execCommand('copy');
+                }
+                fb.style.display = 'block';
+                setTimeout(() => { fb.style.display = 'none'; }, 4000);
+            });
+        }
+
+        const btnLoadSample = document.getElementById('btn-load-sample-xml');
+        if (btnLoadSample) {
+            btnLoadSample.addEventListener('click', () => {
+                const sampleXml = `<calibration>
+    <code>CERT-2026-EXEMPLO</code>
+    <date>${new Date().toISOString().split('T')[0]}</date>
+    <supplierName>Laboratório Metrológico Modelo</supplierName>
+    <instrumentCode>AN-01</instrumentCode>
+    <serialNumber>SN-12345</serialNumber>
+    <instrumentType>Anel Dinamométrico</instrumentType>
+    <manufacturer>Pavicon</manufacturer>
+    <model>AD-500</model>
+    <band>
+        <minValue>0</minValue>
+        <maxValue>500</maxValue>
+        <unit>kgf</unit>
+    </band>
+    <table>
+        <name>Tabela 1 - Resultados de Calibração</name>
+        <headers>
+            <header type="0">Valor de Referência</header>
+            <header type="3">Indicação Instrumento</header>
+            <header type="3">Tendência (Erro)</header>
+            <header type="3">Incerteza U</header>
+            <header type="3">Fator k</header>
+        </headers>
+        <rows>
+            <row>
+                <value>50.0</value>
+                <value>50.10</value>
+                <value>0.10</value>
+                <value>0.05</value>
+                <value>2.0</value>
+            </row>
+            <row>
+                <value>100.0</value>
+                <value>100.20</value>
+                <value>0.20</value>
+                <value>0.05</value>
+                <value>2.0</value>
+            </row>
+            <row>
+                <value>250.0</value>
+                <value>250.35</value>
+                <value>0.35</value>
+                <value>0.08</value>
+                <value>2.0</value>
+            </row>
+            <row>
+                <value>500.0</value>
+                <value>500.60</value>
+                <value>0.60</value>
+                <value>0.10</value>
+                <value>2.0</value>
+            </row>
+        </rows>
+    </table>
+</calibration>`;
+                document.getElementById('ai-xml-input').value = sampleXml;
+            });
+        }
+
+        const btnProcessAiXml = document.getElementById('btn-process-ai-xml');
+        if (btnProcessAiXml) {
+            btnProcessAiXml.addEventListener('click', async () => {
+                const rawXml = document.getElementById('ai-xml-input').value.trim();
+                if (!rawXml) {
+                    alert("Por favor, cole o XML gerado pela IA antes de prosseguir.");
+                    document.getElementById('ai-xml-input').focus();
+                    return;
+                }
+
+                // Remove possíveis blocos de formatação markdown (ex: ` ` `xml ... ` ` `)
+                let cleanedXml = rawXml
+                    .replace(/^```[a-zA-Z]*\r?\n?/gm, '')
+                    .replace(/```$/gm, '')
+                    .trim();
+
+                const startIdx = cleanedXml.indexOf('<');
+                const endIdx = cleanedXml.lastIndexOf('>');
+                if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+                    cleanedXml = cleanedXml.substring(startIdx, endIdx + 1);
+                }
+
+                // Valida o XML
+                try {
+                    const testParser = new DOMParser();
+                    const testDoc = testParser.parseFromString(cleanedXml, "text/xml");
+                    const parseErr = testDoc.querySelector("parsererror");
+                    if (parseErr) {
+                        alert("Erro ao validar XML: O conteúdo colado não é um XML válido.\\n\\nDetalhes:\\n" + parseErr.textContent);
+                        return;
+                    }
+                } catch(e) {
+                    alert("Erro ao validar XML: " + e.message);
+                    return;
+                }
+
+                // Processa o arquivo PDF anexado no modal da IA, se fornecido
+                const aiPdfInput = document.getElementById('ai-pdf-file-input');
+                if (aiPdfInput && aiPdfInput.files && aiPdfInput.files.length > 0) {
+                    const pdfFile = aiPdfInput.files[0];
+                    pendingPdfBlob = pdfFile;
+                    pendingPdfFilename = pdfFile.name;
+                    if (tempPdfUrl) URL.revokeObjectURL(tempPdfUrl);
+                    tempPdfUrl = URL.createObjectURL(pendingPdfBlob);
+                    writeLog(`📄 PDF do certificado anexado manualmente: "${pdfFile.name}" (${(pdfFile.size / 1024).toFixed(1)} KB)`);
+                } else {
+                    pendingPdfBlob = null;
+                    pendingPdfFilename = null;
+                    if (tempPdfUrl) {
+                        URL.revokeObjectURL(tempPdfUrl);
+                        tempPdfUrl = null;
+                    }
+                    writeLog("ℹ️ XML colado via Assistente IA (sem anexo PDF selecionado).");
+                }
+
+                // Fecha modal da IA e dispara a pré-visualização padrão
+                closeAiModal();
+                await prepareImportPreview(cleanedXml, tempPdfUrl);
+            });
+        }
 
         // Start Grist
         grist.ready({ requiredAccess: 'full' });
