@@ -275,6 +275,21 @@ async function syncInstrumentsWithCertificates(instruments) {
             return Math.floor(d.getTime() / 1000);
         }
 
+        function addDaysSeconds(baseSec, days) {
+            if (!baseSec) return null;
+            const d = new Date(baseSec * 1000);
+            d.setUTCDate(d.getUTCDate() + (days || 0));
+            return Math.floor(d.getTime() / 1000);
+        }
+
+        function isIntermediateCert(c) {
+            if (!c) return false;
+            const isInterVal = getRecordField(c, 'IS_INTERMEDIATE', 'Is_Intermediate', 'INTERMEDIATE', 'Intermediate');
+            if (isInterVal === 1 || isInterVal === true || isInterVal === '1') return true;
+            const text = String(getRecordField(c, 'OBSERVATION', 'DESCRIPTION', 'CODE', 'Observation', 'Description', 'Code') || '');
+            return /verificação intermediária|verificacao intermediaria/i.test(text);
+        }
+
         const typesById = new Map();
         (instTypes || []).forEach(t => {
             typesById.set(Number(t.id), t);
@@ -315,14 +330,56 @@ async function syncInstrumentsWithCertificates(instruments) {
             });
 
             if (approvedCerts.length === 0) continue;
-            const latestCert = approvedCerts[0];
-            const latestCertSec = toSeconds(getRecordField(latestCert, 'DATE', 'CALIBRATION_DATE', 'Data'));
+
+            const externalApprovedCerts = approvedCerts.filter(c => !isIntermediateCert(c));
+            const intermediateApprovedCerts = approvedCerts.filter(c => isIntermediateCert(c));
+
+            let latestCertSec = null;
+            let expectedLastCalSec = null;
+            let expectedNextSec = null;
+
+            const effectiveMonths = schumacherResult.effectiveMonths || parseFloat(getRecordField(inst, 'CALIBRATION_FREQUENCY_MONTHS', 'CALIBRATION_FREQUENCY')) || 12;
+
+            if (externalApprovedCerts.length > 0) {
+                const latestExternalCert = externalApprovedCerts[0];
+                latestCertSec = toSeconds(getRecordField(latestExternalCert, 'DATE', 'CALIBRATION_DATE', 'Data'));
+                expectedLastCalSec = latestCertSec;
+
+                // Base do ciclo: data do último certificado externo + frequência
+                const baseNextSec = addMonthsSeconds(latestCertSec, effectiveMonths);
+                // Limite máximo: 90 dias além da data de vencimento base do último laboratório externo
+                const maxAllowedNextSec = addDaysSeconds(baseNextSec, 90);
+
+                // Filtrar verificações intermediárias realizadas no ciclo atual (data >= latestCertSec)
+                const cycleIntermediates = intermediateApprovedCerts
+                    .filter(ic => {
+                        const icSec = toSeconds(getRecordField(ic, 'DATE', 'CALIBRATION_DATE', 'Data'));
+                        return icSec && icSec >= latestCertSec;
+                    })
+                    .sort((a, b) => {
+                        const secA = toSeconds(getRecordField(a, 'DATE', 'CALIBRATION_DATE', 'Data')) || 0;
+                        const secB = toSeconds(getRecordField(b, 'DATE', 'CALIBRATION_DATE', 'Data')) || 0;
+                        return secA - secB;
+                    });
+
+                let runningNextSec = baseNextSec;
+                for (const ic of cycleIntermediates) {
+                    runningNextSec = addMonthsSeconds(runningNextSec, 1);
+                    if (runningNextSec > maxAllowedNextSec) {
+                        runningNextSec = maxAllowedNextSec;
+                        break;
+                    }
+                }
+                expectedNextSec = runningNextSec;
+            } else {
+                const latestCert = approvedCerts[0];
+                latestCertSec = toSeconds(getRecordField(latestCert, 'DATE', 'CALIBRATION_DATE', 'Data'));
+                expectedLastCalSec = latestCertSec;
+                expectedNextSec = addMonthsSeconds(latestCertSec, 1);
+            }
 
             const currentLastCalSec = toSeconds(getRecordField(inst, 'Last_Calibration', 'LAST_CALIBRATION'));
             const currentNextCalSec = toSeconds(getRecordField(inst, 'NEXT_CALIBRATION', 'Next_Calibration'));
-
-            const effectiveMonths = schumacherResult.effectiveMonths || parseFloat(getRecordField(inst, 'CALIBRATION_FREQUENCY_MONTHS', 'CALIBRATION_FREQUENCY')) || 12;
-            const expectedNextSec = addMonthsSeconds(latestCertSec, effectiveMonths);
 
             const currentSchumacherFreq = getRecordField(inst, 'SCHUMACHER_FREQUENCY_MONTHS');
             const currentEffectiveFreq = getRecordField(inst, 'EFFECTIVE_FREQUENCY_MONTHS');
@@ -332,14 +389,14 @@ async function syncInstrumentsWithCertificates(instruments) {
                                     currentEffectiveFreq !== schumacherResult.effectiveMonths ||
                                     currentSchumacherObs !== schumacherResult.observation;
 
-            const needsDateUpdate = !currentLastCalSec || latestCertSec > currentLastCalSec || !currentNextCalSec || Math.abs(currentNextCalSec - expectedNextSec) > 86400;
+            const needsDateUpdate = !currentLastCalSec || expectedLastCalSec !== currentLastCalSec || !currentNextCalSec || Math.abs(currentNextCalSec - expectedNextSec) > 86400;
 
             if (needsDateUpdate || needsFreqUpdate) {
                 console.log(`[Schumacher/Sync] Atualizando instrumento ${inst.Code || inst.id}:`, {
                     método: schumacherResult.observation,
                     mesesEfetivos: effectiveMonths,
                     de: { last: currentLastCalSec, next: currentNextCalSec },
-                    para: { last: latestCertSec, next: expectedNextSec }
+                    para: { last: expectedLastCalSec, next: expectedNextSec }
                 });
 
                 const updatePayload = {
@@ -354,9 +411,9 @@ async function syncInstrumentsWithCertificates(instruments) {
                 inst.EFFECTIVE_FREQUENCY_MONTHS = schumacherResult.effectiveMonths;
 
                 if (needsDateUpdate) {
-                    updatePayload.Last_Calibration = latestCertSec;
+                    updatePayload.Last_Calibration = expectedLastCalSec;
                     updatePayload.NEXT_CALIBRATION = expectedNextSec;
-                    inst.Last_Calibration = latestCertSec;
+                    inst.Last_Calibration = expectedLastCalSec;
                     inst.NEXT_CALIBRATION = expectedNextSec;
                 }
 

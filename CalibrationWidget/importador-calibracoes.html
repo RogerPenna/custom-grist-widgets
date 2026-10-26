@@ -220,6 +220,16 @@
             </select>
         </div>
 
+        <div class="form-group" style="margin-bottom: 15px; background: #e8f5e9; border: 1px solid #c8e6c9; border-radius: 6px; padding: 10px 14px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 0; font-weight: 600; color: #1b5e20;">
+                <input type="checkbox" id="check-is-intermediate" style="width: 17px; height: 17px; cursor: pointer; accent-color: #2e7d32;">
+                <span>🔬 É Verificação Intermediária (estende validade em +1 mês, máx. 90 dias)</span>
+            </label>
+            <small style="color: #455a64; font-size: 11px; margin-left: 25px; display: block; margin-top: 4px;">
+                Selecione esta opção se este laudo for uma verificação intermediária interna. O próximo vencimento será estendido em +1 mês (com teto máximo de 90 dias além do ciclo do último laboratório externo).
+            </small>
+        </div>
+
         <div class="upload-area" id="upload-zone">
             <div class="upload-icon">📥</div>
             <div class="upload-text">Arraste o arquivo ou clique para selecionar</div>
@@ -375,6 +385,19 @@
                             <div class="info-group">
                                 <label>Data de Calibração</label>
                                 <span id="preview-cert-date" class="info-value">-</span>
+                            </div>
+                            <div class="info-group" style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed #cfd8dc; flex-direction: column; align-items: flex-start; gap: 4px;">
+                                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 600; color: #2c5e5a;">
+                                    <input type="checkbox" id="preview-is-intermediate" style="width: 16px; height: 16px; cursor: pointer; accent-color: var(--primary-color);">
+                                    <span>Verificação Intermediária</span>
+                                </label>
+                                <div id="preview-intermediate-badge" style="display: none; font-size: 11px; background: #e0f2f1; color: #004d40; padding: 4px 8px; border-radius: 4px; line-height: 1.3; width: 100%; box-sizing: border-box;">
+                                    ⏱️ Extensão de +1 mês (teto máx: 90 dias além do ciclo do laboratório externo).
+                                </div>
+                            </div>
+                            <div class="info-group" style="margin-top: 8px; padding-top: 6px; border-top: 1px solid #eceff1;">
+                                <label>Vencimento Projetado</label>
+                                <span id="preview-projected-next-date" class="info-value" style="color: var(--primary-color); font-weight: bold;">-</span>
                             </div>
                         </div>
 
@@ -593,6 +616,20 @@
 
         // Confirm Action Button
         document.getElementById('preview-btn-confirm').addEventListener('click', saveImportedCertificate);
+
+        // Intermediate Verification Checkbox Sync
+        const mainCheckIntermediate = document.getElementById('check-is-intermediate');
+        const previewCheckIntermediate = document.getElementById('preview-is-intermediate');
+        if (mainCheckIntermediate && previewCheckIntermediate) {
+            mainCheckIntermediate.addEventListener('change', () => {
+                previewCheckIntermediate.checked = mainCheckIntermediate.checked;
+                updatePreviewProjectedDates();
+            });
+            previewCheckIntermediate.addEventListener('change', () => {
+                mainCheckIntermediate.checked = previewCheckIntermediate.checked;
+                updatePreviewProjectedDates();
+            });
+        }
 
         // Preview Table Select Switcher (for XML files with multiple tables)
         const previewSelectEl = document.getElementById('preview-table-select');
@@ -1959,6 +1996,14 @@ ESTRUTURA XML ESPERADA:
                     tables: parsedTables
                 };
 
+                // Sync intermediate checkbox to preview modal
+                const mainCheckEl = document.getElementById('check-is-intermediate');
+                const prevCheckEl = document.getElementById('preview-is-intermediate');
+                if (mainCheckEl && prevCheckEl) {
+                    prevCheckEl.checked = mainCheckEl.checked;
+                }
+                updatePreviewProjectedDates();
+
                 // Show modal & set default tab to PDF
                 document.getElementById('import-preview-modal').style.display = 'block';
                 document.querySelector('[data-prevtab="prev-tab-pdf"]').click();
@@ -1968,6 +2013,140 @@ ESTRUTURA XML ESPERADA:
             } catch(e) {
                 showMessage("Falha no processamento: " + e.message, true);
                 writeLog("Erro: " + e.stack);
+            }
+        }
+
+        // Helpers de datas e frequências
+        function getNumField(rec, keys) {
+            if (!rec) return null;
+            const recKeys = Object.keys(rec);
+            for (const k of keys) {
+                const normK = normalizeStr(k);
+                const foundKey = recKeys.find(rk => normalizeStr(rk) === normK);
+                if (foundKey && rec[foundKey] !== undefined && rec[foundKey] !== null) {
+                    const val = parseFloat(rec[foundKey]);
+                    if (!isNaN(val) && val > 0) return val;
+                }
+            }
+            return null;
+        }
+
+        function calculateNextDate(baseDateIso, months, days) {
+            if (!baseDateIso) return null;
+            const cleanDate = String(baseDateIso).split('T')[0];
+            const d = new Date(cleanDate + 'T12:00:00Z');
+            if (isNaN(d.getTime())) return null;
+
+            if (months && months > 0) {
+                d.setUTCMonth(d.getUTCMonth() + parseInt(months, 10));
+            } else if (days && days > 0) {
+                d.setUTCDate(d.getUTCDate() + parseInt(days, 10));
+            } else {
+                d.setUTCMonth(d.getUTCMonth() + 12);
+            }
+            return d.toISOString().split('T')[0];
+        }
+
+        function addDaysToIso(isoDateStr, days) {
+            if (!isoDateStr) return null;
+            const clean = String(isoDateStr).split('T')[0];
+            const d = new Date(clean + 'T12:00:00Z');
+            d.setUTCDate(d.getUTCDate() + (days || 0));
+            return d.toISOString().split('T')[0];
+        }
+
+        function formatIsoToBr(iso) {
+            if (!iso) return '-';
+            const clean = String(iso).split('T')[0];
+            const parts = clean.split('-');
+            if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+            return clean;
+        }
+
+        async function updatePreviewProjectedDates() {
+            if (!pendingImportData) return;
+            const previewCheck = document.getElementById('preview-is-intermediate');
+            const isIntermediate = previewCheck ? previewCheck.checked : false;
+            const badge = document.getElementById('preview-intermediate-badge');
+            const projectedEl = document.getElementById('preview-projected-next-date');
+            if (badge) badge.style.display = isIntermediate ? 'block' : 'none';
+
+            const { selectedInstrumentId, dateStr } = pendingImportData;
+            if (!selectedInstrumentId || !projectedEl) return;
+
+            try {
+                const freshInstrument = await getTableLens().fetchRecordById('INSTRUMENTS', selectedInstrumentId);
+                const freqMonths = getNumField(freshInstrument, [
+                    'CALIBRATION_FREQUENCY_MONTHS', 'Calibration Frequency Months',
+                    'CALIBRATION_FREQUENCY', 'FREQUENCY_MONTHS',
+                    'CALIBRATION_INTERVAL_MONTHS', 'FREQUENCIA_MESES', 'MESES_CALIBRACAO'
+                ]) || 12;
+
+                const freqDays = getNumField(freshInstrument, [
+                    'CALIBRATION_FREQUENCY_DAYS', 'Calibration Frequency Days',
+                    'FREQUENCY_DAYS', 'CALIBRATION_INTERVAL_DAYS',
+                    'FREQUENCIA_DIAS', 'DIAS_CALIBRACAO'
+                ]);
+
+                if (isIntermediate) {
+                    let latestExternalDateStr = null;
+                    try {
+                        const allCerts = await getTableLens().fetchTableRecords('EXTERNAL_CALIBRATIONS');
+                        const extCerts = (allCerts || []).filter(c => {
+                            const cInst = getRecordFieldValue(c, ['ID_INSTRUMENT', 'INSTRUMENT']);
+                            const cid = Array.isArray(cInst) ? cInst[0] : (typeof cInst === 'object' && cInst ? cInst.id : cInst);
+                            if (String(cid) !== String(selectedInstrumentId)) return false;
+                            const st = String(getRecordFieldValue(c, ['VALIDATION_STATUS', 'STATUS', 'ID_STATUS']) || '').toLowerCase();
+                            if (st.includes('reprovad') || st === '2') return false;
+                            const isInt = c.IS_INTERMEDIATE === 1 || c.IS_INTERMEDIATE === true || c.IS_INTERMEDIATE === '1' ||
+                                          /verificação intermediária|verificacao intermediaria/i.test(String(c.OBSERVATION || c.DESCRIPTION || c.CODE || ''));
+                            return !isInt;
+                        }).sort((a, b) => {
+                            const dA = new Date(getRecordFieldValue(a, ['DATE', 'CALIBRATION_DATE'])).getTime() || 0;
+                            const dB = new Date(getRecordFieldValue(b, ['DATE', 'CALIBRATION_DATE'])).getTime() || 0;
+                            return dB - dA;
+                        });
+
+                        if (extCerts.length > 0) {
+                            latestExternalDateStr = String(getRecordFieldValue(extCerts[0], ['DATE', 'CALIBRATION_DATE'])).split('T')[0];
+                        }
+                    } catch(e) {}
+
+                    if (!latestExternalDateStr) {
+                        const rawLast = getRecordFieldValue(freshInstrument, ['Last_Calibration', 'LAST_CALIBRATION']);
+                        if (rawLast) {
+                            const sec = Number(rawLast) > 1e11 ? Math.floor(Number(rawLast) / 1000) : Number(rawLast);
+                            latestExternalDateStr = !isNaN(sec) ? new Date(sec * 1000).toISOString().split('T')[0] : String(rawLast).split('T')[0];
+                        } else {
+                            latestExternalDateStr = dateStr;
+                        }
+                    }
+
+                    const baseDueDateStr = calculateNextDate(latestExternalDateStr, freqMonths, freqDays);
+                    const maxDueDateStr = addDaysToIso(baseDueDateStr, 90);
+
+                    const rawNext = getRecordFieldValue(freshInstrument, ['NEXT_CALIBRATION', 'Next_Calibration']);
+                    let currentDueDateStr = null;
+                    if (rawNext) {
+                        const sec = Number(rawNext) > 1e11 ? Math.floor(Number(rawNext) / 1000) : Number(rawNext);
+                        currentDueDateStr = !isNaN(sec) ? new Date(sec * 1000).toISOString().split('T')[0] : String(rawNext).split('T')[0];
+                    }
+
+                    let candidateNext = null;
+                    if (currentDueDateStr && currentDueDateStr >= baseDueDateStr) {
+                        candidateNext = calculateNextDate(currentDueDateStr, 1, null);
+                    } else {
+                        candidateNext = calculateNextDate(baseDueDateStr, 1, null);
+                    }
+
+                    const finalNextStr = candidateNext > maxDueDateStr ? maxDueDateStr : candidateNext;
+                    projectedEl.innerText = `${formatIsoToBr(finalNextStr)} (+1m | máx: ${formatIsoToBr(maxDueDateStr)})`;
+                } else {
+                    const nextCalDateStr = calculateNextDate(dateStr, freqMonths, freqDays);
+                    projectedEl.innerText = `${formatIsoToBr(nextCalDateStr)} (Ciclo padrão ${freqMonths}m)`;
+                }
+            } catch(e) {
+                console.warn("Erro ao atualizar data projetada:", e);
             }
         }
 
@@ -2049,6 +2228,7 @@ ESTRUTURA XML ESPERADA:
 
             try {
                 const { certCode, dateStr, labName, notes, hasAttachment, validationStatus, selectedInstrumentId, tables } = pendingImportData;
+                const isIntermediate = !!(document.getElementById('preview-is-intermediate')?.checked || document.getElementById('check-is-intermediate')?.checked);
 
                 // Lookup Supplier ID by Name
                 let supplierId = null;
@@ -2203,13 +2383,21 @@ ESTRUTURA XML ESPERADA:
                     }))
                 };
 
+                let certNotes = notes || '';
+                if (isIntermediate && !/verificação intermediária|verificacao intermediaria/i.test(certNotes)) {
+                    certNotes = `[Verificação Intermediária] ${certNotes}`.trim();
+                }
+
                 writeLog("Inserindo/Atualizando certificado no banco do Grist...");
                 const certPayload = await buildPayload('EXTERNAL_CALIBRATIONS', {
                     CODE: certCode,
                     DATE: dateStr,
                     CALIBRATION_DATE: dateStr,
-                    OBSERVATION: notes,
-                    DESCRIPTION: notes,
+                    OBSERVATION: certNotes,
+                    DESCRIPTION: certNotes,
+                    IS_INTERMEDIATE: isIntermediate ? 1 : 0,
+                    INTERMEDIATE: isIntermediate ? 1 : 0,
+                    IDENTIFIER: isIntermediate ? 'INTERMEDIATE' : 'EXTERNAL',
                     VALIDATION_STATUS: validationStatus,
                     STATUS: validationStatus === 'Reprovado' ? 'Reprovado' : (validationStatus === 'Alerta' ? 'Aprovado com Ressalva' : 'Aprovado'),
                     IS_CONFORM: validationStatus === 'Reprovado' ? 0 : 1,
@@ -2507,9 +2695,74 @@ ESTRUTURA XML ESPERADA:
                     console.warn("[Schumacher Importer] Falha ao calcular Schumacher:", e);
                 }
 
-                const nextCalDateStr = calculateNextDate(dateStr, effectiveMonths, freqDays);
-                writeLog(`📅 Frequência Efetiva de Calibração: ${effectiveMonths} meses${schumacherObs ? ' (Schumacher)' : ''}`);
-                writeLog(`📅 Última Calibração: ${dateStr} | Próximo Vencimento: ${nextCalDateStr}`);
+                let lastCalDateStr = dateStr;
+                let nextCalDateStr = null;
+                let maxDueDateStr = null;
+
+                if (isIntermediate) {
+                    // Buscar último laboratório externo aprovado para o instrumento
+                    let latestExternalDateStr = null;
+                    const approvedExternalCerts = (instCerts || []).filter(c => {
+                        if (c.id === newCertId) return false;
+                        const st = String(getRecordFieldValue(c, ['VALIDATION_STATUS', 'STATUS', 'ID_STATUS']) || '').toLowerCase();
+                        if (st.includes('reprovad') || st === '2') return false;
+                        const isInt = c.IS_INTERMEDIATE === 1 || c.IS_INTERMEDIATE === true || c.IS_INTERMEDIATE === '1' ||
+                                      /verificação intermediária|verificacao intermediaria/i.test(String(c.OBSERVATION || c.DESCRIPTION || c.CODE || ''));
+                        return !isInt;
+                    }).sort((a, b) => {
+                        const dA = new Date(getRecordFieldValue(a, ['DATE', 'CALIBRATION_DATE'])).getTime() || 0;
+                        const dB = new Date(getRecordFieldValue(b, ['DATE', 'CALIBRATION_DATE'])).getTime() || 0;
+                        return dB - dA;
+                    });
+
+                    if (approvedExternalCerts.length > 0) {
+                        latestExternalDateStr = String(getRecordFieldValue(approvedExternalCerts[0], ['DATE', 'CALIBRATION_DATE'])).split('T')[0];
+                    }
+
+                    if (!latestExternalDateStr) {
+                        const rawLast = getRecordFieldValue(freshInstrument, ['Last_Calibration', 'LAST_CALIBRATION']);
+                        if (rawLast) {
+                            const sec = Number(rawLast) > 1e11 ? Math.floor(Number(rawLast) / 1000) : Number(rawLast);
+                            latestExternalDateStr = !isNaN(sec) ? new Date(sec * 1000).toISOString().split('T')[0] : String(rawLast).split('T')[0];
+                        } else {
+                            latestExternalDateStr = dateStr;
+                        }
+                    }
+
+                    // A data de última calibração do instrumento permanece a data do último laboratório externo!
+                    lastCalDateStr = latestExternalDateStr;
+
+                    const baseDueDateStr = calculateNextDate(latestExternalDateStr, effectiveMonths, freqDays);
+                    maxDueDateStr = addDaysToIso(baseDueDateStr, 90);
+
+                    // Vencimento atual gravado no instrumento
+                    const rawNext = getRecordFieldValue(freshInstrument, ['NEXT_CALIBRATION', 'Next_Calibration']);
+                    let currentDueDateStr = null;
+                    if (rawNext) {
+                        const sec = Number(rawNext) > 1e11 ? Math.floor(Number(rawNext) / 1000) : Number(rawNext);
+                        currentDueDateStr = !isNaN(sec) ? new Date(sec * 1000).toISOString().split('T')[0] : String(rawNext).split('T')[0];
+                    }
+
+                    let candidateNext = null;
+                    if (currentDueDateStr && currentDueDateStr >= baseDueDateStr) {
+                        candidateNext = calculateNextDate(currentDueDateStr, 1, null);
+                    } else {
+                        candidateNext = calculateNextDate(baseDueDateStr, 1, null);
+                    }
+
+                    nextCalDateStr = (candidateNext > maxDueDateStr) ? maxDueDateStr : candidateNext;
+
+                    writeLog(`🔬 [Verificação Intermediária]`);
+                    writeLog(`   - Calibração Externa Base Mantida: ${lastCalDateStr}`);
+                    writeLog(`   - Vencimento Base Externa: ${baseDueDateStr}`);
+                    writeLog(`   - Teto Máximo (+90 dias): ${maxDueDateStr}`);
+                    writeLog(`   - Novo Vencimento (+1 mês): ${nextCalDateStr}`);
+                } else {
+                    lastCalDateStr = dateStr;
+                    nextCalDateStr = calculateNextDate(dateStr, effectiveMonths, freqDays);
+                    writeLog(`📅 [Calibração Externa] Frequência: ${effectiveMonths} meses${schumacherObs ? ' (Schumacher)' : ''}`);
+                    writeLog(`📅 Última Calibração: ${dateStr} | Próximo Vencimento: ${nextCalDateStr}`);
+                }
 
                 let instSituationId = (validationStatus === 'Reprovado') ? 6 : 1;
                 if (validationStatus === 'Reprovado') {
@@ -2532,7 +2785,7 @@ ESTRUTURA XML ESPERADA:
                     return isNaN(d.getTime()) ? null : Math.floor(d.getTime() / 1000);
                 }
 
-                const lastCalTimestamp = parseToSeconds(dateStr);
+                const lastCalTimestamp = parseToSeconds(lastCalDateStr);
                 const nextCalTimestamp = parseToSeconds(nextCalDateStr);
 
                 const instUpdateObj = {
@@ -2555,11 +2808,15 @@ ESTRUTURA XML ESPERADA:
                 writeLog("✅ Instrumento atualizado com histórico, última calibração e nova data de vencimento!");
                 
                 // Add final occurrence
+                const occurrenceComments = isIntermediate
+                    ? `Verificação intermediária concluída. Registro ${certCode} importado e ${validationStatus}. Validade estendida para ${nextCalDateStr} (limite máx: ${maxDueDateStr}).`
+                    : `Calibração concluída. Certificado ${certCode} importado e ${validationStatus}. Nova validade: ${nextCalDateStr}.`;
+
                 const finalOccurrence = await buildPayload('INSTRUMENTS_OCCURRENCES', {
                     ID_INSTRUMENT: selectedInstrumentId,
                     DATE: dateStr + 'T12:00:00Z',
                     REAL_DATE: new Date().toISOString().split('T')[0] + 'T12:00:00Z',
-                    COMMENTS: `Calibração concluída. Certificado ${certCode} importado e ${validationStatus}.`,
+                    COMMENTS: occurrenceComments,
                     ID_SITUATION: 1, // Ativo
                     ID_EXTERNAL_CALIBRATION: newCertId,
                     CERTIFICATE_CODE: certCode
