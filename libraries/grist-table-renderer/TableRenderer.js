@@ -59,7 +59,8 @@ export const TableRenderer = (() => {
         const selectedValues = new Set(Array.isArray(activeFilter?.value) ? activeFilter.value : (activeFilter?.value ? [activeFilter.value] : []));
         
         const colDef = cell.getColumn().getDefinition();
-        const colType = colDef.colType || colDef.type || '';
+        const colParams = colDef.headerFilterParams || {};
+        const colType = colDef.colType || colDef.type || colParams.gristCol?.type || '';
         const isAttachmentField = field === 'ATTACHMENT' || field === 'ATTACHMENTS' || colType === 'Attachments';
 
         if (isAttachmentField) {
@@ -88,6 +89,21 @@ export const TableRenderer = (() => {
                     if ((!label || label === "" || label === "(vazio)") && data["z_disp_" + field]) {
                         label = data["z_disp_" + field];
                     }
+
+                    // Enriquecer label com tabela de referência (Ref:) se disponível (ex: "✅ - Ativo")
+                    if (colType.startsWith('Ref:')) {
+                        const targetTbl = colType.substring(4);
+                        const rMap = colParams.refTableMap ? colParams.refTableMap[targetTbl] : null;
+                        if (rMap && rMap[rawVal]) {
+                            const rRec = rMap[rawVal];
+                            const tooltipCol = colParams.colConfig?.tooltipColumnId || 'NAME';
+                            const nameVal = rRec[tooltipCol] || rRec.NAME || rRec.Name;
+                            if (nameVal && (!label || label !== nameVal)) {
+                                label = label ? `${label} - ${nameVal}` : String(nameVal);
+                            }
+                        }
+                    }
+
                     if (!label || label === "") {
                         label = "(vazio)";
                     }
@@ -97,6 +113,20 @@ export const TableRenderer = (() => {
             });
         }
         
+        const isItemSelected = (item) => {
+            if (selectedValues.has(item.value) || selectedValues.has(String(item.value))) return true;
+            if (typeof item.value === 'number' && selectedValues.has(String(item.value))) return true;
+            if (typeof item.value === 'string' && !isNaN(item.value) && selectedValues.has(Number(item.value))) return true;
+            for (const sv of selectedValues) {
+                if (String(sv).trim().toLowerCase() === String(item.value).trim().toLowerCase()) return true;
+                if (item.label && (
+                    String(sv).trim().toLowerCase() === String(item.label).trim().toLowerCase() ||
+                    item.label.toLowerCase().includes(String(sv).trim().toLowerCase())
+                )) return true;
+            }
+            return false;
+        };
+
         let currentFiltered = uniqueItems;
         function renderItems(filterText = "") {
             itemsList.innerHTML = "";
@@ -116,8 +146,8 @@ export const TableRenderer = (() => {
                 selectAllText.innerText = `Selecionar todos (${uniqueItems.length})`;
             }
             
-            const allChecked = currentFiltered.length > 0 && currentFiltered.every(item => selectedValues.has(item.value));
-            const someChecked = currentFiltered.some(item => selectedValues.has(item.value));
+            const allChecked = currentFiltered.length > 0 && currentFiltered.every(item => isItemSelected(item));
+            const someChecked = currentFiltered.some(item => isItemSelected(item));
             selectAllCheckbox.checked = allChecked;
             selectAllCheckbox.indeterminate = !allChecked && someChecked;
 
@@ -135,16 +165,22 @@ export const TableRenderer = (() => {
                 const checkbox = document.createElement("input");
                 checkbox.type = "checkbox";
                 checkbox.value = item.value;
-                checkbox.checked = selectedValues.has(item.value);
+                checkbox.checked = isItemSelected(item);
                 
                 checkbox.onchange = () => {
                     if (checkbox.checked) {
                         selectedValues.add(item.value);
                     } else {
                         selectedValues.delete(item.value);
+                        for (const sv of Array.from(selectedValues)) {
+                            if (String(sv).trim().toLowerCase() === String(item.value).trim().toLowerCase() ||
+                                (item.label && String(sv).trim().toLowerCase() === String(item.label).trim().toLowerCase())) {
+                                selectedValues.delete(sv);
+                            }
+                        }
                     }
-                    const nowAll = currentFiltered.length > 0 && currentFiltered.every(it => selectedValues.has(it.value));
-                    const nowSome = currentFiltered.some(it => selectedValues.has(it.value));
+                    const nowAll = currentFiltered.length > 0 && currentFiltered.every(it => isItemSelected(it));
+                    const nowSome = currentFiltered.some(it => isItemSelected(it));
                     selectAllCheckbox.checked = nowAll;
                     selectAllCheckbox.indeterminate = !nowAll && nowSome;
                 };
@@ -214,7 +250,12 @@ export const TableRenderer = (() => {
                 success("");
             } else {
                 const valuesArray = Array.from(selectedValues);
-                headerInput.value = valuesArray.length === 1 ? (uniqueItems.find(i => selectedValues.has(i.value))?.label || "1 item") : `(${valuesArray.length} itens)`;
+                if (valuesArray.length === 1) {
+                    const found = uniqueItems.find(i => isItemSelected(i));
+                    headerInput.value = found?.label || String(valuesArray[0]);
+                } else {
+                    headerInput.value = `(${valuesArray.length} itens)`;
+                }
                 success(valuesArray);
             }
         };
@@ -304,10 +345,40 @@ export const TableRenderer = (() => {
                     const field = cell.getField();
                     const currentFilters = table.getFilters();
                     const activeFilter = currentFilters.find(f => f.field === field);
-                    if (activeFilter && Array.isArray(activeFilter.value) && activeFilter.value.length > 0) {
-                        input.value = `(${activeFilter.value.length} itens)`;
-                    } else if (activeFilter && activeFilter.value) {
-                        input.value = String(activeFilter.value);
+                    if (activeFilter && activeFilter.value !== undefined && activeFilter.value !== null && activeFilter.value !== "") {
+                        const vals = Array.isArray(activeFilter.value) ? activeFilter.value : [activeFilter.value];
+                        if (vals.length === 1) {
+                            let label = String(vals[0]);
+                            const colDef = cell.getColumn().getDefinition();
+                            const params = colDef.headerFilterParams || {};
+                            if (params.gristCol?.type && params.gristCol.type.startsWith('Ref:')) {
+                                const targetTbl = params.gristCol.type.substring(4);
+                                const rMap = params.refTableMap?.[targetTbl];
+                                if (rMap && rMap[vals[0]]) {
+                                    const rRec = rMap[vals[0]];
+                                    const dispName = rRec[params.colConfig?.tooltipColumnId] || rRec.NAME || rRec.Name;
+                                    const iconVal = rRec.ICON || rRec.Icon;
+                                    label = (iconVal && dispName) ? `${iconVal} - ${dispName}` : (dispName || iconVal || label);
+                                }
+                            }
+                            if (label === String(vals[0])) {
+                                const rows = table.getRows();
+                                for (const row of rows) {
+                                    const d = row.getData();
+                                    if (String(d[field]) === String(vals[0]) || String(d["z_disp_" + field]) === String(vals[0])) {
+                                        const cellComp = row.getCell(field);
+                                        const cellTxt = cellComp ? (cellComp.getElement().textContent || cellComp.getElement().innerText || '').trim() : '';
+                                        label = cellTxt || d["z_disp_" + field] || label;
+                                        break;
+                                    }
+                                }
+                            }
+                            input.value = label;
+                        } else if (vals.length > 1) {
+                            input.value = `(${vals.length} itens)`;
+                        } else {
+                            input.value = "";
+                        }
                     } else {
                         input.value = "";
                     }
@@ -979,6 +1050,11 @@ export const TableRenderer = (() => {
             let headerFilterFunc = undefined;
             if (styling.headerFilter !== false) {
                 headerFilter = customFilterEditor;
+                headerFilterParams = {
+                    colConfig: colConfig,
+                    gristCol: gristCol,
+                    refTableMap: refTableMap
+                };
                 headerFilterFunc = (headerValue, rowValue, rowData) => {
                     if (!headerValue || (Array.isArray(headerValue) && headerValue.length === 0) || headerValue === "") {
                         return true;
@@ -1013,6 +1089,17 @@ export const TableRenderer = (() => {
                         if (dispVal && String(dispVal).trim().toLowerCase() === String(cleanVal).trim().toLowerCase()) {
                             return true;
                         }
+                        if (gristCol.type && gristCol.type.startsWith('Ref:')) {
+                            const targetTbl = gristCol.type.substring(4);
+                            const rRec = refTableMap?.[targetTbl]?.[cleanRowVal];
+                            if (rRec) {
+                                for (const k of Object.keys(rRec)) {
+                                    if (String(rRec[k]).trim().toLowerCase() === String(cleanVal).trim().toLowerCase()) {
+                                        return true;
+                                    }
+                                }
+                            }
+                        }
                         return false;
                     });
                 };
@@ -1026,6 +1113,7 @@ export const TableRenderer = (() => {
                 headerFilter: headerFilter,
                 headerFilterParams: headerFilterParams,
                 headerFilterFunc: headerFilterFunc,
+                headerFilterValue: colConfig.headerFilterValue !== undefined ? colConfig.headerFilterValue : (colConfig.defaultFilter !== undefined ? colConfig.defaultFilter : undefined),
                 width: colWidth,
                 bottomCalc: colConfig.bottomCalc || undefined,
                 editable: isEditable,
@@ -1470,7 +1558,15 @@ export const TableRenderer = (() => {
         const paginationSize = parseInt(paginationConfig.pageSize, 10) || 10;
         const paginationSizeSelector = paginationEnabled ? [5, 10, 20, 50, 100] : false;
 
-        const hasAnyBottomCalc = columns.some(col => col.bottomCalc !== undefined && col.bottomCalc !== null);
+        const initialHeaderFilters = [];
+        columns.forEach(col => {
+            if (col.headerFilterValue !== undefined && col.headerFilterValue !== null && col.headerFilterValue !== "") {
+                initialHeaderFilters.push({
+                    field: col.field,
+                    value: col.headerFilterValue
+                });
+            }
+        });
 
         tabulatorTable = new Tabulator(tableEl, {
             height: "100%",
@@ -1480,6 +1576,7 @@ export const TableRenderer = (() => {
             resizableColumns: styling.resizableColumns !== false,
             popupContainer: "body",
             columns: columns,
+            initialHeaderFilter: initialHeaderFilters.length > 0 ? initialHeaderFilters : undefined,
             columnCalcs: hasAnyBottomCalc ? "bottom" : false,
             pagination: paginationEnabled,
             paginationSize: paginationSize,

@@ -420,10 +420,25 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const tableDiv = document.createElement('div');
                 tableDiv.style.height = '100%';
                 rendererContainer.appendChild(tableDiv);
+                
+                let effectiveTableConfig = currentConfig;
+                if (currentCalibrationStatusFilter === 'inactive') {
+                    try {
+                        effectiveTableConfig = JSON.parse(JSON.stringify(currentConfig));
+                        const cols = effectiveTableConfig.mapping?.columns || effectiveTableConfig.columns || [];
+                        cols.forEach(c => {
+                            if (c.colId === 'ID_SITUATION') {
+                                delete c.headerFilterValue;
+                                delete c.defaultFilter;
+                            }
+                        });
+                    } catch(e) {}
+                }
+
                 await TableRenderer.renderTable({
                     container: tableDiv,
                     records,
-                    config: currentConfig,
+                    config: effectiveTableConfig,
                     tableLens,
                     onRowClick: async (record, mode) => {
                         const actions = currentConfig.actions || {};
