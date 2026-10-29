@@ -333,7 +333,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (filterBarContainer) {
                     filterBarContainer.style.display = 'none';
                 }
-                const { TableRenderer } = await import('../libraries/grist-table-renderer/TableRenderer.js?v=1.3.35');
+                const { TableRenderer } = await import('../libraries/grist-table-renderer/TableRenderer.js?v=1.3.36');
                 let [records, schema] = await Promise.all([
                     tableLens.fetchTableRecords(tableId),
                     tableLens.getTableSchema(tableId)

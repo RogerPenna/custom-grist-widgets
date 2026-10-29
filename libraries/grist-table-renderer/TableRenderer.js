@@ -1568,6 +1568,8 @@ export const TableRenderer = (() => {
             }
         });
 
+        const hasAnyBottomCalc = columns.some(col => col.bottomCalc !== undefined && col.bottomCalc !== null);
+
         tabulatorTable = new Tabulator(tableEl, {
             height: "100%",
             data: records,
